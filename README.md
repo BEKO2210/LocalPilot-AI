@@ -23,8 +23,8 @@ Autowerkstatt bis zur Reinigungsfirma – und ist im Kern bewusst branchenneutra
 - Bronze/Silber/Gold-Pakete als echte Produktlogik (Feature-Locks im UI)
 - Branchen-Presets (Friseur, Werkstatt, Reinigung, Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop, …)
 
-Aktueller Stand: **Session 5** – 10 Themes mit CSS-Variablen-Resolver und Live-Galerie unter `/themes`.
-Weitere Funktionen folgen in den Sessions 6–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
+Aktueller Stand: **Session 8** – Marketing-Funnel ausgebaut, eigene `/pricing`-Seite mit Feature-Vergleichsmatrix, Live-Demo-Showcase auf der Startseite.
+Weitere Funktionen folgen in den Sessions 9–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
 
 ---
 
@@ -94,9 +94,11 @@ src/
     layout/            Header, Footer, Navigation
     marketing/         Sektionen der Landingpage
     ui/                wiederverwendbare Primitive (Button, Container, Section)
-    public-site/       Sektionen der öffentlichen Betriebs-Websites (Session 7+)
+    public-site/       13 Sektionskomponenten der Public Sites (Session 7 ✅)
+    pricing/           PricingCard, PricingGrid, FeatureLock (Session 3 ✅)
+    theme/             ThemeProvider, ThemePreviewCard (Session 5 ✅)
     dashboard/         Dashboard-Bausteine (Session 9+)
-    forms/, pricing/, industry/, ai/, leads/, reviews/, social/, theme/  → folgen
+    forms/, industry/, ai/, leads/, reviews/, social/  → folgen
   core/
     validation/        Zod-Schemas (Session 2 ✅) – Single Source of Truth
     pricing/           PricingTier-Konfiguration + Helper (Session 3 ✅)
@@ -106,7 +108,9 @@ src/
     leads/, reviews/, social/, utils/  → folgen
   data/
     mock-types.ts      Plan der Mock-Datenstruktur (Session 2 ✅)
-    mock-businesses.ts, mock-leads.ts, mock-reviews.ts (Session 6+)
+    mock-helpers.ts    Slug-/ID-/Datums-Helper (Session 6 ✅)
+    businesses/        6 Demo-Betriebe (Session 6 ✅)
+    mock-{businesses,services,reviews,leads,dataset}.ts (Session 6 ✅)
   lib/                 cn(), Supabase-Client, Storage-Helper
   types/               TypeScript-Modelle (Session 2 ✅) – per z.infer aus Schemas
   tests/               Unit-Tests / Schema-Smoketest (Session 2 ✅, Vitest folgt)
@@ -184,6 +188,9 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - [`docs/PRICING.md`](./docs/PRICING.md) – Pricing-System, Feature-Locks, Helper-API
 - [`docs/INDUSTRY_PRESETS.md`](./docs/INDUSTRY_PRESETS.md) – Branchen-Presets, Registry, Compliance
 - [`docs/THEMES.md`](./docs/THEMES.md) – Theme-System, CSS-Variablen, Tailwind-Integration
+- [`docs/MOCK_DATA.md`](./docs/MOCK_DATA.md) – Demo-Betriebe, Aggregation, Daten-Hygiene
+- [`docs/PUBLIC_SITE.md`](./docs/PUBLIC_SITE.md) – Public Site Generator, Sektionen, SEO
+- [`docs/MARKETING.md`](./docs/MARKETING.md) – Marketing-Funnel, /pricing-Aufbau, Konversionspfad
 - [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) – GitHub Pages und Vercel
 - [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) – Was wurde in welcher Session gebaut?
 - [`CHANGELOG.md`](./CHANGELOG.md) – Versionshistorie
@@ -208,7 +215,14 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
   `listPresetKeys`, `listMissingPresetKeys`) + Fallback-Preset
 - ✅ **10 Themes** mit CSS-Variablen-Resolver, `<ThemeProvider>` (server-component-tauglich)
   und Live-Galerie unter `/themes`
+- ✅ **6 Demo-Betriebe** vollständig validiert, alle drei Pakete + 6 Themes,
+  Live-Übersicht unter `/demo`
+- ✅ **Public Site Generator** unter `/site/[slug]` mit 13 themed Sektionen,
+  Mobile-CTA-Bar, business-spezifischer SEO und 6 statisch prerenderten Slugs
+- ✅ **Marketing-Funnel** auf der Startseite (11-Schritt-Funnel), eigene
+  `/pricing`-Seite mit Feature-Vergleichsmatrix und Limits-Tabelle,
+  Live-Demo-Showcase, Beispiel-Stimmen, ROI-Sektion
 - ✅ **GitHub-Pages-Deployment** über Workflow `.github/workflows/deploy.yml`
   mit konditionellem Static-Export
-- ⏳ Mock-Daten, Public Sites, Dashboard, KI-System –
-  folgen in Sessions 6 bis 22
+- ⏳ Dashboard, KI-System –
+  folgen in Sessions 9 bis 22

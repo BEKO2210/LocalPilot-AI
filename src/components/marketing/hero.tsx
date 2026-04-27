@@ -1,6 +1,6 @@
 import { Container } from "@/components/ui/container";
 import { LinkButton } from "@/components/ui/button";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Eye, Sparkles } from "lucide-react";
 
 export function MarketingHero() {
   return (
@@ -20,12 +20,13 @@ export function MarketingHero() {
             – ganz ohne technisches Wissen.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <LinkButton href="#pakete" size="lg">
-              Pakete ansehen
-              <ArrowRight className="h-4 w-4" aria-hidden />
+            <LinkButton href="/demo" size="lg">
+              <Eye className="h-4 w-4" aria-hidden />
+              Live-Demos ansehen
             </LinkButton>
-            <LinkButton href="#kontakt" variant="outline" size="lg">
-              Beratung anfragen
+            <LinkButton href="/pricing" variant="outline" size="lg">
+              Pakete vergleichen
+              <ArrowRight className="h-4 w-4" aria-hidden />
             </LinkButton>
           </div>
           <p className="mt-5 text-sm text-ink-500">

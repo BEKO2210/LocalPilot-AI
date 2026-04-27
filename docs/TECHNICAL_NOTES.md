@@ -220,33 +220,116 @@ Konvention für ein neues Theme:
 3. In `THEME_REGISTRY` (`registry.ts`) eintragen.
 4. Smoketest und `docs/THEMES.md` aktualisieren.
 
-## Stand nach Session 5
+## Mock-Daten (ab Session 6)
 
-- App Router läuft, `/` rendert Marketing-Landingpage.
-- `/themes` rendert die Theme-Galerie statisch.
+- Architektur „fat aggregate": pro Demo-Betrieb eine Datei unter
+  `src/data/businesses/<slug>.ts`, validiert beim Module-Load via
+  `BusinessSchema.parse(...)`.
+- `mock-helpers.ts`: stabile ID-Generatoren (`makeBusinessId`,
+  `makeServiceId`, …), `MOCK_NOW`-Konstante (reproduzierbare Builds),
+  `daysAgo()`, `buildOpeningHours()` (kompakte Schreibweise).
+- `mock-businesses.ts` aggregiert + Slug-Index + Konsistenz-Check.
+- `mock-services.ts`/`mock-reviews.ts` ziehen flache Listen aus den
+  Aggregaten (keine Duplizierung).
+- `mock-leads.ts` enthält 25 Leads, jeder validiert.
+- `mock-dataset.ts` validiert das gesamte `MockDataset` und prüft
+  Lead → existierender Betrieb.
+- `/demo`-Page importiert `@/data` – Validierung läuft beim Build, nicht
+  erst zur Laufzeit.
+- Smoketest `src/tests/mock-data.test.ts` mit 30+ Assertions
+  (Diversität, eindeutige IDs, Paket-Limits, Status-Mix, Daten-Hygiene).
+
+Konvention für einen neuen Demo-Betrieb:
+
+1. `src/data/businesses/<slug>.ts` mit `BusinessSchema.parse(...)` umrahmen.
+2. Import + Eintrag in `mock-businesses.ts`.
+3. Optional: 3–5 Leads in `mock-leads.ts`.
+4. `npm run typecheck` / `npm run build` führen die Validierung automatisch aus.
+
+## Public Site (ab Session 7)
+
+- Route `/site/[slug]` mit `generateStaticParams(listMockBusinessSlugs())` –
+  Build:static prerendered alle 6 Slugs als HTML.
+- `generateMetadata` pro Business: Title, Description, OG, Canonical –
+  alles aus dem Datensatz, keine Branchen-Hardcodierung.
+- `<ThemeProvider>` wrappt jede Public Site → CSS-Variablen kaskadieren
+  durch alle Sektionen (`bg-theme-primary`, `rounded-theme-button`,
+  `shadow-theme`).
+- 13 Sektionskomponenten unter `src/components/public-site/`:
+  Hero, Services, Benefits, Process, Reviews, FAQ, Team, Contact,
+  OpeningHours, Location + Header, Footer, MobileCtaBar +
+  `<PublicSection>` Wrapper.
+- Section-Reihenfolge aus `preset.recommendedSections` (defensiv:
+  Contact / Öffnungszeiten / Standort kommen immer ans Ende).
+- Mobile-CTA-Bar (`fixed bottom-0`) blendet sich bei `md:` aus, drei
+  Buttons (Anrufen / WhatsApp / Anfrage), filtert je nach
+  Datenverfügbarkeit.
+- `src/lib/contact-links.ts` mit E.164-Normalisierung für
+  `tel:`/`wa.me`/`mailto:`.
+- Anfrageformular ist aktuell **Vorschau** (Felder aus Preset, `disabled`).
+  Echte Lead-Erfassung folgt in Session 12.
+- 404-Seite unter `src/app/site/[slug]/not-found.tsx`.
+
+Konvention für eine neue Sektion:
+
+1. Komponente unter `src/components/public-site/<name>.tsx` mit
+   `<PublicSection>` als Wrapper.
+2. Im Barrel `index.ts` exportieren.
+3. switch-Case in `src/app/site/[slug]/page.tsx` ergänzen.
+4. ggf. `RECOMMENDED_SECTIONS` in `src/types/common.ts` erweitern.
+
+## Marketing-Funnel (ab Session 8)
+
+- **`/` als 11-Schritt-Funnel**: Hero → Problem/Lösung → ROI → Branchen
+  (mit Demo-Links) → Demo-Showcase → Pakete-Teaser → Onboarding → Vorteile
+  → Stimmen → FAQ → Schluss-CTA. Jede Sektion ist eine eigene Komponente
+  unter `src/components/marketing/`.
+- **`/pricing`** als eigene Tiefen-Seite mit `<PricingGrid>`,
+  `<LimitsTable>`, `<FeatureComparisonMatrix>` (alle aus
+  `@/components/pricing`). Tabellen lesen aus `FEATURE_KEYS`/
+  `FEATURE_LABELS`/`hasFeature()` – keine Doppelpflege.
+- Header-Nav vereinfacht: Lösung / Demos / Pakete / Designs / FAQ.
+  Header-CTAs gehen zu `/demo` und `/pricing`.
+- Demo-Daten werden im Marketing wiederverwendet:
+  `<DemoShowcase>` rendert pro Mock-Business eine Themed-Vorschau,
+  `<IndustriesGrid>` verlinkt vorhandene Demos.
+- Compliance: Telefon `+49 30 9000 9999` als Demo-Nummer markiert,
+  Testimonials klar als Beispiel-Stimmen aus der Demo-Welt ausgewiesen.
+
+## Stand nach Session 8
+
+- App Router läuft, `/`, `/pricing`, `/themes`, `/demo` und
+  `/site/<6 slugs>` rendern statisch (**13 prerendete Routen**).
 - Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber
   (Static und SSR).
 - Tailwind & Brand-Tokens stehen, Theme-Tokens als CSS-Variablen verfügbar.
-- Datenmodelle vollständig, Pricing-System produktiv.
-- **13 Branchen-Presets** registriert und validiert.
-- **10 Themes** registriert, mit Resolver, Provider und Live-Galerie.
-- **GitHub-Pages-Deployment** automatisiert; lokal über `build:static`.
+- Datenmodelle vollständig, Pricing-System produktiv – Marketing-Tabellen
+  greifen direkt auf die Code-Konfiguration zu.
+- 13 Branchen-Presets, 10 Themes registriert und validiert.
+- 6 Demo-Betriebe vollständig validiert; jeder hat eine eigene
+  Public Site mit individuellem Theme und ist im Marketing als Live-Demo
+  verlinkt.
+- GitHub-Pages-Deployment automatisiert; lokal über `build:static`.
 - `<LinkButton>` ist basePath-aware (interne Pfade via `next/link`).
 - Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
   `npm run build:static`.
 
 ## Offene technische Punkte
 
-- Mock-Inhalte für Demo-Betriebe (Session 6).
-- Public Site Generator unter `/site/[slug]` (Session 7) – wird
-  `generateStaticParams` aus den Mock-Daten nutzen, damit Static Export
-  weiter funktioniert.
 - Dashboard (Session 9+) – sobald Interaktivität nötig, prüfen ob als
   Client-SPA innerhalb des Static Exports ausreichend.
+- Lead-System (Session 12) – ersetzt die Formular-Vorschau in
+  `<PublicContact>` und die Demo-Telefonnummer im `<CtaContact>` durch
+  eine echte Erfassung (Server Action / API).
 - AI-Provider-Adapter (Session 13). Interface steht.
-- Repository-Layer / Mock vs. Supabase (Session 19).
+- Repository-Layer / Mock vs. Supabase (Session 19) – Mock-Layer ist
+  bereits so gekapselt (`getMockBusinessBySlug` usw.), dass ein
+  späterer Tausch gegen Supabase ohne UI-Änderungen möglich bleibt.
 - Vitest-Setup (Session 20). Bis dahin tragen `tsc --noEmit` plus die
-  `src/tests/*-helpers.test.ts`-Smoketests die Sicherheit.
-- Image-Hosting/-Optimierung (Session 7+).
+  `src/tests/*.test.ts`-Smoketests die Sicherheit.
+- Image-Hosting/-Optimierung – `logoUrl`/`coverImageUrl` optional im
+  Schema, werden aber noch nicht gerendert. Sobald sie kommen, via
+  `next/image` mit `unoptimized: true` für Static Export.
+- Analytics/Tracking für den Marketing-Funnel (Session 19+).
 - Sobald API-Routen oder Server Actions kommen: Vercel als
   Production-Target ergänzen, GitHub Pages bleibt als Showcase.

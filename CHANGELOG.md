@@ -7,7 +7,169 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 6+: Mock-Daten, Public Site Generator, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+- Session 9+: Dashboard-Grundstruktur, Betriebsdaten, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.8.0] – Session 8 – 2026-04-27
+
+### Added
+- **Eigene `/pricing`-Seite** mit:
+  - PricingGrid (Bronze/Silber/Gold-Karten),
+  - **`<LimitsTable>`** – numerische Limits Bronze/Silber/Gold im Vergleich,
+    nutzt `formatLimit()` für „unbegrenzt"-Werte,
+  - **`<FeatureComparisonMatrix>`** – 31 Capabilities × 3 Tiers, gruppiert
+    nach `FeatureGroup` (Website / Design / Anfragen / Bewertungen / KI /
+    Social / Verwaltung). Reihen aus `FEATURE_LABELS`, Werte über
+    `hasFeature()` – keine Doppelpflege, keine Drift.
+  - Pricing-spezifische FAQ (Mindestlaufzeit, Upgrade/Downgrade, MwSt.,
+    Kündigung, KI-Pflicht, Platin-Status),
+  - Schluss-CTA mit Beratung-Mail + Demo-Link + 4-Schritte-Onboarding-Karte.
+- **Live-Demo-Showcase** auf der Startseite (`<DemoShowcase>`) –
+  6 Mini-Karten mit `<ThemeProvider>`-Vorschau, jede als aktiver Link
+  zur Public Site.
+- **`<ValueRoi>`** – 4 ROI-Karten mit Mini-„Proof-Label" (z. B. „Eingebaut:
+  Bewertungs-Booster ab Bronze"), gibt jedem Nutzen einen technischen Beleg.
+- **`<Testimonials>`** – Beispiel-Stimmen aus den Demo-Personas (Lena H.,
+  Stefan M., Sophie L., Petra W.). Footnote macht klar: keine echten
+  Kund:innen.
+- **`<OnboardingPromise>`** – „In 4 Schritten startklar" mit zwei finalen
+  CTAs (Pakete vergleichen / Demos ansehen).
+- `docs/MARKETING.md` mit Funnel-Tabelle, Komponenten-Übersicht,
+  Sprache- & Compliance-Regeln und Erweiterungs-Checkliste.
+
+### Changed
+- **Hero** zeigt jetzt zwei aktive CTAs: „Live-Demos ansehen" (primary)
+  und „Pakete vergleichen" (outline) statt der bisherigen Anker-Links.
+- **PricingTeaser** verlinkt unten zentral auf `/pricing` für die
+  vollständige Funktions-Vergleichsliste; CTA der Karten geht ebenfalls
+  nach `/pricing`.
+- **IndustriesGrid**: Branchenkarten mit Demo-Preset werden zu aktiven
+  Links auf die jeweilige Public Site (Friseur, Werkstatt, Reinigung,
+  Kosmetik, Handwerk, Fahrschule). Restliche Karten bleiben statisch
+  (Demos noch nicht hinterlegt).
+- **CtaContact** ist konversionsstärker formuliert: „Sehen Sie es live
+  oder schreiben Sie uns direkt" + zwei Direkt-Kontaktwege (E-Mail,
+  Demo-Telefonnummer) statt der vorigen Onboarding-Liste, die jetzt in
+  die eigene `<OnboardingPromise>`-Sektion gewandert ist.
+- **Site-Header-Nav** vereinfacht: Lösung / Demos / Pakete / Designs /
+  FAQ. Header-CTAs zeigen „Live-Demos" + „Pakete" und führen zu
+  `/demo` bzw. `/pricing`.
+- **Startseite** als 11-Schritt-Funnel komponiert (Hero → Problem/Lösung →
+  ROI → Branchen → Demo-Showcase → Pakete-Teaser → Onboarding → Vorteile →
+  Stimmen → FAQ → Schluss-CTA).
+
+### Notes
+- Build:static produziert jetzt **13 statisch prerenderte Routen**:
+  `/`, `/_not-found`, `/demo`, `/pricing`, `/themes`,
+  `/site/<6 slugs>`. Die neuen Sektionen sind reine Server Components,
+  kein Client-JS.
+- Branchenneutralität gewahrt: Pricing-Tabellen lesen `FEATURE_KEYS` /
+  `FEATURE_LABELS`, kein Branchen-Hardcoding. Demo-Showcase nutzt
+  vorhandene Mock-Businesses.
+- Klar gekennzeichnete Demo-Inhalte: Telefon `+49 30 9000 9999`
+  (Demo-Nummer), Testimonials als „Beispiel-Stimmen aus der Demo-Welt"
+  ausgezeichnet.
+
+## [0.7.0] – Session 7 – 2026-04-27
+
+### Added
+- **Public Site Generator** unter `/site/[slug]` mit
+  `generateStaticParams(listMockBusinessSlugs())`. Build:static prerendered
+  jetzt **alle 6 Demo-Slugs** als statische HTML-Seiten – funktioniert
+  ohne Server, ideal für GitHub Pages.
+- **Pro-Business `generateMetadata`**: Title, Description, OpenGraph
+  und Canonical kommen aus dem Business-Datensatz (kein Branchen-Hardcoding).
+- **13 Public-Site-Komponenten** unter `src/components/public-site/`:
+  `<PublicSection>` (theme-aware Wrapper), `<PublicSiteHeader>`,
+  `<PublicSiteFooter>`, `<PublicHero>`, `<PublicServices>`,
+  `<PublicBenefits>`, `<PublicProcess>`, `<PublicReviews>`,
+  `<PublicFaq>`, `<PublicTeam>`, `<PublicOpeningHours>`,
+  `<PublicLocation>`, `<PublicContact>`, `<PublicMobileCtaBar>`.
+- **Sticky Mobile-CTA-Bar** mit Anrufen / WhatsApp / Anfrage – jede
+  Schaltfläche nur sichtbar, wenn der Betrieb die jeweiligen Daten hat.
+- **`<PublicContact>` Direktkontakt** mit funktionierenden `tel:`-,
+  `wa.me`- und `mailto:`-Deeplinks plus einer **Anfrageformular-Vorschau**
+  aus den `preset.leadFormFields`. Felder sind aktuell `disabled` (echte
+  Submission folgt in Session 12).
+- **`src/lib/contact-links.ts`**: E.164-normalisierte Helfer
+  (`telLink`, `whatsappLink`, `mailtoLink`, `formatPhoneDisplay`).
+- **`<ThemeProvider>` umrahmt jede Public Site** – CSS-Variablen
+  kaskadieren durch alle Sektionen, jede Site sieht spürbar anders aus,
+  ohne dass eine einzelne Branche im Code auftaucht.
+- **`/site/[slug]/not-found.tsx`** – freundliche 404-Seite im
+  Marketing-Layout, mit Links zur Demo-Übersicht und Startseite.
+- **`/demo`-Karten** verlinken jetzt aktiv auf die jeweilige Public Site.
+- **Section-Reihenfolge** kommt aus `preset.recommendedSections`,
+  Standard-Reihenfolge plus defensive Fallbacks (Contact / Öffnungszeiten /
+  Standort kommen immer ans Ende).
+- **`lp-theme-section`-CSS-Klasse** ergänzt – nutzt `--theme-section-padding`.
+- Smoketest `src/tests/public-site.test.ts`: Kontakt-Link-Normalisierung,
+  Slug-Konsistenz, Pflicht „Telefon ODER WhatsApp" pro Betrieb.
+- `docs/PUBLIC_SITE.md` mit Architektur, Datenfluss, Static-Export-Regeln,
+  SEO-Pattern, Mobile-First-Notes, Erweiterungsanleitung.
+
+### Notes
+- Build:static produziert jetzt **12 statisch prerenderte Routen**:
+  `/`, `/_not-found`, `/demo`, `/themes`, `/site/<6 slugs>`.
+- Static-Export-kompatibel: keine API-Routen, keine Server Actions, kein
+  Client-JS auf der Public Site (außer dem Mobile-Detail-Toggle der FAQs
+  über native `<details>`).
+- Branchenneutralität gewahrt: kein `if (industryKey === "...")` im
+  Komponenten-Code; Texte und Felder kommen ausschließlich aus dem Preset.
+
+## [0.6.0] – Session 6 – 2026-04-27
+
+### Added
+- **6 vollständig validierte Demo-Betriebe** unter
+  `src/data/businesses/`:
+  Studio Haarlinie (Friseur, Silber, warm_local),
+  AutoService Müller (Werkstatt, Gold, automotive_strong),
+  Glanzwerk Reinigung (Reinigung, Silber, medical_clean),
+  Beauty Atelier (Kosmetik, Gold, beauty_luxury),
+  Meisterbau Schneider (Handwerk, Bronze, craftsman_solid),
+  Fahrschule Stadtmitte (Fahrschule, Silber, education_calm).
+  Jeder Betrieb mit eigener Branche, eigenem Theme; alle drei aktiv
+  vermarkteten Pakete vertreten. Insgesamt: 37 Services, 25 Reviews,
+  22 FAQs, 5 TeamMembers, 25 Beispiel-Leads.
+- `src/data/mock-helpers.ts`: `makeBusinessId`/`makeServiceId`/etc.
+  für stabile Slug-prefixed-IDs, `MOCK_NOW`-Konstante für reproduzierbare
+  Builds, `daysAgo()`, `buildOpeningHours()` (kompakte Schreibweise:
+  `{ tuesday: "09:00-18:00", thursday: ["09:00-12:30", "13:30-20:00"] }`).
+- `src/data/mock-businesses.ts`: Aggregation, `businessesBySlug`-Index,
+  `getMockBusinessBySlug()`, `listMockBusinessSlugs()`,
+  Konsistenz-Check (eindeutige Slugs).
+- `src/data/mock-services.ts`: flache `mockServices`-Liste,
+  `servicesByBusiness`, `getMockServiceById()`.
+- `src/data/mock-reviews.ts`: flache `mockReviews`-Liste,
+  `reviewsByBusiness`, `averageRatingByBusiness` (gerundet auf 0,1).
+- `src/data/mock-leads.ts`: 25 realistische Beispiel-Leads mit
+  branchenspezifischen `extraFields` (`vehicleModel`, `objectType`,
+  `drivingClass`, …) und Status-Mix (`new`/`contacted`/`qualified`/`won`/
+  `lost`). Validiert via `LeadSchema.parse(...)`.
+- `src/data/mock-dataset.ts`: validiertes `MockDataset` über
+  `validateMockDataset()` (`MockDatasetSchema`), `leadsByBusiness`,
+  Konsistenz-Check (Lead → existierender Betrieb).
+- `src/data/index.ts` Barrel.
+- **`/demo`-Übersichtsseite**: rendert pro Betrieb eine Karte mit
+  Themed-Vorschau (über `<ThemeProvider>`), Branchen-Etikett, Paket-Badge,
+  Counts (Services/FAQs/Anfragen) und einem Hinweis auf die Public Site
+  (folgt Session 7). Statisch prerendert, kein Client-JS.
+- Nav-Eintrag „Demo" in `<SiteHeader>`.
+- Smoketest `src/tests/mock-data.test.ts` mit 30+ Assertions
+  (Mindestabdeckung, eindeutige IDs, Branchen-/Theme-/Paket-Diversität,
+  Service-/Review-Konsistenz, Paket-Limits, Lead-Status-Mix,
+  Verbot echter Mail-Provider, Lookup-Verhalten).
+- `docs/MOCK_DATA.md` mit Tabellen, Architektur, Compliance-Regeln und
+  Erweiterungsanleitung.
+
+### Notes
+- Stabile, demoerkennbare Daten: Telefon `+49 XX 9000 XXXX`-Muster,
+  Mails auf `@<slug>-demo.de` oder `@example.org`, Städte
+  *Musterstadt*/*Beispielstadt*/*Demostadt*/*Beispieldorf*. Smoketest
+  blockt aktiv `gmail.com`, `gmx.de`, `web.de`, `hotmail.com`, `yahoo.com`.
+- Stabile Zeitstempel via `MOCK_NOW = "2026-04-27T09:00:00Z"` und
+  `daysAgo()` – Builds bleiben reproduzierbar.
+- Kein Betrieb überschreitet sein Paket-Limit (Bronze 10, Silber 30,
+  Gold 100 Services). Smoketest greift auf `isLimitExceeded()` zurück.
 
 ## [0.5.0] – Session 5 – 2026-04-27
 

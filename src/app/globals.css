@@ -100,4 +100,9 @@
     font-weight: var(--theme-weight-heading);
     letter-spacing: var(--theme-letter-spacing);
   }
+
+  .lp-theme-section {
+    padding-top: var(--theme-section-padding);
+    padding-bottom: var(--theme-section-padding);
+  }
 }

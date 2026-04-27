@@ -1,5 +1,7 @@
+import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
+import { LinkButton } from "@/components/ui/button";
 import { PricingGrid } from "@/components/pricing";
 
 export function PricingTeaser() {
@@ -17,9 +19,15 @@ export function PricingTeaser() {
           </p>
         </div>
         <div className="mt-12">
-          <PricingGrid ctaHref="#kontakt" />
+          <PricingGrid ctaHref="/pricing" />
         </div>
-        <p className="mt-8 text-center text-xs text-ink-500">
+        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <LinkButton href="/pricing" variant="outline">
+            Alle Funktionen vergleichen
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </LinkButton>
+        </div>
+        <p className="mt-6 text-center text-xs text-ink-500">
           Alle Preise zzgl. MwSt. Mindestlaufzeit nach Vereinbarung. Platin-Stufe
           mit Automationen, CRM und WhatsApp ist auf Anfrage verfügbar.
         </p>

@@ -664,16 +664,382 @@ In Komponenten:
 
 ### 6. Was ist der nächste empfohlene Run?
 
-**Session 6 – Mock-Daten und Demo-Betriebe.**
+**Session 6 – Mock-Daten und Demo-Betriebe.** (s. u.)
 
-Mindestens 5 Demo-Betriebe in `src/data/`:
-- `Studio Haarlinie` (Friseur, Silber, beauty_luxury)
-- `AutoService Müller` (Autowerkstatt, Gold, automotive_strong)
-- `Glanzwerk Reinigung` (Reinigungsfirma, Silber, medical_clean)
-- `Beauty Atelier` (Kosmetik, Gold, beauty_luxury)
-- `Meisterbau Schneider` (Handwerker, Bronze, craftsman_solid)
+---
 
-Jeder Betrieb mit eigenem Slug, Adresse, Öffnungszeiten, 5–8 Leistungen
-(aus dem Preset abgeleitet), 3–6 Reviews und 3–10 Beispiel-Leads. Alles
-über `MockDatasetSchema` validiert. Damit ist die Vorarbeit für Session 7
-(Public Site Generator) komplett.
+## Session 6 – Mock-Daten und Demo-Betriebe
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- **6 vollständige Demo-Betriebe** in `src/data/businesses/`:
+  - `studio-haarlinie` (Friseur, Silber, warm_local) – Musterstadt
+  - `autoservice-mueller` (Werkstatt, Gold, automotive_strong) – Beispielstadt
+  - `glanzwerk-reinigung` (Reinigung, Silber, medical_clean) – Demostadt
+  - `beauty-atelier` (Kosmetik, Gold, beauty_luxury) – Musterstadt
+  - `meisterbau-schneider` (Handwerk, Bronze, craftsman_solid) – Beispieldorf
+  - `fahrschule-stadtmitte` (Fahrschule, Silber, education_calm) – Demostadt
+
+  Jeder Datensatz ist ein „fat aggregate" mit Services, Reviews, FAQs
+  und TeamMembers, gerahmt von `BusinessSchema.parse(...)`.
+- **`mock-helpers.ts`**: stabile ID-Generatoren, `MOCK_NOW`,
+  `daysAgo()`, `buildOpeningHours()` mit kompakter Schreibweise.
+- **`mock-businesses.ts`** aggregiert + Slug-Index + Konsistenz-Check;
+  exportiert `getMockBusinessBySlug` und `listMockBusinessSlugs`
+  (für `generateStaticParams` in Session 7).
+- **`mock-services.ts`/`mock-reviews.ts`** mit flachen Listen,
+  Group-by-Business und `averageRatingByBusiness` (gerundet auf 0,1).
+  37 Services, 25 Reviews insgesamt.
+- **`mock-leads.ts`**: 25 realistische Beispiel-Leads (4–5 pro Betrieb)
+  mit branchenspezifischen `extraFields` (`vehicleModel`, `objectType`,
+  `drivingClass`, …) und Status-Mix `new`/`contacted`/`qualified`/`won`/
+  `lost`. Validiert via `LeadSchema.parse(...)`.
+- **`mock-dataset.ts`**: `MockDataset` über `MockDatasetSchema`
+  validiert, Konsistenz-Check (Lead → existierender Betrieb).
+- **`/demo`-Übersichtsseite**: pro Betrieb eine Karte mit
+  Themed-Vorschau (über `<ThemeProvider>`), Branchen-Etikett,
+  Paket-Badge, Counts (Leistungen / FAQs / Anfragen) und
+  Public-Site-Slug. Statisch prerendert, kein Client-JS.
+  Nav-Link „Demo" im Header.
+- **Smoketest** `src/tests/mock-data.test.ts` mit 30+ Assertions:
+  Diversität (Branchen / Themes / Pakete), eindeutige IDs,
+  Service-/Review-Konsistenz, Paket-Limits, Lead-Status-Mix,
+  Verbot echter Mail-Provider (gmail.com etc.), Lookup-Verhalten.
+- **`docs/MOCK_DATA.md`** mit Tabellen, Architektur,
+  Daten-Hygiene-Regeln, Erweiterungsanleitung.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (15 Dateien):
+- `src/data/mock-helpers.ts`
+- `src/data/mock-{businesses,services,reviews,leads,dataset}.ts`
+- `src/data/index.ts`
+- `src/data/businesses/{studio-haarlinie,autoservice-mueller,
+  glanzwerk-reinigung,beauty-atelier,meisterbau-schneider,
+  fahrschule-stadtmitte}.ts` (6 Dateien)
+- `src/app/demo/page.tsx`
+- `src/tests/mock-data.test.ts`
+- `docs/MOCK_DATA.md`
+
+Geändert:
+- `src/components/layout/site-header.tsx` (Nav-Link „Demo")
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck       # tsc --noEmit + Smoketest werden geprüft
+npm run lint            # 0 warnings/errors
+npm run build           # SSR-Build
+npm run build:static    # Static Export, alle Mocks beim Build validiert
+npm run dev             # http://localhost:3000/demo
+```
+
+Live-Smoketest:
+
+```bash
+curl -s http://localhost:3000/demo | grep -oE 'data-theme="[^"]+"' | sort -u
+# erwartet: 6 unterschiedliche Themes
+```
+
+API:
+
+```ts
+import { getMockBusinessBySlug, mockDataset } from "@/data";
+mockDataset.businesses.length;                    // 6
+getMockBusinessBySlug("beauty-atelier")?.themeKey; // "beauty_luxury"
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                           | Status                                                                  |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| Demo-Betriebe wirken realistisch    | ✅ vollständige Datensätze, plausible Reviews/FAQs                      |
+| Keine echten Firmen                 | ✅ alle Namen frei erfunden                                              |
+| Keine echten privaten Daten         | ✅ Demo-Telefon-Muster, Mails auf `*-demo.de`/`example.org`, Smoketest blockt reale Mail-Provider |
+| Mehrere Branchen sichtbar           | ✅ 6 unterschiedliche Branchen                                           |
+| Pakete testbar                      | ✅ Bronze (×1), Silber (×3), Gold (×2)                                   |
+| Mind. 5 Demo-Betriebe               | ✅ 6 Betriebe                                                            |
+| Anderes Theme pro Betrieb           | ✅ 6 unterschiedliche Themes                                             |
+| Demo-Daten professionell formuliert | ✅ klare, sachliche, branchen-passende Texte                             |
+
+### 5. Was ist offen?
+
+- **Session 7** – Public Site Generator unter `/site/[slug]` mit
+  `generateStaticParams(listMockBusinessSlugs())`, `<ThemeProvider>` pro
+  Betrieb und allen Sektionen aus dem Preset.
+- **Session 8** – Marketing-Subseiten / -Erweiterungen.
+- **Session 9+** – Dashboard nutzt `leadsByBusiness` und
+  `averageRatingByBusiness`.
+- **Session 12** – echtes Lead-Erfassungssystem; Mock-Status zeigt
+  bereits, wie das aussieht.
+- **Sessions 13–17** – KI-Provider mit Mock-Daten als Kontext.
+- **Session 19** – Repository-Layer (Mock vs. Supabase). Mock-Aufrufe
+  (`getMockBusinessBySlug`, `leadsByBusiness`) sind bereits so kapselbar.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 7 – Public Site Generator.** (s. u.)
+
+---
+
+## Session 7 – Public Site Generator
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- Route `/site/[slug]` mit `generateStaticParams(listMockBusinessSlugs())`.
+  Build:static prerendered jetzt **alle 6 Demo-Slugs** als HTML –
+  funktioniert ohne Server, ideal für GitHub Pages.
+- `generateMetadata` pro Business: Title (`<Name> – <Branche> in <Stadt>`),
+  Description, Canonical, OpenGraph, robots index/follow – alles aus
+  Business-Datensatz, keine Branchen-Hardcodierung.
+- 13 Public-Site-Komponenten unter `src/components/public-site/`:
+  `<PublicSection>` (theme-aware Wrapper, `lp-theme-section`),
+  `<PublicSiteHeader>` (Sticky, Initial-Logo, Anrufen + Anfragen),
+  `<PublicHero>` (Tagline + Hero-Title aus Preset, `{{city}}`
+  substituiert, Default-CTAs, Trust-Badge),
+  `<PublicServices>` (Grid sortiert nach `sortOrder`),
+  `<PublicBenefits>`, `<PublicProcess>` (aus Preset),
+  `<PublicReviews>` (Sterne + Schnitt + Datum),
+  `<PublicFaq>` (`<details>`-Akkordeon, kein Client-JS),
+  `<PublicTeam>` (nur wenn vorhanden),
+  `<PublicOpeningHours>` (Tabelle mit deutschen Tag-Labels),
+  `<PublicLocation>` (Adresse + Maps-Link),
+  `<PublicContact>` (Direktkontakt mit funktionierenden `tel:`/`wa.me`/
+  `mailto:`-Links + Anfrageformular-Vorschau aus
+  `preset.leadFormFields`, aktuell `disabled`),
+  `<PublicSiteFooter>` (Adresse + Impressum-/Datenschutz-Platzhalter +
+  „Powered by LocalPilot AI"),
+  `<PublicMobileCtaBar>` (`fixed bottom-0` auf Mobile, blendet sich bei
+  `md:` aus; Anrufen/WhatsApp/Anfrage – jeder Button nur sichtbar, wenn
+  die Daten vorhanden sind).
+- `src/lib/contact-links.ts` mit E.164-Normalisierung
+  (`telLink`, `whatsappLink`, `mailtoLink`, `formatPhoneDisplay`).
+- `<ThemeProvider>` umrahmt jede Public Site → CSS-Variablen kaskadieren
+  durch alle Sektionen (`bg-theme-primary`, `rounded-theme-button`,
+  `shadow-theme`).
+- Section-Reihenfolge aus `preset.recommendedSections` (defensiv:
+  Contact / Öffnungszeiten / Standort kommen immer ans Ende).
+- 404-Seite unter `src/app/site/[slug]/not-found.tsx` im Marketing-Layout.
+- `/demo`-Karten verlinken jetzt aktiv auf die jeweilige Public Site.
+- `lp-theme-section`-CSS-Klasse ergänzt (`padding`: `--theme-section-padding`).
+- Smoketest `src/tests/public-site.test.ts`: Kontakt-Link-Normalisierung
+  (Klammern, Bindestriche, Plus), Slug-Konsistenz, Pflicht „Telefon ODER
+  WhatsApp" für die Mobile-CTA-Bar.
+- `docs/PUBLIC_SITE.md` mit Architektur, Datenfluss, Static-Export-Regeln,
+  SEO-Pattern, Mobile-First-Notes, Erweiterungsanleitung.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (16 Dateien):
+- `src/app/site/[slug]/page.tsx`
+- `src/app/site/[slug]/not-found.tsx`
+- `src/components/public-site/{public-section,public-site-header,
+  public-site-footer,public-hero,public-services,public-benefits,
+  public-process,public-reviews,public-faq,public-team,
+  public-opening-hours,public-location,public-contact,
+  public-mobile-cta-bar,index}.tsx/.ts` (14 Dateien)
+- `src/lib/contact-links.ts`
+- `src/tests/public-site.test.ts`
+- `docs/PUBLIC_SITE.md`
+
+Geändert:
+- `src/app/globals.css` (`lp-theme-section`-Klasse)
+- `src/app/demo/page.tsx` (Public Site aktiv verlinkt)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck       # tsc --noEmit + Smoketests
+npm run lint            # 0 warnings/errors
+npm run build           # SSR-Build
+npm run build:static    # Static Export, alle 6 Slugs prerendered
+npm run dev             # http://localhost:3000/site/studio-haarlinie etc.
+```
+
+Live-Smoketest:
+
+```bash
+for slug in studio-haarlinie autoservice-mueller glanzwerk-reinigung beauty-atelier meisterbau-schneider fahrschule-stadtmitte; do
+  curl -s -o /dev/null -w "%{http_code} /site/$slug\n" "http://localhost:3000/site/$slug"
+done
+# erwartet: 6× 200
+
+curl -s -o /dev/null -w "%{http_code} /site/nope\n" http://localhost:3000/site/nope
+# erwartet: 404
+```
+
+Auf dem Handy: Mobile-CTA-Bar erscheint unten, drei Buttons
+(Anrufen / WhatsApp / Anfrage). Tippt man Anrufen, öffnet das Wähl-UI
+des Telefons; WhatsApp öffnet die App.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                       | Status                                              |
+| ----------------------------------------------- | --------------------------------------------------- |
+| Jede Demo hat eigene öffentliche Website        | ✅ 6 Slugs, alle erreichbar                         |
+| Inhalte kommen aus Daten/Preset                 | ✅ kein Branchen-Code in Sektionen                  |
+| Mobile Ansicht stark                            | ✅ Sticky-CTA-Bar, große Touch-Targets, lesbar      |
+| CTA Buttons funktionieren als Links             | ✅ `tel:`, `wa.me`, `mailto:`, Maps – alles aktiv   |
+| Keine harte Branchenlogik                       | ✅ alle Texte aus `IndustryPreset`                  |
+
+### 5. Was ist offen?
+
+- **Session 8** – Marketing-Erweiterungen (eigene `/pricing`-Seite,
+  tiefere Verkaufstexte, Testimonials).
+- **Session 9** – Dashboard-Grundgerüst.
+- **Session 12** – ersetzt die Formular-Vorschau in `<PublicContact>`
+  durch echte Lead-Erfassung (Server Action oder API).
+- **Sessions 13–17** – KI-Texte verbessern Hero-Title und
+  Service-Beschreibungen, ohne die Sektionen zu ersetzen.
+- **Session 19** – Repository-Layer kapselt Mock vs. Supabase, Public
+  Site bleibt unverändert.
+- Bilder (`logoUrl`/`coverImageUrl`) sind im Schema vorgesehen, aber
+  noch nicht gerendert – wenn sie kommen, via `next/image` mit
+  `unoptimized: true` für Static Export.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 8 – Marketing-Landingpage erweitern.** (s. u.)
+
+---
+
+## Session 8 – Marketing-Landingpage erweitern
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- **Eigene `/pricing`-Seite** mit:
+  - PricingGrid (Bronze/Silber/Gold-Karten),
+  - **`<LimitsTable>`** – numerische Limits Bronze/Silber/Gold im
+    Vergleich, nutzt `formatLimit()` für „unbegrenzt"-Werte,
+  - **`<FeatureComparisonMatrix>`** – 31 Capabilities × 3 Tiers,
+    gruppiert nach `FeatureGroup` (Website / Design / Anfragen /
+    Bewertungen / KI / Social / Verwaltung). Reihen aus
+    `FEATURE_LABELS`, Werte über `hasFeature()` – Single Source of Truth.
+  - Pricing-spezifische FAQ (Mindestlaufzeit, Upgrade/Downgrade, MwSt.,
+    Kündigung, KI-Pflicht, Platin-Status),
+  - Schluss-CTA mit Beratung-Mail + Demo-Link + 4-Schritte-Onboarding-Karte.
+- **`<DemoShowcase>`** auf der Startseite – 6 Mini-Karten mit
+  `<ThemeProvider>`-Vorschau, jede aktiv als Link zur Public Site.
+- **`<ValueRoi>`** – 4 ROI-Karten mit „Proof-Label" (z. B. „Eingebaut:
+  Bewertungs-Booster ab Bronze").
+- **`<Testimonials>`** – Beispiel-Stimmen aus den Demo-Personas
+  (Lena H., Stefan M., Sophie L., Petra W.). Footnote macht klar:
+  keine echten Kund:innen.
+- **`<OnboardingPromise>`** – „In 4 Schritten startklar" mit zwei
+  finalen CTAs (Pakete vergleichen / Demos ansehen).
+- **Hero** mit zwei aktiven CTAs („Live-Demos ansehen" + „Pakete
+  vergleichen").
+- **PricingTeaser** verlinkt zentral auf `/pricing`.
+- **IndustriesGrid** – Branchen-Karten mit Demo-Preset werden zu aktiven
+  Links auf die jeweilige Public Site (Friseur → studio-haarlinie,
+  Werkstatt → autoservice-mueller, Reinigung → glanzwerk-reinigung,
+  Kosmetik → beauty-atelier, Handwerk → meisterbau-schneider,
+  Fahrschule → fahrschule-stadtmitte).
+- **CtaContact** ist konversionsstärker formuliert: zwei Direkt-Kontakte
+  (E-Mail, Demo-Telefonnummer) + Demo/Pakete-Buttons.
+- **Site-Header-Nav** vereinfacht: Lösung / Demos / Pakete / Designs /
+  FAQ. Header-CTAs zeigen „Live-Demos" + „Pakete".
+- **Startseite** als 11-Schritt-Funnel komponiert (Hero → Problem/Lösung
+  → ROI → Branchen → Demo-Showcase → Pakete-Teaser → Onboarding →
+  Vorteile → Stimmen → FAQ → Schluss-CTA).
+- `docs/MARKETING.md` mit Funnel-Tabelle, Komponenten-Übersicht,
+  Sprache- & Compliance-Regeln und Erweiterungs-Checkliste.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (8 Dateien):
+- `src/app/pricing/page.tsx`
+- `src/components/pricing/feature-comparison-matrix.tsx`
+- `src/components/pricing/limits-table.tsx`
+- `src/components/marketing/demo-showcase.tsx`
+- `src/components/marketing/value-roi.tsx`
+- `src/components/marketing/testimonials.tsx`
+- `src/components/marketing/onboarding-promise.tsx`
+- `docs/MARKETING.md`
+
+Geändert:
+- `src/components/marketing/{hero,pricing-teaser,industries,cta-contact}.tsx`
+- `src/components/layout/site-header.tsx` (Nav + Header-CTAs)
+- `src/components/pricing/index.ts` (neue Barrel-Exporte)
+- `src/app/page.tsx` (11-Schritt-Funnel-Reassembly)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck       # tsc --noEmit + Smoketests
+npm run lint            # 0 warnings/errors
+npm run build           # SSR-Build
+npm run build:static    # Static Export, jetzt 13 prerendete Routen
+npm run dev             # http://localhost:3000 + /pricing
+```
+
+Live-Smoketest:
+
+```bash
+# Startseite – muss alle neuen Funnel-Sektionen enthalten:
+curl -s http://localhost:3000/ | grep -oE '(Live-Demos ansehen|Was bringt das|Sehen Sie, wie|In 4 Schritten startklar|Stimmen)' | sort -u
+
+# Pricing-Seite – muss Matrix und Limits enthalten:
+curl -s http://localhost:3000/pricing | grep -oE '(Wie viel ist enthalten|Was kann welches Paket|KI-Texte für die Website|Premium-Designs|Kampagnen-Generator)' | sort -u
+```
+
+Auf dem Handy: Hero-CTAs sind groß und übersichtlich. Demo-Karten der
+Showcase scrollen vertikal sauber. `/pricing`-Tabellen scrollen
+horizontal mit `overflow-x-auto`, Erste-Spalte ist sticky.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                    | Status                                                  |
+| -------------------------------------------- | ------------------------------------------------------- |
+| Produkt ist in 5 Minuten verständlich        | ✅ Hero → ROI → Demo-Showcase → Pakete – jeder Schritt klar |
+| Pakete sind klar                             | ✅ `/pricing` mit Matrix + Limits + Pricing-FAQ          |
+| Nutzen ist klar                              | ✅ `<ValueRoi>` mit Proof-Labels, `<Benefits>`           |
+| Zielgruppe versteht das Angebot              | ✅ `<IndustriesGrid>` mit Demo-Links + `<DemoShowcase>`  |
+| CTA sichtbar                                 | ✅ Hero, Pricing-Teaser, Onboarding, CtaContact – konsistent |
+| Marketing Hero                               | ✅ aktive CTAs, klare Headline                           |
+| Problem/Solution                             | ✅ vorhanden + ROI ergänzt                               |
+| Branchenübersicht                            | ✅ jetzt mit Demo-Links                                  |
+| Paketpreise Bronze/Silber/Gold               | ✅ Teaser + eigene `/pricing`-Seite                      |
+| Demo-Links                                   | ✅ Showcase, Industries, Header, Hero, CTA – überall    |
+| Vorteile                                     | ✅ `<ValueRoi>` + `<Benefits>` doppeln das Argument     |
+| FAQ                                          | ✅ Marketing-FAQ + Pricing-FAQ                          |
+| Kontaktformular                              | ✅ CTA-Sektion mit Mail + Telefon (Demo-Nummer)         |
+| Verkaufsorientierte Texte                    | ✅ ohne Buzzwords, mit Proof-Labels                     |
+| Seriöse Sprache                              | ✅ keine Garantien, keine Heilversprechen               |
+| Mobile Optimierung                           | ✅ Hero/Cards mobile-first, Tabellen scrollen horizontal |
+
+### 5. Was ist offen?
+
+- **Session 9** – Dashboard-Grundstruktur (`/dashboard`, Sidebar/Mobile
+  Nav, Übersicht, Paketstatus, offene Leads, Vorschau-Link).
+- **Session 12** – ersetzt die Demo-Telefonnummer im CtaContact durch
+  ein echtes Lead-System mit Server Action.
+- **Sessions 13–17** – KI-Texte können später Hero-Versionen für A/B-Tests
+  generieren.
+- **Session 22** – `docs/SALES.md` mit Vertriebsskripten, die auf den
+  Marketing-Sektionen basieren.
+- Optional: Tracking/Analytics einbauen (Session 19+), um den Funnel zu
+  messen.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 9 – Dashboard-Grundstruktur.**
+
+Route `/dashboard` mit Sidebar/Mobile-Navigation, Übersicht-Page (Paketstatus,
+offene Leads, Vorschau-Link auf eigene Public Site, Schnellaktionen,
+leere Zustände, Dashboard-Karten). Branchenneutrale Sprache („Anfragen"
+statt „Leads", „Inhalte" statt „Entities"). Static-Export-tauglich
+durch Server Components – falls später Interaktivität gebraucht wird,
+gezielt Client-Komponenten an die richtigen Stellen.
