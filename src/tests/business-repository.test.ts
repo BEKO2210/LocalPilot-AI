@@ -14,6 +14,7 @@ import {
   getBusinessRepository,
   resolveDataSource,
 } from "@/core/database/repositories";
+import { __TEST_ONLY_rowToBusiness__ } from "@/core/database/repositories/business";
 import { mockBusinesses } from "@/data/mock-businesses";
 import { checkDatabaseHealth } from "@/core/database/health";
 import { __resetSupabaseClientCache__ } from "@/core/database/client";
@@ -172,6 +173,128 @@ async function main() {
   assert(result401.status === "ok", "401 (RLS) → ok");
 
   // ---------------------------------------------------------------------
+  // 4b. Row→Business-Mapping inkl. PostgREST-Embeds (Session 38)
+  // ---------------------------------------------------------------------
+  const fakeRow = {
+    id: "11111111-1111-1111-1111-111111111111",
+    slug: "demo-shop",
+    name: "Demo Shop",
+    industry_key: "local_shop",
+    package_tier: "silber",
+    locale: "de",
+    tagline: "Schöne Sachen lokal",
+    description: "Wir verkaufen schöne Sachen aus der Region — kommen Sie vorbei und stöbern Sie.",
+    logo_url: null,
+    cover_image_url: null,
+    theme_key: "warm_local",
+    primary_color: null,
+    secondary_color: null,
+    accent_color: null,
+    address: {
+      street: "Musterstr. 1",
+      city: "Musterstadt",
+      postalCode: "12345",
+      country: "DE",
+    },
+    contact: {},
+    opening_hours: [],
+    is_published: true,
+    created_at: "2026-01-01T10:00:00.000Z",
+    updated_at: "2026-04-27T10:00:00.000Z",
+    services: [
+      {
+        id: "22222222-2222-2222-2222-222222222222",
+        business_id: "11111111-1111-1111-1111-111111111111",
+        category: null,
+        title: "Beratung vor Ort",
+        short_description: "Persönliche Beratung im Laden.",
+        long_description: "",
+        price_label: null,
+        duration_label: null,
+        image_url: null,
+        icon: null,
+        tags: ["beratung"],
+        is_featured: false,
+        is_active: true,
+        sort_order: 2,
+      },
+      {
+        id: "33333333-3333-3333-3333-333333333333",
+        business_id: "11111111-1111-1111-1111-111111111111",
+        category: null,
+        title: "Online-Shop",
+        short_description: "Versand in DE/AT/CH.",
+        long_description: "",
+        price_label: null,
+        duration_label: null,
+        image_url: null,
+        icon: null,
+        tags: [],
+        is_featured: true,
+        is_active: true,
+        sort_order: 1,
+      },
+      {
+        id: "44444444-4444-4444-4444-444444444444",
+        business_id: "11111111-1111-1111-1111-111111111111",
+        category: null,
+        title: "Inaktiv",
+        short_description: "Sollte ausgefiltert werden.",
+        long_description: "",
+        price_label: null,
+        duration_label: null,
+        image_url: null,
+        icon: null,
+        tags: [],
+        is_featured: false,
+        is_active: false,
+        sort_order: 99,
+      },
+    ],
+    reviews: [
+      {
+        id: "55555555-5555-5555-5555-555555555555",
+        business_id: "11111111-1111-1111-1111-111111111111",
+        author_name: "Anja",
+        rating: 5,
+        text: "Top!",
+        source: "google",
+        is_published: true,
+        created_at: "2026-03-01T10:00:00.000Z",
+      },
+      {
+        id: "66666666-6666-6666-6666-666666666666",
+        business_id: "11111111-1111-1111-1111-111111111111",
+        author_name: "Geheim",
+        rating: 1,
+        text: "Sollte nicht erscheinen",
+        source: "internal",
+        is_published: false,
+        created_at: "2026-03-02T10:00:00.000Z",
+      },
+    ],
+  };
+
+  const mapped = __TEST_ONLY_rowToBusiness__(fakeRow);
+  assert(mapped.slug === "demo-shop", "Stammdaten kommen durch");
+  assert(mapped.services.length === 2, "inaktive Services werden gefiltert");
+  assert(
+    mapped.services[0]!.title === "Online-Shop",
+    "Services nach sort_order — Online-Shop (1) vor Beratung (2)",
+  );
+  assert(mapped.services[1]!.title === "Beratung vor Ort", "zweiter Eintrag korrekt");
+  assert(mapped.services[0]!.tags.length === 0, "leeres tags-Array bleibt leer");
+  assert(mapped.reviews.length === 1, "unveröffentlichte Reviews werden gefiltert");
+  assert(mapped.reviews[0]!.authorName === "Anja", "Roundtrip Review-Mapping");
+  assert(mapped.reviews[0]!.rating === 5, "Rating durchgereicht");
+
+  // Edge-Case: row ohne services/reviews (z. B. wenn RLS alles blockt)
+  const minimalRow = { ...fakeRow, services: undefined, reviews: undefined };
+  const minimalMapped = __TEST_ONLY_rowToBusiness__(minimalRow);
+  assert(minimalMapped.services.length === 0, "fehlende services → []");
+  assert(minimalMapped.reviews.length === 0, "fehlende reviews → []");
+
+  // ---------------------------------------------------------------------
   // 5. Default-probe bleibt rest-root, falls nichts angegeben
   // ---------------------------------------------------------------------
   let defaultUrl = "";
@@ -189,7 +312,7 @@ async function main() {
   );
   assert(defaultResult.probe === "rest-root", "Default probe-Tag = rest-root");
 
-  console.log("business-repository smoketest ✅ (~30 Asserts)");
+  console.log("business-repository smoketest ✅ (~40 Asserts)");
 }
 
 void main().catch((err) => {

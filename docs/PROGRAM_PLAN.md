@@ -98,7 +98,7 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Mock/Supabase-Resolver (`LP_DATA_SOURCE=...`) +
   Health-Probe `businesses-table` ✅
 - 38: `services` + `reviews`-Tabellen (Migrationen 0002 + 0003),
-  Repository-Erweiterung, Public-Site optional aus DB.
+  Repository liefert per FK-Embed nested Daten (1 Roundtrip) ✅
 - 39: `faqs` + `leads`-Tabellen (Migrationen 0004 + 0005) inkl.
   `consents`-Audit-Trail aus Code-Session 32.
 - 40: `business_owners` + Magic-Link-Auth via `@supabase/ssr`,
@@ -355,7 +355,14 @@ aktiven Session.
   die Migration läuft, müssen die 6 Demo-Betriebe in der Tabelle
   landen, sonst zeigt `LP_DATA_SOURCE=supabase` eine leere
   Public-Site. Skript: `supabase/seed.sql` mit `insert ... on
-  conflict (slug) do nothing` aus den Mock-Daten.
+  conflict (slug) do nothing` aus den Mock-Daten — muss nach
+  Code-Session 38 alle drei Tabellen abdecken (businesses,
+  services, reviews).
+- **Property-based-Test Schema↔Migration-Drift** (aus Code-Session 38):
+  Code-Session 38 fand einen Drift (package_tier-CHECK enthielt
+  englische Werte, Zod-Enum hat aber deutsche). Sinnvoll: ein
+  Test, der das TS-Enum gegen die SQL-CHECK-Constraint matcht
+  (z. B. SQL parsen oder beide aus einer Quelle generieren).
 - **Stale-`comingInSession`-Audit** (aus Light-Pass Session 35):
   Bronze-User sehen `comingInSession={11}` (Services) bzw.
   `={12}` (Leads), obwohl die Features längst gebaut sind — die

@@ -5019,3 +5019,65 @@ Migrationen** (0002 + 0003) und Repository-Erweiterung. Public-
 Site bekommt damit alles, was sie für eine Vollanzeige braucht,
 optional aus DB.
 
+---
+
+## Code-Session 38 – services + reviews-Migrationen + FK-Embed
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Zwei weitere Tabellen (`services`, `reviews`) als FK-
+Children von `businesses`. Cascade-Delete, je eigene RLS-Policies
+mit `exists`-Sub-Query auf `businesses.is_published`. Repository
+lädt jetzt Stammdaten + Services + Reviews in **einem einzigen
+HTTP-Roundtrip** über PostgREST-Embedding (`select=*, services(*),
+reviews(*)`). Filter (inaktive Services, unveröffentlichte Reviews)
+wird sowohl SQL-seitig (RLS) als auch im TS-Mapper als
+Defense-in-Depth angewendet.
+
+**Drift-Befund**: Code-Session 37 hatte das `package_tier`-CHECK in
+englischer Form (`silver/platinum`), das Zod-Enum nutzt aber
+deutsche Begriffe (`silber/platin`). Mit Migration 0001-Fix
+korrigiert; neuer Plan-Item für Schema↔Migration-Drift-Test.
+
+**Dateien**:
+- ✚ `supabase/migrations/0002_services.sql` — Tabelle, FK auf
+  businesses(id) cascade, 3 Indizes (incl. partial-active und
+  partial-featured), updated_at-Trigger, RLS-Policy mit
+  `exists`-Sub-Query auf `is_published`.
+- ✚ `supabase/migrations/0003_reviews.sql` — Tabelle, FK cascade,
+  CHECK-Constraints (`rating 1..5`, `source in 'google','facebook',
+  'internal'`), 2 Indizes (1 Partial), Trigger, RLS analog.
+- 🔄 `supabase/migrations/0001_businesses.sql` — Drift-Fix:
+  `package_tier`-CHECK auf deutsche Werte korrigiert
+  (`'bronze','silber','gold','platin'`).
+- 🔄 `src/core/database/repositories/business.ts` — `BUSINESS_FULL_SELECT`
+  mit Embed `services(*), reviews(*)`. Neue Mapper `rowToService`
+  + `rowToReview`. `rowToBusiness` filtert `is_active=false` /
+  `is_published=false` defensiv und sortiert Services nach
+  `sort_order`. Test-Helper `__TEST_ONLY_rowToBusiness__` exportiert.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — neue Sektionen 0002 + 0003,
+  Embedding-Pattern beschrieben, Roadmap auf 0004+.
+- 🔄 `src/tests/business-repository.test.ts` (~40 Asserts statt
+  ~30): neuer Block „Row→Business-Mapping inkl. Embeds":
+  3 Services (1 inaktiv → wird gefiltert), 2 Reviews (1
+  unveröffentlicht → wird gefiltert), Sort-Order-Verhalten,
+  leere Embeds (RLS-blockiert) → leere Arrays.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **23/24 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (services + reviews-Schema),
+2 neue Items: erweitertes Seed-Skript (alle 3 Tabellen),
+Schema↔Migration-Drift-Test (Property-based gegen TS-Enum).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase FK-Embedding /
+nested select.
+
+**Manueller Schritt**: Migration 0002 + 0003 im Supabase-SQL-Editor
+ausführen (nach 0001). Idempotent — wiederholtes Ausführen tut
+nichts Schlimmes.
+
+**Nächste Session**: Code-Session 39 — **faqs + leads-Migrationen**
+(0004 + 0005) inkl. `consents`-Audit-Trail aus Code-Session 32.
+Damit ist das Schema komplett für die Public-Site-Vollanzeige.
+

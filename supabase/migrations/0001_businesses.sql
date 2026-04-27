@@ -34,7 +34,7 @@ create table if not exists public.businesses (
   -- Stammdaten
   name text not null,
   industry_key text not null,
-  package_tier text not null check (package_tier in ('bronze','silver','gold','platinum')),
+  package_tier text not null check (package_tier in ('bronze','silber','gold','platin')),
   locale text not null default 'de',
   tagline text not null,
   description text not null,

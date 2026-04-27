@@ -7,14 +7,49 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant — Backend-Sprint
-- **Code-Session 38: services + reviews-Migrationen** (0002 + 0003)
-  + Repository-Erweiterung. Public-Site bekommt alles, was sie für
-  Vollanzeige braucht, optional aus DB.
-- Code-Sessions 39+: faqs + leads-Migrationen, Magic-Link-Auth via
-  `@supabase/ssr`, Storage-Bucket für Logos, Edge-Runtime-Migration,
-  CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-Editor mit
-  Legal-Sektion, Impressum-Editor pro Betrieb (für Reseller),
-  Seed-Skript für Demo-Daten.
+- **Code-Session 39: faqs + leads-Migrationen** (0004 + 0005) inkl.
+  `consents`-Audit-Trail aus Code-Session 32. Damit ist das Schema
+  komplett für die Public-Site-Vollanzeige.
+- Code-Sessions 40+: Magic-Link-Auth via `@supabase/ssr`, Storage-
+  Bucket für Logos, Edge-Runtime-Migration, CSRF-Schutz,
+  HTML-Sanitize-Whitelist, Settings-Editor mit Legal-Sektion,
+  Impressum-Editor pro Betrieb (für Reseller), Seed-Skript für
+  Demo-Daten, Schema↔Migration-Drift-Test.
+
+## [0.16.12] – Code-Session 38 – 2026-04-27
+
+Zwei weitere Tabellen + FK-Embed-Optimierung. Public-Site-Vollanzeige
+ist jetzt aus Supabase ladbar — in **einem** Roundtrip.
+
+- ✚ `supabase/migrations/0002_services.sql` — Tabelle mit FK
+  cascade, 3 Indizes (incl. partial-active + partial-featured),
+  RLS-Policy mit `exists`-Sub-Query auf `businesses.is_published`.
+- ✚ `supabase/migrations/0003_reviews.sql` — Tabelle mit FK
+  cascade, CHECK-Constraints (`rating 1..5`, `source` enum-like),
+  2 Indizes, RLS analog.
+- 🔧 `supabase/migrations/0001_businesses.sql` — Drift-Fix:
+  `package_tier`-CHECK auf deutsche Enum-Werte
+  (`bronze/silber/gold/platin`) korrigiert.
+- 🔄 `src/core/database/repositories/business.ts` — neue
+  `BUSINESS_FULL_SELECT`-Konstante mit `services(*), reviews(*)`-
+  Embed. `rowToService` + `rowToReview`-Mapper. Defense-in-Depth:
+  inaktive Services / unveröffentlichte Reviews werden zusätzlich
+  zur RLS auch im TS gefiltert; Services nach `sort_order` sortiert.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Sektionen 0002 + 0003, Embedding-
+  Pattern erklärt, Roadmap auf 0004+ verschoben.
+- 🔄 `src/tests/business-repository.test.ts` (~30 → ~40 Asserts):
+  neuer Block für Row→Business-Mapping mit Embeds — 3 Services
+  (1 inaktiv), 2 Reviews (1 unveröffentlicht), Sort-Order,
+  leere Embeds (RLS-Block) → leere Arrays.
+
+23/24 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Bundle: shared 102 KB unverändert.
+
+🛣️ Roadmap: 1 abgehakt (services + reviews-Schema), 2 neu (Seed-
+Skript für 3 Tabellen, Schema↔Migration-Drift-Test).
+
+**Manueller Schritt**: Migrationen 0002 + 0003 im Supabase-SQL-
+Editor nach 0001 ausführen. Idempotent.
 
 ## [0.16.11] – Code-Session 37 – 2026-04-27
 

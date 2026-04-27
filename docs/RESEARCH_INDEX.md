@@ -90,6 +90,12 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Supabase FK-Embedding / nested select (Code-Session 38)
+- [Supabase Docs – Querying Joins and Nested Tables](https://supabase.com/docs/guides/database/joins-and-nesting) — `select=*, services(*)`-Pattern (38).
+- [Supabase Docs – JavaScript API: select](https://supabase.com/docs/reference/javascript/select) — Embed-Syntax + RLS-Verhalten pro Embed (38).
+- [Supabase Discussion #4680 – joining on a foreign key](https://github.com/orgs/supabase/discussions/4680) — Best-practice für Two-Hop-Joins (38).
+- [postgrest-js #197 – !inner für Filter über Embed](https://github.com/supabase/postgrest-js/issues/197) — Inner-Join-Modifier (38).
+
 ### Supabase Multi-Tenant-Schema + RLS (Code-Session 37)
 - [Supabase Docs – Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security) — Pflicht-Aktivierung pro Tabelle (37).
 - [Supabase – Authorization via Row Level Security](https://supabase.com/features/row-level-security) — Pattern-Referenz (37).

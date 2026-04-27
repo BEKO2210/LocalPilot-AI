@@ -1,21 +1,21 @@
 /**
- * Business-Repository (Code-Session 37).
+ * Business-Repository (Code-Session 37, erweitert in 38).
  *
  * Eine **read-only** Abstraktion über zwei Datenquellen:
  *   - Mock-Pfad (`MockBusinessRepository`): liest aus
  *     `src/data/mock-businesses.ts`. Default solange Supabase nicht
  *     scharf konfiguriert ist.
  *   - Supabase-Pfad (`SupabaseBusinessRepository`): liest aus der
- *     `public.businesses`-Tabelle (Migration `0001_businesses.sql`).
- *     Muss Tabelle haben + Public-Read-Policy aktiv.
+ *     `public.businesses`-Tabelle plus per FK-Embed aus
+ *     `public.services` und `public.reviews` (Migrationen 0001–0003).
  *
  * Resolver in `index.ts` wählt den Pfad anhand der ENV. Schreibe-Pfad
- * folgt in einer späteren Session (Session 38+, sobald Auth steht).
+ * folgt in einer späteren Session (40+, sobald Auth steht).
  *
- * Wichtig: das Interface ist **schmal** (slug-by-slug + slug-list).
- * CRUD und Joins (Services, Reviews) folgen, sobald die jeweiligen
- * Tabellen existieren. Erstmal bleibt die Public-Site auf Mock —
- * Supabase wird über ein Feature-Flag schrittweise eingeschwenkt.
+ * **Code-Session 38**: Supabase-Impl liefert jetzt zusätzlich zu den
+ * Stammdaten auch `services` und `reviews` über PostgREST-Embedding
+ * (`select=*, services(*), reviews(*)`). Das ist 1 HTTP-Roundtrip
+ * statt 3, RLS wird pro Embed automatisch ausgewertet.
  */
 
 import type { Business } from "@/types/business";
@@ -66,6 +66,34 @@ export function createMockBusinessRepository(
 // Supabase-Implementierung
 // ---------------------------------------------------------------------------
 
+interface ServiceRow {
+  readonly id: string;
+  readonly business_id: string;
+  readonly category: string | null;
+  readonly title: string;
+  readonly short_description: string;
+  readonly long_description: string;
+  readonly price_label: string | null;
+  readonly duration_label: string | null;
+  readonly image_url: string | null;
+  readonly icon: string | null;
+  readonly tags: readonly string[] | null;
+  readonly is_featured: boolean;
+  readonly is_active: boolean;
+  readonly sort_order: number;
+}
+
+interface ReviewRow {
+  readonly id: string;
+  readonly business_id: string;
+  readonly author_name: string;
+  readonly rating: number;
+  readonly text: string;
+  readonly source: string;
+  readonly is_published: boolean;
+  readonly created_at: string;
+}
+
 interface BusinessRow {
   readonly id: string;
   readonly slug: string;
@@ -87,10 +115,57 @@ interface BusinessRow {
   readonly is_published: boolean;
   readonly created_at: string;
   readonly updated_at: string;
+  /** PostgREST-Embed: leeres Array, falls keine Services oder RLS blockt. */
+  readonly services?: readonly ServiceRow[];
+  /** Wie services. */
+  readonly reviews?: readonly ReviewRow[];
+}
+
+function rowToService(row: ServiceRow) {
+  return {
+    id: row.id,
+    businessId: row.business_id,
+    ...(row.category ? { category: row.category } : {}),
+    title: row.title,
+    shortDescription: row.short_description,
+    longDescription: row.long_description,
+    ...(row.price_label ? { priceLabel: row.price_label } : {}),
+    ...(row.duration_label ? { durationLabel: row.duration_label } : {}),
+    ...(row.image_url ? { imageUrl: row.image_url } : {}),
+    ...(row.icon ? { icon: row.icon } : {}),
+    tags: row.tags ?? [],
+    isFeatured: row.is_featured,
+    isActive: row.is_active,
+    sortOrder: row.sort_order,
+  };
+}
+
+function rowToReview(row: ReviewRow) {
+  return {
+    id: row.id,
+    businessId: row.business_id,
+    authorName: row.author_name,
+    rating: row.rating,
+    text: row.text,
+    source: row.source,
+    createdAt: row.created_at,
+    isPublished: row.is_published,
+  };
 }
 
 /** Mapt eine Postgres-Zeile auf das `Business`-Schema. */
 function rowToBusiness(row: BusinessRow): Business {
+  // Services nach sort_order sortieren — die SQL-Policy filtert bereits
+  // is_active=true; doppelte Defensive schadet nicht, falls mal ein
+  // anderer Pfad (Service-Role-Key) doch inaktive Zeilen durchlässt.
+  const services = (row.services ?? [])
+    .filter((s) => s.is_active)
+    .map(rowToService)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const reviews = (row.reviews ?? [])
+    .filter((r) => r.is_published)
+    .map(rowToReview);
+
   const draft = {
     id: row.id,
     slug: row.slug,
@@ -109,9 +184,9 @@ function rowToBusiness(row: BusinessRow): Business {
     ...(row.primary_color ? { primaryColor: row.primary_color } : {}),
     ...(row.secondary_color ? { secondaryColor: row.secondary_color } : {}),
     ...(row.accent_color ? { accentColor: row.accent_color } : {}),
-    services: [],
+    services,
     teamMembers: [],
-    reviews: [],
+    reviews,
     faqs: [],
     isPublished: row.is_published,
     createdAt: row.created_at,
@@ -120,8 +195,13 @@ function rowToBusiness(row: BusinessRow): Business {
   return BusinessSchema.parse(draft);
 }
 
-const COLUMNS =
+const BUSINESS_BASE_COLUMNS =
   "id, slug, name, industry_key, package_tier, locale, tagline, description, logo_url, cover_image_url, theme_key, primary_color, secondary_color, accent_color, address, contact, opening_hours, is_published, created_at, updated_at";
+
+// PostgREST-Embed über die Foreign-Keys: ein Roundtrip lädt Business +
+// Services + Reviews. RLS wird pro embed-Tabelle eigenständig
+// ausgewertet, Public-Read-Policies aus Migration 0002/0003 reichen.
+const BUSINESS_FULL_SELECT = `${BUSINESS_BASE_COLUMNS}, services(*), reviews(*)`;
 
 export function createSupabaseBusinessRepository(
   client: SupabaseClient,
@@ -131,7 +211,7 @@ export function createSupabaseBusinessRepository(
     async findBySlug(slug: string) {
       const { data, error } = await client
         .from("businesses")
-        .select(COLUMNS)
+        .select(BUSINESS_FULL_SELECT)
         .eq("slug", slug)
         .maybeSingle<BusinessRow>();
       if (error) throw new Error(`businesses.findBySlug: ${error.message}`);
@@ -149,10 +229,14 @@ export function createSupabaseBusinessRepository(
     async listAll() {
       const { data, error } = await client
         .from("businesses")
-        .select(COLUMNS)
+        .select(BUSINESS_FULL_SELECT)
         .order("created_at", { ascending: true });
       if (error) throw new Error(`businesses.listAll: ${error.message}`);
       return (data ?? []).map((row) => rowToBusiness(row as BusinessRow));
     },
   };
 }
+
+// Test-Helper: erlauben uns, das Row→Schema-Mapping ohne echten
+// Supabase-Client zu verifizieren.
+export const __TEST_ONLY_rowToBusiness__ = rowToBusiness;
