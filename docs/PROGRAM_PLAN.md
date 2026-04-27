@@ -332,6 +332,85 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
 - 41+: Backup-Policy, Seed-Skript für Demo-Daten,
   „Betrieb löschen"-Flow mit rekursivem Storage-Cleanup.
 
+### Phase 1 Restweg → MVP-funktional (Sessions 65–70)
+
+Pflicht-Items, die `funktioniert alles` blockieren. Erst danach
+beginnt die UI/UX-Polish-Phase.
+
+- **65** (Light-Pass, 5er-Multiple): AIPlayground auf
+  `callAIGenerate` migrieren — letzte Stelle mit inline
+  `/api/ai/generate`-Aufruf + ~100 Zeilen Error-Handling. Plus
+  Recap-Doku `docs/AI.md` zur AI-Schicht. `simplify`-Skill am
+  Diff-Ende.
+- **66**: CSRF-Schutz für mutating Routes (PATCH/PUT/POST auf
+  `/api/businesses/...`, `/api/leads`, `/api/onboarding`).
+  Aktuell nur Cookie-Session-Auth — Token-Pattern (z. B.
+  Origin-Header-Check oder Double-Submit-Cookie) ergänzen.
+- **67**: HTML-Sanitize-Whitelist auf User-Inputs, die in
+  Public-Site rendern (Service-Beschreibungen, Tagline,
+  About-Text). Aktuell läuft sanitize nur auf AI-Output —
+  User-Input direkt eingeben kann theoretisch HTML-Injection.
+- **68**: Sentry-Integration für Error-Tracking (Browser +
+  Server). DSN-ENV, sourcemap-Upload im CI, Error-Boundary
+  in Layout.
+- **69**: „Betrieb löschen"-Flow mit rekursivem
+  Storage-Cleanup. Nutzt vorhandene Helper aus 56/57/60.
+- **70** (Light-Pass, 5er-Multiple): finaler Pre-MVP-Pass —
+  alle 7 Pflicht-Items prüfen, Audit-Checkliste schließen.
+
+### Phase 2 Restweg → UI/UX-Polish (Sessions 71–80+)
+
+Nach MVP-funktional folgt die mindestens 10-Sessions-tiefe
+Polish-Phase. Pro Session ein klar abgegrenzter Audit-Bereich
+mit (a) Snapshot des Ist-Stands, (b) Issue-Liste, (c) Fixes,
+(d) `webapp-testing`-Skill für Regression-Tests.
+
+- **71**: Public-Site-Audit. Hero-Section, Service-Cards,
+  Lead-Form, Theme-Anwendung, Footer. Theme-Token-Konsistenz
+  prüfen.
+- **72**: Dashboard-Shell-Audit. Header, Sidebar/Tabs,
+  Mobile-Nav, Empty-States, Auth-Card.
+- **73**: Editor-Audits — alle 5 Editoren (Business,
+  Services, Settings, Reviews, Social) auf Buttons, Spacing,
+  Validation-Hints, Banner-Konsistenz.
+- **74**: Form-System-Konsistenz. FormField, FormInput,
+  FormTextarea, FormSelect — Labels, Required-Marker,
+  Error-Anzeige, Hint-Pattern, Tab-Reihenfolge.
+- **75** (Light-Pass, 5er-Multiple): Type-System +
+  Component-Reuse-Pass mit `simplify`-Skill.
+- **76**: **Demo-Logo + Brand-Identity**. Aktuelles Logo
+  ist text-only (LocalPilot AI). Mit `algorithmic-art`-Skill
+  ein generatives p5.js-Mark + statische SVG-Variante
+  produzieren. Brand-Tokens (`brand-guidelines`-Skill)
+  definieren: Farben, Schriften, Spacing, Iconography.
+- **77**: Theme-Polish. `theme-factory`-Skill anwenden auf
+  alle 10 Themes — Konsistenz-Audit der Farben, Schrift-
+  Hierarchie, Buttons, Form-Surfaces. Public-Site-Theme-
+  Switcher als Demo-Tool.
+- **78**: A11y-Audit. Tab-Order, ARIA-Labels, Contrast-
+  Ratios (WCAG 2.2 AA), Focus-States, Reduced-Motion-Pfad.
+- **79**: Mobile/Tablet-Responsive-Audit. Breakpoints
+  (sm/md/lg/xl), Touch-Targets (≥44×44), Mobile-CTA-Streifen,
+  Tab-Bars.
+- **80** (Light-Pass, 5er-Multiple): finaler Polish-Pass +
+  Lighthouse-Run + Bundle-Cleanup.
+
+### Skill-Mapping (Phase 2)
+
+Verfügbare Claude-Code-Skills, die in der UI/UX-Phase zentral
+werden:
+
+| Skill                  | Einsatz in Phase 2                              |
+| ---------------------- | ----------------------------------------------- |
+| `simplify`             | Light-Pass-Sessions (65, 70, 75, 80) — Code-Diff-Review für Reuse + Quality + Efficiency. |
+| `webapp-testing`       | Audit-Sessions 71–79 — Playwright-Tests pro Bereich, Regression-Schutz vor Polish-Fixes. |
+| `algorithmic-art`      | Session 76 — Demo-Logo als generatives p5.js-Artwork mit Seed (reproduzierbar). |
+| `theme-factory`        | Sessions 76+77 — Brand-Tokens auf alle Artefakte (HTML/CSS/Slides/PDF) anwenden. |
+| `brand-guidelines`     | Session 76 — Brand-Definition (Farben, Schriften, Voice, Iconography) als Single-Source-of-Truth. |
+| `systematic-debugging` | Bei Bug-Hunting in Audit-Phasen — Senior-Dev-Pipeline statt Rumprobieren. |
+| `security-review`      | Session 70 (Pre-MVP) + vor Production-Deploy — Branch-weiter Security-Scan. |
+| `review`               | PR-Reviews vor `main`-Merge. |
+
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant
 

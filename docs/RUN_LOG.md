@@ -7423,3 +7423,127 @@ Component aufgerufen wird. Migration konsolidiert die
 Codebase und macht `ai-client.ts` zum *einzigen* Pfad.
 Zusätzlich Recap-Doku im Light-Pass-Stil.
 
+## Code-Session 65 – Light-Pass: AIPlayground-Migration + AI.md
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Light-Pass · 5er-Multiple
+
+**Was**: Sessions 61+62 haben den `callAIGenerate`-Helper
+(`lib/ai-client.ts`) als zentralen Browser→`/api/ai/generate`-
+Pfad mit ~38 Asserts etabliert (Reviews-Panel + Social-Panel).
+Diese Light-Pass-Session migriert den dritten und letzten
+Konsumenten — den AIPlayground (Session 28). Damit ist
+`ai-client.ts` die **einzige** Stelle, an der die Browser-
+Schicht mit der API spricht. Plus neue Recap-Doku
+`docs/AI.md` mit ASCII-Diagramm der gesamten Pipeline.
+
+**Architektur-Entscheidung — AIPlayground bleibt eigene
+PROVIDER_OPTIONS**: Die `PROVIDER_OPTIONS`-Konstante ist
+in jedem der drei Panels lokal (mit unterschiedlichen
+Description-Texten). Eine Konsolidierung in
+`ai-client.ts` wäre möglich, aber der Mehrwert ist gering
+(8 Zeilen × 3 Stellen vs. ein zentrales Modul). Bewusste
+Entscheidung gegen DRY-um-jeden-Preis.
+
+**Architektur-Entscheidung — Mock-Pfad behält try/catch**:
+`callAIGenerate` wirft nicht (alle Fehlerklassen kommen als
+Result-Kinds zurück). Der Mock-Pfad nutzt aber `config.call`,
+was eine Provider-Methode ist und potenziell throw'n kann —
+daher dort weiterhin try/catch. Asymmetrie ist mit Kommentar
+dokumentiert.
+
+**Architektur-Entscheidung — `as any` + `as PlaygroundCostInfo`
+bleibt**: `AIGenerateResult.server` deklariert
+`output: unknown` und `cost?: unknown`. Casts sind für die
+Migration nötig. Tightening via Generic im Helper
+(`AIGenerateResult<O, C>`) ist Light-Pass-Item für eine
+spätere Session — aktuell zwei Konsumenten haben einfache
+Output-Typen, der Playground hat 7 verschiedene. Generic-
+Refactor sprengt den Light-Pass-Scope.
+
+**WebSearch (Track C)**: bestätigt
+- [Next.js – Fetch Wrapper Best Practices](https://dev.to/dmitrevnik/fetch-wrapper-for-nextjs-a-deep-dive-into-best-practices-53dh)
+  Helper-Extraktion mit explicit Result-Mapping ist
+  2026-Standard.
+- [freeCodeCamp – Reusable Architecture for Large Next.js Apps](https://www.freecodecamp.org/news/reusable-architecture-for-large-nextjs-applications/)
+  „Custom hooks" + „utility functions" in `src/utils` /
+  `src/lib` für DRY-Kompabilität — passt 1:1 zu unserem
+  `lib/ai-client.ts` + `lib/storage-cleanup.ts` etc.
+
+**Dateien**:
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx`:
+  - Imports: `AIProviderError` + lokale `RateLimitState`-
+    Interface + `TOKEN_STORAGE_KEY`-Konstante weg.
+    `AI_TOKEN_STORAGE_KEY` + `callAIGenerate` +
+    `AIGenerateRateLimit` aus `ai-client.ts`. Plus
+    `PlaygroundCostInfo` als top-of-file Import (vorher
+    inline `import("./types")`-Cast).
+  - `RateLimitState` als Type-Alias für
+    `AIGenerateRateLimit`.
+  - `handleGenerate` von ~95 inline-Zeilen auf ~30 Zeilen
+    Switch-über-`r.kind` reduziert.
+  - Kommentar dokumentiert die Try/Catch-Asymmetrie
+    Mock-vs-Live (Mock kann werfen, callAIGenerate nicht).
+- ✚ `docs/AI.md` — neue Recap-Doku ~5 KB:
+  - ASCII-Diagramm der gesamten Pipeline Browser → Server →
+    Provider → Sanitize → Cost-Track.
+  - Tabelle der 7 Methoden + Schemas + Konsumenten.
+  - Result-Kind-Tabelle (5 Kinds × HTTP-Status × UI-Aktion).
+  - Provider-Tabelle (Mock / OpenAI / Anthropic / Gemini).
+  - Code-Sessions-Historie 14–65.
+  - Test-Coverage (~184 Asserts gesamt).
+- 🔄 `docs/PROGRAM_PLAN.md`: Neue Sektion „Phase 2 Restweg
+  → UI/UX-Polish (Sessions 71–80+)" mit konkret 10-Sessions-
+  Plan + Skill-Mapping-Tabelle.
+
+**simplify-Skill-Anwendung**: Drei Review-Agents (Reuse /
+Quality / Efficiency) liefen parallel auf den Diff. Drei
+Findings, davon zwei zu Light-Pass-Items vertagt
+(`useAITokenSync`-Hook bei 3+ identischen Patterns;
+Generic-Tightening von `AIGenerateResult.server`). Zwei
+unmittelbare Fixes appliziert (top-of-file Import +
+Kommentar zur Asymmetrie).
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**40/41 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle 102 KB shared unverändert.
+
+**Light-Pass-Bilanz Sessions 61–65**:
+- 1 neuer Pure Helper (`ai-client.ts`, ~38 Asserts)
+- 3 Konsumenten migriert (Reviews 61, Social 62,
+  Playground 65)
+- 2 Recap-Docs (`STORAGE.md` aus 60, `AI.md` aus 65)
+- ~100 Zeilen inline-Error-Handling konsolidiert
+- 5 Sessions × 0 Regressions
+- Phase-2-Roadmap (10 Sessions UI/UX) festgeschrieben
+
+**Roadmap**: 1 Light-Pass abgehakt. Phase-1-Pflicht-Items:
+- **66**: CSRF-Schutz für mutating Routes.
+- **67**: HTML-Sanitize-Whitelist auf User-Input
+  (Defense-in-Depth — XSS-Schutz auf Service-Beschreibungen,
+  Tagline, About-Text).
+- **68**: Sentry-Integration.
+- **69**: „Betrieb löschen"-Flow.
+- **70** (Light-Pass): Pre-MVP-Pass + Audit-Checkliste.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Next.js Fetch-
+Wrapper-Patterns 2026, Reusable-Architecture für
+Helper-Extraktion.
+
+**Status-Update**: ~96.5 % Richtung „erstes Betrieb-fertiges
+Produkt". AI-Pipeline production-clean (3 Konsumenten ×
+1 Helper × 5 Result-Kinds). Verbleibend Phase 1: 5 Sessions
+Security-Hardening + Operations. Phase 2 ab Session 71 mit
+mindestens 10 Sessions UI/UX-Audit + Brand-Identity (Demo-
+Logo via `algorithmic-art` Skill in Session 76).
+
+**Nächste Session**: Code-Session 66 = **CSRF-Schutz für
+mutating Routes**. Begründung: Aktuell schützt nur Cookie-
+Session (+ optional Bearer-Token) die `PATCH/PUT/POST`-
+Routen unter `/api/businesses/...`, `/api/leads`,
+`/api/onboarding`. Ohne CSRF-Token könnte ein Drittanbieter
+einen eingeloggten Owner über eine eigene Site dazu
+verleiten, mutierende Requests auszulösen (CORS-Same-Origin
+schützt Reads, nicht Writes — Browser sendet Cookie auch
+bei cross-site POST). Standard-Pattern: Origin-Header-
+Check + Double-Submit-Cookie. Klein-mittel, scharf
+abgrenzbar.
+

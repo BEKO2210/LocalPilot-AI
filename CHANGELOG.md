@@ -6,18 +6,92 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant
-- Code-Session 65 (Light-Pass, 5er-Multiple): AIPlayground
-  auf `ai-client.ts`-Helper migrieren (~100 Zeilen
-  Inline-Error-Handling konsolidieren) + Recap-Doku
-  AI-Schicht (`ai-client.ts` als zentraler Browser→
-  /api/ai/generate-Pfad).
-- Code-Sessions 66+: CSRF-Schutz, HTML-Sanitize-Whitelist,
-  Sentry-Integration, „Betrieb löschen"-Flow, Multi-Member-
-  Verwaltung, Direkt-Posten zu Buffer/Hootsuite/Meta-Graph,
-  Custom-Domain, Lighthouse-CI, Edge-Runtime-Migration,
-  Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
-  Schema↔Migration-Drift-Test.
+### Phase 1 Restweg → MVP-funktional (Sessions 66–70)
+- **66**: CSRF-Schutz für mutating Routes.
+- **67**: HTML-Sanitize-Whitelist auf User-Input.
+- **68**: Sentry-Integration.
+- **69**: „Betrieb löschen"-Flow mit rekursivem
+  Storage-Cleanup.
+- **70** (Light-Pass): finaler Pre-MVP-Pass + Audit-Checkliste.
+
+### Phase 2 → UI/UX-Polish (Sessions 71–80+)
+Mindestens 10 Sessions Audit + Polish über alle Seiten,
+Buttons, Schriften, Themes. Skills `webapp-testing`,
+`algorithmic-art`, `theme-factory`, `brand-guidelines`,
+`simplify`, `systematic-debugging`. Demo-Logo als
+generatives p5.js-Artwork (Session 76). Details siehe
+`docs/PROGRAM_PLAN.md` „Phase 2 Restweg".
+
+## [0.16.39] – Code-Session 65 – 2026-04-27 (Light-Pass)
+
+5er-Multiple. AIPlayground-Migration auf `callAIGenerate`-
+Helper aus `ai-client.ts`. ~100 Zeilen inline-Error-Handling
+aus Session 28 konsolidiert. Damit ist `ai-client.ts` der
+**einzige** Browser→`/api/ai/generate`-Pfad (3 Konsumenten:
+Playground / Reviews / Social). Plus neue Recap-Doku
+`docs/AI.md` mit Pipeline-Diagramm.
+
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx`:
+  - Imports: `AIProviderError` + `TOKEN_STORAGE_KEY`-Konstante
+    weg, dafür `AI_TOKEN_STORAGE_KEY` + `callAIGenerate` +
+    `AIGenerateRateLimit` aus `ai-client.ts`.
+  - `RateLimitState` als Type-Alias für `AIGenerateRateLimit`
+    (vorher inline-Interface).
+  - `handleGenerate` von ~95 Zeilen inline-fetch + 7-stufige
+    Error-Branch-Logic auf ~30 Zeilen Switch-über-Result-
+    Kinds reduziert. Mock-Pfad bleibt weiterhin direkt
+    (lokal, kein Server).
+  - `PlaygroundCostInfo` als top-of-file Import (vorher
+    inline `import("./types")`-Cast).
+  - Kommentar dokumentiert: `callAIGenerate` wirft nicht,
+    daher kein try/catch um den Live-Pfad.
+- ✚ `docs/AI.md` — neue Recap-Doku:
+  - ASCII-Pipeline-Diagramm Browser → Server → Provider.
+  - Tabelle der 7 Methoden mit Konsumenten-Mapping.
+  - Result-Kind-Tabelle mit HTTP-Status + UI-Aktion.
+  - Provider-Tabelle (Mock / OpenAI / Anthropic / Gemini)
+    mit Default-Modellen.
+  - Code-Sessions-Historie 14 → 65.
+  - Test-Coverage-Tabelle (~184 Asserts).
+- 🔄 `docs/PROGRAM_PLAN.md`: Neue Phase-2-Roadmap-Sektion
+  „UI/UX-Polish (Sessions 71–80+)" mit konkretem 10-
+  Sessions-Plan + Skill-Mapping (`webapp-testing`,
+  `algorithmic-art`, `theme-factory`, `brand-guidelines`,
+  `simplify`, `systematic-debugging`, `security-review`,
+  `review`).
+
+**simplify-Skill-Anwendung am Diff**: 3 Review-Agents
+(Reuse / Quality / Efficiency) parallel. Findings:
+- 3+ identischer `useAITokenSync`-Pattern in Playground +
+  Reviews + Social → Light-Pass-Item für später.
+- `output: unknown` + `cost: unknown` im `AIGenerateResult.server`
+  zwingen zu `as any`/`as PlaygroundCostInfo`-Casts → könnte
+  durch Generic im Helper getightened werden, Light-Pass-Item.
+- Switch-Exhaustiveness korrekt (alle 5 Kinds gedeckt, kein
+  `validation`-Kind im Helper).
+- Effizienz: Migration ist neutral, keine Hot-Path-Bloat,
+  keine Leaks.
+
+40/41 Smoketests grün (industry-presets pre-existing red,
+Codex #11). typecheck ✅, lint ✅, beide Builds ✅. Bundle
+102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (AIPlayground-Migration). AI-Schicht
+ist konsolidiert. Phase 1 Restweg: CSRF (66), HTML-Sanitize
+(67), Sentry (68), „Betrieb löschen" (69), Pre-MVP-Pass (70).
+Phase 2 ab 71: UI/UX-Polish + Demo-Logo.
+
+**Status-Update**: ~96.5 % Richtung „erstes Betrieb-fertiges
+Produkt" (MVP). AI-Pipeline production-clean. Verbleibend
+Phase 1: 5 Sessions. Phase 2 startet danach mit ≥10 Sessions
+UI/UX-Audit + Brand-Identity.
+
+**Manueller Test**: Playground/Reviews/Social → alle drei
+Provider-Toggles funktionieren wie zuvor. Bei Live-Provider
++ ungültigem Token: einheitlicher 401-Hinweis aus dem Helper.
+Bei Static-Build: einheitlicher „nur SSR-Deploy"-Hint.
+
+## [0.16.38] – Code-Session 64 – 2026-04-27
 
 ## [0.16.38] – Code-Session 64 – 2026-04-27
 

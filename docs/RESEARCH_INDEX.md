@@ -105,6 +105,11 @@
 - [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
 - [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
 
+### Helper-Extraktion + Reusable Architecture (Code-Session 65)
+- [DEV – Fetch Wrapper for Next.js: A Deep Dive into Best Practices](https://dev.to/dmitrevnik/fetch-wrapper-for-nextjs-a-deep-dive-into-best-practices-53dh) — Helper-Extraktion mit explicit Result-Mapping ist 2026-Standard (65).
+- [freeCodeCamp – Reusable Architecture for Large Next.js Apps](https://www.freecodecamp.org/news/reusable-architecture-for-large-nextjs-applications/) — Custom hooks + utility functions in src/utils/src/lib für DRY (65).
+- [vercel/next.js #61759 – Fetch or import in client component](https://github.com/vercel/next.js/discussions/61759) — Client-Component-Helper-Pattern mit fetch (65).
+
 ### localStorage-Retry-Queue mit Exponential-Backoff (Code-Session 64)
 - [@segment/localstorage-retry](https://github.com/segmentio/localstorage-retry) — Production-ready Pattern bei Segment.io. Default-Werte (5s Base / 5min Max / Factor 2 / max 8 Versuche) übernommen, Implementation eigen wegen Bundle-Größe (64).
 - [DEV – Queue-Based Exponential Backoff](https://dev.to/andreparis/queue-based-exponential-backoff-a-resilient-retry-pattern-for-distributed-systems-37f3) — 4xx als Success-Klasse markieren bei client-side Retries (64).
