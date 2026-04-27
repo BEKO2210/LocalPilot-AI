@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { getHealthSnapshot } from "@/core/ai/health";
 import { checkAuth } from "@/core/ai/auth/check";
 import { checkDatabaseHealth } from "@/core/database/health";
+import { resolveDataSource } from "@/core/database/repositories";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -27,9 +28,14 @@ export async function GET(req: Request): Promise<Response> {
       { status: auth.status },
     );
   }
+  // Wenn der Repo-Layer bereits auf Supabase umgeschwenkt ist, prüfen
+  // wir auch die `businesses`-Tabelle (Migration + RLS-Policy). Sonst
+  // bleibt es beim leichten REST-Root-Ping.
+  const probe =
+    resolveDataSource() === "supabase" ? "businesses-table" : "rest-root";
   const [snapshot, database] = await Promise.all([
     Promise.resolve(getHealthSnapshot()),
-    checkDatabaseHealth(),
+    checkDatabaseHealth(process.env, { probe }),
   ]);
   return NextResponse.json(
     { ...snapshot, database },

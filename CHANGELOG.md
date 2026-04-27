@@ -6,16 +6,385 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant — Backend-Sprint
-- **Code-Session 37: Erstes Supabase-Schema** (`businesses`-Tabelle
-  als read-only Spiegel der Mocks + Repository-Layer mit
-  feature-flag-Switch localStorage ↔ Supabase). Health-Endpunkt
-  testet ab dann echte Tabellen-Calls statt nur REST-Root-Ping.
-- Code-Sessions 38+: Multi-Tenant-Auth mit echten User-Accounts
-  (Magic-Link via `@supabase/ssr`), Storage-Bucket für Logos,
-  Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
-  Settings-Editor mit Legal-Sektion, Impressum-Editor pro Betrieb
-  (für Reseller-Szenarien).
+### Geplant
+- **Code-Session 47: Dashboard-Read aus Supabase** — sobald
+  `LP_DATA_SOURCE=supabase` aktiv ist, lesen `/dashboard/[slug]/...`
+  und `/site/[slug]/...` aus DB statt Mock. RLS aus 0007 trägt die
+  Owner-Sichtbarkeit. Schließt die nächste Lücke nach 46: User
+  sieht seinen **echten** Betrieb, nicht nur einen Demo-Mock.
+- Code-Sessions 48+: Slug-Live-Check, Onboarding-Wizard mehrstufig
+  (Adresse + Logo), Multi-Member-Verwaltung, Default-Redirect bei
+  einem Betrieb, Retry-Queue für Lead-`local-fallback`, Storage-
+  Bucket für Logos, Edge-Runtime-Migration, CSRF-Schutz,
+  HTML-Sanitize-Whitelist, Settings-Editor mit Legal-Sektion,
+  Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
+  Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+
+## [0.16.20] – Code-Session 46 – 2026-04-27
+
+End-to-End-Schleife geschlossen. `/account` zeigt jetzt nach
+Login die Betriebe des Users — als Cards mit Rolle/Tier/Publish-
+Badge und Direkt-Links zu Dashboard + Public-Site.
+
+- ✚ `src/lib/account-businesses.ts` — pure Mapping-Schicht.
+  `BusinessMembership`-Typ, `mapMembershipRow` mit `unwrapEmbed`-
+  Helper (defensiv beide PostgREST-Embed-Formen — Single-Object
+  und Array, weil supabase-js v2 konservativ als Array typisiert).
+  `fetchBusinessesForUser(client, userId)`, `sortMemberships`
+  (Owner zuerst, dann alphabetisch nach Name).
+- ✚ `src/tests/account-businesses.test.ts` (~33 Asserts):
+  alle Defekt-Pfade, Array-vs-Object-Embed-Normalisierung,
+  3 Rollen, Sort-Order, Sort-Stabilität + No-Mutation, deutsche
+  Labels, Output-Key-Whitelist.
+- 🔄 `src/app/account/page.tsx` — neuer `BusinessesState`
+  (`idle`/`loading`/`ready`/`error`), zweiter `useEffect`
+  triggert Fetch sobald User authed.  `<BusinessCard>` mit
+  Icon-Farb-Mapping pro Rolle, Empty-State mit prominentem
+  Onboarding-CTA.
+
+29/30 Smoketests grün (industry-presets pre-existing red, Codex
+#11). `/account` weiter ○ static-prerendered, Bundle 66 kB
+(+2 kB für Mapping/Icons). Shared 102 KB unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Account-Page-Betriebe). 4 neu (Slug-Live-
+Check, Onboarding-Wizard mehrstufig, Dashboard-Read aus DB,
+Multi-Member, Default-Redirect bei einem Betrieb).
+
+**Manueller Test** (mit Auth + Service-Role + ENVs):
+Login → /onboarding → Betrieb anlegen → Auto-Redirect zu
+/account zeigt jetzt den neuen Betrieb als Card mit
+„Inhaber:in"-Badge. Public-Site- und Dashboard-Links
+funktionieren (Read aus DB folgt in 47).
+
+## [0.16.19] – Code-Session 45 – 2026-04-27
+
+Onboarding-Flow. Post-Login-Pfad legt parallel `businesses` +
+`business_owners` mit Service-Role an. Ein neu eingeloggter
+User kann jetzt seinen ersten Betrieb in unter 2 Minuten anlegen.
+
+- ⬆️ `server-only@^0.0.1` als dependency. Schützt
+  Service-Role-Module vor versehentlichem Client-Import (Build-
+  Bruch, kein Runtime-Leak).
+- ✚ `src/core/database/supabase-service.ts` — `getServiceRoleClient`
+  Singleton, `auth.persistSession/autoRefreshToken/detectSessionInUrl`
+  alle off. `import "server-only"`-Schutz.
+- ✚ `src/lib/onboarding-validate.ts` — pure
+  `validateOnboarding(input)` mit field-genauen Errors.
+  Slug-Heuristik: Umlaut-Mapping vor NFKD, Apostrophe-Strip vor
+  Bindestrich-Replace. `RESERVED_SLUGS`-Liste für System-Pfade.
+- ✚ `src/tests/onboarding-validate.test.ts` (~35 Asserts):
+  alle Felder, Slug-Edge-Cases, Whitelist-Checks, Heuristik mit
+  Umlauten/Akzenten/Apostrophen/ß.
+- ✚ `src/core/database/repositories/onboarding.ts` —
+  `createBusinessForUser` mit Kompensation: bei Owner-Insert-
+  Fehler wird der businesses-Insert rückgängig gemacht.
+  Mappt Postgres 23505 → `slug_taken`.
+- ✚ `src/app/api/onboarding/route.ts` — POST mit Auth-Gate +
+  Pure-Validierung + Reserved-Slug-Check + Repository-Call.
+  HTTP-Mapping: not_configured→503, slug_taken→409,
+  constraint→422.
+- ✚ `src/app/onboarding/page.tsx` + `onboarding-form.tsx` —
+  statische Page + Client-Form mit Live-Slug-Vorschlag (Auto-
+  Folgen am Namen). Erfolg → Success-Card + Redirect auf
+  `/account` nach 1.2s.
+
+28/29 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Beide Builds grün, `/onboarding` ○ static-prerendered,
+`/api/onboarding` ƒ im SSR-Build. Bundle: shared 102 KB
+unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Onboarding-Flow). 3 neu (Account-Page
+mit Betrieben, Slug-Live-Check, Onboarding-Wizard mehrstufig).
+
+🔁 state-refresh-light: 28/29 grün, 3 Stale-Stubs bekannt
+(Codex-#12), 2 needs-review aktiv.
+
+**Manueller Test** (mit Auth + Service-Role-ENV):
+Login → `/onboarding` → Form ausfüllen → Submit → Success-Card
+→ Auto-Redirect zu `/account`. Im Supabase-Dashboard sind beide
+Zeilen sichtbar (businesses + business_owners).
+
+## [0.16.18] – Code-Session 44 – 2026-04-27
+
+Public-Lead-Form schreibt parallel nach localStorage und nach
+Supabase (via `POST /api/leads`). Server-tolerant: jeder
+Server-Fehler endet als „Anfrage gesendet" mit dezentem Hinweis,
+solange localStorage als Sicherheitsnetz klappt.
+
+- ✚ `src/app/api/leads/route.ts` — POST mit Light-Validation +
+  `LeadRepository.create`. Mappt `LeadRepositoryError.kind` auf
+  HTTP-Status (validation→400, rls→403, constraint→422,
+  network→502, sonst 500).
+- ✚ `src/lib/lead-submit.ts` — pure Helper. `submitLead` schreibt
+  zuerst sync localStorage, dann fetch. 4-stufiges
+  `SubmitResult`-Mapping (`server` / `local-only` /
+  `local-fallback` / `fail`). `userHintForResult` für
+  User-sichtbare Texte.
+- ✚ `src/tests/lead-submit.test.ts` (~30 Asserts): alle 4
+  Result-Pfade plus Edge-Cases (200 ohne Body, 403 RLS, fetch
+  wirft, skipServer-Flag, server-OK + local-fail, Body-Capture).
+- 🔄 `src/components/public-site/public-lead-form.tsx`:
+  `buildSubmissions` baut zwei Repräsentationen (localBackup +
+  serverInput), `handleSubmit` ist async und ruft `submitLead`,
+  neuer `submitNotice`-State zeigt den `local-fallback`-Hinweis
+  im Erfolgs-Block.
+
+27/28 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Static-Build hat `/api/leads` korrekt nicht
+(`pageExtensions`-Filter greift), SSR-Build hat 8 API-Routen.
+Bundle: 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Lead-Form-Wiring), 2 neu (Dashboard-Read-
+auf-Supabase, Retry-Queue für local-fallback).
+
+**Manueller Test**:
+- Static-Vorschau: identisches Verhalten wie bisher (Form schreibt
+  nur localStorage, kein Hinweis nötig).
+- Vercel + `LP_DATA_SOURCE=supabase`: Lead landet sowohl in der
+  Supabase-Tabelle als auch im localStorage.
+- Vercel mit Supabase down: Erfolg + dezenter Hinweis-Banner,
+  Lead bleibt im localStorage als Sicherheitsnetz.
+
+## [0.16.17] – Code-Session 43 – 2026-04-27
+
+Magic-Link-Login-UI. User kann jetzt einen Login-Link anfordern
+und sieht seinen Auth-Status. Dashboard-Wiring kommt erst mit
+Multi-Tenant-Daten — sonst doppelte Arbeit.
+
+- ✚ `src/lib/auth-status.ts` — pure Helper für Status-Messages.
+  Mappt 503-supabase_not_configured auf User-freundlichen
+  Demo-Mode-Hinweis. `looksLikeEmail` für Submit-Button-Enable.
+- ✚ `src/app/login/login-form.tsx` — Client Component, aria-live
+  Status-Region, fetched POST `/api/auth/magic-link`.
+- ✚ `src/app/login/error-banner.tsx` — Client Component,
+  `useSearchParams` in `<Suspense>` (vermeidet `await
+  searchParams`, das Static-Export bricht).
+- ✚ `src/app/login/page.tsx` — Server Component, statisch.
+- ✚ `src/app/account/page.tsx` — Client Component, 4 Zustände
+  (loading/authed/guest/unconfigured), Logout-Button.
+- ✚ `src/tests/auth-status.test.ts` (~30 Asserts):
+  Status-Konstanten, alle Mapping-Pfade,
+  Netzwerk-Error-Behandlung, Email-Format-Heuristik.
+
+26/27 Smoketests grün (industry-presets pre-existing red, Codex
+#11). `/login` + `/account` beide static-prerendered (○),
+Pages-kompatibel. Shared-Bundle 102 KB unverändert; `/account`
+trägt 64 kB Supabase-Client (one-off pro Besuch).
+
+**Manueller Test** (mit Auth-ENV): `/login` → E-Mail → Link in
+Mailbox → Klick → `/account` zeigt eingeloggten User → Logout
+→ zurück nach `/login`. Auf Static-Pages-Vorschau zeigt
+`/account` direkt den Demo-Mode-Hinweis.
+
+## [0.16.16] – Code-Session 42 – 2026-04-27
+
+SSR-Auth-Infrastruktur. Server- und Browser-Clients mit
+`@supabase/ssr`, Middleware-Session-Refresh, Magic-Link- und
+Callback-Routen. Open-Redirect-Schutz und User-Enumeration-Schutz.
+UI folgt in 43.
+
+- ⬆️ `@supabase/ssr@^0.10` als dependency.
+- 🔄 `src/core/database/client.ts` — `pickFirst`-Helper, ENV-
+  Fallback-Kette `NEXT_PUBLIC_SUPABASE_*` → `SUPABASE_*`.
+- ✚ `src/core/database/supabase-server.ts` —
+  `createServerSupabaseClient` mit Next.js `cookies()`-Handler,
+  `getCurrentUser` via `auth.getUser()` (nicht spoof-bar).
+- ✚ `src/core/database/supabase-browser.ts` — Singleton-Browser-
+  Client.
+- ✚ `middleware.ts` — Session-Refresh, No-Op ohne ENV.
+- ✚ `/api/auth/magic-link` — POST signInWithOtp mit
+  Open-Redirect-Schutz via SAFE_PATH-Regex und gleichformatige
+  Erfolgs-Antwort (kein User-Enumeration-Leak).
+- ✚ `/api/auth/callback` — GET exchangeCodeForSession, redirect
+  auf validierten `next`-Pfad.
+- 🔄 `.env.production.example` — `NEXT_PUBLIC_SUPABASE_*` ist die
+  kanonische Variante.
+- 🔄 `docs/DEPLOYMENT.md` — Vercel-ENV-Block aktualisiert.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — „SSR-Auth-Stack"-Sektion.
+- ✚ `src/tests/auth-magic-link.test.ts` (~25 Asserts): ENV-Fallback-
+  Kette, Whitespace-only fällt durch, EMAIL_RE, SAFE_PATH-Regex
+  gegen Open-Redirect-Vektoren.
+
+25/26 Smoketests grün. 7 API-Routen sichtbar im SSR-Build.
+Bundle: shared 102 KB unverändert.
+
+**Manueller Schritt** (sobald Magic-Link scharf): Supabase-Dashboard
+→ Auth → URL Configuration mit Vercel-URLs füllen, Email-Template
+prüfen, `NEXT_PUBLIC_SUPABASE_*` in Vercel-ENV. Migrationen
+0001–0007 müssen vorher gelaufen sein.
+
+## [0.16.15] – Code-Session 41 – 2026-04-27
+
+DB-Teil der Multi-Tenant-Bindung. SSR-Auth-Setup folgt in 42,
+UI in 43 — bewusst atomar gesplittet.
+
+- ✚ `supabase/migrations/0006_business_owners.sql` — M:N-Junction
+  User ↔ Betrieb mit Rollen (`owner`/`editor`/`viewer`),
+  Unique-Constraint auf `(business_id, user_id)`, 2 Indizes.
+  Zwei `security definer stable`-Helper:
+  `is_business_owner(business_id, user_id default auth.uid())`
+  für Schreibe-Pfade (owner+editor), `has_business_access(...)`
+  für Lese-Pfade (alle Rollen). RLS auf business_owners selbst:
+  SELECT-eigene, INSERT-by-owner, UPDATE-by-owner,
+  DELETE-by-owner-or-self.
+- ✚ `supabase/migrations/0007_owner_rls_policies.sql` — Owner-
+  scoped Policies an 5 Tabellen. `businesses` UPDATE/DELETE/
+  SELECT-with-drafts; `services`/`reviews`/`faqs` full-CRUD-
+  by-owner; `leads` SELECT (alle Rollen), UPDATE (owner+editor),
+  DELETE (nur owner). Die temporäre Read-all-leads-Policy aus
+  0005 wird ersetzt. Public-Read-Policies aus 0001–0004 bleiben
+  unverändert. `businesses` INSERT bleibt service-role-only
+  (Henne-Ei-Hinweis).
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Sektionen 0006 + 0007 mit
+  RLS-Operations-Matrix nach 0007 (Tabelle × Operation × Rolle).
+
+24/25 Smoketests grün, keine TS-Änderungen. Bundle: 102 KB
+shared unverändert.
+
+🛣️ Roadmap: Session 42 + 43 explizit ausgesplittet
+(SSR-Infrastruktur → UI).
+
+**Manueller Schritt**: Migrationen 0006 + 0007 im Supabase-SQL-
+Editor nach 0001–0005 ausführen. Idempotent. Solange noch keine
+Magic-Link-Auth aktiv ist (kommt in 42), ändert sich für anonyme
+Besucher nichts.
+
+## [0.16.14] – Code-Session 40 – 2026-04-27
+
+Lead-Repository mit Insert-Pfad. RLS-Falle aus Migration 0005
+elegant umgangen: ID + Timestamps client-side generieren, INSERT
+ohne chained SELECT.
+
+- ✚ `src/core/database/repositories/lead.ts` — `LeadRepository`-
+  Interface (`create(input): Lead`), `NewLeadInput`-Typ,
+  `LeadRepositoryError` mit 5 Kinds (validation/rls/constraint/
+  network/unknown). Mapper für SQLSTATE 23502/23503/23505/23514/
+  42501 + PostgREST PGRST116/PGRST301.
+- 🔄 `src/core/database/repositories/index.ts` — neuer
+  `getLeadRepository(env)`-Resolver mit Soft-Fallback bei
+  halb-konfigurierter ENV.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Lead-Repository-Sektion, RLS-Falle
+  erklärt, Error-Mapping-Tabelle.
+- ✚ `src/tests/lead-repository.test.ts` (~30 Asserts): Defaults,
+  Validation-Errors, Mock-Roundtrip, alle SQLSTATE-Codes,
+  Privacy-Smoketest.
+
+24/25 Smoketests grün. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Lead-Repo), Session 41 neu fokussiert
+(nur Auth, atomar). 2 neu (Public-Form-Umstellung,
+Dependency-Sweep für 17 Major-Bumps).
+
+🔁 state-refresh-light: 24/25 grün, 3 Stale-Stubs bekannt,
+Codex-#11/#12 weiter offen.
+
+## [0.16.13] – Code-Session 39 – 2026-04-27
+
+Letzte zwei Tabellen fürs Public-Site-Vollschema. `faqs` analog zu
+services/reviews; `leads` mit **asymmetrischer RLS** (Insert-by-anon,
+Select-by-authenticated) und DSGVO-Pflicht-Consent.
+
+- ✚ `supabase/migrations/0004_faqs.sql` — FK cascade, 2 Indizes
+  (1 Partial), Trigger, Public-Read-Policy für aktive FAQs auf
+  veröffentlichten Betrieben.
+- ✚ `supabase/migrations/0005_leads.sql` — asymmetrische RLS,
+  `consent jsonb not null` mit CHECK auf `givenAt` + `policyVersion`,
+  Constraints für `phone OR email`, `source`/`status`-Enum-CHECKs,
+  FK `requested_service_id → services(id)` mit `set null`.
+- 🔄 `src/core/database/repositories/business.ts` — `faqs(*)` im
+  Embed, `FaqRow` + `rowToFaq`-Mapper, Defense-in-Depth-Filter.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Sektionen 0004 + 0005, RLS-
+  Operations-Matrix für leads, DSGVO-Pflichtform dokumentiert,
+  Roadmap auf 0006 + 0006a.
+- 🔄 `src/tests/business-repository.test.ts` (~40 → ~45 Asserts):
+  FAQ-Mapping mit 3 FAQs (1 inaktiv), Sort-Order, optionale
+  category, leeres Embed.
+
+23/24 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Bundle: shared 102 KB unverändert.
+
+**Manueller Schritt**: Migrationen 0004 + 0005 im Supabase-SQL-
+Editor nach 0001–0003 ausführen. Idempotent.
+
+## [0.16.12] – Code-Session 38 – 2026-04-27
+
+Zwei weitere Tabellen + FK-Embed-Optimierung. Public-Site-Vollanzeige
+ist jetzt aus Supabase ladbar — in **einem** Roundtrip.
+
+- ✚ `supabase/migrations/0002_services.sql` — Tabelle mit FK
+  cascade, 3 Indizes (incl. partial-active + partial-featured),
+  RLS-Policy mit `exists`-Sub-Query auf `businesses.is_published`.
+- ✚ `supabase/migrations/0003_reviews.sql` — Tabelle mit FK
+  cascade, CHECK-Constraints (`rating 1..5`, `source` enum-like),
+  2 Indizes, RLS analog.
+- 🔧 `supabase/migrations/0001_businesses.sql` — Drift-Fix:
+  `package_tier`-CHECK auf deutsche Enum-Werte
+  (`bronze/silber/gold/platin`) korrigiert.
+- 🔄 `src/core/database/repositories/business.ts` — neue
+  `BUSINESS_FULL_SELECT`-Konstante mit `services(*), reviews(*)`-
+  Embed. `rowToService` + `rowToReview`-Mapper. Defense-in-Depth:
+  inaktive Services / unveröffentlichte Reviews werden zusätzlich
+  zur RLS auch im TS gefiltert; Services nach `sort_order` sortiert.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Sektionen 0002 + 0003, Embedding-
+  Pattern erklärt, Roadmap auf 0004+ verschoben.
+- 🔄 `src/tests/business-repository.test.ts` (~30 → ~40 Asserts):
+  neuer Block für Row→Business-Mapping mit Embeds — 3 Services
+  (1 inaktiv), 2 Reviews (1 unveröffentlicht), Sort-Order,
+  leere Embeds (RLS-Block) → leere Arrays.
+
+23/24 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Bundle: shared 102 KB unverändert.
+
+🛣️ Roadmap: 1 abgehakt (services + reviews-Schema), 2 neu (Seed-
+Skript für 3 Tabellen, Schema↔Migration-Drift-Test).
+
+**Manueller Schritt**: Migrationen 0002 + 0003 im Supabase-SQL-
+Editor nach 0001 ausführen. Idempotent.
+
+## [0.16.11] – Code-Session 37 – 2026-04-27
+
+Erstes konkretes Schema. `businesses`-Tabelle (Migration 0001)
+mit RLS-Pflicht-Aktivierung + Public-Read-Policy, Repository-
+Layer abstrahiert Mock ↔ Supabase, Health-Probe schärfer.
+
+- ✚ `supabase/migrations/0001_businesses.sql` — Hybrid-Schema
+  (Top-Level-Spalten + JSONB für Adresse/Kontakt/Öffnungszeiten),
+  3 Indizes, `updated_at`-Trigger, RLS aktiv, Read-Policy für
+  veröffentlichte Betriebe (Public-Site darf ohne Auth).
+- ✚ `docs/SUPABASE_SCHEMA.md` — Schema-Referenz + Migrations-
+  Roadmap (0002–0007).
+- ✚ `src/core/database/repositories/business.ts` — schmales
+  read-only Interface (`findBySlug`, `listSlugs`, `listAll`),
+  Mock + Supabase-Impl, Row→Schema-Mapping mit `BusinessSchema.parse`
+  als Schema-Drift-Bollwerk.
+- ✚ `src/core/database/repositories/index.ts` — `resolveDataSource`,
+  Soft-Fallback bei halb-konfigurierter ENV (kein Crash).
+- 🔄 `src/core/database/health.ts` — neue Option `probe:
+  "rest-root" | "businesses-table"`, 404-Sonderfall mit
+  „Migration fehlt"-Meldung.
+- 🔄 `src/app/api/ai/health/route.ts` — automatisch businesses-
+  table-Probe, sobald `LP_DATA_SOURCE=supabase`.
+- 🔄 `.env.production.example` — `LP_DATA_SOURCE=mock` als
+  expliziter Default-Switch.
+- ✚ `src/tests/business-repository.test.ts` (~30 Asserts):
+  Mock-Roundtrip, Resolver-ENV-Logik, Soft-Fallback mit
+  stderr-Capture, Health-Probe (200/401/404/Default).
+
+23/24 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Bundle: shared 102 KB unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Health-Tabellen-Probe), 2 neu
+(Datenquellen-Badge, Seed-Skript). Session-Cluster im
+Meilenstein 4 von 35–40 auf 35–41+ präzisiert.
+
+**Manueller Schritt für den Auftraggeber** (optional, wenn
+Supabase scharf gemacht werden soll):
+1. Supabase-Projekt anlegen, URL + anon-Key in Vercel-ENV.
+2. SQL aus `supabase/migrations/0001_businesses.sql` im
+   Supabase-Dashboard ausführen.
+3. `LP_DATA_SOURCE=supabase` setzen.
+
+Bis dahin läuft alles unverändert auf Mock-Daten.
 
 ## [0.16.10] – Code-Session 36 – 2026-04-27
 

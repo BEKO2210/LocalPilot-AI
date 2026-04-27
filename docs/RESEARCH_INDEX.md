@@ -90,6 +90,71 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Supabase-js v2 FK-Embed Type-Inferenz (Code-Session 46)
+- [Supabase Docs – Querying Joins and Nested tables](https://supabase.com/docs/guides/database/joins-and-nesting) — `!inner`-Modifier, Single-vs-Array-Verhalten je FK-Richtung (46).
+- [Supabase JS API – select](https://supabase.com/docs/reference/javascript/select) — Embed-Syntax, conservative Array-Typing-Default (46).
+- [Supabase Discussion #6550 – Inner join from public table](https://github.com/orgs/supabase/discussions/6550) — many-to-one liefert single object, SDK typisiert konservativ als Array (46).
+- [Supabase Troubleshooting – RLS Performance and Best Practices](https://supabase.com/docs/guides/troubleshooting/rls-performance-and-best-practices-Z5Jjwv) — Index-Empfehlungen für `auth.uid() = user_id`-Policies (46).
+
+### Service-Role + Onboarding-Pattern (Code-Session 45)
+- [Supabase Discussion #30739 – Using Service Role with Supabase in Next.js Backend](https://github.com/orgs/supabase/discussions/30739) — Server-only, persistSession off, Sicherheitsbetrachtung (45).
+- [Adrian Murage – How to Use the Supabase Service Role Secret Key in Next.js Routes](https://adrianmurage.com/posts/supabase-service-role-secret-key/) — `server-only`-Import-Pattern (45).
+- [Dev.to – Multi-Tenant SaaS Auth + Billing with Supabase RLS](https://dev.to/diven_rastdus_c5af27d68f3/how-i-built-multi-tenant-saas-auth-billing-with-supabase-rls-and-stripe-connect-3h08) — Onboarding-Sequenz Owner→Tenant (45).
+- [Supabase Discussion #3919 – Service Role Key in createClient](https://github.com/orgs/supabase/discussions/3919) — Konfig-Optionen für Server-Client (45).
+
+### Form-Submit + Offline-Fallback (Code-Session 44)
+- [Next.js Discussion #82498 – Building an Offline-First Next.js 15 App](https://github.com/vercel/next.js/discussions/82498) — Pattern-Diskussion, Service-Worker vs. localStorage-Backup (44).
+- [Next.js Components – Form](https://nextjs.org/docs/app/api-reference/components/form) — Progressive-Enhancement-Form (44).
+- [Next.js Discussion #73329 – Offline Fallback Handler](https://github.com/vercel/next.js/discussions/73329) — Custom-Service-Worker-Strategien (44).
+- [Next.js Discussion #60292 – Server Actions + Form Reset](https://github.com/vercel/next.js/discussions/60292) — Reset-Pattern bei Server-Action-Submits (44).
+
+### Magic-Link UX + a11y (Code-Session 43)
+- [Scalekit – Magic Link login in Next.js 15](https://www.scalekit.com/blog/passwordless-authentication-next-js) — Status-Feedback-Patterns (43).
+- [Next.js – Architecture: Accessibility](https://nextjs.org/docs/architecture/accessibility) — `aria-live`, `aria-atomic` Empfehlungen (43).
+- [Next.js Learn – App Router: Improving Accessibility](https://nextjs.org/learn/dashboard-app/improving-accessibility) — Status-Region-Pattern für Forms (43).
+- [Vercel Engineering – Improving the accessibility of our Next.js site](https://vercel.com/blog/improving-the-accessibility-of-our-nextjs-site) — Vercel-eigene a11y-Lessons-Learned (43).
+
+### @supabase/ssr + Next.js 15 Magic-Link (Code-Session 42)
+- [Supabase Docs – Creating a Supabase client for SSR](https://supabase.com/docs/guides/auth/server-side/creating-a-client) — `createServerClient` + `createBrowserClient`-Pattern (42).
+- [Supabase Docs – Setting up Server-Side Auth for Next.js](https://supabase.com/docs/guides/auth/server-side/nextjs) — Cookie-Handler, `getUser()` statt `getSession()` (42).
+- [Supabase Docs – Server-Side Auth Advanced Guide](https://supabase.com/docs/guides/auth/server-side/advanced-guide) — PKCE-Flow, Token-Refresh in Middleware (42).
+- [Akos Komuves – Magic-Link Sign-In with Next.js + Supabase](https://akoskm.com/how-to-build-a-simple-magic-link-sign-in-with-nextjs-supabase-and-sendgrid/) — `signInWithOtp` + Callback-Pattern (42).
+- [Ryan Katayi – Server-Side Auth Setup](https://www.ryankatayi.com/blog/server-side-auth-in-next-js-with-supabase-my-setup) — Production-Setup-Beispiel (42).
+
+### Supabase Multi-Tenant-Owner + Helper-Functions (Code-Session 41)
+- [Supabase Docs – RLS auth.uid() & auth.jwt()](https://supabase.com/docs/guides/database/postgres/row-level-security) — Built-in JWT-Helper (41).
+- [Supabase Docs – AI Prompt: Database RLS Policies](https://supabase.com/docs/guides/getting-started/ai-prompts/database-rls-policies) — Idiomatische Policy-Vorlagen (41).
+- [Medium / JigsDev – Supabase RLS Explained With Real Examples](https://medium.com/@jigsz6391/supabase-row-level-security-explained-with-real-examples-6d06ce8d221c) — Owner-Junction-Pattern (41).
+- [Dev.to – Mastering Supabase RLS as a Beginner](https://dev.to/asheeshh/mastering-supabase-rls-row-level-security-as-a-beginner-5175) — security-definer Helper-Functions (41).
+- [Dev.to – LockIn Multi-Tenant Architecture mit Supabase RLS](https://dev.to/blackie360/-enforcing-row-level-security-in-supabase-a-deep-dive-into-lockins-multi-tenant-architecture-4hd2) — Performance-Hinweise + Recursion-Vermeidung (41).
+
+### Supabase Insert + RLS-Falle (Code-Session 40)
+- [Supabase Issue #35368 – RLS Check Failing on INSERT Despite WITH CHECK true](https://github.com/supabase/supabase/issues/35368) — implizites SELECT nach INSERT erfordert SELECT-Policy (40).
+- [Supabase Discussion #36619 – RLS Check Failing on INSERT](https://github.com/orgs/supabase/discussions/36619) — Workaround `returning: 'minimal'` bzw. ID client-side (40).
+- [Bytebase – Postgres Error 23514 CHECK constraint violation](https://www.bytebase.com/reference/postgres/error/23514-check-constraint-violation/) — SQLSTATE-Mapping (40).
+- [drdroid.io – Postgres 23502 NOT NULL violation](https://drdroid.io/stack-diagnosis/supabase-database-not-null-violation-error-when-trying-to-insert-a-null-value-into-a-column-with-a-not-null-constraint) — Error-Code-Tabellen (40).
+- [Niko Fischer – „new row violates RLS policy" Workaround](https://nikofischer.com/supabase-error-row-level-security-policy) — Real-World-Beispiel (40).
+
+### DSGVO Consent-Audit-Trail in Postgres (Code-Session 39)
+- [Postgres Audit Logging Guide (Bytebase)](https://www.bytebase.com/blog/postgres-audit-logging/) — Audit-Tabellen-Schemata, JSONB-Pattern (39).
+- [Audit logging using JSONB in Postgres (Elephas)](https://elephas.io/audit-logging-using-jsonb-in-postgres/) — Schema-änderungs-freier Audit-Pfad (39).
+- [pgMemento – Audit trail with schema versioning for PostgreSQL](https://github.com/pgMemento/pgMemento) — Versionierungs-Idee als Inspiration (39).
+- [PostgreSQL Compliance: GDPR, SOC 2, Data Privacy & Security (EnterpriseDB)](https://www.enterprisedb.com/postgresql-compliance-gdpr-soc-2-data-privacy-security) — DSGVO-Mapping auf Postgres-Features (39).
+
+### Supabase FK-Embedding / nested select (Code-Session 38)
+- [Supabase Docs – Querying Joins and Nested Tables](https://supabase.com/docs/guides/database/joins-and-nesting) — `select=*, services(*)`-Pattern (38).
+- [Supabase Docs – JavaScript API: select](https://supabase.com/docs/reference/javascript/select) — Embed-Syntax + RLS-Verhalten pro Embed (38).
+- [Supabase Discussion #4680 – joining on a foreign key](https://github.com/orgs/supabase/discussions/4680) — Best-practice für Two-Hop-Joins (38).
+- [postgrest-js #197 – !inner für Filter über Embed](https://github.com/supabase/postgrest-js/issues/197) — Inner-Join-Modifier (38).
+
+### Supabase Multi-Tenant-Schema + RLS (Code-Session 37)
+- [Supabase Docs – Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security) — Pflicht-Aktivierung pro Tabelle (37).
+- [Supabase – Authorization via Row Level Security](https://supabase.com/features/row-level-security) — Pattern-Referenz (37).
+- [MakerKit – Supabase RLS Best Practices 2026](https://makerkit.dev/blog/tutorials/supabase-rls-best-practices) — Production-Patterns + Performance-Tipps (37).
+- [DesignRevision – Supabase RLS Guide: Policies That Actually Work](https://designrevision.com/blog/supabase-row-level-security) — Häufige Fallen (37).
+- [AntStack – Multi-Tenant Applications with RLS on Supabase](https://www.antstack.com/blog/multi-tenant-applications-with-rls-on-supabase-postgress/) — `tenant_id`-Spalte + Policy-Setup (37).
+- [Logto – Multi-tenancy implementation with PostgreSQL](https://blog.logto.io/implement-multi-tenancy) — Schema-vs-Row-basiert (37).
+
 ### § 5 DDG / Impressum-Pflichtangaben (Code-Session 36)
 - [IHK Chemnitz – Impressumspflicht (TMG/DDG)](https://www.ihk.de/chemnitz/recht-und-steuern/rechtsinformationen/internetrecht/pflichtangaben-im-internet-die-impressumspflicht-4401580) — Pflichtfelder + Zwei-Klick-Vorgabe (36).
 - [Rickert.law – Impressumspflicht nach § 5 TMG](https://rickert.law/impressumspflicht-nach-%C2%A7-5-tmg/) — Übergang TMG→DDG zum 14.05.2024 (36).

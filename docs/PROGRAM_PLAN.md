@@ -94,13 +94,51 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
 - 35: Supabase-Client-Skeleton + Database-Health-Check (read-only) ✅
 - 36: Plattform-Impressum + Datenschutz aus `LP_OWNER_*`-ENV ✅
   (Stammdaten leak-sicher per Konstruktion, Demo-Mode-Hinweis)
-- 37+: Schema-Entwurf (`businesses`, `services`, `leads`,
-  `consents`), erste Read-Pfade hinter Feature-Flag, Repository-
-  Layer abstrahiert localStorage + Supabase einheitlich.
-- 38+: Magic-Link-Auth via `@supabase/ssr`, Multi-Tenant-Bucket
-  pro Betrieb, Session-Bindung an `business_id`.
-- 40+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
-  durchziehen, Backup-Policy.
+- 37: `businesses`-Schema (Migration 0001) + Repository-Layer mit
+  Mock/Supabase-Resolver (`LP_DATA_SOURCE=...`) +
+  Health-Probe `businesses-table` ✅
+- 38: `services` + `reviews`-Tabellen (Migrationen 0002 + 0003),
+  Repository liefert per FK-Embed nested Daten (1 Roundtrip) ✅
+- 39: `faqs` + `leads`-Tabellen (Migrationen 0004 + 0005) inkl.
+  `consents`-Audit-Trail aus Code-Session 32 ✅ FAQ embed im
+  Repo, Leads mit asymmetrischer RLS (Insert-by-anon, Select
+  nur authenticated)
+- 40: Lead-Repository mit Insert-Pfad fürs Public-Form (mock +
+  supabase) ✅ — RLS-Falle gefangen via client-side ID + INSERT
+  ohne chained SELECT; 5-Kind-Error-Mapping (validation/rls/
+  constraint/network/unknown). Magic-Link-Auth wandert auf 41.
+- 41: `business_owners`-Tabelle (Migration 0006) + Owner-scoped
+  RLS-Policies an 5 Tabellen (Migration 0007) ✅ DB-Teil; SSR-
+  Auth-Infrastruktur wandert auf 42, UI auf 43 (atomar).
+- 42: `@supabase/ssr`-Setup (server + browser Clients), Magic-Link-
+  Route + Callback-Route, Middleware mit Session-Refresh ✅
+- 43: Login-UI + Account-Page (Magic-Link-Form mit aria-live-
+  Status, Browser-Client-Auth-Check) ✅. Geschützte Dashboard-
+  Routen folgen, sobald Multi-Tenant-Daten da sind.
+- 44: Public-Lead-Form auf `LeadRepository` umgestellt ✅.
+  `POST /api/leads` mit dual-write (localStorage als Sicherheitsnetz),
+  server-toleranter Submit (404 → silent local-only, 4xx/5xx →
+  visible local-fallback-Hinweis), 4-stufiges `SubmitResult`-Mapping
+  in `src/lib/lead-submit.ts`. Static-Pages-Build bleibt
+  unverändert via `pageExtensions`-Filter.
+- 45: Onboarding-Flow ✅. `/onboarding` Page + Form,
+  `POST /api/onboarding` mit Auth-Gate + Service-Role-Dual-Insert
+  (`businesses` + `business_owners`). Slug-Heuristik mit
+  Umlaut-Mapping vor NFKD, Apostrophe-Strip. Reservierte Slugs
+  Liste, 23505 → 409 mit klarer „Slug vergeben"-Meldung.
+  Kompensation: bei Owner-Insert-Fehler wird der businesses-Insert
+  rückgängig gemacht.
+- 46: Account-Page zeigt eigene Betriebe ✅. `/account` listet
+  jetzt nach erfolgreichem Login die Betriebe des Users via
+  `business_owners ⨝ businesses`-Embed. Pure Mapping-Schicht
+  `src/lib/account-businesses.ts` (~33 Asserts) normalisiert
+  defensiv beide PostgREST-Embed-Formen (Single-Object und
+  Array, weil supabase-js v2 konservativ als Array typisiert).
+  Cards mit Rolle/Tier/Publish-Badges, Empty-State CTA auf
+  `/onboarding`. Damit ist die End-to-End-Schleife geschlossen:
+  Login → Onboarding → Account → Dashboard.
+- 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
+  durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant
@@ -333,17 +371,68 @@ aktiven Session.
   - Status-History (letzte 7 Tage Budget-Verbrauch) für
     Auftraggeber-Reports.
   - Slack-/Email-Alert wenn `percentUsed > 80 %` an einem Tag.
-- **Database-Health erweitern** (aus Code-Session 35): aktuell
-  pingt der Health-Check nur die REST-Root-URL. Folge-Items:
-  - Lightweight `select count(*) from businesses limit 0`
-    sobald das Schema steht — testet auch PostgREST + RLS, nicht
-    nur TCP-Reachability.
+- ~~**Database-Health: schärferer Tabellen-Probe**~~
+  (Code-Session 37 ✅, `businesses-table`-Probe via
+  `select=id&limit=1`). Folge-Items:
   - Cache-Layer mit 30-Sekunden-TTL (Server-Cache), damit ein
     aggressiver Refresh-Klick nicht jedes Mal 1–2 s blockt.
   - **Auto-Pause-Detection**: Free-Tier-Projekte schlafen nach
     7 d Inaktivität. Health-Check sollte diesen Spezialfall
     erkennen (HTTP 404 + spezifischer Body) und im UI „Projekt
     pausiert — auf Restore klicken" anzeigen.
+- **Repository-Pfad-Switch im Dashboard sichtbar machen** (aus
+  Code-Session 37): aktuell zeigt der Health-Block nur, dass DB
+  „ok" ist. Sinnvoll wäre ein Badge „Datenquelle: mock | supabase",
+  damit der Auftraggeber unterscheiden kann, welche Daten gerade
+  am Public-Site-Output hängen.
+- **Seed-Skript für Demo-Daten** (aus Code-Session 37): sobald
+  die Migration läuft, müssen die 6 Demo-Betriebe in der Tabelle
+  landen, sonst zeigt `LP_DATA_SOURCE=supabase` eine leere
+  Public-Site. Skript: `supabase/seed.sql` mit `insert ... on
+  conflict (slug) do nothing` aus den Mock-Daten — muss nach
+  Code-Session 38 alle drei Tabellen abdecken (businesses,
+  services, reviews).
+- **Property-based-Test Schema↔Migration-Drift** (aus Code-Session 38):
+  Code-Session 38 fand einen Drift (package_tier-CHECK enthielt
+  englische Werte, Zod-Enum hat aber deutsche). Sinnvoll: ein
+  Test, der das TS-Enum gegen die SQL-CHECK-Constraint matcht
+  (z. B. SQL parsen oder beide aus einer Quelle generieren).
+- ~~**Public-Lead-Form auf LeadRepository umstellen**~~
+  (Code-Session 44 ✅, dual-write mit Server-Toleranz).
+  Folge-Items:
+  - **Dashboard-Lead-Read auf Supabase** (in Multi-Tenant-Session):
+    sobald die Dashboard-Liste aus `business_owners` × `leads`
+    speist, kann der dual-write-Pfad einseitig werden (nur Server).
+  - **Retry-Queue für `local-fallback`**: aktuell bleibt der Lead
+    im localStorage liegen. Optional: ein leichter Retry-Worker,
+    der bei nächster Online-Phase erneut versucht zu posten.
+- ~~**Onboarding-Flow** (Code-Session 45 ✅).~~ + ~~**Account-Page
+  mit eigenen Betrieben**~~ (Code-Session 46 ✅).
+  Folge-Items:
+  - **Slug-Live-Check**: ein optionaler `HEAD`/`exists`-Check auf
+    `/site/<slug>` bevor der Submit losgeht — fängt vergebene Slugs
+    schon im Form ab. Heute löst Postgres-Unique das, aber erst
+    nach dem Submit.
+  - **Onboarding-Wizard mehrstufig**: Adresse + Kontakt + Logo
+    optional als Schritt 2 nach dem Initial-Insert. Aktuell ist
+    `address` mit Platzhaltern gefüllt.
+  - **Dashboard-Read aus Supabase** (für Owner): aktuell zeigt
+    `/dashboard/[slug]/...` die Mock-Daten — auch wenn der User
+    in Supabase angelegt ist. Ziel: Dashboard liest via
+    `BusinessRepository.findBySlug` aus dem konfigurierten
+    Repository-Pfad (mock oder supabase), Owner-RLS aus 0007 trägt
+    die Auth-Schicht.
+  - **Multi-Member-Verwaltung**: `business_owners`-CRUD-UI für
+    den Owner (Editor/Viewer einladen, Rollen ändern, entfernen).
+  - **Default-Sicht-bei-genau-einem-Betrieb**: wenn User nur einen
+    Betrieb hat, automatisch nach Login auf
+    `/dashboard/<slug>` redirecten statt `/account`.
+- **Dependency-Sweep-Session** (aus Deep-Pass nach Session 40):
+  viele Major-Bumps stehen an: `next 15→16`, `react 19.0→19.2`,
+  `tailwindcss 3→4`, `typescript 5.7→6`, `zod 3→4`, `eslint 9→10`,
+  `lucide-react 0.469→1.11`, `@anthropic-ai/sdk 0.62→0.91`,
+  `openai 5→6`, `tailwind-merge 2→3`. Manche brechen
+  (zod-Peer-Dep der AI-SDKs!), eigene Maintenance-Session lohnt.
 - **Stale-`comingInSession`-Audit** (aus Light-Pass Session 35):
   Bronze-User sehen `comingInSession={11}` (Services) bzw.
   `={12}` (Leads), obwohl die Features längst gebaut sind — die

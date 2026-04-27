@@ -4947,3 +4947,700 @@ in einer `.env.local` (die ist in `.gitignore`).
 Repository-Layer). Damit zeigt `database.status` „ok" mit
 echten Tabellen-Calls statt nur REST-Root-Ping.
 
+---
+
+## Code-Session 37 – Erstes Supabase-Schema + Repository-Layer
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Erstes konkretes Tabellen-Schema (`businesses`, hybrid:
+Top-Level-Spalten + JSONB für geschachtelte Strukturen). RLS aktiv,
+Public-Read auf veröffentlichte Betriebe, Schreib-Policies
+explizit blockiert (kommen mit Auth in Session 40). Repository-
+Layer abstrahiert Mock vs. Supabase über ein schmales Interface
+(`findBySlug`, `listSlugs`, `listAll`); Resolver schaltet via
+`LP_DATA_SOURCE`-ENV. Database-Health pingt jetzt die
+`businesses`-Tabelle, wenn der Repo-Pfad auf Supabase steht — 404
+liefert eine klare „Migration fehlt"-Meldung statt nebulös
+„degraded".
+
+**Dateien**:
+- ✚ `supabase/migrations/0001_businesses.sql` — Tabelle, 3 Indizes,
+  `updated_at`-Trigger, RLS aktiv, Public-Read-Policy.
+- ✚ `docs/SUPABASE_SCHEMA.md` — Schema-Referenz, Migrations-
+  Workflow, Roadmap (0002–0007).
+- ✚ `src/core/database/repositories/business.ts` — `BusinessRepository`-
+  Interface, Mock-Impl (`createMockBusinessRepository`), Supabase-
+  Impl (`createSupabaseBusinessRepository`) mit Row→Schema-Mapping
+  und `BusinessSchema.parse` als Bollwerk gegen Schema-Drift.
+- ✚ `src/core/database/repositories/index.ts` — `resolveDataSource`,
+  `getBusinessRepository` mit Soft-Fallback (supabase + leere
+  ENV → mock + stderr-Hinweis, kein Crash).
+- 🔄 `src/core/database/health.ts` — neue Option `probe:
+  "rest-root" | "businesses-table"`, eigene URL- und Header-
+  Mappings, 404-Sonderfall mit Migrations-Hinweis.
+- 🔄 `src/app/api/ai/health/route.ts` — wählt automatisch den
+  schärferen Probe, wenn `LP_DATA_SOURCE=supabase`.
+- 🔄 `.env.production.example` — `LP_DATA_SOURCE=mock` (Default-
+  Switch) ergänzt.
+- ✚ `src/tests/business-repository.test.ts` (~30 Asserts):
+  Mock-Roundtrip (findBySlug, listSlugs, listAll, missing-slug),
+  Resolver-Switch (mock / supabase / soft-fallback mit
+  stderr-Capture), Health-Probe-businesses-table (200/401/404/
+  Default-rest-root).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **23/24 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Database-Health-Erweiterung), 2
+neue Folge-Items (Datenquellen-Badge im Dashboard, Seed-Skript
+für Demo-Daten). Session-Cluster im Meilenstein 4 von 35–40 auf
+35–41+ präzisiert.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase Multi-Tenant-
+Schema + RLS.
+
+**Manueller Schritt für den Auftraggeber** (sobald gewünscht):
+1. Supabase-Projekt anlegen, URL + anon-Key in Vercel-ENV
+   (`vercel env add SUPABASE_URL production` etc.).
+2. Migration einspielen: Dashboard → SQL Editor → Inhalt von
+   `supabase/migrations/0001_businesses.sql` einfügen → Run.
+3. (Optional) `LP_DATA_SOURCE=supabase` setzen → ab dann liest
+   die Public-Site aus Supabase. Solange die Tabelle leer ist,
+   zeigt `/demo` eine leere Liste — Seed kommt in einer der
+   nächsten Sessions.
+
+Solange diese Schritte nicht ausgeführt sind, bleibt alles wie
+vorher: Mock-Daten, kein Crash, `LP_DATA_SOURCE` defaultet auf
+`mock`.
+
+**Nächste Session**: Code-Session 38 — **Services + Reviews-
+Migrationen** (0002 + 0003) und Repository-Erweiterung. Public-
+Site bekommt damit alles, was sie für eine Vollanzeige braucht,
+optional aus DB.
+
+---
+
+## Code-Session 38 – services + reviews-Migrationen + FK-Embed
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Zwei weitere Tabellen (`services`, `reviews`) als FK-
+Children von `businesses`. Cascade-Delete, je eigene RLS-Policies
+mit `exists`-Sub-Query auf `businesses.is_published`. Repository
+lädt jetzt Stammdaten + Services + Reviews in **einem einzigen
+HTTP-Roundtrip** über PostgREST-Embedding (`select=*, services(*),
+reviews(*)`). Filter (inaktive Services, unveröffentlichte Reviews)
+wird sowohl SQL-seitig (RLS) als auch im TS-Mapper als
+Defense-in-Depth angewendet.
+
+**Drift-Befund**: Code-Session 37 hatte das `package_tier`-CHECK in
+englischer Form (`silver/platinum`), das Zod-Enum nutzt aber
+deutsche Begriffe (`silber/platin`). Mit Migration 0001-Fix
+korrigiert; neuer Plan-Item für Schema↔Migration-Drift-Test.
+
+**Dateien**:
+- ✚ `supabase/migrations/0002_services.sql` — Tabelle, FK auf
+  businesses(id) cascade, 3 Indizes (incl. partial-active und
+  partial-featured), updated_at-Trigger, RLS-Policy mit
+  `exists`-Sub-Query auf `is_published`.
+- ✚ `supabase/migrations/0003_reviews.sql` — Tabelle, FK cascade,
+  CHECK-Constraints (`rating 1..5`, `source in 'google','facebook',
+  'internal'`), 2 Indizes (1 Partial), Trigger, RLS analog.
+- 🔄 `supabase/migrations/0001_businesses.sql` — Drift-Fix:
+  `package_tier`-CHECK auf deutsche Werte korrigiert
+  (`'bronze','silber','gold','platin'`).
+- 🔄 `src/core/database/repositories/business.ts` — `BUSINESS_FULL_SELECT`
+  mit Embed `services(*), reviews(*)`. Neue Mapper `rowToService`
+  + `rowToReview`. `rowToBusiness` filtert `is_active=false` /
+  `is_published=false` defensiv und sortiert Services nach
+  `sort_order`. Test-Helper `__TEST_ONLY_rowToBusiness__` exportiert.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — neue Sektionen 0002 + 0003,
+  Embedding-Pattern beschrieben, Roadmap auf 0004+.
+- 🔄 `src/tests/business-repository.test.ts` (~40 Asserts statt
+  ~30): neuer Block „Row→Business-Mapping inkl. Embeds":
+  3 Services (1 inaktiv → wird gefiltert), 2 Reviews (1
+  unveröffentlicht → wird gefiltert), Sort-Order-Verhalten,
+  leere Embeds (RLS-blockiert) → leere Arrays.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **23/24 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (services + reviews-Schema),
+2 neue Items: erweitertes Seed-Skript (alle 3 Tabellen),
+Schema↔Migration-Drift-Test (Property-based gegen TS-Enum).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase FK-Embedding /
+nested select.
+
+**Manueller Schritt**: Migration 0002 + 0003 im Supabase-SQL-Editor
+ausführen (nach 0001). Idempotent — wiederholtes Ausführen tut
+nichts Schlimmes.
+
+**Nächste Session**: Code-Session 39 — **faqs + leads-Migrationen**
+(0004 + 0005) inkl. `consents`-Audit-Trail aus Code-Session 32.
+Damit ist das Schema komplett für die Public-Site-Vollanzeige.
+
+---
+
+## Code-Session 39 – faqs + leads-Migrationen (DSGVO-Consent-Audit)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Letzte zwei Tabellen für die Public-Site-Vollanzeige.
+`faqs` ist die direkte Schwester von `services`/`reviews` (read-only,
+public-on-published). `leads` hat **asymmetrische RLS**: anon darf
+INSERTen (für das Public-Form), aber nicht SELECTen — sonst könnte
+ein bösartiges Form-Skript fremde Anfragen abgreifen. DSGVO-Audit-
+Trail ist als `consent jsonb not null` mit CHECK-Constraint
+(`consent ? 'givenAt' AND consent ? 'policyVersion'`) verankert.
+FAQ-Embed im Repository.
+
+**Dateien**:
+- ✚ `supabase/migrations/0004_faqs.sql` — Tabelle, FK cascade,
+  2 Indizes (1 Partial), Trigger, RLS-Policy analog zu services.
+- ✚ `supabase/migrations/0005_leads.sql` — asymmetrische RLS:
+  INSERT-Policy für anon mit Pflicht-Consent + published-Betrieb-
+  Check, SELECT-Policy nur authenticated. Constraints:
+  `phone OR email`, `source` enum-CHECK (8 Werte), `status`
+  enum-CHECK (6 Werte), `consent ? 'givenAt' AND ? 'policyVersion'`.
+  FK auf `services(id)` mit `on delete set null` für
+  `requested_service_id`.
+- 🔄 `src/core/database/repositories/business.ts` — `BUSINESS_FULL_SELECT`
+  um `, faqs(*)` ergänzt; neue `FaqRow` + `rowToFaq`-Mapper;
+  Filter `is_active=false` + Sort nach `sort_order`.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Sektionen 0004 + 0005, RLS-Tabelle
+  für leads (Operation × Rolle), DSGVO-Pflichtform erklärt;
+  Roadmap auf 0006 + 0006a.
+- 🔄 `src/tests/business-repository.test.ts` (~45 Asserts statt
+  ~40): FAQ-Block (3 FAQs, 1 inaktiv → gefiltert, Sort-Order,
+  optionale category, leeres Embed → []).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **23/24 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Schema-Komplettierung Public-Site),
+Session 40 jetzt klarer geplant: `business_owners` + Magic-Link-
+Auth + Lead-Repository mit Insert-Pfad fürs Public-Form.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — DSGVO Consent-Audit-Trail
+in Postgres.
+
+**Manueller Schritt**: Migrationen 0004 + 0005 im Supabase-SQL-
+Editor nach 0001–0003 ausführen. Idempotent.
+
+**Nächste Session**: Code-Session 40 — **`business_owners`-Tabelle
++ Magic-Link-Auth** (Migration 0006) + **Lead-Repository mit
+Insert-Pfad** (Mock + Supabase). Damit kann das Public-Form
+optional in Supabase schreiben, und Multi-Tenant-Auth fängt an.
+
+---
+
+## Code-Session 40 – Lead-Repository mit Insert-Pfad
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Server-/Edge-tauglicher Schreibe-Pfad für das Public-
+Form. RLS-Falle aus Migration 0005 (anon darf nicht lesen) wird
+elegant umgangen: ID + Timestamps **client-side** generieren,
+INSERT **ohne** `.select()`-Chain ausführen, das selbst gebaute
+Lead-Objekt zurückgeben — inhaltsidentisch zur DB-Zeile.
+
+Magic-Link-Auth + `business_owners` waren ursprünglich für
+Session 40 geplant, sind aber zu groß für eine atomare Session
+und wandern auf Session 41 (eigener Auth-Sprint).
+
+**Dateien**:
+- ✚ `src/core/database/repositories/lead.ts` — `LeadRepository`-
+  Interface (`create(input): Lead`), `NewLeadInput`-Typ,
+  `LeadRepositoryError` mit 5 Kinds
+  (validation/rls/constraint/network/unknown), Mapper für
+  Postgres-SQLSTATE-Codes 23502/23503/23505/23514/42501 +
+  PostgREST PGRST116/PGRST301. Mock-Impl (in-memory bucket)
+  + Supabase-Impl. Test-Helper exportiert.
+- 🔄 `src/core/database/repositories/index.ts` — neuer
+  `getLeadRepository(env)`-Resolver, symmetrisch zum
+  Business-Resolver, mit Soft-Fallback bei halb-konfigurierter
+  ENV.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Lead-Repository-Sektion mit
+  RLS-Falle erklärt, Error-Mapping-Tabelle.
+- ✚ `src/tests/lead-repository.test.ts` (~30 Asserts):
+  buildLeadFromInput-Defaults, Validation-Errors (kein
+  phone/email, zu kurzer Name), Mock-Repo-Roundtrip, alle 5
+  SQLSTATE-Codes → kind, Privacy-Smoketest.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **24/25 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Lead-Repo + Insert), Session 41
+neu fokussiert (nur business_owners + Magic-Link, atomar). 2
+neue Plan-Items: Public-Lead-Form auf LeadRepository umstellen,
+Dependency-Sweep-Session (Major-Bumps).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase Insert +
+RLS-Falle.
+
+**state-refresh-light** (Session 40 ist 5er-Multiple, gleichzeitig
+20er-Boundary → Deep-Pass-Notiz):
+- Smoketest-Regression: 24/25 grün, industry-presets bleibt
+  Codex-#11.
+- Stale-Stub-Audit: 3 Treffer (services/leads/settings) —
+  bekannt aus Session 35, Codex-#12 sammelt das.
+- Codex-Backlog: 2 needs-review aktiv, kein Codex-Done seit
+  letztem Pass.
+- Bundle: 102 KB shared stabil.
+- **Deep-Pass `npm outdated`**: 17 Pakete mit Major-Updates
+  verfügbar (next 16, react 19.2, zod 4, tailwind 4, ts 6,
+  eslint 10, anthropic 0.91, openai 6, lucide 1.11, …). Nichts
+  Sicherheitskritisches. Eigene Sweep-Session lohnt — als
+  neues Plan-Item dokumentiert.
+
+**Nächste Session**: Code-Session 41 — **`business_owners`-Tabelle
++ Magic-Link-Auth via `@supabase/ssr`** (Migration 0006). Erste
+echte Multi-Tenant-Bindung; danach kann das Dashboard pro
+User die eigenen Leads sehen.
+
+---
+
+## Code-Session 41 – Multi-Tenant-Schema (business_owners + Owner-RLS)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: DB-Teil der Multi-Tenant-Bindung. M:N-Junction
+`business_owners` mit Rollen (owner/editor/viewer), zwei
+`security definer`-Helper (`is_business_owner`,
+`has_business_access`), Owner-scoped Policies an
+`businesses`/`services`/`reviews`/`faqs`/`leads`. SSR-Auth-
+Infrastruktur (`@supabase/ssr`) wandert auf Session 42, Login-UI
+auf Session 43 — bewusst atomar gesplittet.
+
+**Dateien**:
+- ✚ `supabase/migrations/0006_business_owners.sql` — Tabelle
+  (FK businesses + auth.users cascade, role-CHECK,
+  unique-Constraint), 2 Indizes, 2 SECURITY-DEFINER-Helper.
+  RLS auf business_owners selbst: 4 Policies (SELECT eigene,
+  INSERT-by-owner, UPDATE-by-owner, DELETE-by-owner-or-self).
+- ✚ `supabase/migrations/0007_owner_rls_policies.sql` —
+  Owner-scoped Policies an 5 Tabellen. businesses bekommt
+  UPDATE/DELETE/SELECT-with-drafts; services/reviews/faqs
+  bekommen full-CRUD-by-owner; leads bekommt SELECT (alle
+  Rollen via `has_business_access`), UPDATE (owner/editor),
+  DELETE (nur owner). Die "Allow authenticated read of all
+  leads (temp)"-Policy aus 0005 wird ersetzt.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Sektionen 0006 + 0007 mit
+  RLS-Operations-Matrix, Helper-Funktions-Doku, Henne-Ei-
+  Hinweis (businesses-INSERT bleibt service-role-only).
+
+**Verifikation**: typecheck ✅, lint ✅. Keine TS-Änderungen,
+deshalb Builds + Smoketests unverändert grün (24/25, industry-
+presets pre-existing red, Codex #11). Bundle: shared 102 KB
+unverändert.
+
+**Roadmap**: 1 Item abgehakt (Multi-Tenant-DB-Teil), Session
+42 + 43 explizit ausgesplittet (SSR-Setup, dann UI).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase Multi-Tenant-
+Owner + Helper-Functions.
+
+**Manueller Schritt**: Migrationen 0006 + 0007 im Supabase-SQL-
+Editor nach 0001–0005 ausführen. Idempotent — wiederholtes
+Ausführen ist sicher.
+
+Wichtig: solange `business_owners` leer ist (Magic-Link-Auth
+folgt in 42), ändert sich für anonyme Public-Site-Besucher
+nichts. Public-Read-Policies aus 0001–0004 bleiben aktiv.
+
+**Nächste Session**: Code-Session 42 — **`@supabase/ssr`-Setup +
+Magic-Link-Login**. Server- und Browser-Clients, `/api/auth/magic-
+link`-Route, `/api/auth/callback`-Route. Login-UI folgt in 43.
+
+---
+
+## Code-Session 42 – @supabase/ssr-Setup + Magic-Link-Routes
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Auth-Infrastruktur steht. Server-Client (Cookie-basiert,
+`auth.getUser()` statt `getSession()` — letzteres wäre spoof-bar),
+Browser-Client als Singleton, Middleware mit Session-Refresh,
+zwei API-Routen (Magic-Link + Callback). Open-Redirect-Schutz
+auf beiden Routen via SAFE_PATH-Regex. Kein User-Enumeration-Leak
+(Magic-Link antwortet immer mit derselben 200-Message). Login-UI
+folgt in Session 43 — bewusst atomar gesplittet.
+
+**Dateien**:
+- ⬆️ `package.json` — `@supabase/ssr@^0.10`.
+- 🔄 `src/core/database/client.ts` — `pickFirst`-Helper liest
+  `NEXT_PUBLIC_SUPABASE_*` mit Fallback auf `SUPABASE_*`. Whitespace-
+  only zählt als leer und fällt durch.
+- ✚ `src/core/database/supabase-server.ts` — `createServerSupabaseClient`
+  mit Next.js `cookies()`-Handler, try/catch um `setAll` (Server
+  Components dürfen nicht setzen), `getCurrentUser` via
+  `auth.getUser()`.
+- ✚ `src/core/database/supabase-browser.ts` — Singleton-
+  Browser-Client, liest nur `NEXT_PUBLIC_*`.
+- ✚ `middleware.ts` (Repo-Root) — Session-Refresh auf jedem
+  Request, No-Op falls ENV unvollständig. Matcher schließt
+  Static-Assets aus.
+- ✚ `src/app/api/auth/magic-link/route.ts` — POST `{email,
+  redirectTo?}` → `signInWithOtp` mit `emailRedirectTo` auf
+  Callback-URL inkl. `next`-Param. Email-Regex + SAFE_PATH-Regex.
+  Antwortet immer mit derselben Erfolgs-Message
+  (User-Enumeration-Schutz). 503 wenn ENV nicht konfiguriert.
+- ✚ `src/app/api/auth/callback/route.ts` — GET `?code=...&next=...`
+  → `exchangeCodeForSession`. Open-Redirect-Schutz via
+  SAFE_PATH-Regex. Bei Fehler redirect auf `/login?error=...`.
+- 🔄 `.env.production.example` — `NEXT_PUBLIC_SUPABASE_*` als
+  kanonische Variante, `SUPABASE_*` als Legacy-Fallback,
+  `SUPABASE_SERVICE_ROLE_KEY` für Onboarding-Pfade.
+- 🔄 `docs/DEPLOYMENT.md` — Vercel-ENV-Block aktualisiert.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — neue „SSR-Auth-Stack"-Sektion
+  mit Routes-Übersicht.
+- ✚ `src/tests/auth-magic-link.test.ts` (~25 Asserts):
+  ENV-Fallback-Kette mit NEXT_PUBLIC_-Vorrang, Whitespace-only
+  fällt durch, EMAIL_RE-Edge-Cases, SAFE_PATH-Regex (Open-Redirect-
+  Vektoren wie `//evil.com`, `https://evil.com`, Query-Strings,
+  URL-Encoded-Slashes alle abgelehnt).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **25/26 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). 7 API-Routen sichtbar (`/api/auth/{login,logout,me,
+magic-link,callback}`, `/api/ai/{generate,health}`). Bundle:
+shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (SSR-Auth-Infrastruktur), Session 43
+fokussiert auf UI-Wiring.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — @supabase/ssr +
+Next.js 15 Magic-Link.
+
+**Manueller Schritt für den Auftraggeber** (sobald Magic-Link
+scharf genutzt werden soll):
+1. Supabase-Dashboard → Auth → URL Configuration: `Site URL` auf
+   die Vercel-Production-URL setzen, plus Vercel-Preview-URL als
+   `Additional Redirect URL` hinzufügen.
+2. Auth → Email Templates → Magic Link Template prüfen (Sprache,
+   Branding).
+3. `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   in Vercel-ENV setzen.
+4. Migrationen 0001–0007 müssen bereits gelaufen sein.
+
+**Nächste Session**: Code-Session 43 — **Login-UI +
+Dashboard-Auth-Wiring**. `/login`-Page mit Magic-Link-Form,
+`/dashboard`-Routen auf `getCurrentUser()` umstellen, Logout-
+Button, Session-State-UI.
+
+---
+
+## Code-Session 43 – Login-UI + Account-Page (Magic-Link)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: User kann jetzt Magic-Link anfordern und sieht den
+Login-Status. `/login` (static-prerenderable) plus `/account`
+(client-side Auth-Check, vier Zustände). Status-Mapping als pure
+Helper-Funktion extrahiert (testbar). aria-live-Region für
+Screenreader-Feedback. Dashboard-Wiring kommt erst, wenn echte
+Multi-Tenant-Daten da sind — sonst doppelt-Arbeit.
+
+**Dateien**:
+- ✚ `src/lib/auth-status.ts` — pure Helper: `IDLE_STATUS`,
+  `SENDING_STATUS`, `SUCCESS_STATUS`-Konstanten;
+  `statusFromApiResponse(status, body)` mappt 503/400/5xx auf
+  User-Messages (mit Sonderfall `supabase_not_configured` →
+  Demo-Mode-Hinweis statt technischer 503);
+  `statusFromNetworkError(err)` für fetch-failures;
+  `looksLikeEmail(input)` für Submit-Button-Enable.
+- ✚ `src/tests/auth-status.test.ts` (~30 Asserts):
+  Status-Konstanten, alle Mapping-Pfade (503-special / generic-503
+  / 400-invalid_email / 400-other / 401 / 5xx / exotische Codes),
+  Netzwerk-Errors mit + ohne Error-Objekt, looksLikeEmail-
+  Edge-Cases.
+- ✚ `src/app/login/login-form.tsx` — Client Component, fetched
+  POST `/api/auth/magic-link`. aria-live="polite" + aria-atomic
+  auf der Status-Region. Submit-Button erst aktiv, wenn
+  `looksLikeEmail(email)` true ist.
+- ✚ `src/app/login/error-banner.tsx` — Client Component,
+  `useSearchParams` in `<Suspense>`, vermeidet `await
+  searchParams`-Pattern (würde Static-Export brechen). Maps
+  `?error=missing_code|auth_not_configured|...` auf User-Texte.
+- ✚ `src/app/login/page.tsx` — Server Component, statisch.
+  Headline + LoginForm + Demo-/Datenschutz-/Impressum-Links.
+- ✚ `src/app/account/page.tsx` — Client Component (4 Zustände:
+  loading, authed, guest, unconfigured). Holt User via
+  `getBrowserSupabaseClient().auth.getUser()`, signOut-Button,
+  Demo-Mode-Karte falls ENV nicht gesetzt.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **26/27 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). `/login` + `/account` beide ○ (static-prerendered),
+Pages-kompatibel. Bundle: `/account` 64 kB page-bundle wegen
+`@supabase/supabase-js`-Import (one-off, nur beim Account-Besuch
+relevant). Shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Login-UI). Footer-Link auf
+`/account` + Dashboard-Wiring wandern auf eine spätere Session,
+sobald Multi-Tenant-Daten existieren.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Magic-Link UX + a11y.
+
+**Manueller Test (sobald Auth-ENV gesetzt)**:
+1. `npm run dev`, dann `/login` öffnen.
+2. E-Mail eingeben, „Login-Link senden".
+3. Erfolgs-Card erscheint.
+4. Mailbox öffnen, Link klicken → wird auf `/account` umgeleitet,
+   E-Mail + User-ID sichtbar.
+5. „Abmelden" → Redirect zurück nach `/login`.
+
+Auf der Static-Pages-Vorschau ohne API-Routen:
+- `/login` zeigt das Form, Submit liefert „Login-Link konnte
+  nicht gesendet werden" (404 → fetch-failure → Demo-Mode-Hinweis).
+- `/account` zeigt direkt die Demo-Mode-Karte.
+
+**Nächste Session**: offen — natürliche Kandidaten:
+1. **Public-Lead-Form auf LeadRepository umstellen** (verbindet
+   Session 40 mit der UI; Form schreibt optional nach Supabase).
+2. **Dependency-Sweep** (17 Major-Bumps angesammelt).
+3. **Onboarding-Flow** (initialer business_owner-Insert per
+   Service-Role nach erstem Login).
+
+---
+
+## Code-Session 44 – Public-Lead-Form auf LeadRepository (dual-write)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Schließt den Kreis aus Session 40. Das Public-Form
+schreibt jetzt parallel nach localStorage (sync, Sicherheitsnetz)
+**und** an `POST /api/leads`. Der Server-Pfad nutzt das schon
+gebaute `LeadRepository` und respektiert die anon-INSERT-RLS aus
+Migration 0005.
+
+Server-tolerant: jeder Server-Fehler (404 in der Static-Pages-
+Vorschau, 4xx/5xx auf Vercel) endet trotzdem als „Anfrage
+gesendet" für den User. Bei echtem `local-fallback` (Server warf,
+localStorage hat geklappt) erscheint dezent ein Hinweis-Banner.
+Bei `local-only` (Static-Pages, API gibt's nicht) bleibt es
+silent — das ist der erwartete Demo-Zustand.
+
+**Dateien**:
+- ✚ `src/app/api/leads/route.ts` — POST. Body wird leicht
+  vorvalidiert (Pflicht-Top-Level-Felder), dann an
+  `getLeadRepository().create()` durchgereicht. Mappt
+  `LeadRepositoryError.kind` auf HTTP-Status (validation→400,
+  rls→403, constraint→422, network→502, sonst 500).
+- ✚ `src/lib/lead-submit.ts` — pure Helper. `submitLead` schreibt
+  zuerst sync localStorage, dann fetch. 4-stufiges
+  `SubmitResult`-Mapping (server / local-only / local-fallback /
+  fail). `userHintForResult` liefert User-sichtbaren Text oder
+  `null` für die Fälle, in denen nichts kommuniziert werden muss.
+- ✚ `src/tests/lead-submit.test.ts` (~30 Asserts): alle 4
+  Result-Pfade, dazu die Edge-Cases:
+  - 200 ohne JSON-Body → server mit leadId="(unbekannt)"
+  - 403 RLS → local-fallback, RLS-Message bleibt sichtbar
+  - fetch wirft → local-fallback (offline-Pfad)
+  - skipServer-Flag (Tests / explizites Opt-Out)
+  - localBackup-Flag bei server-OK + local-fail
+  - Body-Capture: ServerSubmitInput-Shape kommt unverändert beim
+    Server an
+- 🔄 `src/components/public-site/public-lead-form.tsx` —
+  `buildLead` aufgespalten in `buildSubmissions` (zwei
+  Repräsentationen: localBackup mit client-side ID +
+  serverInput-Shape für die API). `handleSubmit` wird async,
+  ruft `submitLead`. Neuer State `submitNotice` zeigt im
+  Erfolgs-Block den `local-fallback`-Hinweis. `handleReset`
+  räumt auch die Notice ab.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **27/28 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). 8 API-Routen sichtbar im SSR-Build (`/api/leads` neu).
+Static-Build hat `/api/leads` korrekt nicht — `pageExtensions`-
+Filter greift. Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Lead-Form-Wiring), 2 neue
+Folge-Items: Dashboard-Lead-Read auf Supabase (in
+Multi-Tenant-Session), Retry-Queue für `local-fallback`.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Form-Submit +
+Offline-Fallback.
+
+**Manueller Test**:
+- Static-Pages-Vorschau: Form submitten → success-Block ohne
+  Notice. Gleiche UX wie vorher.
+- Vercel + `LP_DATA_SOURCE=supabase`: Form submitten → Lead
+  landet in der Supabase-Tabelle (sichtbar im SQL-Editor),
+  parallel im localStorage (Demo-Dashboard zeigt ihn).
+- Vercel mit Supabase down: success-Block + dezenter Hinweis
+  „Wir haben Ihre Anfrage gespeichert, Versand läuft …" —
+  localStorage hat den Lead.
+
+**Nächste Session**: ich nehme **Code-Session 45 = Onboarding-
+Flow**. Begründung: jetzt, wo Auth-Stack (42/43) und Lead-Pfad
+(44) stehen, ist der nächste fehlende Baustein zum nutzbaren
+Produkt der „post-Login-Pfad", der einem neu eingeloggten User
+seinen ersten Betrieb anlegt (initialer `business_owners`-Insert
+via service-role + erste `businesses`-Zeile). Ohne diesen Schritt
+sieht ein eingeloggter User aktuell nichts Eigenes. Vor
+Dependency-Sweep, weil der Sweep eine reine Wartungs-Session ist
+und kein User-Wert generiert — Onboarding schon.
+
+---
+
+## Code-Session 45 – Onboarding-Flow (Service-Role-Dual-Insert)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Post-Login-Pfad für neue User. `/onboarding` zeigt ein
+Form (Slug, Name, Branche, Theme, Paket, Slogan, Beschreibung).
+Der Server-Pfad legt parallel `businesses` + `business_owners`
+mit Service-Role an — bypasst die RLS aus Migration 0007 für
+den Henne-Ei-Spezialfall (kein Owner = kein Insert-Berechtigter).
+Bei Owner-Insert-Fehler kompensiert der Server mit einem DELETE
+auf den businesses-Insert, damit keine waisen Betriebe
+zurückbleiben.
+
+**Dateien**:
+- ⬆️ `package.json` — `server-only@^0.0.1`. Statischer Build-Bruch,
+  falls Client Component den Service-Role-Client importiert.
+- ✚ `src/core/database/supabase-service.ts` — `getServiceRoleClient`
+  Singleton, `auth.persistSession/autoRefreshToken/detectSessionInUrl`
+  alle off. `import "server-only"`-Schutz. `isServiceRoleConfigured`
+  als Pure-Helper.
+- ✚ `src/lib/onboarding-validate.ts` — `validateOnboarding(input)`
+  liefert field-Errors oder validen Output. Slug-Heuristik:
+  Umlaut-Mapping (ä→ae, ö→oe, ü→ue, ß→ss) **vor** NFKD, sonst
+  spaltet NFKD `ü` und der Strip macht `u` daraus. Apostrophe-
+  Strip vor dem Bindestrich-Replace, sodass „Müller's" zu
+  „muellers" wird (nicht „mueller-s"). `RESERVED_SLUGS`-Liste
+  für System-Pfade.
+- ✚ `src/tests/onboarding-validate.test.ts` (~35 Asserts):
+  alle Pflicht-Felder, Slug-Edge-Cases (Umlaute, Whitespace,
+  Bindestrich-Anfang/Ende), Industry/Theme/Tier-Whitelist
+  (englisches `silver` wird abgelehnt — Enum ist deutsch),
+  Slug-Heuristik mit Umlauten/Akzenten/Apostroph/Doppel-
+  Bindestrichen/ß, RESERVED_SLUGS.
+- ✚ `src/core/database/repositories/onboarding.ts` —
+  `createBusinessForUser(userId, validInput)`. Sequenz: businesses-
+  insert → owner-insert → bei Fehler im 2. Schritt: business
+  wieder löschen (Best-effort-Kompensation). Mappt Postgres
+  23505 → `OnboardingError.kind="slug_taken"`, andere 23xxx →
+  `constraint`.
+- ✚ `src/app/api/onboarding/route.ts` — POST. Auth-Gate via
+  `getCurrentUser()`. Light-Validation, dann Pure-`validateOnboarding`,
+  dann Reserved-Slug-Check, dann Repository-Call.
+  HTTP-Mapping: not_configured→503, slug_taken→409, constraint→422,
+  validation→400, sonst 500.
+- ✚ `src/app/onboarding/onboarding-form.tsx` — Client Component.
+  Live-Slug-Vorschlag aus dem Namen mit Auto-Folgen (solange
+  Slug-Feld leer oder dem letzten Vorschlag entspricht).
+  Server-fieldErrors werden aufs Form gemappt. Erfolg →
+  Success-Card + Redirect auf `/account` nach 1.2s. Branchen-,
+  Theme-, Paket-Labels deutsch lokalisiert.
+- ✚ `src/app/onboarding/page.tsx` — Server Component, statisch
+  prerenderable. Nur Wrapper + Links auf `/account` und `/login`.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **28/29 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). `/onboarding` static-prerendered (○), `/api/onboarding`
+ƒ im SSR-Build. Bundle: shared 102 KB unverändert, `/onboarding`
++ form ca. 5.9 kB Page-Bundle.
+
+**Roadmap**: 1 Item abgehakt (Onboarding-Flow). 3 neue Folge-
+Items: Account-Page mit eigenen Betrieben, Slug-Live-Check vor
+Submit, Onboarding-Wizard mehrstufig (Adresse + Logo).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Service-Role +
+Onboarding-Pattern.
+
+**state-refresh-light** (Session 45 ist 5er-Multiple):
+- Smoketest-Regression: 28/29 grün, industry-presets bleibt
+  Codex-#11.
+- Stale-Stub-Audit: 3 Treffer (services/leads/settings) —
+  bekannt, Codex-#12 sammelt.
+- Codex-Backlog: 2 needs-review aktiv, kein Codex-Done.
+- Bundle: 102 KB shared stabil.
+
+**Manueller Test (sobald Auth + Service-Role-ENV gesetzt)**:
+1. Magic-Link-Login auf `/login`.
+2. `/onboarding` öffnen.
+3. Form ausfüllen → Submit.
+4. Erfolgs-Card mit Slug, Auto-Redirect zu `/account`.
+5. Supabase-Dashboard: `businesses` hat eine neue Zeile,
+   `business_owners` hat (user_id, business_id, role='owner').
+
+**Nächste Session**: Code-Session 46 = **Account-Page zeigt
+eigene Betriebe**. Read-Pfad über
+`business_owners` ⨝ `businesses`, Liste der Betriebe pro
+eingeloggtem User. Damit ist die End-to-End-Schleife für einen
+Single-Tenant-User geschlossen: Login → Onboarding → Account
+sieht den Betrieb → Klick → Dashboard. Vor dem Dashboard-
+Multi-Tenant-Wiring, weil das eine eigene große Session ist;
+Account-Page ist ein kleiner, abgeschlossener Schritt.
+
+---
+
+## Code-Session 46 – Account-Page zeigt eigene Betriebe
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: End-to-End-Schleife für einen eingeloggten User
+geschlossen. `/account` lädt nach Auth die Betriebe des Users
+via `business_owners ⨝ businesses`-Embed (RLS-gefiltert),
+zeigt sie als Cards mit Rolle/Tier/Publish-Badge und CTAs auf
+Dashboard + Public-Site. Empty-State führt prominent zu
+`/onboarding`. Pure Mapping-Schicht ausgelagert (testbar) mit
+Defense-in-Depth gegen die supabase-js-v2-FK-Embed-Type-Inferenz
+(SDK liefert konservativ als Array, PostgREST liefert
+many-to-one als Single-Object — Mapper normalisiert).
+
+**Dateien**:
+- ✚ `src/lib/account-businesses.ts` — `BusinessMembership`-Typ,
+  `mapMembershipRow` (`unwrapEmbed`-Helper für Array-vs-Object),
+  `fetchBusinessesForUser(client, userId)`, `sortMemberships`
+  (Owner zuerst, dann alphabetisch nach Name auf de-Locale),
+  deutsche `roleLabel`/`tierLabel`-Helper.
+- ✚ `src/tests/account-businesses.test.ts` (~33 Asserts):
+  voll-valide Row, alle Defekt-Pfade (kein Embed, leeres Array,
+  unbekannte Rolle, leere Pflicht-Felder), Array-Embed (für
+  supabase-js-v2-Verhalten), Single-Object-Embed, leeres Array,
+  alle 3 Rollen, Sort-Order (Owner→Editor→Viewer + alphabetisch),
+  Sort-Stabilität + No-Mutation, alle 4 Tier-Labels, alle 3
+  Role-Labels, Output-Key-Whitelist (kein Leak von zusätzlichen
+  Feldern).
+- 🔄 `src/app/account/page.tsx` — neuer `BusinessesState`
+  (`idle`/`loading`/`ready`/`error`), zweiter `useEffect`
+  startet Fetch sobald User-State auf `authed` springt.
+  `<BusinessCard>`-Subkomponente mit Rolle-Badge (Icon + Farbe
+  pro Rolle), Tier-Badge, Publish-Badge (nur sichtbar wenn
+  `isPublished=false`). Empty-State-Card mit Sparkles-Icon
+  und Onboarding-CTA.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **29/30 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). `/account` weiterhin ○ static-prerendered, Bundle
+66 kB (war 64 kB — +2 kB für Mapping/Icons). Shared 102 KB
+unverändert.
+
+**Roadmap**: 1 Item abgehakt (Account-Page mit Betrieben). 4
+neue Folge-Items: Slug-Live-Check vor Submit, Onboarding-Wizard
+mehrstufig, Dashboard-Read aus Supabase, Multi-Member-Verwaltung,
+Default-Redirect bei genau einem Betrieb.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase-js v2
+FK-Embed Type-Inferenz.
+
+**Manueller Test** (mit Auth + Service-Role + ENVs):
+1. Login → `/onboarding` → Betrieb anlegen → Auto-Redirect
+   nach 1.2s zu `/account`.
+2. `/account` zeigt jetzt den neu angelegten Betrieb als Card
+   mit „Inhaber:in"-Badge.
+3. Klick auf „Public-Site" → öffnet `/site/<slug>` (zeigt aber
+   noch leere Daten, weil services/reviews/faqs noch nicht aus
+   DB gelesen werden — ist eigene Session 47+).
+4. Klick auf „Dashboard öffnen" → öffnet `/dashboard/<slug>`
+   (zeigt aktuell die Mock-Variante mit der gleichen Slug-Logik;
+   Read aus DB folgt in Session 47).
+5. Logout → zurück nach `/login`.
+
+**Nächste Session**: Code-Session 47 = **Dashboard-Read aus
+Supabase**. Sobald der `BusinessRepository`-Resolver auf
+`supabase` steht, liest auch `/dashboard/[slug]/...` und
+`/site/[slug]/...` aus der DB statt Mock — RLS aus 0007 trägt
+die Owner-Sichtbarkeit. Damit kann ein User seinen echten
+Betrieb sehen, nicht nur einen Demo-Mock. Vor Storage und Member-
+Verwaltung, weil Read der direkte Folge-Schritt aus 46 ist.
+

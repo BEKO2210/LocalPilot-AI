@@ -18,11 +18,37 @@ export interface SupabaseEnv {
   readonly anonKey?: string | undefined;
 }
 
+/**
+ * Liest die Supabase-ENV mit Fallback-Kette:
+ *   `NEXT_PUBLIC_SUPABASE_URL` → `SUPABASE_URL`
+ *   `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `SUPABASE_ANON_KEY`
+ *
+ * `NEXT_PUBLIC_*` ist auf dem Browser sichtbar (Next.js inlined die
+ * Werte in Client-Bundles). Der anon-Key ist by-design öffentlich,
+ * deshalb ist das ok — die echte Sicherheit kommt über RLS.
+ *
+ * Server-Code akzeptiert beide Varianten, damit alte Setups weiter
+ * funktionieren.
+ */
+function pickFirst(
+  env: Readonly<Record<string, string | undefined>>,
+  keys: readonly string[],
+): string | undefined {
+  for (const key of keys) {
+    const v = env[key]?.trim();
+    if (v && v.length > 0) return v;
+  }
+  return undefined;
+}
+
 export function readSupabaseEnv(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): SupabaseEnv {
-  const url = env["SUPABASE_URL"]?.trim();
-  const anonKey = env["SUPABASE_ANON_KEY"]?.trim();
+  const url = pickFirst(env, ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL"]);
+  const anonKey = pickFirst(env, [
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_ANON_KEY",
+  ]);
   return {
     ...(url ? { url } : {}),
     ...(anonKey ? { anonKey } : {}),

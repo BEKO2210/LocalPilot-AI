@@ -15,6 +15,7 @@
     "@anthropic-ai/sdk": "^0.62.0",
     "@google/genai": "^1.50.1",
     "@hookform/resolvers": "3.10.0",
+    "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.104.1",
     "clsx": "2.1.1",
     "lucide-react": "0.469.0",
@@ -23,6 +24,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-hook-form": "7.54.2",
+    "server-only": "^0.0.1",
     "tailwind-merge": "2.6.0",
     "zod": "3.24.1"
   },
