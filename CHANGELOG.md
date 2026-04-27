@@ -7,15 +7,69 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Code-Sessions 59+: Service-Bilder beim Slug-Wechsel mit-
-  migrieren (analog Session 57, aber für `services.image_url`
-  pro Row), Live-Provider-Variante für Reviews/Social-Panels
-  (Auth-Bearer + `/api/ai/generate`), Direkt-Posten zu
-  Buffer/Hootsuite/Meta-Graph, Multi-Member-Verwaltung,
-  Default-Redirect bei einem Betrieb, Retry-Queue für Lead-
-  `local-fallback`, Edge-Runtime-Migration, CSRF-Schutz,
-  HTML-Sanitize-Whitelist, Impressum-Editor pro Betrieb,
-  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test.
+- Code-Sessions 60+: Light-Pass (5er-Multiple), Live-Provider-
+  Variante für Reviews/Social-Panels (Auth-Bearer + `/api/ai/
+  generate`), Direkt-Posten zu Buffer/Hootsuite/Meta-Graph,
+  Multi-Member-Verwaltung, Default-Redirect bei einem Betrieb,
+  Retry-Queue für Lead-`local-fallback`, Edge-Runtime-
+  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
+  Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
+  Schema↔Migration-Drift-Test.
+
+## [0.16.33] – Code-Session 59 – 2026-04-27
+
+Service-Bilder beim Slug-Wechsel mit-migrieren. Pattern aus
+Session 57 (`storage.move()` + URL-Update) wird jetzt auch
+auf `services.image_url` pro Row angewendet. Damit ist die
+Storage-Hygiene-Lücke aus Session 58 geschlossen — Slug-
+Rename behält **alle** Public-Site-relevanten Bilder
+(Logo, Cover, Service-Bilder) intakt.
+
+- 🔄 `src/app/api/businesses/[slug]/settings/route.ts`:
+  Nach dem Logo/Cover-Move-Block (Session 57) ein zweiter
+  Block. SELECT `id, image_url` aus `services` WHERE
+  `business_id = X AND image_url IS NOT NULL`. Pro Row
+  parallel via `Promise.all`:
+  `extractStoragePath` → `rewritePathPrefix` →
+  `moveStoragePath` → `buildPublicUrl`. URL-Patches
+  anschließend in einem zweiten parallel `Promise.all`-
+  Block einzeln per `UPDATE services SET image_url=? WHERE
+  id=?` zurück in die DB. supabase-js v2 hat keinen native
+  Bulk-Update mit unterschiedlichen Werten pro Row — pro-
+  Row-UPDATE ist bei realistic 5–30 Services pro Business
+  akzeptabel und vermeidet Raw-SQL/RPC-Komplexität. Move-
+  Failure setzt `image_url` auf `null` (kein 404-Bild).
+  DB-Errors werden geloggt, blockieren aber nicht (Slug-
+  Wechsel selbst ist bereits committed). Antwort um
+  `serviceImagesMoved` + `serviceImagesFailed` erweitert.
+- 🔄 `src/lib/business-settings.ts`: `SettingsUpdateResult.server`
+  um optionale `serviceImagesMoved`/`serviceImagesFailed`
+  ergänzt; `ApiSuccessBody` parst die Counts. Rückwärts-
+  kompatibel — kein Bestandstest betroffen.
+
+37/38 Smoketests grün (industry-presets pre-existing red,
+Codex #11). typecheck ✅, lint ✅, beide Builds ✅. Bundle
+102 KB shared unverändert.
+
+🛣️ Roadmap: Storage-Hygiene-Stack ist jetzt **vollständig
+symmetrisch**: Upload (51 + 58), DELETE-Cleanup (56),
+Slug-Wechsel-Move für Logo/Cover (57) und Service-Bilder
+(59). Nächster sinnvoller Block ist Session 60 als 5er-
+Multiple mit Light-Pass + Recap.
+
+**Status-Update**: ~92 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Editor + Storage-Hygiene komplett.
+Verbleibend: Live-Provider-Switch, Custom-Domain, Sentry,
+Lighthouse-CI, Multi-Member-Verwaltung.
+
+**Manueller Test**: Dashboard → „Einstellungen" → Slug
+ändern (Service-Liste enthält 1+ Service mit hochgeladenem
+Bild) → Speichern. Mit aktivem Supabase + Service-Role:
+Response zeigt `imagesMoved` (Logo+Cover) +
+`serviceImagesMoved` (pro Service mit Bild). Public-Site
+unter neuem Slug zeigt **alle** Bilder unverändert.
+
+## [0.16.32] – Code-Session 58 – 2026-04-27
 
 ## [0.16.32] – Code-Session 58 – 2026-04-27
 

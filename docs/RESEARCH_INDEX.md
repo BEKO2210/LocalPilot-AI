@@ -105,6 +105,12 @@
 - [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
 - [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
 
+### Bulk-Update mit unterschiedlichen Werten pro Row (Code-Session 59)
+- [supabase/postgrest-js #174 – Support bulk update](https://github.com/supabase/postgrest-js/issues/174) — Native Bulk-Update existiert 2026 nicht; pro-Row-UPDATE oder RPC sind die zwei sauberen Wege (59).
+- [supabase Discussion #15744 – RPC to update multiple rows](https://github.com/orgs/supabase/discussions/15744) — RPC für >>100 Rows; bei kleiner Skala overkill (59).
+- [Supabase JS – update](https://supabase.com/docs/reference/javascript/update) — Standard-Update mit `.eq("id", x)` ist atomic pro Row (59).
+- [Restack – Supabase Batch Update Guide](https://www.restack.io/docs/supabase-knowledge-supabase-batch-update-guide) — Praxis-Beispiel mit `Promise.all` (59).
+
 ### File-Upload-UX-Pattern (Code-Session 58)
 - [MUI – Image List Component](https://mui.com/material-ui/react-image-list/) — Standard-Pattern „Bild pro Card" mit Vorschau-Tile + Replace-Button (58).
 - [Eleken – File Upload UI Tips](https://www.eleken.co/blog-posts/file-upload-ui) — Klare Dropzone, Format-Hint, Replace-Action im selben Modul (58).

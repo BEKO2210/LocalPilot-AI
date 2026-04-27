@@ -6726,3 +6726,114 @@ Update aktualisiert. Klein (~30 Zeilen Settings-Route +
 ~5 Asserts), aber sauber abgrenzbar — schließt die
 Storage-Hygiene-Lücke aus 58.
 
+## Code-Session 59 – Service-Bilder beim Slug-Wechsel mit-migrieren
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Hygiene
+
+**Was**: Bei Slug-Rename via `PATCH /api/businesses/<slug>/
+settings` werden ab sofort auch Service-Bilder (`<old-slug>/
+services/<id>.<ext>`) auf den neuen Slug-Prefix gemoved und
+ihre `services.image_url`-Werte aktualisiert. Schließt die
+Hygiene-Lücke aus Session 58 — vorher wären Service-Bilder
+nach einem Slug-Wechsel als Waisen unter dem alten
+Slug-Prefix verblieben, mit broken-image-Tags auf der
+Public-Site.
+
+**Architektur-Entscheidung — pro-Row-UPDATE in `Promise.all`**:
+WebSearch bestätigte: supabase-js v2 hat keinen native Bulk-
+Update mit unterschiedlichen Werten pro Row
+([postgrest-js #174](https://github.com/supabase/postgrest-js/issues/174)).
+Optionen wären (a) Raw-SQL über RPC, (b) `upsert` mit
+Partial-Rows, (c) pro-Row-UPDATE in `Promise.all`. (b) hätte
+NOT-NULL-Constraint-Probleme im (theoretischen) INSERT-Pfad.
+(a) ist DSL-Bruch und braucht eine eigene Migration. (c) ist
+bei realistic 5–30 Services pro Business performant genug
+(parallele Roundtrips, kein sequenzielles Warten) und
+robust — wenn ein einzelner UPDATE fehlschlägt, betrifft
+das nur eine Service-URL, nicht den ganzen Slug-Wechsel.
+
+**Architektur-Entscheidung — Slug-Wechsel ist bereits
+committed**: Phase 1 (Slug-UPDATE) ist atomic; Service-Image-
+Migration läuft danach als Best-Effort. Wenn der Server
+zwischen Move und URL-Patch crasht, ist das Storage-Object
+bereits umbenannt, aber die DB-Spalte zeigt noch auf den
+alten Pfad → broken Image. Akzeptabler Edge-Case (User kann
+manuell neu hochladen). Die Move-Operationen sind nicht
+gesammelt rollback-fähig — und das wäre auch falsch, weil
+ein erfolgreicher Move ohne URL-Patch immer noch besser ist
+als eine 23505-Exception unter Datenverlust.
+
+**WebSearch (Track A)**: bestätigt
+- [supabase/postgrest-js #174 – Support bulk update](https://github.com/supabase/postgrest-js/issues/174)
+  Native Bulk-Update mit unterschiedlichen Werten pro Row
+  existiert 2026 noch nicht; pro-Row-UPDATE oder RPC sind
+  die zwei sauberen Wege.
+- [supabase Discussion #15744 – RPC to update multiple rows](https://github.com/orgs/supabase/discussions/15744)
+  RPC ist die performanteste Variante für >>100 Rows — bei
+  unserer Skala overkill.
+- [Supabase JS – update](https://supabase.com/docs/reference/javascript/update)
+  Standard-Update mit `.eq("id", x)` ist pro-Row korrekt
+  und atomic.
+
+**Dateien**:
+- 🔄 `src/app/api/businesses/[slug]/settings/route.ts`:
+  - Nach dem Logo/Cover-Block (Session 57) ein zweiter
+    Block für Service-Bilder. Nur aktiv bei `slugChanged`.
+  - SELECT `id, image_url` aus `services` WHERE
+    `business_id = data.id AND image_url IS NOT NULL`.
+    Server-Auth-Client (RLS) — der Owner-Check für den
+    Lookup ist über die UPDATE-Phase 1 implizit schon
+    bestätigt (sonst hätten wir 403 zurückgegeben).
+  - `Promise.all` über alle Rows: extract → rewrite →
+    move → neue URL bauen oder null bei Fehler. Pro Row
+    ein `Patch`-Objekt.
+  - Zweites `Promise.all`: pro Patch ein
+    `update({image_url:...}).eq("id", id)` parallel. DB-
+    Errors werden nur geloggt.
+  - Antwort um `serviceImagesMoved` + `serviceImagesFailed`.
+- 🔄 `src/lib/business-settings.ts`:
+  - `SettingsUpdateResult.server`: `serviceImagesMoved`,
+    `serviceImagesFailed` als optionale Felder.
+  - `ApiSuccessBody` parst die neuen Counts.
+  - Komplett rückwärtskompatibel — bestehender
+    `business-settings.test.ts` bleibt grün ohne Anpassung.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**37/38 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Keine neuen Smoketests in dieser Session — die
+Pure-Helper waren schon mit ~52 Asserts in Session 56+57
+abgedeckt; neue Logik ist API-Route-spezifisch (DB-
+Roundtrips), die wir traditionell nicht im Smoketest mocken.
+
+**Roadmap**: Storage-Hygiene-Stack ist jetzt **vollständig
+symmetrisch**:
+- Upload: 51 (Logo/Cover) + 58 (Service)
+- DELETE-Cleanup: 56 (Service-Bilder beim Bulk-DELETE)
+- Slug-Wechsel-Move: 57 (Logo/Cover) + 59 (Service-Bilder)
+
+Nächste Session 60 ist 5er-Multiple → Light-Pass-Refactor
+(z.B. die zwei Slug-Move-Blöcke in settings/route.ts in
+einen gemeinsamen `migrateBusinessImagesOnSlugChange`-
+Helper extrahieren) + Recap-Dokumentation des aktuellen
+Stands für „erstes Betrieb-fertiges Produkt"-Meilenstein.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — Supabase Bulk-
+Update-Patterns 2026.
+
+**Status-Update**: ~92 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Editor + Storage-Hygiene komplett.
+Verbleibend für Vollausbau: Live-Provider-Switch
+(Reviews/Social), Custom-Domain, Sentry, Lighthouse-CI,
+Multi-Member-Verwaltung.
+
+**Nächste Session**: Code-Session 60 = **Light-Pass +
+Storage-Hygiene-Recap**. 5er-Multiple — Pflicht-Light-Pass.
+Begründung: Sessions 56–59 haben den Storage-Hygiene-Stack
+in vier separaten Blöcken etabliert; Light-Pass-Stoff dafür:
+(a) Extraktion eines `migrateBusinessImagesOnSlugChange`-
+Helpers aus den zwei Blöcken in `settings/route.ts`,
+(b) Konsolidierung der `imagesMoved`/`imagesFailed`/
+`serviceImagesMoved`/`serviceImagesFailed`-Felder in einer
+einzigen `MoveResultGroup`-Struktur,
+(c) Recap-Dokumentation in `STORAGE.md` (neu), die alle 4
+Hygiene-Pfade in einem Diagramm zeigt.
+

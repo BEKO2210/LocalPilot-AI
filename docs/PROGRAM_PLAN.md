@@ -265,9 +265,22 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   `generateNewServiceId(slug)` umgestellt von Pseudo-ID auf
   echte UUID v4 (`crypto.randomUUID`), damit neu hinzugefügte
   Services sofort Bild-Upload-fähig sind.
-- 41+: Service-Bilder beim Slug-Wechsel mit-migrieren
-  (Folge-Session 59), Backup-Policy, Seed-Skript für
-  Demo-Daten.
+- 59: Service-Bilder beim Slug-Wechsel mit-migrieren ✅.
+  Pattern aus Session 57 wird für `services.image_url`
+  ausgerollt: nach erfolgreichem Slug-UPDATE (Phase 1) wird
+  pro Service-Row mit `image_url` auf unserem Bucket der
+  Storage-Move auf den neuen Slug-Prefix ausgeführt
+  (`Promise.all` parallel) und die DB-URL einzeln per
+  `update().eq("id", x)` aktualisiert (zweites
+  `Promise.all`). supabase-js v2 hat keinen native Bulk-
+  Update mit unterschiedlichen Werten pro Row; pro-Row-
+  UPDATE ist bei realistic 5–30 Services performant genug.
+  Move-Failure setzt URL auf null (kein 404-Bild).
+  Antwort um `serviceImagesMoved` + `serviceImagesFailed`.
+  Damit ist die Storage-Hygiene-Lücke aus 58 geschlossen
+  und der Storage-Stack symmetrisch über alle vier Pfade.
+- 41+: Backup-Policy, Seed-Skript für Demo-Daten,
+  Light-Pass-Refactor der Slug-Move-Blöcke (Session 60).
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant

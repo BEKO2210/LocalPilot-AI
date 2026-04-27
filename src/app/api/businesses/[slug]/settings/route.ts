@@ -247,6 +247,89 @@ export async function PATCH(
     }
   }
 
+  // Service-Bilder beim Slug-Wechsel mit-migrieren (Code-Session 59).
+  //
+  // Pro Service mit `image_url` auf unserem Bucket: Storage-Move
+  // vom alten Slug-Prefix auf den neuen, danach UPDATE der
+  // einzelnen Row mit der neuen Public-URL. supabase-js v2 hat
+  // keinen native Bulk-Update mit unterschiedlichen Werten pro
+  // Row — pro-Row-UPDATE in Promise.all ist bei realistic 5–30
+  // Services pro Business akzeptabel und robust gegen Row-
+  // spezifische Fehler.
+  let serviceImagesMoved = 0;
+  let serviceImagesFailed = 0;
+  if (slugChanged) {
+    const adminClient = getServiceRoleClient();
+
+    const { data: serviceRows, error: serviceErr } = await supabase
+      .from("services")
+      .select("id, image_url")
+      .eq("business_id", data.id)
+      .not("image_url", "is", null);
+
+    if (serviceErr) {
+      console.warn(
+        "[slug-cleanup] Services-Lookup fehlgeschlagen:",
+        serviceErr.message,
+      );
+    }
+
+    const rows = (serviceRows ?? []) as ReadonlyArray<{
+      id: string;
+      image_url: string | null;
+    }>;
+
+    type Patch = { id: string; image_url: string | null };
+    const patches = await Promise.all(
+      rows.map(async (row): Promise<Patch | null> => {
+        if (!row.image_url) return null;
+        const oldPath = extractStoragePath(row.image_url, IMAGE_BUCKET);
+        if (!oldPath) return null; // externe URL — Owner-eigene Hosting-URL
+        const newPath = rewritePathPrefix(oldPath, slug, data.slug);
+        if (!newPath) return null; // Path-Konvention passt nicht — skip
+
+        const moveRes = await moveStoragePath(
+          adminClient,
+          IMAGE_BUCKET,
+          oldPath,
+          newPath,
+        );
+        if (moveRes.ok) {
+          serviceImagesMoved++;
+          return {
+            id: row.id,
+            image_url: buildPublicUrl(adminClient, IMAGE_BUCKET, newPath),
+          };
+        }
+        serviceImagesFailed++;
+        console.warn(
+          `[slug-cleanup] Service-Storage-Move ${oldPath}→${newPath} fehlgeschlagen:`,
+          moveRes.reason,
+        );
+        return { id: row.id, image_url: null };
+      }),
+    );
+
+    // Pro-Row-UPDATE parallel. Fehler nur loggen — der Slug-
+    // Wechsel selbst ist bereits committed.
+    await Promise.all(
+      patches
+        .filter((p): p is Patch => p !== null)
+        .map(async (p) => {
+          const { error: updErr } = await supabase
+            .from("services")
+            .update({ image_url: p.image_url })
+            .eq("id", p.id);
+          if (updErr) {
+            console.warn(
+              `[slug-cleanup] Service-URL-Patch für ${p.id} fehlgeschlagen:`,
+              updErr.message,
+            );
+          }
+        }),
+    );
+  }
+
   return NextResponse.json(
     {
       ok: true,
@@ -254,6 +337,8 @@ export async function PATCH(
       slugChanged,
       imagesMoved,
       imagesFailed,
+      serviceImagesMoved,
+      serviceImagesFailed,
     },
     {
       status: 200,
