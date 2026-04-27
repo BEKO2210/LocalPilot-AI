@@ -7,7 +7,66 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 11+: Leistungen-CRUD, Lead-System, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+- Session 12+: Lead-System, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.11.0] – Session 11 – 2026-04-27
+
+### Added
+- **Services-Editor** unter `/dashboard/[slug]/services` – CRUD für
+  Leistungen. Nutzt RHF + zod (gleiches Pattern wie Session 10) plus
+  `useFieldArray` für die Service-Liste:
+  - **`<ServicesEditForm>`** – top-level Client-Form mit Status-Bar
+    (lokaler Override-Hinweis, Fehlerzähler, Speichern/Verwerfen/
+    Demo-Defaults laden), `useFieldArray` für append/remove/swap und
+    Block-Speichern bei Limit-Überschreitung.
+  - **`<ServiceCard>`** – kollabierbare `<details>`-Karte pro Service
+    mit Titel, Kategorie, Preis-Label, Dauer, Kurzbeschreibung,
+    Aktiv-/Hervorgehoben-Toggles, Inline-Entfernen-Bestätigung,
+    Reihenfolge-Pfeilen (↑↓) und versteckten System-Feldern (id,
+    businessId, sortOrder).
+  - **`<ServicesSummary>`** – Live-Indikator mit Fortschrittsbar,
+    Active-/Featured-Countern und Warnungen für „Limit erreicht" /
+    „Über Limit" plus Upgrade-Link nach `/pricing`.
+- **Mock-Store** `src/lib/mock-store/services-overrides.ts`:
+  `getServicesOverride` / `setServicesOverride` /
+  `clearServicesOverride` / `hasServicesOverride` mit versionierten
+  localStorage-Schlüsseln (`lp:services-override:v1:<slug>`) und
+  defensiver Schema-Validierung. Plus `getEffectiveServices(slug,
+  fallback)` für die spätere Public-Site-Integration.
+- **Empty-State** bei leerer Liste: zwei Wege – „Erste Leistung
+  anlegen" oder „Aus Branchen-Preset übernehmen" (konvertiert
+  `preset.defaultServices` zu vollständigen `Service`-Objekten mit
+  frischen IDs).
+- **Sortierungs-Normalisierung**: Beim Laden und Speichern werden
+  `sortOrder`-Werte auf 0..n-1 zurückgeschrieben.
+- **Paket-Gating**: Bronze (`service_management` nicht enthalten) zeigt
+  weiterhin `<ComingSoonSection>` plus Public-Site-Hinweis. Silber/Gold
+  bekommen den vollen Editor. Limit-Logik nutzt `isLimitExceeded()`,
+  Speichern ist bei Über-Limit blockiert.
+- Smoketest `src/tests/services-edit.test.ts` (~12 Assertions):
+  Form-Schema akzeptiert alle 6 Demo-Listen, `sortOrder` pro Business
+  eindeutig und nicht-negativ ganzzahlig, Service-IDs projektweit
+  eindeutig, Paket-Limits stimmen, Mock-Store SSR-sicher.
+- `docs/SERVICES_EDITOR.md` mit Architektur, Datenfluss, Funktionen,
+  Persistierungs-API, Paket-Gating-Tabelle.
+
+### Changed
+- **`src/components/dashboard/nav-config.ts`** – `services`-Eintrag
+  ohne `comingInSession` (jetzt produktiv für Silber/Gold). Sidebar
+  markiert ihn nicht mehr als „Vorschau".
+- **`src/tests/dashboard.test.ts`** – akzeptiert jetzt ≥ 3 produktive
+  Sektionen (Übersicht + Betriebsdaten + Leistungen).
+- **`src/lib/mock-store/index.ts`** re-exportiert `services-overrides`.
+
+### Notes
+- Bundle-Größe der Services-Page: 5,09 KB First-Load JS plus geteilte
+  Chunks (RHF wird mit dem Business-Editor geteilt).
+- Persistierung läuft client-only, kein Backend nötig. Public Site
+  zeigt weiterhin die Demo-Services – Sync via Repository-Layer
+  (Session 19).
+- Branchenneutralität gewahrt: keine `if (industryKey === "...")`-
+  Verzweigungen, der „Aus Preset übernehmen"-Knopf liest
+  `preset.defaultServices` aus dem aktuellen `IndustryPreset`.
 
 ## [0.10.0] – Session 10 – 2026-04-27
 

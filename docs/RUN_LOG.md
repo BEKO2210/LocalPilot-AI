@@ -1276,11 +1276,146 @@ Manuelle Schritte im Browser:
 
 ### 6. Was ist der nächste empfohlene Run?
 
-**Session 11 – Leistungen verwalten.**
+**Session 11 – Leistungen verwalten.** (s. u.)
 
-`src/app/dashboard/[slug]/services/page.tsx` von Stub zu Editor:
-Listenansicht aller Services, anlegen, bearbeiten, deaktivieren,
-löschen, sortieren, Paket-Limit-Anzeige (Bronze 10, Silber 30,
-Gold 100), Featured-Markierung, Vorschau-Link pro Service. Nutzt das
-gleiche Mock-Store-Pattern (`services-overrides`) und die gleichen
-Form-Primitive aus Session 10.
+---
+
+## Session 11 – Leistungen verwalten
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- **Services-Editor** unter `/dashboard/[slug]/services` ersetzt den
+  Stub aus Session 9. Pattern: gleiche RHF + Zod-Resolver +
+  localStorage-Architektur wie der Business-Editor (Session 10), aber
+  mit `useFieldArray` für die Service-Liste.
+- **`<ServicesEditForm>`** als top-level Client-Form mit:
+  - sticky Status-Bar (lokaler Override-Hinweis, Fehler-Counter,
+    Speichern/Verwerfen/Demo-Defaults laden),
+  - Block-Speichern bei Limit-Überschreitung (kein kaputter Zustand),
+  - „Verwerfen" fällt auf den persistierten Override zurück,
+    nicht auf den Demo-Default.
+- **`<ServiceCard>`** als kollabierbare `<details>`-Karte:
+  - Header mit Titel, Kategorie, Preis-Label, „Hervorgehoben"/
+    „Inaktiv"/„Fehler"-Badges, Reihenfolge-Pfeilen (↑↓),
+    Aufklapp-Pfeil.
+  - Body: Form-Felder Titel*, Kategorie, Preis-Label, Dauer,
+    Kurzbeschreibung; Toggles für Aktiv und Hervorgehoben;
+    Inline-Bestätigung beim Entfernen.
+  - Versteckte System-Felder (`id`, `businessId`, `sortOrder`)
+    werden mit `register("...")` mitgeführt.
+  - Karten mit Validierungsfehlern öffnen sich automatisch.
+- **`<ServicesSummary>`** mit Live-Indikator:
+  - „X von Y Leistungen genutzt" inkl. Fortschrittsbar.
+  - Aktiv-/Featured-Counter.
+  - Warnungen für „Limit erreicht" / „Über Limit" mit Upgrade-Link
+    nach `/pricing`.
+- **Empty-State** bei leerer Liste: zwei Wege – „Erste Leistung
+  anlegen" (leeres Service-Objekt) oder „Aus Branchen-Preset
+  übernehmen" (konvertiert `preset.defaultServices` zu vollständigen
+  `Service`-Objekten mit frischen IDs).
+- **Sortier-Logik**: ↑↓-Pfeile per Karte rufen `useFieldArray.swap()`.
+  Beim Speichern werden `sortOrder`-Werte konsekutiv auf 0..n-1
+  zurückgeschrieben (`normalizeOrder`).
+- **Mock-Store** `src/lib/mock-store/services-overrides.ts` –
+  `getServicesOverride` / `setServicesOverride` /
+  `clearServicesOverride` / `hasServicesOverride` mit
+  versionierten localStorage-Schlüsseln
+  (`lp:services-override:v1:<slug>`) und defensiver
+  Schema-Validierung. Plus `getEffectiveServices(slug, fallback)` als
+  Hook für die spätere Public-Site-Integration.
+- **Paket-Gating**: Bronze (`service_management` nicht enthalten)
+  zeigt weiterhin `<ComingSoonSection>` plus Public-Site-Hinweis.
+  Silber/Gold bekommen den vollen Editor. `isLimitExceeded()` blockt
+  das Speichern bei Über-Limit-Zuständen.
+- **Smoketest** `src/tests/services-edit.test.ts` (~12 Assertions):
+  Form-Schema akzeptiert alle 6 Demo-Listen, `sortOrder` pro Business
+  eindeutig und nicht-negativ ganzzahlig, Service-IDs projektweit
+  eindeutig, Paket-Limits stimmen, Mock-Store SSR-sicher.
+- **`docs/SERVICES_EDITOR.md`** mit Architektur, Datenfluss,
+  Funktionen, Persistierungs-API, Paket-Gating-Tabelle.
+- Sidebar zeigt `Leistungen` jetzt als produktive Sektion (kein
+  „Vorschau"-Badge mehr für Silber/Gold).
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (7 Dateien):
+- `src/lib/mock-store/services-overrides.ts`
+- `src/components/dashboard/services-edit/{services-edit-form,
+  service-card,services-summary,index}.tsx/.ts` (4 Dateien)
+- `src/tests/services-edit.test.ts`
+- `docs/SERVICES_EDITOR.md`
+
+Geändert:
+- `src/app/dashboard/[slug]/services/page.tsx` (Stub → Editor mit
+  Bronze-Gate)
+- `src/components/dashboard/nav-config.ts` (`services` jetzt produktiv)
+- `src/lib/mock-store/index.ts` (re-exportiert services-overrides)
+- `src/tests/dashboard.test.ts` (≥ 3 produktive Sektionen erwartet)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck         # tsc --noEmit + Smoketests
+npm run lint              # 0 warnings/errors
+npm run build:static      # Static Export
+npm run dev               # http://localhost:3000/dashboard/beauty-atelier/services
+```
+
+Manuell im Browser:
+1. `/dashboard/beauty-atelier/services` (Gold) öffnen → voller Editor.
+2. Neue Leistung hinzufügen → leere Karte erscheint, Title-Pflichtfeld
+   blockt das Speichern bis ausgefüllt.
+3. ↑↓-Pfeile → Reihenfolge ändert sich.
+4. Aktiv-Toggle ausschalten → Karte wird optisch gedimmt, Badge
+   „Inaktiv".
+5. „Speichern" → grüner Hinweis, Reload zeigt persistierten Stand.
+6. „Demo-Defaults laden" → Original kommt zurück.
+7. `/dashboard/meisterbau-schneider/services` (Bronze) → zeigt
+   Coming-Soon mit Upgrade-Hinweis statt Editor.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                     | Status                                                                                       |
+| ----------------------------- | -------------------------------------------------------------------------------------------- |
+| Leistungen vollständig verwaltbar | ✅ Liste, Anlegen, Bearbeiten, Aktiv/Inaktiv, Featured, Sortierung, Löschen, Preset-Import |
+| Bronze-Limit greift           | ✅ `isLimitExceeded` blockt Speichern; UI zeigt „Limit erreicht"/„Über Limit"               |
+| UI einfach                    | ✅ kollabierbare Karten, klare Toggles, Inline-Bestätigung beim Entfernen                    |
+| Keine kaputten Zustände       | ✅ Speichern blockiert bei Over-Limit, Sort-Order bei Save normalisiert                      |
+| Services-Liste                | ✅ vollständig                                                                                |
+| Service anlegen / bearbeiten / löschen | ✅                                                                                       |
+| aktiv/inaktiv                 | ✅                                                                                           |
+| Preislabel / Kategorie / Beschreibung | ✅                                                                                       |
+| Sortierung                    | ✅ ↑↓-Pfeile + Auto-Normalisierung                                                            |
+| Paketlimit beachten           | ✅ Live-Bar + Save-Block                                                                      |
+| Vorschau zur Public Site      | ✅ via BusinessHeader-Button (Session 9) auf jeder Dashboard-Seite                            |
+
+### 5. Was ist offen?
+
+- **Session 12** – Lead-System: echte Anfrageformular-Submission auf
+  der Public Site (Server Action) plus Detail-Drawer im Dashboard.
+- **Sessions 13–17** – KI-Assistent für Service-Beschreibungen,
+  FAQ-Generator, Bewertungs-Booster, Social-Generator.
+- **Session 18** – Settings-Page (Slug, Veröffentlichung, Locale).
+- **Session 19** – Repository-Layer ersetzt
+  `services-overrides.ts` transparent (Supabase-Tabelle pro Service,
+  echte Sync zwischen Dashboard und Public Site).
+- Optional: Drag-and-Drop für Sortierung statt ↑↓-Pfeile (UX-Polish).
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 12 – Lead-System.**
+
+Drei Bauteile parallel:
+1. **Public Site**: Anfrageformular auf `/site/[slug]` aktivieren –
+   Felder kommen aus `preset.leadFormFields`, Submission via Server
+   Action (oder client-only Mock-Store, falls Static-Export beibehalten
+   wird).
+2. **Dashboard `/leads`**: Liste eingegangener Anfragen mit Filter
+   (Status, Quelle), Detail-Drawer, Status-Wechsel, Notizen,
+   Antwort-Vorlagen mit Copy-to-Clipboard.
+3. **Mock-Store** `leads-overrides.ts` analog zu Sessions 10/11, plus
+   `appendLead(slug, lead)`-Helper für die Public-Site-Submission.

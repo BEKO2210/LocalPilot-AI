@@ -337,21 +337,40 @@ Konvention für eine neue Sektion:
 - **Smoketest** `src/tests/business-edit.test.ts` validiert Profil-
   Extraktion, Merge, Schema-Regeln.
 
-## Stand nach Session 10
+## Services-Editor (ab Session 11)
+
+- **`/dashboard/[slug]/services`** mit RHF + zod + `useFieldArray`.
+  Bronze (`service_management` nicht enthalten) bekommt weiterhin
+  `<ComingSoonSection>` plus Public-Site-Hinweis – Silber/Gold den
+  vollen Editor.
+- **`<ServicesEditForm>`** verwaltet Append/Remove/Swap, Validierung
+  und Save/Discard. Beim Save normalisiert `normalizeOrder()` die
+  `sortOrder`-Werte auf 0..n-1.
+- **`<ServiceCard>`** als kollabierbare `<details>`-Karte. Karten mit
+  Validierungsfehlern öffnen sich automatisch. Inline-Bestätigung
+  beim Entfernen.
+- **`<ServicesSummary>`** zeigt Limit-Auslastung mit Fortschrittsbar
+  und warnt bei „Limit erreicht" / „Über Limit"; das Speichern ist im
+  Over-Limit-Zustand explizit blockiert.
+- **`getServicesOverride` / `setServicesOverride` / …** in
+  `src/lib/mock-store/services-overrides.ts` – versionierter
+  localStorage-Key, defensive Schema-Validierung, SSR-sicher.
+
+## Stand nach Session 11
 
 - App Router läuft, `/`, `/pricing`, `/themes`, `/demo` rendern statisch.
   Plus `/site/<6 slugs>`, `/dashboard` (Picker) und alle Dashboard-
-  Sektionen pro Slug. **`/dashboard/[slug]/business`** ist die erste
-  produktive Editor-Page (~66 KB First-Load JS).
-- Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber
-  (Static und SSR).
+  Sektionen pro Slug. **Drei produktive Editor-/Übersicht-Pages**:
+  Übersicht, `business`, `services`. Bundle der Services-Page:
+  ~5 KB First-Load JS plus geteilter RHF-Chunk.
+- Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber.
 - Tailwind & Brand-Tokens stehen, Theme-Tokens als CSS-Variablen verfügbar.
 - Datenmodelle vollständig, Pricing-System produktiv.
 - 13 Branchen-Presets, 10 Themes registriert und validiert.
 - 6 Demo-Betriebe vollständig validiert; jeder hat Public Site +
-  Dashboard + Editor mit individuellem Theme.
-- React-Hook-Form + Zod-Resolver eingeführt, Mock-Store als Pattern
-  für die kommenden Editoren etabliert.
+  Dashboard + zwei Editoren mit individuellem Theme.
+- React-Hook-Form + Zod-Resolver + `useFieldArray` als Pattern für
+  kommende Editoren etabliert.
 - GitHub-Pages-Deployment automatisiert; lokal über `build:static`.
 - `<LinkButton>` ist basePath-aware (interne Pfade via `next/link`).
 - Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
@@ -359,9 +378,9 @@ Konvention für eine neue Sektion:
 
 ## Offene technische Punkte
 
-- Restliche Dashboard-Sub-Routen ausbauen (`services` Session 11,
-  `leads` Session 12, `ai` Sessions 13–15, `reviews` Session 16,
-  `social` Session 17, `settings` Session 18).
+- Restliche Dashboard-Sub-Routen ausbauen (`leads` Session 12, `ai`
+  Sessions 13–15, `reviews` Session 16, `social` Session 17,
+  `settings` Session 18).
 - Lead-System (Session 12) – ersetzt die Formular-Vorschau in
   `<PublicContact>` und die Demo-Telefonnummer im `<CtaContact>` durch
   eine echte Erfassung (Server Action / API).
