@@ -2559,3 +2559,219 @@ Bewusst NICHT: andere 2 Methoden, UI, echte Provider.
 - [VerticalResponse – Survey Reveals The Best Tone of Voice to Take with Customers](https://verticalresponse.com/blog/survey-reveals-the-best-tone-of-voice-to-take-with-customers/)
 - [RewriteBar – 8 Perfect Automatic Reply Email Sample Templates for 2026](https://rewritebar.com/articles/automatic-reply-email-sample)
 - [Kenect – Best Practices for Templatizing Customer Service Text Message Responses](https://www.kenect.com/blog/best-practices-for-templatizing-text-responses-to-customers)
+
+---
+
+## Code-Session 18 – Mock-Provider: `generateReviewRequest` + Self-Extending Roadmap
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar) + Methodik (Roadmap-Self-Extension)
+Meilenstein: 2 (KI-Schicht) + Programm-Methodik
+
+### 1. Was wurde umgesetzt?
+
+Doppel-Schritt: fünfte von sieben Mock-Methoden ist scharf, zusätzlich
+wurde die Programm-Methodik um eine selbst-erweiternde Roadmap ergänzt
+(auf expliziten Wunsch: Roadmap soll sich ab jetzt ohne weiteres
+Zutun des Auftraggebers verlängern).
+
+**Code:**
+- `src/core/ai/providers/mock/review-request.ts` (neu) implementiert
+  `mockGenerateReviewRequest(input): Promise<ReviewRequestOutput>`:
+  - Validierung des Inputs via `ReviewRequestInputSchema.safeParse`
+    (auch URL-Validierung von `reviewLink`) → bei Fehler
+    `AIProviderError("invalid_input", …)`.
+  - **Output**: 3 Varianten pro Aufruf für den angefragten Channel.
+    Reihenfolge: requested-Tone an Index 0, dann die übrigen in
+    kanonischer Reihenfolge (`short`, `friendly`, `follow_up`).
+  - **Quellen-Strategie** je Variante:
+    1. Match in `preset.reviewRequestTemplates` auf `(channel, tone)`
+       → Vorlage wird verwendet.
+    2. Synthese über eine Channel-Tone-Matrix:
+       - **whatsapp**: kurz/locker, ein 🙂 nur in `friendly`.
+       - **sms**: sehr kurz, kein Emoji, klar formuliert.
+       - **email**: längere Form mit Anrede, Absatz-Struktur,
+         Rücksprung-Einladung im follow_up.
+       - **in_person**: gesprochener Stil mit deutschen
+         Anführungszeichen (Karte/QR-Code-Empfehlung im Subtext).
+  - **Substitution** für `{{customerName}}`, `{{reviewLink}}`,
+    `{{businessName}}`. Fehlt `customerName`/`reviewLink`, kommen
+    neutrale Platzhalter (`und Hallo` / `[Bewertungs-Link einfügen]`)
+    zum Einsatz.
+  - `clamp` schneidet auf Wortgrenze als Sicherheitsnetz (1000-Zeichen-
+    Limit aus dem Schema). `ReviewRequestOutputSchema.parse` als
+    letzte Hürde.
+- `src/core/ai/providers/mock-provider.ts` komponiert die fünfte
+  Methode dazu; Status-Header 17 → 18.
+- `src/tests/ai-mock-provider.test.ts` um Block 10a–10h erweitert
+  (~52 zusätzliche Assertions, ~130 gesamt):
+  - 10a: 4 Channels × 3 Tones → je 3 Varianten, requested-Tone an
+    Index 0, alle Tones je Aufruf vertreten, kein Platzhalter-Rest,
+    Body-Längen im Schema-Limit.
+  - 10b: Substitution für `customerName` und `reviewLink` greift
+    in allen Varianten.
+  - 10c: Fallback-Platzhalter ohne `reviewLink`.
+  - 10d: Preset-Match (Friseur whatsapp+friendly enthält
+    „der neue Schnitt").
+  - 10e: Synthese greift bei (sms, *) für Friseur (kein Preset-
+    Eintrag); businessName erscheint im Body.
+  - 10f: in_person hat gesprochenen Stil mit „…".
+  - 10g: Determinismus.
+  - 10h: ungültige `reviewLink`-URL → `invalid_input`.
+- Block 11 zählt jetzt nur noch 2 Stub-Methoden
+  (`generateSocialPost`, `generateOfferCampaign`).
+
+**Methodik (Self-Extending Roadmap):**
+- `Claude.md` Programm-Philosophie um Punkt 7 erweitert: jede Session
+  muss vor dem Commit `docs/PROGRAM_PLAN.md` um mindestens einen
+  neuen Punkt anreichern. Quellen: Recherche, Implementierungs-
+  Beobachtungen, Sicherheits-Updates, Tech-Debt.
+- `docs/SESSION_PROTOCOL.md` um Schritt 6
+  „Roadmap-Selbstaktualisierung" erweitert; Commit/Push wandert auf
+  Schritt 7. Faustregel: leere Roadmap-Aktualisierung ist ein
+  Protokoll-Verstoß.
+- `docs/PROGRAM_PLAN.md` um die Sektion „Self-Extending Backlog"
+  ergänzt mit 6 Tracks:
+  - **A · Innovation & neue Capabilities** — WhatsApp-Business-
+    Cloud-API, A/B-Test für Review-Tonalitäten, „Best Time to Ask"-
+    Heuristik, API-Route hinter Auth, View-Transitions-API.
+  - **B · Security & Compliance** — DOMPurify für übernommene KI-
+    Outputs, npm-audit in CI, DSGVO-Hinweise für Review-Versand,
+    Rate-Limit auf der KI-Layer, CSP + SRI Headers.
+  - **C · Observability & Qualität** — strukturierte Telemetrie der
+    Mock-Calls, Lighthouse-CI als Gate ≥ 95, Vitest-Migration,
+    Visual-Regression-Tests via Playwright.
+  - **D · DX & Refactor** — `clamp`/`polish`/`substituteCity` in
+    gemeinsamen Helper extrahieren, `topic-detection.ts` für
+    `topicToQA` + `detectTopic`, Smoketest aufteilen pro Methode.
+  - **E · Vertikalisierung** — 13 → 20+ Branchen, dedizierte sms-
+    `reviewRequestTemplates` (Code-Session 18 musste synthetisieren).
+  - **F · Doku & Onboarding** — Mermaid-Architektur-Diagramm,
+    `ADD_INDUSTRY.md`, `RESEARCH_INDEX.md` aus den RUN_LOG-Quellen.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (1 Datei):
+- `src/core/ai/providers/mock/review-request.ts`
+
+Geändert:
+- `src/core/ai/providers/mock-provider.ts`
+- `src/tests/ai-mock-provider.test.ts`
+- `Claude.md` (Programm-Philosophie Punkt 7)
+- `docs/SESSION_PROTOCOL.md` (neuer Schritt 6)
+- `docs/PROGRAM_PLAN.md` (Self-Extending Backlog mit 6 Tracks)
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~30 KB (Code ~14 KB, Doku ~16 KB). Klar im Session-Limit
+(30–80 KB), die zusätzliche Doku-Bewegung ist die Methodik-Änderung.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → ~130 Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.generateReviewRequest({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich"],
+    uniqueSellingPoints: [],
+  },
+  channel: "whatsapp",
+  tone: "friendly",
+  customerName: "Frau Schmidt",
+  reviewLink: "https://g.page/r/CXyz/review",
+});
+// → { variants: [
+//     { channel: "whatsapp", tone: "friendly",
+//       body: "Hallo Frau Schmidt, wir hoffen, der neue Schnitt …" },
+//     { channel: "whatsapp", tone: "short",     body: "…" },
+//     { channel: "whatsapp", tone: "follow_up", body: "…" },
+//   ] }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit. Eine
+Dashboard-Karte „Bewertungs-Anfrage senden" kommt in einer späteren
+Session, wenn alle Mock-Methoden scharf sind.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                            | Status |
+| -------------------------------------------------------------------- | ------ |
+| `generateReviewRequest` deterministisch, branchenneutral             | ✅      |
+| 4 Channels × 3 Tones erzeugen sinnvolle Texte                        | ✅      |
+| Preset-Match wird vor Synthese genutzt                               | ✅      |
+| Synthese greift, wo Preset Lücken hat (z. B. sms)                    | ✅      |
+| `{{customerName}}` und `{{reviewLink}}` werden ersetzt               | ✅      |
+| Fallback-Platzhalter ohne Substitutionswerte                         | ✅      |
+| in_person gesprochener Stil mit „…"                                  | ✅      |
+| Defensive Input-Validierung (auch URL) → `invalid_input`             | ✅      |
+| Output gegen `ReviewRequestOutputSchema` validiert                   | ✅      |
+| Übrige 2 Methoden bleiben Stubs (`provider_unavailable`)             | ✅      |
+| Smoketest +52 Assertions (~130 gesamt)                               | ✅      |
+| Build/Typecheck/Lint grün                                            | ✅      |
+| Roadmap-Selbstaktualisierung als verbindliche Methodik verankert     | ✅      |
+| `PROGRAM_PLAN.md` um 6 Tracks mit ~25 Backlog-Items erweitert         | ✅      |
+| Recherche-Step durchgeführt + Quellen zitiert                        | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 19**: `generateSocialPost`-Mock — short-/long-Post,
+  Hashtags, Image-Idea, CTA, plattform-bewusst (instagram/facebook/
+  google_business/linkedin/whatsapp_status). Goal-spezifische
+  Templates aus `preset.socialPostPrompts` als Saat.
+- **Code-Session 20**: `generateOfferCampaign`-Mock — schließt die
+  Mock-Phase ab.
+- **Self-Extending Backlog**: alle 6 Tracks (A–F) — siehe
+  `docs/PROGRAM_PLAN.md`. Jede Folgesession greift mindestens einen
+  Punkt auf oder ergänzt einen neuen.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 19 – Mock-Provider: `generateSocialPost`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 Instagram/Facebook/Google-Business Post
+   structure local service business + AI" und „Hashtag strategy
+   2026 small business German".
+2. `src/core/ai/providers/mock/social-post.ts` neu, analog zu den
+   bisherigen Mock-Methoden: nutzt `preset.socialPostPrompts` als
+   Saat (sind goal+plattform-getaggt), erzeugt
+   `shortPost`/`longPost`/`hashtags`/`imageIdea`/`cta` plattform-
+   bewusst (Instagram nimmt Hashtags ernst, Google-Business eher
+   nicht; LinkedIn formaler).
+3. `mock-provider.ts` um die sechste Methode erweitern
+   (Status-Header 18 → 19).
+4. `src/tests/ai-mock-provider.test.ts` um Social-Post-Block ergänzt
+   (5 Plattformen × 3 Goals × 3 Lengths, Hashtag-Logik,
+   Determinismus, `invalid_input`).
+5. PROGRAM_PLAN.md um neuen Punkt erweitern
+   (z. B. Auto-Sched-Forwarding zu Buffer/Hootsuite-API als Track-A-
+   Item), CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere 1 Methode (Offer-Campaign), UI, echte Provider.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [Greenmoov – Best Review Request Message Templates for 2026: 50+ Free Examples to Boost Your Ratings](https://greenmoov.app/articles/en/best-review-request-message-templates-for-2026-50-free-examples-to-boost-your-ratings)
+- [Wiserreview – 20 Review Request Message Templates (SMS, Email & WhatsApp)](https://wiserreview.com/blog/review-request-message/)
+- [EmbedMyReviews – How to Get More Google Reviews: Templates and Scripts That Work](https://www.embedmyreviews.com/resources/how-to-get-more-google-reviews/)
+- [Textedly – 32 Proven Review Request Text Templates for Businesses](https://www.textedly.com/blog/review-request-templates)
+- [Wiserreview – 9 Proven Google Review Email Templates](https://wiserreview.com/blog/google-review-email-template/)
+- [Ampli5 Pulse – How to Ask for Google Reviews — Scripts & Templates](https://www.ampli5pulse.com/ask-for-reviews.html)
+- [Birdeye – Google Review Template for Feedback Requests](https://birdeye.com/blog/google-review-template/)
+- [Relvio – Google review request templates (ready to copy and use)](https://www.relvio.io/en/blog/google-review-request-templates)

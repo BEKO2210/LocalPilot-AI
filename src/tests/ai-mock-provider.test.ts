@@ -676,16 +676,169 @@ async function run(): Promise<void> {
   );
 
   // -----------------------------------------------------------------------
-  // 10. Übrige 3 Methoden müssen weiterhin provider_unavailable werfen.
+  // 10. generateReviewRequest (Code-Session 18)
   // -----------------------------------------------------------------------
-  const placeholderContext = baseContextHairdresser;
-  await expectUnavailable("generateReviewRequest", () =>
-    mockProvider.generateReviewRequest({
-      context: placeholderContext,
+  // 10a. 4 Kanäle × 3 Tones → 3 Varianten pro Aufruf, alle im Limit
+  //      (body 10–1000 Zeichen, Channel == requested, requested-Tone
+  //      steht an Index 0).
+  // -----------------------------------------------------------------------
+
+  const CHANNELS = ["whatsapp", "sms", "email", "in_person"] as const;
+  const REVIEW_TONES = ["short", "friendly", "follow_up"] as const;
+
+  for (const channel of CHANNELS) {
+    for (const tone of REVIEW_TONES) {
+      const out = await mockProvider.generateReviewRequest({
+        context: baseContextHairdresser,
+        channel,
+        tone,
+        customerName: "Frau Schmidt",
+        reviewLink: "https://example.com/review/abc",
+      });
+      assert(
+        out.variants.length === 3,
+        `${channel}/${tone}: 3 Varianten zurück`,
+      );
+      assert(
+        out.variants[0]!.tone === tone,
+        `${channel}/${tone}: requested-Tone an Index 0`,
+      );
+      const tonesEmitted = new Set(out.variants.map((v) => v.tone));
+      assert(
+        tonesEmitted.size === 3,
+        `${channel}/${tone}: alle 3 Tones vertreten (kein Duplikat)`,
+      );
+      for (const v of out.variants) {
+        assert(
+          v.channel === channel,
+          `${channel}/${tone}: Variante hat angefragten Channel`,
+        );
+        assert(
+          v.body.length >= 10 && v.body.length <= 1000,
+          `${channel}/${tone}: body im Schema-Limit`,
+        );
+        // Nach Substitution dürfen keine Template-Reste mehr drinstehen.
+        assert(
+          !v.body.includes("{{customerName}}") &&
+            !v.body.includes("{{reviewLink}}") &&
+            !v.body.includes("{{businessName}}"),
+          `${channel}/${tone}: keine ungelösten Platzhalter`,
+        );
+      }
+    }
+  }
+
+  // 10b. Substitution: customerName und reviewLink landen im Body.
+  const subbed = await mockProvider.generateReviewRequest({
+    context: baseContextHairdresser,
+    channel: "whatsapp",
+    tone: "friendly",
+    customerName: "Frau Schmidt",
+    reviewLink: "https://example.com/review/abc",
+  });
+  assert(
+    subbed.variants.every((v) => v.body.includes("Frau Schmidt")),
+    "customerName-Substitution greift in allen Varianten",
+  );
+  assert(
+    subbed.variants.every((v) =>
+      v.body.includes("https://example.com/review/abc"),
+    ),
+    "reviewLink-Substitution greift in allen Varianten",
+  );
+
+  // 10c. Fallback-Platzhalter, wenn keine Werte mitkommen.
+  const noSub = await mockProvider.generateReviewRequest({
+    context: baseContextHairdresser,
+    channel: "whatsapp",
+    tone: "short",
+  });
+  assert(
+    noSub.variants[0]!.body.includes("[Bewertungs-Link einfügen]"),
+    "Fehlt reviewLink → Platzhalter im Body",
+  );
+
+  // 10d. Preset-Match wird genutzt (Friseur-Preset hat
+  //      whatsapp+friendly mit „Hallo {{customerName}}, wir hoffen,
+  //      der neue Schnitt gefällt Ihnen.").
+  const presetHit = await mockProvider.generateReviewRequest({
+    context: baseContextHairdresser,
+    channel: "whatsapp",
+    tone: "friendly",
+    customerName: "Frau Schmidt",
+    reviewLink: "https://example.com/review/abc",
+  });
+  const friendlyVariant = presetHit.variants.find((v) => v.tone === "friendly");
+  assert(
+    !!friendlyVariant && friendlyVariant.body.includes("der neue Schnitt"),
+    "Preset-Match: Branchen-Saatzeile verwendet",
+  );
+
+  // 10e. Synthese greift, wenn das Preset eine Channel/Tone-Kombination
+  //      nicht abdeckt. Friseur-Preset hat KEINE sms-Vorlage (nur
+  //      whatsapp+email), daher muss synthesizeBody greifen.
+  const smsOut = await mockProvider.generateReviewRequest({
+    context: baseContextHairdresser,
+    channel: "sms",
+    tone: "short",
+  });
+  assert(
+    smsOut.variants[0]!.body.includes("Salon Sophia"),
+    "Synthese greift bei fehlender Preset-Vorlage (sms): businessName im Body",
+  );
+
+  // 10f. in_person nutzt gesprochenen Stil mit Anführungszeichen.
+  const ip = await mockProvider.generateReviewRequest({
+    context: baseContextAutoWorkshop,
+    channel: "in_person",
+    tone: "friendly",
+  });
+  assert(
+    ip.variants[0]!.body.startsWith("„"),
+    "in_person: gesprochener Stil mit deutschen Anführungszeichen",
+  );
+
+  // 10g. Determinismus.
+  const d1 = await mockProvider.generateReviewRequest({
+    context: baseContextHairdresser,
+    channel: "email",
+    tone: "follow_up",
+    customerName: "Herr Meyer",
+    reviewLink: "https://example.com/r/xyz",
+  });
+  const d2 = await mockProvider.generateReviewRequest({
+    context: baseContextHairdresser,
+    channel: "email",
+    tone: "follow_up",
+    customerName: "Herr Meyer",
+    reviewLink: "https://example.com/r/xyz",
+  });
+  assert(
+    JSON.stringify(d1.variants) === JSON.stringify(d2.variants),
+    "generateReviewRequest deterministisch",
+  );
+
+  // 10h. Defensive: ungültige reviewLink-URL → invalid_input.
+  let revCaught: unknown = null;
+  try {
+    await mockProvider.generateReviewRequest({
+      context: baseContextHairdresser,
       channel: "email",
       tone: "friendly",
-    }),
+      reviewLink: "kein-url",
+    });
+  } catch (err) {
+    revCaught = err;
+  }
+  assert(
+    revCaught instanceof AIProviderError && revCaught.code === "invalid_input",
+    "kaputte reviewLink → invalid_input",
   );
+
+  // -----------------------------------------------------------------------
+  // 11. Übrige 2 Methoden müssen weiterhin provider_unavailable werfen.
+  // -----------------------------------------------------------------------
+  const placeholderContext = baseContextHairdresser;
   await expectUnavailable("generateSocialPost", () =>
     mockProvider.generateSocialPost({
       context: placeholderContext,
@@ -704,7 +857,7 @@ async function run(): Promise<void> {
     }),
   );
 
-  // 11. Provider-Key
+  // 12. Provider-Key
   assert(mockProvider.key === "mock", "mockProvider.key === 'mock'");
 }
 
@@ -716,5 +869,7 @@ export const __AI_MOCK_PROVIDER_SMOKETEST__ = {
   serviceLengths: 3,
   faqCounts: 3,
   replyTones: 3,
-  totalAssertions: 78,
+  reviewChannels: 4,
+  reviewTones: 3,
+  totalAssertions: 130,
 };

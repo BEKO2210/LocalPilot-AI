@@ -35,6 +35,20 @@ Konkret:
 6. **Detailliertes Protokoll** für jede Session steht in
    `docs/SESSION_PROTOCOL.md`, die rollenden Meilensteine in
    `docs/PROGRAM_PLAN.md`. Beide sind verbindlich.
+7. **Roadmap erweitert sich selbst** — verbindlich ab Code-Session 18.
+   Jede Session muss am Ende `docs/PROGRAM_PLAN.md` mit mindestens
+   einem neuen Punkt anreichern. Neue Punkte können sein:
+   - aus der Recherche entstandene Innovations-Ideen (neue AI-Modelle,
+     neue Plattform-APIs, neue Industry-Trends),
+   - aus der Implementierung entstandene Folge-Tickets (Refactor,
+     Test-Lücken, Performance-Beobachtungen),
+   - aus der WebSearch eingesammelte Sicherheits-Updates (CVEs,
+     Dependency-Bumps, Browser-Verhalten),
+   - aus dem RUN_LOG abgeleitete Tech-Debt-Items.
+   Die Roadmap darf wachsen — sie ist ein lebendes Dokument. Erst
+   wenn ein Punkt erledigt ist, wandert er aus dem Plan in den
+   RUN_LOG. Es gibt kein „Plan zu Ende" — kommt das vor, wurden
+   nicht genug Innovations-Punkte aufgenommen.
 
 Diese Philosophie hat Vorrang vor jeder Detail-Anweisung weiter unten,
 wenn es Konflikte gibt.

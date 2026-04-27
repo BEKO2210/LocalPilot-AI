@@ -4,6 +4,7 @@ import { mockGenerateWebsiteCopy } from "./mock/website-copy";
 import { mockImproveServiceDescription } from "./mock/service-description";
 import { mockGenerateFaqs } from "./mock/faqs";
 import { mockGenerateCustomerReply } from "./mock/customer-reply";
+import { mockGenerateReviewRequest } from "./mock/review-request";
 
 /**
  * Mock-Provider — wird Schritt für Schritt mit hochwertigen
@@ -11,12 +12,12 @@ import { mockGenerateCustomerReply } from "./mock/customer-reply";
  * sind, fallen auf den Stub zurück und werfen
  * AIProviderError("provider_unavailable").
  *
- * Status (Code-Session 17):
+ * Status (Code-Session 18):
  *   ✓ generateWebsiteCopy
  *   ✓ improveServiceDescription
  *   ✓ generateFaqs
  *   ✓ generateCustomerReply
- *   · generateReviewRequest       – folgt
+ *   ✓ generateReviewRequest
  *   · generateSocialPost          – folgt
  *   · generateOfferCampaign       – folgt
  */
@@ -31,4 +32,5 @@ export const mockProvider: AIProvider = {
   improveServiceDescription: mockImproveServiceDescription,
   generateFaqs: mockGenerateFaqs,
   generateCustomerReply: mockGenerateCustomerReply,
+  generateReviewRequest: mockGenerateReviewRequest,
 };
