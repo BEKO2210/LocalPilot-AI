@@ -195,8 +195,48 @@ naive `for-each-business: select services` hätte.
 also wäre der Embed leer; auch für authenticated-User wollen wir Leads
 nur explizit pro Anfrage laden, nicht als Beifang an jedem Business-Read.
 
+## Lead-Repository (Code-Session 40)
+
+Schreibe-Pfad für das Public-Form, parallel zum
+`BusinessRepository`. Datei:
+[`src/core/database/repositories/lead.ts`](../src/core/database/repositories/lead.ts).
+
+```ts
+const repo = getLeadRepository();
+const lead = await repo.create({
+  businessId: "...",
+  name: "...",
+  email: "...",
+  consent: { givenAt: new Date().toISOString(), policyVersion: PRIVACY_POLICY_VERSION },
+});
+```
+
+### RLS-Falle (wichtig!)
+
+PostgREST macht nach `insert(...)` einen impliziten SELECT, um die
+geschriebene Zeile zurückzugeben. Unter unserer **asymmetrischen RLS**
+(anon darf nicht lesen, Migration 0005) scheitert dieser SELECT mit
+`42501 row-level security violation` — der INSERT ist erfolgreich,
+aber die Antwort ist ein Fehler.
+
+**Lösung im Repository**: ID + Timestamps **client-side** generieren
+(`randomUUID()`, `new Date().toISOString()`), INSERT **ohne**
+`.select()`-Chain ausführen. Wir geben das selbst gebaute Lead-Objekt
+zurück — inhaltsidentisch zur DB-Zeile.
+
+### Error-Mapping
+
+`LeadRepositoryError.kind` bündelt Postgres-Codes auf 5 stabile Kinds:
+
+| Kind         | Postgres-Code       | Bedeutung                                     |
+| ------------ | ------------------- | --------------------------------------------- |
+| `validation` | (lokal, Zod)        | Eingabe genügt nicht `LeadSchema`             |
+| `rls`        | `42501`, `PGRST116`, `PGRST301` | RLS-Verletzung (z. B. Betrieb nicht published, Consent fehlt) |
+| `constraint` | `23502/23514/23503/23505` | NOT NULL / CHECK / FK / UNIQUE              |
+| `network`    | (Fetch-Layer)       | Netzwerk-/Timeout-Fehler                      |
+| `unknown`    | (sonst)             | Sonstige PostgREST-Fehler                     |
+
 ## Roadmap
 
-- **0006** (Session 40) — `business_owners`-Tabelle (Multi-Tenant-Auth via `auth.users`-FK), RLS-Policies werden Owner-bezogen.
-- **0006a** (Session 40) — Lead-Repository mit Insert-Pfad für das Public-Form (`createMockLeadRepository` + `createSupabaseLeadRepository`).
+- **0006** (Session 41) — `business_owners`-Tabelle (Multi-Tenant-Auth via `auth.users`-FK), RLS-Policies werden Owner-bezogen, plus Magic-Link-Auth via `@supabase/ssr`.
 - **0007+** — Storage-Buckets für Logos und Hero-Bilder, Backup-Policy.

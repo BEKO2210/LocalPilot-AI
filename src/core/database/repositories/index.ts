@@ -20,6 +20,11 @@ import {
   createSupabaseBusinessRepository,
   type BusinessRepository,
 } from "./business";
+import {
+  createMockLeadRepository,
+  createSupabaseLeadRepository,
+  type LeadRepository,
+} from "./lead";
 
 export type DataSource = "mock" | "supabase";
 
@@ -73,8 +78,56 @@ export function __resetBusinessRepoCache__(): void {
   cachedSource = null;
 }
 
+// ---------------------------------------------------------------------------
+// Lead-Repository-Resolver (Code-Session 40)
+// ---------------------------------------------------------------------------
+
+let cachedLeadRepo: LeadRepository | null = null;
+let cachedLeadSource: DataSource | null = null;
+
+/**
+ * Liefert das passende `LeadRepository`. Symmetrisch zum
+ * Business-Resolver: Soft-Fallback bei halb-konfigurierter ENV
+ * (kein Crash, nur stderr-Hinweis).
+ */
+export function getLeadRepository(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): LeadRepository {
+  const source = resolveDataSource(env);
+  if (cachedLeadRepo && cachedLeadSource === source) return cachedLeadRepo;
+
+  if (source === "supabase") {
+    const client = getSupabaseClient(env);
+    if (client) {
+      cachedLeadRepo = createSupabaseLeadRepository(client);
+      cachedLeadSource = "supabase";
+      return cachedLeadRepo;
+    }
+    if (typeof process !== "undefined" && process.stderr) {
+      process.stderr.write(
+        "[lead-repo] LP_DATA_SOURCE=supabase, aber kein Client (ENV unvollständig) — fallback auf Mock.\n",
+      );
+    }
+  }
+  cachedLeadRepo = createMockLeadRepository();
+  cachedLeadSource = "mock";
+  return cachedLeadRepo;
+}
+
+export function __resetLeadRepoCache__(): void {
+  cachedLeadRepo = null;
+  cachedLeadSource = null;
+}
+
 export type { BusinessRepository } from "./business";
+export type { LeadRepository, NewLeadInput } from "./lead";
 export {
   createMockBusinessRepository,
   createSupabaseBusinessRepository,
 } from "./business";
+export {
+  createMockLeadRepository,
+  createSupabaseLeadRepository,
+  LeadRepositoryError,
+  type LeadRepositoryErrorKind,
+} from "./lead";

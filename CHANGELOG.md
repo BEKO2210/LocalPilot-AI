@@ -7,13 +7,43 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant — Backend-Sprint
-- **Code-Session 40: business_owners + Magic-Link-Auth** (Migration
-  0006) **+ Lead-Repository mit Insert-Pfad** (Mock + Supabase).
-  Damit kann das Public-Form optional in Supabase schreiben.
-- Code-Sessions 41+: Storage-Bucket für Logos, Edge-Runtime-
-  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-Editor
-  mit Legal-Sektion, Impressum-Editor pro Betrieb (für Reseller),
-  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test.
+- **Code-Session 41: business_owners + Magic-Link-Auth** (Migration
+  0006). Erste echte Multi-Tenant-Bindung mit `@supabase/ssr`.
+- Code-Sessions 42+: Public-Lead-Form auf LeadRepository umstellen,
+  Storage-Bucket für Logos, Edge-Runtime-Migration, CSRF-Schutz,
+  HTML-Sanitize-Whitelist, Settings-Editor mit Legal-Sektion,
+  Impressum-Editor pro Betrieb (für Reseller), Seed-Skript für
+  Demo-Daten, Schema↔Migration-Drift-Test, **Dependency-Sweep**
+  (next 16, zod 4, tailwind 4, ts 6, eslint 10, …).
+
+## [0.16.14] – Code-Session 40 – 2026-04-27
+
+Lead-Repository mit Insert-Pfad. RLS-Falle aus Migration 0005
+elegant umgangen: ID + Timestamps client-side generieren, INSERT
+ohne chained SELECT.
+
+- ✚ `src/core/database/repositories/lead.ts` — `LeadRepository`-
+  Interface (`create(input): Lead`), `NewLeadInput`-Typ,
+  `LeadRepositoryError` mit 5 Kinds (validation/rls/constraint/
+  network/unknown). Mapper für SQLSTATE 23502/23503/23505/23514/
+  42501 + PostgREST PGRST116/PGRST301.
+- 🔄 `src/core/database/repositories/index.ts` — neuer
+  `getLeadRepository(env)`-Resolver mit Soft-Fallback bei
+  halb-konfigurierter ENV.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Lead-Repository-Sektion, RLS-Falle
+  erklärt, Error-Mapping-Tabelle.
+- ✚ `src/tests/lead-repository.test.ts` (~30 Asserts): Defaults,
+  Validation-Errors, Mock-Roundtrip, alle SQLSTATE-Codes,
+  Privacy-Smoketest.
+
+24/25 Smoketests grün. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Lead-Repo), Session 41 neu fokussiert
+(nur Auth, atomar). 2 neu (Public-Form-Umstellung,
+Dependency-Sweep für 17 Major-Bumps).
+
+🔁 state-refresh-light: 24/25 grün, 3 Stale-Stubs bekannt,
+Codex-#11/#12 weiter offen.
 
 ## [0.16.13] – Code-Session 39 – 2026-04-27
 

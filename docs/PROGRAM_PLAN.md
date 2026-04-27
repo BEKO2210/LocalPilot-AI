@@ -103,9 +103,13 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   `consents`-Audit-Trail aus Code-Session 32 ✅ FAQ embed im
   Repo, Leads mit asymmetrischer RLS (Insert-by-anon, Select
   nur authenticated)
-- 40: `business_owners` + Magic-Link-Auth via `@supabase/ssr`,
-  Multi-Tenant-Bucket, `auth.uid()`-RLS-Policies. Lead-Repository
-  mit Insert-Pfad fürs Public-Form (mock + supabase).
+- 40: Lead-Repository mit Insert-Pfad fürs Public-Form (mock +
+  supabase) ✅ — RLS-Falle gefangen via client-side ID + INSERT
+  ohne chained SELECT; 5-Kind-Error-Mapping (validation/rls/
+  constraint/network/unknown). Magic-Link-Auth wandert auf 41.
+- 41: `business_owners` + Magic-Link-Auth via `@supabase/ssr`,
+  Multi-Tenant-Bucket, `auth.uid()`-RLS-Policies — eigene atomare
+  Session.
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 
@@ -366,6 +370,19 @@ aktiven Session.
   englische Werte, Zod-Enum hat aber deutsche). Sinnvoll: ein
   Test, der das TS-Enum gegen die SQL-CHECK-Constraint matcht
   (z. B. SQL parsen oder beide aus einer Quelle generieren).
+- **Public-Lead-Form auf LeadRepository umstellen** (aus
+  Code-Session 40): Form schreibt aktuell direkt in
+  `localStorage` über `appendLead`. Mit dem neuen Repository
+  könnte sie wahlweise auch in Supabase persistieren — als
+  Server-Action oder API-Route, mit Feature-Flag-Switch. Hinweis:
+  bei Mock-Mode bleibt `localStorage` der Default, weil das
+  Dashboard die Leads dort liest.
+- **Dependency-Sweep-Session** (aus Deep-Pass nach Session 40):
+  viele Major-Bumps stehen an: `next 15→16`, `react 19.0→19.2`,
+  `tailwindcss 3→4`, `typescript 5.7→6`, `zod 3→4`, `eslint 9→10`,
+  `lucide-react 0.469→1.11`, `@anthropic-ai/sdk 0.62→0.91`,
+  `openai 5→6`, `tailwind-merge 2→3`. Manche brechen
+  (zod-Peer-Dep der AI-SDKs!), eigene Maintenance-Session lohnt.
 - **Stale-`comingInSession`-Audit** (aus Light-Pass Session 35):
   Bronze-User sehen `comingInSession={11}` (Services) bzw.
   `={12}` (Leads), obwohl die Features längst gebaut sind — die

@@ -90,6 +90,13 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Supabase Insert + RLS-Falle (Code-Session 40)
+- [Supabase Issue #35368 – RLS Check Failing on INSERT Despite WITH CHECK true](https://github.com/supabase/supabase/issues/35368) — implizites SELECT nach INSERT erfordert SELECT-Policy (40).
+- [Supabase Discussion #36619 – RLS Check Failing on INSERT](https://github.com/orgs/supabase/discussions/36619) — Workaround `returning: 'minimal'` bzw. ID client-side (40).
+- [Bytebase – Postgres Error 23514 CHECK constraint violation](https://www.bytebase.com/reference/postgres/error/23514-check-constraint-violation/) — SQLSTATE-Mapping (40).
+- [drdroid.io – Postgres 23502 NOT NULL violation](https://drdroid.io/stack-diagnosis/supabase-database-not-null-violation-error-when-trying-to-insert-a-null-value-into-a-column-with-a-not-null-constraint) — Error-Code-Tabellen (40).
+- [Niko Fischer – „new row violates RLS policy" Workaround](https://nikofischer.com/supabase-error-row-level-security-policy) — Real-World-Beispiel (40).
+
 ### DSGVO Consent-Audit-Trail in Postgres (Code-Session 39)
 - [Postgres Audit Logging Guide (Bytebase)](https://www.bytebase.com/blog/postgres-audit-logging/) — Audit-Tabellen-Schemata, JSONB-Pattern (39).
 - [Audit logging using JSONB in Postgres (Elephas)](https://elephas.io/audit-logging-using-jsonb-in-postgres/) — Schema-änderungs-freier Audit-Pfad (39).

@@ -5134,3 +5134,69 @@ Editor nach 0001–0003 ausführen. Idempotent.
 Insert-Pfad** (Mock + Supabase). Damit kann das Public-Form
 optional in Supabase schreiben, und Multi-Tenant-Auth fängt an.
 
+---
+
+## Code-Session 40 – Lead-Repository mit Insert-Pfad
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Server-/Edge-tauglicher Schreibe-Pfad für das Public-
+Form. RLS-Falle aus Migration 0005 (anon darf nicht lesen) wird
+elegant umgangen: ID + Timestamps **client-side** generieren,
+INSERT **ohne** `.select()`-Chain ausführen, das selbst gebaute
+Lead-Objekt zurückgeben — inhaltsidentisch zur DB-Zeile.
+
+Magic-Link-Auth + `business_owners` waren ursprünglich für
+Session 40 geplant, sind aber zu groß für eine atomare Session
+und wandern auf Session 41 (eigener Auth-Sprint).
+
+**Dateien**:
+- ✚ `src/core/database/repositories/lead.ts` — `LeadRepository`-
+  Interface (`create(input): Lead`), `NewLeadInput`-Typ,
+  `LeadRepositoryError` mit 5 Kinds
+  (validation/rls/constraint/network/unknown), Mapper für
+  Postgres-SQLSTATE-Codes 23502/23503/23505/23514/42501 +
+  PostgREST PGRST116/PGRST301. Mock-Impl (in-memory bucket)
+  + Supabase-Impl. Test-Helper exportiert.
+- 🔄 `src/core/database/repositories/index.ts` — neuer
+  `getLeadRepository(env)`-Resolver, symmetrisch zum
+  Business-Resolver, mit Soft-Fallback bei halb-konfigurierter
+  ENV.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Lead-Repository-Sektion mit
+  RLS-Falle erklärt, Error-Mapping-Tabelle.
+- ✚ `src/tests/lead-repository.test.ts` (~30 Asserts):
+  buildLeadFromInput-Defaults, Validation-Errors (kein
+  phone/email, zu kurzer Name), Mock-Repo-Roundtrip, alle 5
+  SQLSTATE-Codes → kind, Privacy-Smoketest.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **24/25 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Lead-Repo + Insert), Session 41
+neu fokussiert (nur business_owners + Magic-Link, atomar). 2
+neue Plan-Items: Public-Lead-Form auf LeadRepository umstellen,
+Dependency-Sweep-Session (Major-Bumps).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase Insert +
+RLS-Falle.
+
+**state-refresh-light** (Session 40 ist 5er-Multiple, gleichzeitig
+20er-Boundary → Deep-Pass-Notiz):
+- Smoketest-Regression: 24/25 grün, industry-presets bleibt
+  Codex-#11.
+- Stale-Stub-Audit: 3 Treffer (services/leads/settings) —
+  bekannt aus Session 35, Codex-#12 sammelt das.
+- Codex-Backlog: 2 needs-review aktiv, kein Codex-Done seit
+  letztem Pass.
+- Bundle: 102 KB shared stabil.
+- **Deep-Pass `npm outdated`**: 17 Pakete mit Major-Updates
+  verfügbar (next 16, react 19.2, zod 4, tailwind 4, ts 6,
+  eslint 10, anthropic 0.91, openai 6, lucide 1.11, …). Nichts
+  Sicherheitskritisches. Eigene Sweep-Session lohnt — als
+  neues Plan-Item dokumentiert.
+
+**Nächste Session**: Code-Session 41 — **`business_owners`-Tabelle
++ Magic-Link-Auth via `@supabase/ssr`** (Migration 0006). Erste
+echte Multi-Tenant-Bindung; danach kann das Dashboard pro
+User die eigenen Leads sehen.
+
