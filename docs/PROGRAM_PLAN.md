@@ -92,7 +92,9 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
 
 **Session-Cluster (rollend):**
 - 35: Supabase-Client-Skeleton + Database-Health-Check (read-only) ✅
-- 36+: Schema-Entwurf (`businesses`, `services`, `leads`,
+- 36: Plattform-Impressum + Datenschutz aus `LP_OWNER_*`-ENV ✅
+  (Stammdaten leak-sicher per Konstruktion, Demo-Mode-Hinweis)
+- 37+: Schema-Entwurf (`businesses`, `services`, `leads`,
   `consents`), erste Read-Pfade hinter Feature-Flag, Repository-
   Layer abstrahiert localStorage + Supabase einheitlich.
 - 38+: Magic-Link-Auth via `@supabase/ssr`, Multi-Tenant-Bucket
@@ -349,6 +351,16 @@ aktiven Session.
   zwei separate Komponenten — `<FeatureLockedSection>` für
   Tier-Locks, `<ComingSoonSection>` nur für tatsächlich offene
   Features.
+- **Impressum-Editor im Dashboard** (aus Code-Session 36):
+  aktuell kommen die Owner-Daten ausschließlich aus
+  `LP_OWNER_*`-ENV — gut für Privacy, aber unbequem für
+  Reseller-Szenarien (jeder Mandant müsste seine eigene
+  Vercel-Instanz haben). Mit Multi-Tenant-Backend (Meilenstein 4):
+  Owner-Daten optional per Betrieb in der DB überschreibbar,
+  ENV bleibt als Default für die Plattform-Marketing-Seite.
+- **Marketing-Footer-Verifikation**: aktuell zeigt die Public-Site
+  einen `#kontakt`-Anchor ohne echte Sektion. Hinweis aus
+  Code-Session 36: entweder Sektion bauen oder Anchor entfernen.
 
 ### Track D · DX & Refactor
 - Gemeinsamen `clamp`/`polish`/`substituteCity`-Helper in

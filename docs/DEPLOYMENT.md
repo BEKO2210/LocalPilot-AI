@@ -126,6 +126,17 @@ vercel env add GEMINI_API_KEY production
 vercel env add SUPABASE_URL production
 vercel env add SUPABASE_ANON_KEY production
 
+# Pflicht vor Produktiv-Schaltung (ab Code-Session 36) —
+# Plattform-Impressum + Datenschutz:
+vercel env add LP_OWNER_NAME production
+vercel env add LP_OWNER_STREET production
+vercel env add LP_OWNER_POSTAL_CODE production
+vercel env add LP_OWNER_CITY production
+vercel env add LP_OWNER_EMAIL production
+# Optional:
+vercel env add LP_OWNER_PHONE production
+vercel env add LP_OWNER_TAX_ID production
+
 # 4. Production-Deploy
 vercel --prod
 ```
@@ -269,3 +280,10 @@ Supabase-ENV.** Die Werte werden gelesen, aber der Endpoint antwortet
 nicht innerhalb von 2 Sekunden. Häufigste Ursache: Supabase-Projekt
 ist im Free-Tier nach 7 Tagen Inaktivität pausiert. Im Supabase-
 Dashboard auf **Restore project** klicken, dann erneut prüfen.
+
+**Plattform-Impressum zeigt „Anbieter noch nicht konfiguriert"
+trotz Production-Deploy.** Die `LP_OWNER_*`-ENVs sind nicht oder
+unvollständig gesetzt. Pflichtfelder sind NAME, STREET, POSTAL_CODE,
+CITY, EMAIL — fehlt eines, bleibt der Demo-Mode aktiv. Mit
+`vercel env ls` prüfen, dann redeploy. Setting in
+[`.env.production.example`](../.env.production.example).

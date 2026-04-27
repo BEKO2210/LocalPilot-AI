@@ -7,14 +7,49 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant — Backend-Sprint
-- **Code-Session 36: Owner-Daten via ENV + erstes Supabase-Schema**.
-  Impressum/Datenschutz aus `LP_OWNER_*`-ENV-Variablen, parallel
-  `businesses`-Tabelle in Supabase (read-only, Mock-Spiegelung).
-- Code-Sessions 37+: Multi-Tenant-Auth mit echten User-Accounts
-  (Magic-Link via `@supabase/ssr`), Repository-Layer (localStorage
-  → Supabase transparent), Storage-Bucket für Logos, Edge-Runtime-
-  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-Editor
-  mit Legal-Sektion.
+- **Code-Session 37: Erstes Supabase-Schema** (`businesses`-Tabelle
+  als read-only Spiegel der Mocks + Repository-Layer mit
+  feature-flag-Switch localStorage ↔ Supabase). Health-Endpunkt
+  testet ab dann echte Tabellen-Calls statt nur REST-Root-Ping.
+- Code-Sessions 38+: Multi-Tenant-Auth mit echten User-Accounts
+  (Magic-Link via `@supabase/ssr`), Storage-Bucket für Logos,
+  Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
+  Settings-Editor mit Legal-Sektion, Impressum-Editor pro Betrieb
+  (für Reseller-Szenarien).
+
+## [0.16.10] – Code-Session 36 – 2026-04-27
+
+Plattform-Impressum + Datenschutz auf ENV umgestellt — Stammdaten
+des Auftraggebers landen leak-sicher per Konstruktion nicht im Repo.
+
+- ✚ `src/core/legal.ts::getOwnerInfo(env)` — Pflichtfelder
+  (NAME, STREET, POSTAL_CODE, CITY, EMAIL) → `configured=true`,
+  sonst Demo-Owner-Fallback. Trimmt Whitespace, optionale Felder
+  fehlen sauber als Key (nicht als `undefined`).
+- ✚ `src/app/impressum/page.tsx` — Plattform-Impressum nach § 5 DDG
+  + § 18 MStV. Static-prerendered (170 B). Sichtbarer Demo-Notice
+  solange ENV unvollständig.
+- ✚ `src/app/datenschutz/page.tsx` — Plattform-Datenschutz mit
+  7 Sektionen, verlinkt `/impressum` und nennt Vercel als
+  Hosting-Auftragsverarbeiter.
+- 🔄 `src/components/layout/site-footer.tsx` — `<a href="#...">`
+  raus, echte `<Link>` rein.
+- 🔄 `.env.production.example` — `LP_OWNER_*`-Block (5 Pflicht +
+  3 Optional + Default-Country).
+- 🔄 `docs/DEPLOYMENT.md` — Vercel-ENV-Schritte + neuer
+  Stolperfall-Eintrag.
+- ✚ `src/tests/owner-info.test.ts` (~25 Asserts):
+  Demo-Mode-Logik, Pflichtfeld-Vollständigkeit, Whitespace-Trim,
+  Country-Override, Privacy-Smoketest (Probe leakt nicht in Demo).
+
+22/23 Smoketests grün. Neue Routes static-prerendered (Pages-
+kompatibel). Bundle: shared 102 KB unverändert.
+
+🛣️ Roadmap: 2 neue Plan-Items (Impressum-Editor pro Betrieb für
+Reseller, Footer-`#kontakt`-Verifikation).
+
+**Hinweis**: persönliche Stammdaten gehen nur in Vercel-ENV
+(oder `.env.local`, ist in `.gitignore`) — niemals in den Code.
 
 ## [0.16.9] – Code-Session 35 – 2026-04-27
 

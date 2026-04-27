@@ -4880,3 +4880,70 @@ ENV-Variablen, parallel `businesses`-Tabelle in Supabase
 (read-only, Mock-Spiegelung). Ab da kann der Auftraggeber seine
 echten Stammdaten nutzen, ohne sie in den Quellcode einzuchecken.
 
+---
+
+## Code-Session 36 – Plattform-Impressum + Datenschutz aus `LP_OWNER_*`-ENV
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Auftraggeber-Stammdaten (Name, Adresse, Telefon, E-Mail,
+USt-IdNr.) landen ab jetzt **niemals** im Repo. Ihre Quelle ist
+ausschließlich die `LP_OWNER_*`-ENV-Map auf Vercel/lokal. Solange
+die Pflichtfelder nicht gesetzt sind, läuft die Plattform im
+sichtbaren Demo-Mode (gelber Hinweis-Block, klare Setup-Anweisung).
+Neue Routen `/impressum` + `/datenschutz` für die LocalPilot-AI-
+Plattform selbst (Demo-Betriebs-Versionen unter `/site/<slug>/...`
+bleiben unverändert mit Mock-Daten).
+
+**Dateien**:
+- 🔄 `src/core/legal.ts` — `getOwnerInfo(env)`, `OwnerInfo`-
+  Interface, `PLATFORM_NAME`-Konstante. Pflichtfelder NAME +
+  STREET + POSTAL_CODE + CITY + EMAIL → `configured=true`,
+  sonst Demo-Owner-Fallback. ENV-Reader trimmt Whitespace
+  (whitespace-only zählt als leer).
+- ✚ `src/app/impressum/page.tsx` — Plattform-Impressum nach
+  § 5 DDG (TMG abgelöst zum 14.05.2024) + § 18 MStV. Sektionen:
+  Anbieter, Kontakt, USt-IdNr. (optional), Verantwortlich für
+  Inhalt, Haftung, Online-Streitbeilegung. Demo-Notice mit
+  ENV-Var-Liste + Hinweis auf `.env.production.example`.
+- ✚ `src/app/datenschutz/page.tsx` — Plattform-Datenschutz mit
+  7 Standard-Sektionen (Verantwortlicher, Datenarten, Zweck +
+  Rechtsgrundlage, Speicherdauer, Empfänger inkl. Vercel-DPA,
+  Betroffenenrechte, Cookies). Verlinkt `/impressum`.
+- 🔄 `src/components/layout/site-footer.tsx` — `<a href="#impressum">`
+  Anchors raus, echte `<Link href="/impressum">` rein.
+  `#kontakt` bleibt als TODO (siehe PROGRAM_PLAN).
+- 🔄 `.env.production.example` — neuer `LP_OWNER_*`-Block mit
+  Pflicht/Optional-Markierung, Default-Country „Deutschland".
+- 🔄 `docs/DEPLOYMENT.md` — Vercel-`env-add`-Block ergänzt + neuer
+  Stolperfall „Anbieter noch nicht konfiguriert trotz Production".
+- ✚ `src/tests/owner-info.test.ts` (~25 Asserts):
+  empty-ENV → Demo, Pflichtfeld-fehlt → Demo, voll konfiguriert
+  → Daten kommen durch, Country-Override, Whitespace-Trim,
+  optionale Felder fehlen sauber im Output (nicht als `undefined`-
+  Key), Privacy-Smoketest (NAME-Probe leakt nicht in Demo).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **22/23 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Neue Static-Routes: `/impressum`, `/datenschutz`
+(je 170 B page-bundle, 106 KB shared). Bundle-Total stabil.
+
+**Roadmap**: 1 großes Item abgehakt (Owner-ENV-Pfad), 2 Folge-
+Items angelegt: Impressum-Editor im Dashboard für Multi-Tenant
+(Reseller-Szenario), Footer-`#kontakt`-Verifikation
+(Sektion bauen oder Anchor weg).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — § 5 DDG / Impressum-
+Pflichtangaben.
+
+**Hinweis Auftraggeber**: deine Stammdaten aus dem letzten Chat
+sind **NICHT** im Code committet. Setze sie bitte in deiner Vercel-
+Production-ENV als `LP_OWNER_NAME` / `LP_OWNER_STREET` /
+`LP_OWNER_POSTAL_CODE` / `LP_OWNER_CITY` / `LP_OWNER_EMAIL`
+(+ optional `LP_OWNER_PHONE`, `LP_OWNER_TAX_ID`). Lokal genauso
+in einer `.env.local` (die ist in `.gitignore`).
+
+**Nächste Session**: Code-Session 37 — **Erstes Supabase-Schema**
+(`businesses`-Tabelle als read-only Spiegel der Mocks +
+Repository-Layer). Damit zeigt `database.status` „ok" mit
+echten Tabellen-Calls statt nur REST-Root-Ping.
+

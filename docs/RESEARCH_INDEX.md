@@ -90,6 +90,13 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### § 5 DDG / Impressum-Pflichtangaben (Code-Session 36)
+- [IHK Chemnitz – Impressumspflicht (TMG/DDG)](https://www.ihk.de/chemnitz/recht-und-steuern/rechtsinformationen/internetrecht/pflichtangaben-im-internet-die-impressumspflicht-4401580) — Pflichtfelder + Zwei-Klick-Vorgabe (36).
+- [Rickert.law – Impressumspflicht nach § 5 TMG](https://rickert.law/impressumspflicht-nach-%C2%A7-5-tmg/) — Übergang TMG→DDG zum 14.05.2024 (36).
+- [it-recht-kanzlei.de – Impressum nach TMG/DDG](https://www.it-recht-kanzlei.de/Thema/impressum-tmg.html) — Mustertexte + Sonderfälle (36).
+- [firma.de – Impressum Einzelunternehmen (Muster PDF)](https://www.firma.de/firmengruendung/impressum-einzelunternehmen-sollten-auf-diese-angaben-achten-mit-muster-pdf/) — Pflichtangaben für Einzelunternehmer (36).
+- [Proliance – Impressum nach TMG: Was Website-Betreiber beachten müssen](https://www.proliance.ai/blog/impressum-nach-tmg-das-mussen-website-betreiber-beachten) (36).
+
 ### Supabase-Health-Patterns (Code-Session 35)
 - [Supabase – Use Supabase with Next.js (Quickstart)](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs) — `@supabase/ssr` + `@supabase/supabase-js` (35).
 - [Supabase – Setting up Server-Side Auth for Next.js](https://supabase.com/docs/guides/auth/server-side/nextjs) — Server Component / Route Handler Pattern (35).
