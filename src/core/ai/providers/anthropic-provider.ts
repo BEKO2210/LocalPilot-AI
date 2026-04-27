@@ -1,15 +1,16 @@
 import type { AIProvider } from "@/types/ai";
 import { buildStubProvider } from "./_stub";
 import { anthropicGenerateWebsiteCopy } from "./anthropic/website-copy";
+import { anthropicImproveServiceDescription } from "./anthropic/service-description";
 
 /**
  * Anthropic-Provider — wird Schritt für Schritt mit Live-Implementationen
  * gefüllt. Methoden, die noch nicht scharf sind, fallen auf den Stub
  * zurück und werfen `AIProviderError("provider_unavailable")`.
  *
- * Status (Code-Session 24 — erste Live-Methode):
+ * Status (Code-Session 25 — zweite Live-Methode):
  *   ✓ generateWebsiteCopy        (Messages-API mit Tool Use)
- *   · improveServiceDescription   – folgt
+ *   ✓ improveServiceDescription  (Messages-API mit Tool Use)
  *   · generateFaqs                – folgt
  *   · generateCustomerReply       – folgt
  *   · generateReviewRequest       – folgt
@@ -29,4 +30,5 @@ const stub = buildStubProvider(
 export const anthropicProvider: AIProvider = {
   ...stub,
   generateWebsiteCopy: anthropicGenerateWebsiteCopy,
+  improveServiceDescription: anthropicImproveServiceDescription,
 };
