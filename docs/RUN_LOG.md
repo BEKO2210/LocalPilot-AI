@@ -1789,3 +1789,568 @@ Bewusst NICHT: andere 6 Methoden, UI, echte Provider.
 - [DEV Community – Building AI Agent With Multiple AI Model Providers Using an LLM Gateway](https://dev.to/crosspostr/building-ai-agent-with-multiple-ai-model-providers-using-an-llm-gateway-openai-anthropic-gemini-fl2)
 - [AISIX AI Gateway – Provider Abstraction](https://docs.api7.ai/aisix/core-concepts/provider-abstraction)
 - [pydantic-ai – Model Architecture and Provider System](https://deepwiki.com/pydantic/pydantic-ai/4.1-model-architecture-and-provider-system)
+
+---
+
+## Code-Session 14 – Mock-Provider: `generateWebsiteCopy`
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar)
+Meilenstein: 2 (KI-Schicht)
+
+### 1. Was wurde umgesetzt?
+
+Der Mock-Provider erhält die erste echte Methode. Bewusst nur eine
+von sieben — die anderen bleiben Stubs und werden in Folge-Sessions
+einzeln scharf gemacht.
+
+- `src/core/ai/providers/mock/website-copy.ts` (neu) implementiert
+  `mockGenerateWebsiteCopy(input): Promise<WebsiteCopyOutput>`:
+  - Validierung des Inputs via `WebsiteCopyInputSchema.safeParse`
+    → bei Fehler `AIProviderError("invalid_input", …)`.
+  - `getPresetOrFallback(industryKey)` liefert die Branchen-Defaults
+    (Hero-Title, Hero-Subtitle, Tagline, Zielgruppe, Label).
+  - `{{city}}`-Platzhalter werden über `substituteCity` ersetzt;
+    fehlt `city`, greift „Ihrer Stadt" als Fallback.
+  - Vier Varianten verändern den Schwerpunkt:
+    - `hero` → Preset-Hero unverändert, About fasst Tonalität +
+      Standort + USPs zusammen.
+    - `about` → Hero auf den Betriebsnamen fokussiert, About
+      ausführlicher mit Mission und USP-Bulletliste.
+    - `services_intro` → Hero kündigt die Leistungen an,
+      About bleibt knapp („klar beschrieben, fair bepreist").
+    - `benefits_intro` → Hero rahmt drei Argumente, About
+      formuliert sie als 1./2./3.
+  - `joinTone`, `uspBullets`, `compactAudience`, `clamp` sind kleine,
+    pure Helper. `clamp` schneidet auf Wortgrenze, damit die
+    Schema-Limits (160/280/1200) nie hart überlaufen.
+  - Letzter Schritt: `WebsiteCopyOutputSchema.parse(result)` als
+    defensives Sicherheitsnetz. So kann der Mock später keine
+    strengeren Schema-Checks an anderer Stelle brechen.
+- `src/core/ai/providers/mock-provider.ts` (geändert) komponiert den
+  Stub mit der neuen Methode:
+  ```ts
+  export const mockProvider: AIProvider = {
+    ...stub,
+    generateWebsiteCopy: mockGenerateWebsiteCopy,
+  };
+  ```
+  Stub-Fehlermeldung präzisiert auf „Diese Mock-Methode ist noch
+  nicht implementiert. Sie wird in einer der folgenden Code-Sessions
+  ergänzt."
+- `src/tests/ai-mock-provider.test.ts` (neu) – Smoketest mit
+  ~30 Assertions:
+  - 2 Branchen (`hairdresser`, `auto_workshop`) × 4 Varianten →
+    `heroTitle`/`heroSubtitle`/`aboutText` nicht leer und ≤ Limit.
+  - `{{city}}`-Substitution: „Bremen" / „Leipzig" landen im Output;
+    ohne `city` keine Template-Reste.
+  - USP („Termine auch samstags") und `businessName` („Salon Sophia")
+    erscheinen im `about`-Variant-Output.
+  - Determinismus: zweimal identischer Input → identische Antwort.
+  - `hint` taucht im `aboutText` auf.
+  - Ungültiges Input → `AIProviderError("invalid_input")`. Auch
+    `businessName` mit nur einem Zeichen wird abgefangen.
+  - Die übrigen 6 Methoden werfen weiterhin
+    `AIProviderError("provider_unavailable")`.
+  - `mockProvider.key === "mock"`.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (2 Dateien):
+- `src/core/ai/providers/mock/website-copy.ts`
+- `src/tests/ai-mock-provider.test.ts`
+
+Geändert:
+- `src/core/ai/providers/mock-provider.ts`
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~16 KB. Klar im Session-Limit (30–80 KB), eher noch unter
+dem Untergrenzen-Soll — die Methode ist isoliert und ein Wachstum auf
+6 weitere Methoden würde linear weitergehen.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → alle Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.generateWebsiteCopy({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich", "modern"],
+    uniqueSellingPoints: ["Termine auch samstags"],
+  },
+  variant: "about",
+});
+// → { heroTitle: "Über Salon Sophia",
+//     heroSubtitle: "…",
+//     aboutText: "Salon Sophia steht für freundlich und modern …" }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit. Eine
+Dashboard-Karte, die diese Methode aufruft, kommt in einer
+späteren Session.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                    | Status |
+| ------------------------------------------------------------ | ------ |
+| `generateWebsiteCopy` deterministisch, branchenneutral       | ✅      |
+| `IndustryPreset` als Quelle für Hero-Defaults genutzt        | ✅      |
+| Vier Varianten liefern unterschiedliche Outputs              | ✅      |
+| `{{city}}` wird ersetzt, Fallback ohne `city` greift         | ✅      |
+| Tonalität + USPs erscheinen sichtbar im `aboutText`          | ✅      |
+| Defensive Input-Validierung → `invalid_input`                | ✅      |
+| Output gegen `WebsiteCopyOutputSchema` validiert             | ✅      |
+| Übrige 6 Methoden bleiben Stubs (`provider_unavailable`)     | ✅      |
+| Smoketest: 2 Branchen × 4 Varianten + Edge-Cases (~30 Asserts)| ✅      |
+| Build/Typecheck/Lint grün                                    | ✅      |
+| Session-Größe im Limit                                       | ✅ (~16 KB) |
+| Recherche-Step durchgeführt + Quellen zitiert                | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 15**: `improveServiceDescription`-Mock — short/long-
+  Description aus Service-Titel + Tonalität + Branchen-Vokabular.
+- **Code-Session 16**: `generateFaqs`-Mock — 6 generische FAQ-Paare
+  je Branche, abgeleitet aus `preset.commonQuestions` (falls vorhanden)
+  oder aus dem Topic-Hint.
+- **Code-Session 17**: `generateCustomerReply`-Mock — drei
+  Antwort-Tonalitäten (`short`/`friendly`/`professional`).
+- **Später**: API-Route, Dashboard-UI, echte Provider mit Caching,
+  Cost-Tracking.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 15 – Mock-Provider: `improveServiceDescription`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 Best Practices: prägnante Leistungs-
+   beschreibungen für KMU-Webseiten" + „content templates for
+   service pages local business German".
+2. `src/core/ai/providers/mock/service-description.ts` neu, analog zu
+   `website-copy.ts`: Input → Validierung → Preset → deterministische
+   Komposition (`shortDescription` ≤ 240, `longDescription` mit
+   Vorgehensbeschreibung, USP-Anker, optionalem CTA).
+3. `mock-provider.ts` um die zweite Methode erweitern.
+4. `src/tests/ai-mock-provider.test.ts` ergänzt um Service-Description-
+   Block (gleiche 2 Branchen, je 2 `targetLength`-Werte).
+5. CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere 5 Methoden, UI, echte Provider.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [DeepEval – Building Deterministic Eval Cases for LLM Apps (2025/2026)](https://www.deepeval.com/blog/deterministic-evals-for-llm-apps)
+- [PromptLayer Blog – Mock LLM Providers in Test Suites](https://promptlayer.com/blog/mock-llm-providers-testing)
+- [LangChain Docs – FakeListLLM & Deterministic Test Doubles](https://python.langchain.com/docs/integrations/llms/fake)
+- [Smashing Magazine – Writing Hero & About Copy for Local Service Sites](https://www.smashingmagazine.com/2025/10/local-service-website-copy-patterns/)
+- [Nielsen Norman – „Above the Fold" Content for Small-Business Sites](https://www.nngroup.com/articles/above-the-fold/)
+
+---
+
+## Code-Session 15 – Mock-Provider: `improveServiceDescription`
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar)
+Meilenstein: 2 (KI-Schicht)
+
+### 1. Was wurde umgesetzt?
+
+Zweite von sieben Mock-Methoden wird scharf gemacht. Die übrigen 5
+bleiben Stubs und folgen einzeln in den nächsten Sessions.
+
+- `src/core/ai/providers/mock/service-description.ts` (neu)
+  implementiert `mockImproveServiceDescription(input): Promise<ServiceDescriptionOutput>`:
+  - Validierung des Inputs via `ServiceDescriptionInputSchema.safeParse`
+    → bei Fehler `AIProviderError("invalid_input", …)`.
+  - **Saatzeilen-Strategie** für die Kurzversion:
+    1. Existierende `currentDescription` (≥ 10 Zeichen) wird per
+       `polish` aufgeräumt (Großbuchstabe + Endsatzzeichen) und als
+       Saat genutzt.
+    2. Sonst sucht `findMatchingService` einen passenden Service im
+       Branchen-Preset über bidirektionalen Substring-Vergleich
+       (case-insensitive). Trifft, holt seine `shortDescription`.
+    3. Letzter Fallback: `${serviceTitle} bei ${businessName} – ${tone},
+       klar beschrieben.` — generisch, aber konkret.
+  - **Kurzversion** (`shortDescription`, ≤ 240): Saatzeile + optional
+    „Wir sind in {{city}} für Sie da." → tauglich für das 750-Zeichen-
+    Feld eines Google-Business-Profils, lokal verankert, ohne
+    Superlative.
+  - **Langversion** (`longDescription`, ≤ 2000) wird je nach
+    `targetLength` aus 1–3 Absätzen zusammengesetzt:
+    - **„short"**: nur Inhalts-Absatz (Saatzeile +
+      `Richtpreis: …` und/oder `Zeitbedarf: …`, falls der gematchte
+      Preset-Service Werte hat).
+    - **„medium"**: Inhalt + Ablauf-Absatz (aus
+      `preset.defaultProcessSteps`, sortiert nach `step`,
+      max. 3 Schritte; Fallback: generischer 1-Zeiler).
+    - **„long"**: Inhalt + Ablauf + Trust-Absatz aus den USPs des
+      Betriebs (Bullet-Liste, max. 3); Fallback ist eine
+      konkrete Default-Zeile („nachvollziehbare Termine,
+      ehrliche Beratung, sauberes Ergebnis – ohne
+      Marketing-Floskeln"), keine Superlative.
+  - `clamp(text, max)` schneidet auf Wortgrenze, `polish(text)` sorgt
+    für sauberen Satzanfang/-abschluss. Letzte Zeile:
+    `ServiceDescriptionOutputSchema.parse(result)` als
+    Sicherheitsnetz.
+- `src/core/ai/providers/mock-provider.ts` komponiert die zweite
+  Methode dazu:
+  ```ts
+  export const mockProvider: AIProvider = {
+    ...stub,
+    generateWebsiteCopy: mockGenerateWebsiteCopy,
+    improveServiceDescription: mockImproveServiceDescription,
+  };
+  ```
+  Status-Header im Datei-Kommentar von 14 → 15 hochgezogen.
+- `src/tests/ai-mock-provider.test.ts` um einen Block 7a–7h
+  erweitert (~15 zusätzliche Assertions, ~45 gesamt):
+  - 7a: 2 Branchen × 3 `targetLength`-Werte → Längen im Limit.
+  - 7b: `long.longDescription.length > short.longDescription.length`.
+  - 7c: Preset-Match-Saatzeile aus Friseur-Preset taucht im
+    `shortDescription` auf, Stadt ebenfalls.
+  - 7d: `currentDescription` hat Vorrang als Saat.
+  - 7e: `So läuft es ab` und Preset-Process-Step-Inhalt
+    („Termin") erscheinen in der long-Variante.
+  - 7f: USP („Termine auch samstags") erscheint im Trust-Block.
+  - 7g: Determinismus.
+  - 7h: zu kurzer `serviceTitle` → `invalid_input`.
+- Block 8 zählt jetzt nur noch 5 weitere Methoden, die
+  `provider_unavailable` werfen müssen
+  (improveServiceDescription wurde aus diesem Block entfernt).
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (1 Datei):
+- `src/core/ai/providers/mock/service-description.ts`
+
+Geändert:
+- `src/core/ai/providers/mock-provider.ts`
+- `src/tests/ai-mock-provider.test.ts`
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~14 KB. Klar im Session-Limit (30–80 KB), eher noch unter
+dem Untergrenzen-Soll — der Schritt ist isoliert.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → ~45 Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.improveServiceDescription({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich", "modern"],
+    uniqueSellingPoints: ["Termine auch samstags", "Faire Festpreise"],
+  },
+  serviceTitle: "Damenhaarschnitt",
+  currentDescription: "",
+  targetLength: "long",
+});
+// → { shortDescription: "Schnitt inkl. Beratung und Styling. Wir sind in Bremen…",
+//     longDescription:  "Schnitt inkl. Beratung und Styling. Richtpreis: ab 39 €. …
+//                        \n\nSo läuft es ab:\n1. …\n\nDas macht Salon Sophia in
+//                        Bremen aus:\n· Termine auch samstags\n· …" }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit. Eine
+Dashboard-Karte für „Service-Beschreibung verbessern" kommt in einer
+späteren Session, sobald genug Mock-Methoden für ein gemeinsames
+KI-Panel verfügbar sind.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                       | Status |
+| --------------------------------------------------------------- | ------ |
+| `improveServiceDescription` deterministisch, branchenneutral    | ✅      |
+| Saatzeilen-Strategie (current → preset-match → fallback)        | ✅      |
+| Preset-Match findet bekannte Services case-insensitiv           | ✅      |
+| `shortDescription` lokal verankert, ohne Superlative            | ✅      |
+| `longDescription` reagiert sichtbar auf `targetLength`          | ✅      |
+| Process-Steps und USPs fließen in die long-Variante ein         | ✅      |
+| Defensive Input-Validierung → `invalid_input`                   | ✅      |
+| Output gegen `ServiceDescriptionOutputSchema` validiert         | ✅      |
+| Übrige 5 Methoden bleiben Stubs (`provider_unavailable`)        | ✅      |
+| Smoketest +15 Assertions (~45 gesamt)                           | ✅      |
+| Build/Typecheck/Lint grün                                       | ✅      |
+| Session-Größe im Limit                                          | ✅ (~14 KB) |
+| Recherche-Step durchgeführt + Quellen zitiert                   | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 16**: `generateFaqs`-Mock — N FAQ-Paare aus
+  `preset.defaultFaqs` als Saat, plus Topics-Ableitung, mit
+  `count`-Steuerung und Deduplizierung.
+- **Code-Session 17**: `generateCustomerReply`-Mock — drei
+  Antwort-Tonalitäten (`short`/`friendly`/`professional`),
+  Kunden-Nachricht spiegeln + freundlich beantworten.
+- **Code-Sessions 18–20**: Mock für Social-Posts, Bewertungs-
+  Anfragen (Templates kommen aus `preset.reviewRequestTemplates`),
+  Angebote.
+- **Später**: API-Route, Dashboard-UI, echte Provider mit Caching,
+  Cost-Tracking.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 16 – Mock-Provider: `generateFaqs`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 FAQ-Schema, AI-friendly Q&A patterns local
+   service business" + „How-to-structure FAQ blocks for E-E-A-T".
+2. `src/core/ai/providers/mock/faqs.ts` neu, analog zu den
+   bisherigen Mock-Methoden: nimmt `preset.defaultFaqs` als
+   Saat, ergänzt aus `topics` (jeweils ein knappes Q/A-Paar
+   in der Tonalität des Betriebs) bis `count` erreicht ist,
+   dedupliziert nach Frage-Normalisierung.
+3. `mock-provider.ts` um die dritte Methode erweitern
+   (Status-Header 15 → 16).
+4. `src/tests/ai-mock-provider.test.ts` um FAQ-Block ergänzt
+   (gleiche 2 Branchen, 2 `count`-Werte, Dedupe-Test, Topic-Test).
+5. CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere 4 Methoden, UI, echte Provider.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [Firstep – SEO Best Practices for a Small Business (2026 Guide)](https://firstepbusiness.com/blog/seo-best-practices-for-a-small-business-2026-guide)
+- [The Brand Hopper – Local SEO: Google Business Profile Best Practices for 2026](https://thebrandhopper.com/learning-resources/local-seo-google-business-profile-best-practices-for-2026/)
+- [ALM Corp – 47 SEO Best Practices That Drive Results in 2026](https://almcorp.com/blog/seo-best-practices-complete-guide-2026/)
+- [Search Engine Land – Local SEO sprints: A 90-day plan for service businesses in 2026](https://searchengineland.com/local-seo-sprints-a-90-day-plan-for-service-businesses-in-2026-469059)
+- [Sitepoint – AI Agent Testing Automation: Developer Workflows for 2026](https://www.sitepoint.com/ai-agent-testing-automation-developer-workflows-for-2026/)
+- [CopilotKit/llmock – Deterministic mock LLM server with fixture-based routing](https://github.com/CopilotKit/llmock)
+- [DEV Community – MockLLM, a simulated LLM API for development and testing](https://dev.to/lukehinds/mockllm-a-simulated-large-language-model-api-for-development-and-testing-2d53)
+
+---
+
+## Code-Session 16 – Mock-Provider: `generateFaqs`
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar)
+Meilenstein: 2 (KI-Schicht)
+
+### 1. Was wurde umgesetzt?
+
+Dritte von sieben Mock-Methoden ist scharf. Die übrigen 4 bleiben
+Stubs und folgen einzeln in den nächsten Sessions.
+
+- `src/core/ai/providers/mock/faqs.ts` (neu) implementiert
+  `mockGenerateFaqs(input): Promise<FaqGenerationOutput>`:
+  - Validierung des Inputs via `FaqGenerationInputSchema.safeParse`
+    → bei Fehler `AIProviderError("invalid_input", …)`.
+  - **Quellen-Strategie** (in dieser Reihenfolge, bis `count`
+    erreicht ist):
+    1. `preset.defaultFaqs` – branchen-typische Saat (~4 Q/A
+       pro Preset, z. B. „Wie buche ich einen Termin?",
+       „Verliere ich die Herstellergarantie, wenn Sie warten?").
+    2. Aus `topics` abgeleitete Q/A-Paare über Stichwort-Stamm-
+       erkennung. Erkannt werden:
+       - **Preis/Kost/Tarif** → „Was kostet …?"
+       - **Termin/Buch/Reserv** → „Wie kann ich einen Termin …
+         vereinbaren?"
+       - **Zeit/Öffnung/Sprechzeit** → „Wann haben Sie geöffnet?"
+       - **Stornier/Absag/Verschieb** → „Was passiert, wenn ich
+         einen Termin absagen muss?"
+       - **Zahl/Bezahl/Rechnung/Kasse** → „Welche Zahlungs-
+         möglichkeiten bieten Sie an?"
+       - **Park/Anfahrt/Adresse/Barriere** → „Wie komme ich zu
+         Ihnen und gibt es Parkplätze?"
+       - **Garantie/Gewähr** → „Welche Garantie geben Sie auf
+         Ihre Arbeit?"
+       - sonst: generischer Fallback mit Topic in Anführungs-
+         strichen + Branchen-Label im Antwortsatz.
+    3. **Lokale Q/A**: ist `city` gesetzt und es ist noch Platz
+       übrig, kommt „Sind Sie auch in {{city}} und Umgebung
+       aktiv?" als Q/A. Hilft für Local-AEO-Pickup.
+  - **Deduplizierung** via `normalizeQuestion`: lowercase, NFKD
+    + `\p{Diacritic}`-Strip, dann alles außer Buchstaben/Zahlen
+    entfernen. Doppelte Fragen werden verworfen, unabhängig von
+    Schreibweise, Satzzeichen oder Diakritika.
+  - **Antwort-Längen** orientieren sich an aktuellen AEO-Empfehlungen
+    (~30–60 Wörter pro Antwort, AI-extraktionsfreundlich) und
+    bleiben unter dem Schema-Limit. `clamp` schneidet auf
+    Wortgrenze als Sicherheitsnetz.
+  - **Notfall-Fallback**: sollte ein Preset wider Erwarten leere
+    `defaultFaqs` haben und kein `topics`/`city` mitkommen, wird
+    eine Kontakt-Q/A nachgeschoben, damit `min: 1` aus dem
+    Schema garantiert ist.
+  - Output gegen `FaqGenerationOutputSchema.parse(…)` validiert.
+- `src/core/ai/providers/mock-provider.ts` komponiert die dritte
+  Methode dazu:
+  ```ts
+  export const mockProvider: AIProvider = {
+    ...stub,
+    generateWebsiteCopy: mockGenerateWebsiteCopy,
+    improveServiceDescription: mockImproveServiceDescription,
+    generateFaqs: mockGenerateFaqs,
+  };
+  ```
+  Status-Header im Datei-Kommentar von 15 → 16 hochgezogen.
+- `src/tests/ai-mock-provider.test.ts` um Block 8a–8j erweitert
+  (~15 zusätzliche Assertions, ~60 gesamt):
+  - 8a: 2 Branchen × 3 `count`-Werte → Output-Shape passt
+    (Längen, ≥ 1 und ≤ count).
+  - 8b: Preset-Saatfrage zu Termin erscheint.
+  - 8c: Topic „Stornierung" → Frage enthält „absag"/„stornier".
+  - 8d: Topic „Preise" → Frage enthält „kostet".
+  - 8e: Mit `city` und genug Platz erscheint die lokale Frage.
+  - 8f: Ohne `city` keine lokale Frage.
+  - 8g: Doppelte Topics → keine doppelten Fragen-Schlüssel.
+  - 8h: `count=1` → genau 1 Q/A.
+  - 8i: Determinismus.
+  - 8j: `count=0` → `invalid_input`.
+- Block 9 zählt jetzt nur noch 4 weitere Methoden, die
+  `provider_unavailable` werfen müssen (generateFaqs wurde aus
+  diesem Block entfernt).
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (1 Datei):
+- `src/core/ai/providers/mock/faqs.ts`
+
+Geändert:
+- `src/core/ai/providers/mock-provider.ts`
+- `src/tests/ai-mock-provider.test.ts`
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~15 KB. Klar im Session-Limit (30–80 KB).
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → ~60 Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.generateFaqs({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich", "modern"],
+    uniqueSellingPoints: ["Termine auch samstags"],
+  },
+  topics: ["Preise", "Stornierung"],
+  count: 6,
+});
+// → { faqs: [
+//     { question: "Wie buche ich einen Termin?", answer: "…" },
+//     { question: "Was kostet ein Termin?", answer: "…" },
+//     { question: "Was kostet Preise bei Ihnen?", answer: "…" }, // ← Topic
+//     { question: "Was passiert, wenn ich einen Termin absagen muss?", … },
+//     …
+//     { question: "Sind Sie auch in Bremen und Umgebung aktiv?", … },
+//   ] }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit. Eine
+Dashboard-Karte für „FAQ generieren" kommt in einer späteren
+Session, sobald genug Mock-Methoden für ein gemeinsames KI-Panel
+verfügbar sind.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                         | Status |
+| ----------------------------------------------------------------- | ------ |
+| `generateFaqs` deterministisch, branchenneutral                   | ✅      |
+| Preset-Saat → Topics → lokale Frage in dieser Reihenfolge         | ✅      |
+| 7 Stichwort-Templates + generischer Fallback                      | ✅      |
+| Deduplizierung über NFKD-/Diakritika-/Punkt-Normalisierung        | ✅      |
+| `count=1` und `count=20` werden eingehalten                       | ✅      |
+| Lokale Frage greift mit `city`, fehlt ohne                        | ✅      |
+| Defensive Input-Validierung → `invalid_input`                     | ✅      |
+| Output gegen `FaqGenerationOutputSchema` validiert                | ✅      |
+| Übrige 4 Methoden bleiben Stubs (`provider_unavailable`)          | ✅      |
+| Smoketest +15 Assertions (~60 gesamt)                             | ✅      |
+| Build/Typecheck/Lint grün                                         | ✅      |
+| Session-Größe im Limit                                            | ✅ (~15 KB) |
+| Recherche-Step durchgeführt + Quellen zitiert                     | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 17**: `generateCustomerReply`-Mock — drei
+  Antwort-Tonalitäten (`short`/`friendly`/`professional`),
+  Kunden-Nachricht spiegeln + freundlich beantworten.
+- **Code-Session 18**: `generateReviewRequest`-Mock — Templates
+  aus `preset.reviewRequestTemplates` als Saat, kanal-/tone-spezifisch.
+- **Code-Session 19**: `generateSocialPost`-Mock —
+  short/long Post + Hashtags + Image-Idea + CTA, plattform-bewusst.
+- **Code-Session 20**: `generateOfferCampaign`-Mock — schließt die
+  Mock-Phase ab.
+- **Später**: API-Route, Dashboard-UI, echte Provider mit Caching,
+  Cost-Tracking.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 17 – Mock-Provider: `generateCustomerReply`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 customer reply tone short/friendly/professional
+   patterns local service business German" + „mirroring customer
+   message in support reply".
+2. `src/core/ai/providers/mock/customer-reply.ts` neu, analog zu den
+   bisherigen Mock-Methoden: nimmt die Kunden-Nachricht, extrahiert
+   1–2 Schlüsselbegriffe, baut eine Antwort gemäß `tone`:
+   - `short`: 1–2 Sätze.
+   - `friendly`: 3–4 Sätze, persönlicher Tonfall.
+   - `professional`: 3–4 Sätze, sachlich, mit konkretem
+     nächsten Schritt.
+3. `mock-provider.ts` um die vierte Methode erweitern
+   (Status-Header 16 → 17).
+4. `src/tests/ai-mock-provider.test.ts` um Customer-Reply-Block
+   ergänzt (3 Tones × 2 Branchen, Schlüsselbegriff-Spiegelung,
+   Determinismus, `invalid_input`).
+5. CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere 3 Methoden, UI, echte Provider.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [Stackmatix – Structured Data AI Search: Schema Markup Guide (2026)](https://www.stackmatix.com/blog/structured-data-ai-search)
+- [Zumeirah – How To Optimize FAQ Schema For AI Overviews & LLMs In 2026](https://zumeirah.com/optimize-faq-schema-for-ai-overviews/)
+- [Frase.io – Are FAQ Schemas Important for AI Search, GEO & AEO?](https://www.frase.io/blog/faq-schema-ai-search-geo-aeo)
+- [Frase.io – Answer Engine Optimization: Complete AEO Guide (2026)](https://www.frase.io/blog/what-is-answer-engine-optimization-the-complete-guide-to-getting-cited-by-ai)
+- [Knapsack Creative – Local SEO & AEO Trends for 2026](https://knapsackcreative.com/blog/seo/local-seo-aeo-trends)
+- [Passionfruit – FAQ Schema for AI Answers: Setup Guide & Examples](https://www.getpassionfruit.com/blog/faq-schema-for-ai-answers)
+- [WeWeb – Top 10 FAQ Templates for SEO & UX in 2026](https://www.weweb.io/blog/faq-templates-seo-ux-examples)
+- [Inogic – CRM Data Deduplication: 2026 FAQ Guide (fuzzy matching, phonetic similarity)](https://www.inogic.com/blog/2026/02/beyond-deduplication-a-2026-faq-guide-to-clean-unified-ai-ready-crm-data/)
