@@ -135,14 +135,54 @@ Sub-Query `exists (select 1 from businesses where id = services.business_id and 
 **RLS-Policy:** `Allow public read of published reviews on published businesses`,
 gleiche Form wie bei Services.
 
+### 0004 — `faqs` (Code-Session 39)
+
+**Datei:** [`supabase/migrations/0004_faqs.sql`](../supabase/migrations/0004_faqs.sql)
+
+Read-only, FK auf `businesses(id)` cascade. RLS-Policy analog zu
+Services + Reviews (`is_active = true and exists ...`).
+
+**Spalten:** `id`, `business_id`, `question`, `answer`, `category`,
+`sort_order`, `is_active`, `created_at`, `updated_at`.
+
+### 0005 — `leads` (Code-Session 39)
+
+**Datei:** [`supabase/migrations/0005_leads.sql`](../supabase/migrations/0005_leads.sql)
+
+**Asymmetrische** RLS — anders als alle anderen Tabellen:
+
+| Operation | anon                                                   | authenticated     |
+| --------- | ------------------------------------------------------ | ----------------- |
+| INSERT    | ✅ erlaubt, **nur** mit Consent + auf published-Betrieb | ✅                 |
+| SELECT    | ❌ blockiert                                            | ✅ (alle, vorerst) |
+| UPDATE    | ❌                                                      | ❌ (folgt Auth)    |
+| DELETE    | ❌                                                      | ❌ (folgt Auth)    |
+
+Anon-Submitter kann seinen eigenen Lead nicht zurücklesen — sonst könnte
+ein bösartiges Form-Skript fremde Leads abgreifen. Der Form-Erfolgs-Pfad
+muss ohne Re-Read auskommen.
+
+**DSGVO-Audit-Trail**: `consent jsonb not null` mit
+`CHECK (consent ? 'givenAt' AND consent ? 'policyVersion')`. Beide
+Felder werden im Application-Layer gesetzt (ISO-Zeitstempel +
+`PRIVACY_POLICY_VERSION` aus `src/core/legal.ts`). DSGVO Art. 7 Abs. 1
+verlangt, dass der Verantwortliche nachweisen kann, gegen welchen
+Stand der Datenschutzerklärung eingewilligt wurde — die `policyVersion`-
+Spalte ist genau dieser Nachweis.
+
+**Weitere CHECK-Constraints:**
+- `leads_phone_or_email_required` — analog zum Zod-`refine`.
+- `source` ∈ `{website_form, phone, whatsapp, email, walk_in, referral, social, other}`.
+- `status` ∈ `{new, contacted, qualified, won, lost, archived}`.
+
 ## Embedding (PostgREST-Joins)
 
 Das Repository (`src/core/database/repositories/business.ts`) lädt
-Services und Reviews **in einem einzigen Roundtrip** per FK-Embed:
+Services, Reviews und FAQs **in einem einzigen Roundtrip** per FK-Embed:
 
 ```ts
 .from("businesses")
-.select(`${columns}, services(*), reviews(*)`)
+.select(`${columns}, services(*), reviews(*), faqs(*)`)
 .eq("slug", slug)
 .maybeSingle();
 ```
@@ -151,9 +191,12 @@ RLS wird pro Embed automatisch ausgewertet — fehlende Permission liefert
 ein leeres Array, kein Fehler. Damit verschwindet das N+1-Risiko, das
 naive `for-each-business: select services` hätte.
 
+`leads` wird **bewusst nicht** eingebettet: anon darf nicht SELECTen,
+also wäre der Embed leer; auch für authenticated-User wollen wir Leads
+nur explizit pro Anfrage laden, nicht als Beifang an jedem Business-Read.
+
 ## Roadmap
 
-- **0004** (Session 39) — `faqs`-Tabelle.
-- **0005** (Session 39) — `leads`-Tabelle mit `consents`-Sub-Struktur (DSGVO-Audit-Trail aus Code-Session 32).
 - **0006** (Session 40) — `business_owners`-Tabelle (Multi-Tenant-Auth via `auth.users`-FK), RLS-Policies werden Owner-bezogen.
+- **0006a** (Session 40) — Lead-Repository mit Insert-Pfad für das Public-Form (`createMockLeadRepository` + `createSupabaseLeadRepository`).
 - **0007+** — Storage-Buckets für Logos und Hero-Bilder, Backup-Policy.

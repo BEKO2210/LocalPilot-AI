@@ -94,6 +94,16 @@ interface ReviewRow {
   readonly created_at: string;
 }
 
+interface FaqRow {
+  readonly id: string;
+  readonly business_id: string;
+  readonly question: string;
+  readonly answer: string;
+  readonly category: string | null;
+  readonly sort_order: number;
+  readonly is_active: boolean;
+}
+
 interface BusinessRow {
   readonly id: string;
   readonly slug: string;
@@ -119,6 +129,8 @@ interface BusinessRow {
   readonly services?: readonly ServiceRow[];
   /** Wie services. */
   readonly reviews?: readonly ReviewRow[];
+  /** Wie services. */
+  readonly faqs?: readonly FaqRow[];
 }
 
 function rowToService(row: ServiceRow) {
@@ -153,6 +165,17 @@ function rowToReview(row: ReviewRow) {
   };
 }
 
+function rowToFaq(row: FaqRow) {
+  return {
+    id: row.id,
+    question: row.question,
+    answer: row.answer,
+    ...(row.category ? { category: row.category } : {}),
+    sortOrder: row.sort_order,
+    isActive: row.is_active,
+  };
+}
+
 /** Mapt eine Postgres-Zeile auf das `Business`-Schema. */
 function rowToBusiness(row: BusinessRow): Business {
   // Services nach sort_order sortieren — die SQL-Policy filtert bereits
@@ -165,6 +188,10 @@ function rowToBusiness(row: BusinessRow): Business {
   const reviews = (row.reviews ?? [])
     .filter((r) => r.is_published)
     .map(rowToReview);
+  const faqs = (row.faqs ?? [])
+    .filter((f) => f.is_active)
+    .map(rowToFaq)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   const draft = {
     id: row.id,
@@ -187,7 +214,7 @@ function rowToBusiness(row: BusinessRow): Business {
     services,
     teamMembers: [],
     reviews,
-    faqs: [],
+    faqs,
     isPublished: row.is_published,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -199,9 +226,11 @@ const BUSINESS_BASE_COLUMNS =
   "id, slug, name, industry_key, package_tier, locale, tagline, description, logo_url, cover_image_url, theme_key, primary_color, secondary_color, accent_color, address, contact, opening_hours, is_published, created_at, updated_at";
 
 // PostgREST-Embed über die Foreign-Keys: ein Roundtrip lädt Business +
-// Services + Reviews. RLS wird pro embed-Tabelle eigenständig
-// ausgewertet, Public-Read-Policies aus Migration 0002/0003 reichen.
-const BUSINESS_FULL_SELECT = `${BUSINESS_BASE_COLUMNS}, services(*), reviews(*)`;
+// Services + Reviews + FAQs. RLS wird pro embed-Tabelle eigenständig
+// ausgewertet, Public-Read-Policies aus Migration 0002/0003/0004 reichen.
+// `leads` wird bewusst NICHT eingebettet — andere RLS-Strategie
+// (anon darf nicht lesen). Lead-Repository folgt in Session 40.
+const BUSINESS_FULL_SELECT = `${BUSINESS_BASE_COLUMNS}, services(*), reviews(*), faqs(*)`;
 
 export function createSupabaseBusinessRepository(
   client: SupabaseClient,

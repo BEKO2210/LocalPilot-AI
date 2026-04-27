@@ -100,9 +100,12 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
 - 38: `services` + `reviews`-Tabellen (Migrationen 0002 + 0003),
   Repository liefert per FK-Embed nested Daten (1 Roundtrip) ✅
 - 39: `faqs` + `leads`-Tabellen (Migrationen 0004 + 0005) inkl.
-  `consents`-Audit-Trail aus Code-Session 32.
+  `consents`-Audit-Trail aus Code-Session 32 ✅ FAQ embed im
+  Repo, Leads mit asymmetrischer RLS (Insert-by-anon, Select
+  nur authenticated)
 - 40: `business_owners` + Magic-Link-Auth via `@supabase/ssr`,
-  Multi-Tenant-Bucket, `auth.uid()`-RLS-Policies.
+  Multi-Tenant-Bucket, `auth.uid()`-RLS-Policies. Lead-Repository
+  mit Insert-Pfad fürs Public-Form (mock + supabase).
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 

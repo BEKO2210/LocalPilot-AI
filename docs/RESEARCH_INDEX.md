@@ -90,6 +90,12 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### DSGVO Consent-Audit-Trail in Postgres (Code-Session 39)
+- [Postgres Audit Logging Guide (Bytebase)](https://www.bytebase.com/blog/postgres-audit-logging/) — Audit-Tabellen-Schemata, JSONB-Pattern (39).
+- [Audit logging using JSONB in Postgres (Elephas)](https://elephas.io/audit-logging-using-jsonb-in-postgres/) — Schema-änderungs-freier Audit-Pfad (39).
+- [pgMemento – Audit trail with schema versioning for PostgreSQL](https://github.com/pgMemento/pgMemento) — Versionierungs-Idee als Inspiration (39).
+- [PostgreSQL Compliance: GDPR, SOC 2, Data Privacy & Security (EnterpriseDB)](https://www.enterprisedb.com/postgresql-compliance-gdpr-soc-2-data-privacy-security) — DSGVO-Mapping auf Postgres-Features (39).
+
 ### Supabase FK-Embedding / nested select (Code-Session 38)
 - [Supabase Docs – Querying Joins and Nested Tables](https://supabase.com/docs/guides/database/joins-and-nesting) — `select=*, services(*)`-Pattern (38).
 - [Supabase Docs – JavaScript API: select](https://supabase.com/docs/reference/javascript/select) — Embed-Syntax + RLS-Verhalten pro Embed (38).

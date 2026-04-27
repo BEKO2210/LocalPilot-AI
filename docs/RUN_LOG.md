@@ -5081,3 +5081,56 @@ nichts Schlimmes.
 (0004 + 0005) inkl. `consents`-Audit-Trail aus Code-Session 32.
 Damit ist das Schema komplett für die Public-Site-Vollanzeige.
 
+---
+
+## Code-Session 39 – faqs + leads-Migrationen (DSGVO-Consent-Audit)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Letzte zwei Tabellen für die Public-Site-Vollanzeige.
+`faqs` ist die direkte Schwester von `services`/`reviews` (read-only,
+public-on-published). `leads` hat **asymmetrische RLS**: anon darf
+INSERTen (für das Public-Form), aber nicht SELECTen — sonst könnte
+ein bösartiges Form-Skript fremde Anfragen abgreifen. DSGVO-Audit-
+Trail ist als `consent jsonb not null` mit CHECK-Constraint
+(`consent ? 'givenAt' AND consent ? 'policyVersion'`) verankert.
+FAQ-Embed im Repository.
+
+**Dateien**:
+- ✚ `supabase/migrations/0004_faqs.sql` — Tabelle, FK cascade,
+  2 Indizes (1 Partial), Trigger, RLS-Policy analog zu services.
+- ✚ `supabase/migrations/0005_leads.sql` — asymmetrische RLS:
+  INSERT-Policy für anon mit Pflicht-Consent + published-Betrieb-
+  Check, SELECT-Policy nur authenticated. Constraints:
+  `phone OR email`, `source` enum-CHECK (8 Werte), `status`
+  enum-CHECK (6 Werte), `consent ? 'givenAt' AND ? 'policyVersion'`.
+  FK auf `services(id)` mit `on delete set null` für
+  `requested_service_id`.
+- 🔄 `src/core/database/repositories/business.ts` — `BUSINESS_FULL_SELECT`
+  um `, faqs(*)` ergänzt; neue `FaqRow` + `rowToFaq`-Mapper;
+  Filter `is_active=false` + Sort nach `sort_order`.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Sektionen 0004 + 0005, RLS-Tabelle
+  für leads (Operation × Rolle), DSGVO-Pflichtform erklärt;
+  Roadmap auf 0006 + 0006a.
+- 🔄 `src/tests/business-repository.test.ts` (~45 Asserts statt
+  ~40): FAQ-Block (3 FAQs, 1 inaktiv → gefiltert, Sort-Order,
+  optionale category, leeres Embed → []).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **23/24 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Schema-Komplettierung Public-Site),
+Session 40 jetzt klarer geplant: `business_owners` + Magic-Link-
+Auth + Lead-Repository mit Insert-Pfad fürs Public-Form.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — DSGVO Consent-Audit-Trail
+in Postgres.
+
+**Manueller Schritt**: Migrationen 0004 + 0005 im Supabase-SQL-
+Editor nach 0001–0003 ausführen. Idempotent.
+
+**Nächste Session**: Code-Session 40 — **`business_owners`-Tabelle
++ Magic-Link-Auth** (Migration 0006) + **Lead-Repository mit
+Insert-Pfad** (Mock + Supabase). Damit kann das Public-Form
+optional in Supabase schreiben, und Multi-Tenant-Auth fängt an.
+

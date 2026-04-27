@@ -273,6 +273,35 @@ async function main() {
         created_at: "2026-03-02T10:00:00.000Z",
       },
     ],
+    faqs: [
+      {
+        id: "77777777-7777-7777-7777-777777777777",
+        business_id: "11111111-1111-1111-1111-111111111111",
+        question: "Welche Zahlungsarten?",
+        answer: "Karte und bar.",
+        category: null,
+        sort_order: 2,
+        is_active: true,
+      },
+      {
+        id: "88888888-8888-8888-8888-888888888888",
+        business_id: "11111111-1111-1111-1111-111111111111",
+        question: "Öffnungszeiten?",
+        answer: "Mo–Fr 9–18 Uhr.",
+        category: "Allgemein",
+        sort_order: 1,
+        is_active: true,
+      },
+      {
+        id: "99999999-9999-9999-9999-999999999999",
+        business_id: "11111111-1111-1111-1111-111111111111",
+        question: "Inaktiv",
+        answer: "Sollte ausgefiltert werden",
+        category: null,
+        sort_order: 99,
+        is_active: false,
+      },
+    ],
   };
 
   const mapped = __TEST_ONLY_rowToBusiness__(fakeRow);
@@ -287,12 +316,25 @@ async function main() {
   assert(mapped.reviews.length === 1, "unveröffentlichte Reviews werden gefiltert");
   assert(mapped.reviews[0]!.authorName === "Anja", "Roundtrip Review-Mapping");
   assert(mapped.reviews[0]!.rating === 5, "Rating durchgereicht");
+  assert(mapped.faqs.length === 2, "inaktive FAQs werden gefiltert");
+  assert(
+    mapped.faqs[0]!.question === "Öffnungszeiten?",
+    "FAQs nach sort_order — Öffnungszeiten (1) vor Zahlungsarten (2)",
+  );
+  assert(mapped.faqs[0]!.category === "Allgemein", "FAQ-category durchgereicht");
+  assert(mapped.faqs[1]!.category === undefined, "fehlende FAQ-category → undefined");
 
-  // Edge-Case: row ohne services/reviews (z. B. wenn RLS alles blockt)
-  const minimalRow = { ...fakeRow, services: undefined, reviews: undefined };
+  // Edge-Case: row ohne services/reviews/faqs (z. B. wenn RLS alles blockt)
+  const minimalRow = {
+    ...fakeRow,
+    services: undefined,
+    reviews: undefined,
+    faqs: undefined,
+  };
   const minimalMapped = __TEST_ONLY_rowToBusiness__(minimalRow);
   assert(minimalMapped.services.length === 0, "fehlende services → []");
   assert(minimalMapped.reviews.length === 0, "fehlende reviews → []");
+  assert(minimalMapped.faqs.length === 0, "fehlende faqs → []");
 
   // ---------------------------------------------------------------------
   // 5. Default-probe bleibt rest-root, falls nichts angegeben
@@ -312,7 +354,7 @@ async function main() {
   );
   assert(defaultResult.probe === "rest-root", "Default probe-Tag = rest-root");
 
-  console.log("business-repository smoketest ✅ (~40 Asserts)");
+  console.log("business-repository smoketest ✅ (~45 Asserts)");
 }
 
 void main().catch((err) => {

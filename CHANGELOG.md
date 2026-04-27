@@ -7,14 +7,41 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant — Backend-Sprint
-- **Code-Session 39: faqs + leads-Migrationen** (0004 + 0005) inkl.
-  `consents`-Audit-Trail aus Code-Session 32. Damit ist das Schema
-  komplett für die Public-Site-Vollanzeige.
-- Code-Sessions 40+: Magic-Link-Auth via `@supabase/ssr`, Storage-
-  Bucket für Logos, Edge-Runtime-Migration, CSRF-Schutz,
-  HTML-Sanitize-Whitelist, Settings-Editor mit Legal-Sektion,
-  Impressum-Editor pro Betrieb (für Reseller), Seed-Skript für
-  Demo-Daten, Schema↔Migration-Drift-Test.
+- **Code-Session 40: business_owners + Magic-Link-Auth** (Migration
+  0006) **+ Lead-Repository mit Insert-Pfad** (Mock + Supabase).
+  Damit kann das Public-Form optional in Supabase schreiben.
+- Code-Sessions 41+: Storage-Bucket für Logos, Edge-Runtime-
+  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-Editor
+  mit Legal-Sektion, Impressum-Editor pro Betrieb (für Reseller),
+  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test.
+
+## [0.16.13] – Code-Session 39 – 2026-04-27
+
+Letzte zwei Tabellen fürs Public-Site-Vollschema. `faqs` analog zu
+services/reviews; `leads` mit **asymmetrischer RLS** (Insert-by-anon,
+Select-by-authenticated) und DSGVO-Pflicht-Consent.
+
+- ✚ `supabase/migrations/0004_faqs.sql` — FK cascade, 2 Indizes
+  (1 Partial), Trigger, Public-Read-Policy für aktive FAQs auf
+  veröffentlichten Betrieben.
+- ✚ `supabase/migrations/0005_leads.sql` — asymmetrische RLS,
+  `consent jsonb not null` mit CHECK auf `givenAt` + `policyVersion`,
+  Constraints für `phone OR email`, `source`/`status`-Enum-CHECKs,
+  FK `requested_service_id → services(id)` mit `set null`.
+- 🔄 `src/core/database/repositories/business.ts` — `faqs(*)` im
+  Embed, `FaqRow` + `rowToFaq`-Mapper, Defense-in-Depth-Filter.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Sektionen 0004 + 0005, RLS-
+  Operations-Matrix für leads, DSGVO-Pflichtform dokumentiert,
+  Roadmap auf 0006 + 0006a.
+- 🔄 `src/tests/business-repository.test.ts` (~40 → ~45 Asserts):
+  FAQ-Mapping mit 3 FAQs (1 inaktiv), Sort-Order, optionale
+  category, leeres Embed.
+
+23/24 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Bundle: shared 102 KB unverändert.
+
+**Manueller Schritt**: Migrationen 0004 + 0005 im Supabase-SQL-
+Editor nach 0001–0003 ausführen. Idempotent.
 
 ## [0.16.12] – Code-Session 38 – 2026-04-27
 
