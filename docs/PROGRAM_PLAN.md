@@ -81,7 +81,7 @@ mit Variablen.
 Bewertungs-Anfragen versenden und Social-Posts vorbereiten.
 
 ### Meilenstein 4 — Backend & Daten
-**Status:** ⏳ geplant
+**Status:** 🔄 in Arbeit (ab Code-Session 35).
 
 Supabase-Schema, Auth (Magic Link, optional OAuth), Repository-Layer
 ersetzt die localStorage-Mocks transparent, Storage für Logos und Bilder,
@@ -89,6 +89,16 @@ Multi-Tenant-Isolation, Backups.
 
 **Erfolgskriterium:** App läuft mit echter DB, mehrere Nutzer:innen
 sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
+
+**Session-Cluster (rollend):**
+- 35: Supabase-Client-Skeleton + Database-Health-Check (read-only) ✅
+- 36+: Schema-Entwurf (`businesses`, `services`, `leads`,
+  `consents`), erste Read-Pfade hinter Feature-Flag, Repository-
+  Layer abstrahiert localStorage + Supabase einheitlich.
+- 38+: Magic-Link-Auth via `@supabase/ssr`, Multi-Tenant-Bucket
+  pro Betrieb, Session-Bindung an `business_id`.
+- 40+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
+  durchziehen, Backup-Policy.
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant
@@ -321,6 +331,24 @@ aktiven Session.
   - Status-History (letzte 7 Tage Budget-Verbrauch) für
     Auftraggeber-Reports.
   - Slack-/Email-Alert wenn `percentUsed > 80 %` an einem Tag.
+- **Database-Health erweitern** (aus Code-Session 35): aktuell
+  pingt der Health-Check nur die REST-Root-URL. Folge-Items:
+  - Lightweight `select count(*) from businesses limit 0`
+    sobald das Schema steht — testet auch PostgREST + RLS, nicht
+    nur TCP-Reachability.
+  - Cache-Layer mit 30-Sekunden-TTL (Server-Cache), damit ein
+    aggressiver Refresh-Klick nicht jedes Mal 1–2 s blockt.
+  - **Auto-Pause-Detection**: Free-Tier-Projekte schlafen nach
+    7 d Inaktivität. Health-Check sollte diesen Spezialfall
+    erkennen (HTTP 404 + spezifischer Body) und im UI „Projekt
+    pausiert — auf Restore klicken" anzeigen.
+- **Stale-`comingInSession`-Audit** (aus Light-Pass Session 35):
+  Bronze-User sehen `comingInSession={11}` (Services) bzw.
+  `={12}` (Leads), obwohl die Features längst gebaut sind — die
+  echte Logik ist „Bronze-Lock", nicht „kommt später". Audit:
+  zwei separate Komponenten — `<FeatureLockedSection>` für
+  Tier-Locks, `<ComingSoonSection>` nur für tatsächlich offene
+  Features.
 
 ### Track D · DX & Refactor
 - Gemeinsamen `clamp`/`polish`/`substituteCity`-Helper in

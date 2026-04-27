@@ -4801,3 +4801,82 @@ jeder andere Branch erzeugt eine Preview-URL.
 erste Supabase-Anbindung (read-only, sodass der API-Health-
 Endpunkt einen `database`-Status anzeigen kann). Vorbedingung für
 Multi-Tenant-Auth mit echten User-Accounts.
+
+---
+
+## Code-Session 35 – Supabase-Skeleton + Database-Health (Backend-Auftakt)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Meilenstein 4 (Backend & Daten) ist eröffnet. Erste
+ENV-gegate Supabase-Anbindung steht, ohne Crash-Risiko: ohne
+`SUPABASE_URL` / `SUPABASE_ANON_KEY` läuft die App weiter komplett
+im Mock-/localStorage-Modus. Health-Endpunkt liefert jetzt einen
+`database`-Block mit Status `ok` / `degraded` / `offline`,
+Latenz und sicherem `reason`-Text. Dashboard-Card zeigt einen
+neuen Database-Badge unter den Provider-Karten.
+
+**Dateien**:
+- ✚ `src/core/database/client.ts` — `getSupabaseClient(env)`,
+  `readSupabaseEnv`, `isSupabaseConfigured`. Cache mit Reset-Helper
+  für Smoketests. Ohne ENV → `null` zurück, App läuft weiter.
+- ✚ `src/core/database/health.ts` — `checkDatabaseHealth(env, opts)`,
+  AbortController-Timeout (Default 2 s), Threshold-Mapping
+  (>1.5 s → `degraded`). Roh-`fetch` auf `/rest/v1/` statt SDK-Call,
+  damit der Check tabellenunabhängig bleibt.
+- 🔄 `src/app/api/ai/health/route.ts` — `Promise.all` mit
+  `checkDatabaseHealth`, Database-Block hängt am bestehenden
+  HealthSnapshot.
+- 🔄 `src/components/dashboard/ai-playground/health-card.tsx` —
+  `<DatabaseBadge>` mit Icon-Mapping (CheckCircle/AlertTriangle/
+  Database) und Latenz-Anzeige. Fallback-Text „noch nicht
+  konfiguriert" für Mock-only Setups.
+- 🔄 `.env.production.example` — `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY` (für Multi-Tenant-Auth in 36+).
+- 🔄 `docs/DEPLOYMENT.md` — Vercel-ENV-Block ergänzt; neuer
+  Stolperfall-Eintrag „Free-Tier-Auto-Pause".
+- 🔄 `package.json` — `@supabase/supabase-js@^2`.
+- ✚ `src/tests/database-health.test.ts` (~30 Asserts):
+  ENV-Reader-Trim, ohne ENV → offline, 200 → ok, 401 (RLS) → ok,
+  503 → degraded, slow → degraded, AbortError → offline,
+  Netzwerk-Fehler → degraded, Privacy-Smoketest (Key + URL nicht
+  im Dump), Header/URL-Capture.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **21/22 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: Meilenstein 4 von „⏳ geplant" auf „🔄 in Arbeit"
+gehoben (Session-Cluster 35–40 skizziert). 3 neue Folge-Items:
+Database-Health-Erweiterung (Tabellen-Check, Cache-Layer,
+Auto-Pause-Detection), Stale-`comingInSession`-Audit
+(Bronze-Locks vs. echte Coming-Soon), Owner-Daten via ENV
+(neuer Codex-Item, siehe Backlog #12).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase-Health-Patterns
+2026.
+
+**state-refresh-light** (Session 35 % 5 = 0):
+- Smoketest-Regression: 21/22 grün, industry-presets bleibt
+  Codex-#11.
+- Stale-Stub-Audit: 3 Treffer (`services/page.tsx:43`,
+  `leads/page.tsx:43`, `settings/page.tsx:31`). Erstere zwei
+  sind Bronze-Lock-UX-Drift (kein „Coming Soon", sondern
+  Tier-Lock — als neues Plan-Item dokumentiert). Settings ist
+  echt offen (Backend-Schema fehlt) — Label bleibt korrekt.
+- README-Provider-Matrix: keine Änderung nötig (keine neue
+  Live-Methode in Session 35, nur Database-Layer).
+- Codex-Backlog: nur #11 needs-review aktiv, kein Codex-Done
+  seit letztem Pass.
+
+**Hinweis Auftraggeber**: persönliche Stammdaten (Name, Adresse,
+Telefon) werden bewusst **nicht** ins Repo committet. Stattdessen
+plane ich Code-Session 36 als „Impressum auf ENV-Variablen
+umstellen" (`LP_OWNER_NAME`, `LP_OWNER_ADDRESS`, …) — dann nur in
+Vercel/lokal setzen, niemals in GitHub.
+
+**Nächste Session**: Code-Session 36 — **Owner-Daten via ENV +
+erstes Supabase-Schema**: Impressum/Datenschutz aus
+ENV-Variablen, parallel `businesses`-Tabelle in Supabase
+(read-only, Mock-Spiegelung). Ab da kann der Auftraggeber seine
+echten Stammdaten nutzen, ohne sie in den Quellcode einzuchecken.
+

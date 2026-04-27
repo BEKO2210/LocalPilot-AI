@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 import { getHealthSnapshot } from "@/core/ai/health";
 import { checkAuth } from "@/core/ai/auth/check";
+import { checkDatabaseHealth } from "@/core/database/health";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,10 +27,16 @@ export async function GET(req: Request): Promise<Response> {
       { status: auth.status },
     );
   }
-  const snapshot = getHealthSnapshot();
-  return NextResponse.json(snapshot, {
-    headers: {
-      "Cache-Control": "no-store",
+  const [snapshot, database] = await Promise.all([
+    Promise.resolve(getHealthSnapshot()),
+    checkDatabaseHealth(),
+  ]);
+  return NextResponse.json(
+    { ...snapshot, database },
+    {
+      headers: {
+        "Cache-Control": "no-store",
+      },
     },
-  });
+  );
 }

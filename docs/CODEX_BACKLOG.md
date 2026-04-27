@@ -277,6 +277,52 @@ korrekt.
 
 ---
 
+### #12 — `[needs-review]` Bronze-Lock-UX vs. Coming-Soon-Drift
+
+**Pfade:**
+- `src/app/dashboard/[slug]/services/page.tsx:43`
+- `src/app/dashboard/[slug]/leads/page.tsx:43`
+
+**Beobachtung (aus Light-Pass Code-Session 35):** Bronze-User
+sehen `<ComingSoonSection comingInSession={11}>` (bzw. `={12}`),
+obwohl die Features längst gebaut sind — die echte Logik ist
+„Bronze-Lock", nicht „kommt später". Das verwirrt nicht-technische
+Endnutzer:innen, weil im Marketing das Paket-Modell „ab Silber
+freigeschaltet" verspricht, der UI-Text aber „Folgt in Session 11"
+sagt.
+
+**Empfehlung:** Zwei separate Komponenten — `<FeatureLockedSection>`
+für Tier-Locks (Upgrade-CTA + Tier-Badge), `<ComingSoonSection>`
+nur für tatsächlich offene Features (Roadmap-Hinweis, kein
+Upgrade-Pfad).
+
+**Boundary:** Größere Architektur-Änderung, deshalb
+**`[needs-review]`** — Claude muss die Komponenten-Aufteilung
+selbst machen, Codex kann das nicht im 20-KB-Cap.
+
+---
+
+### #13 — `[pre-approved]` `database`-Block in `ai-health.test.ts` mit-asserten
+
+**Pfad:** `src/tests/ai-health.test.ts`
+
+**Aufgabe:** Der bestehende `ai-health.test.ts` testet
+`getHealthSnapshot` (Provider + Budget). Mit Code-Session 35 kommt
+der `database`-Block dazu — über die Route. Codex darf
+**zusätzlich** ein paar Asserts ergänzen, die prüfen, dass die
+HealthCard-Typen `HealthSnapshot & { database: DatabaseHealth }`
+strukturell stimmen (z. B. ein synthetisches Response-Objekt
+zusammenbauen und JSON-Roundtrip mit `JSON.parse(JSON.stringify(...))`
+prüfen).
+
+**Boundary:** Kein neuer Test-File, nur dem bestehenden 5–10
+Asserts hinzufügen. `getHealthSnapshot` selbst nicht ändern.
+
+**Verifikation:** typecheck, lint, build:static, alle Smoketests
+weiterhin grün.
+
+---
+
 ## Erledigt (≤ 30 Sessions zurück)
 
 _Noch keine Codex-Sessions abgeschlossen._

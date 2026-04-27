@@ -5,11 +5,15 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle2,
+  Database,
   Loader2,
   RefreshCw,
 } from "lucide-react";
 import { DashboardCard } from "../dashboard-card";
 import type { HealthSnapshot } from "@/core/ai/health";
+import type { DatabaseHealth } from "@/core/database/health";
+
+type HealthResponse = HealthSnapshot & { readonly database: DatabaseHealth };
 
 interface HealthCardProps {
   /** Bearer-Token für `/api/ai/health`. Leer → Card zeigt Hinweis. */
@@ -19,7 +23,7 @@ interface HealthCardProps {
 type LoadState =
   | { kind: "idle" }
   | { kind: "loading" }
-  | { kind: "ready"; snapshot: HealthSnapshot }
+  | { kind: "ready"; snapshot: HealthResponse }
   | { kind: "error"; status: number; message: string }
   | { kind: "unavailable"; reason: string };
 
@@ -71,7 +75,7 @@ export function HealthCard({ apiToken }: HealthCardProps) {
         });
         return;
       }
-      const snapshot = (await res.json()) as HealthSnapshot;
+      const snapshot = (await res.json()) as HealthResponse;
       setState({ kind: "ready", snapshot });
     } catch (err) {
       setState({
@@ -127,7 +131,7 @@ export function HealthCard({ apiToken }: HealthCardProps) {
   );
 }
 
-function SnapshotView({ snapshot }: { snapshot: HealthSnapshot }) {
+function SnapshotView({ snapshot }: { snapshot: HealthResponse }) {
   const providers = Object.values(snapshot.providers);
   return (
     <div className="space-y-3 text-sm">
@@ -159,6 +163,8 @@ function SnapshotView({ snapshot }: { snapshot: HealthSnapshot }) {
         ))}
       </ul>
 
+      <DatabaseBadge db={snapshot.database} />
+
       <div className="flex items-start gap-2 rounded-lg border border-ink-200 bg-ink-50 p-2.5 text-xs text-ink-700">
         <Activity className="mt-0.5 h-3.5 w-3.5 flex-none text-ink-500" aria-hidden />
         <div>
@@ -171,6 +177,45 @@ function SnapshotView({ snapshot }: { snapshot: HealthSnapshot }) {
             (UTC-Mitternacht).
           </p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function DatabaseBadge({ db }: { db: DatabaseHealth }) {
+  const styles =
+    db.status === "ok"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      : db.status === "degraded"
+        ? "border-amber-200 bg-amber-50 text-amber-900"
+        : "border-ink-200 bg-ink-50 text-ink-700";
+  const Icon =
+    db.status === "ok"
+      ? CheckCircle2
+      : db.status === "degraded"
+        ? AlertTriangle
+        : Database;
+  const label =
+    db.status === "ok"
+      ? "Datenbank verbunden"
+      : db.status === "degraded"
+        ? "Datenbank antwortet langsam"
+        : db.configured
+          ? "Datenbank nicht erreichbar"
+          : "Datenbank noch nicht konfiguriert";
+  return (
+    <div className={`flex items-start gap-2 rounded-lg border p-2.5 text-xs ${styles}`}>
+      <Icon className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden />
+      <div className="min-w-0">
+        <p className="font-medium">{label}</p>
+        {db.latencyMs !== undefined ? (
+          <p className="mt-0.5 opacity-80">
+            Antwortzeit: {db.latencyMs} ms
+            {db.reason ? ` · ${db.reason}` : ""}
+          </p>
+        ) : db.reason ? (
+          <p className="mt-0.5 opacity-80">{db.reason}</p>
+        ) : null}
       </div>
     </div>
   );

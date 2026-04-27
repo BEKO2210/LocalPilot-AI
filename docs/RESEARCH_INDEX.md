@@ -90,6 +90,13 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Supabase-Health-Patterns (Code-Session 35)
+- [Supabase – Use Supabase with Next.js (Quickstart)](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs) — `@supabase/ssr` + `@supabase/supabase-js` (35).
+- [Supabase – Setting up Server-Side Auth for Next.js](https://supabase.com/docs/guides/auth/server-side/nextjs) — Server Component / Route Handler Pattern (35).
+- [Supabase Discussion #21908 – How can I ping the database?](https://github.com/orgs/supabase/discussions/21908) — Lightweight Health-Check via REST-Endpoint (35).
+- [Supabase Docs – Database Timeouts](https://supabase.com/docs/guides/database/postgres/timeouts) — 60s max-Query-Timeout (35).
+- [Supabase Status](https://status.supabase.com) — externe Status-Quelle für Cross-Check (35).
+
 ### Vercel-Deployment (Code-Session 34)
 - [Vercel – Next.js on Vercel (Framework Docs)](https://vercel.com/docs/frameworks/full-stack/nextjs) (34).
 - [Vercel – Configuring a Build](https://vercel.com/docs/builds/configure-a-build) (34).

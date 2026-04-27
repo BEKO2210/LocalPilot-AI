@@ -6,15 +6,52 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant — Backend-Sprint-Auftakt
-- **Code-Session 35: Erste Supabase-Anbindung** (read-only). Health-
-  Endpunkt erweitert um `database: "ok"`/`degraded`/`offline`-
-  Status. Vorbedingung für Multi-Tenant-Auth.
-- Code-Sessions 36+: Multi-Tenant-Auth mit echten User-Accounts
-  (Magic-Link), Repository-Layer (localStorage → Supabase
-  transparent), Storage-Bucket für Logos, Edge-Runtime-Migration,
-  CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-Editor mit
-  Legal-Sektion.
+### Geplant — Backend-Sprint
+- **Code-Session 36: Owner-Daten via ENV + erstes Supabase-Schema**.
+  Impressum/Datenschutz aus `LP_OWNER_*`-ENV-Variablen, parallel
+  `businesses`-Tabelle in Supabase (read-only, Mock-Spiegelung).
+- Code-Sessions 37+: Multi-Tenant-Auth mit echten User-Accounts
+  (Magic-Link via `@supabase/ssr`), Repository-Layer (localStorage
+  → Supabase transparent), Storage-Bucket für Logos, Edge-Runtime-
+  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-Editor
+  mit Legal-Sektion.
+
+## [0.16.9] – Code-Session 35 – 2026-04-27
+
+Backend-Auftakt. Erste ENV-gegate Supabase-Anbindung — ohne Crash,
+falls keine Credentials gesetzt sind.
+
+- ✚ `src/core/database/client.ts` — `getSupabaseClient(env)` liefert
+  `null` ohne ENV. Cache + Reset-Helper. App läuft weiter im
+  Mock-Modus, falls Supabase nicht konfiguriert ist.
+- ✚ `src/core/database/health.ts` — `checkDatabaseHealth(env, opts)`
+  pingt `/rest/v1/` mit `apikey`-Header und AbortController-Timeout
+  (2 s). Drei Status: `ok` (< 1.5 s), `degraded` (slow / 5xx /
+  Netz-Fehler), `offline` (kein ENV / Timeout).
+- 🔄 `/api/ai/health` liefert jetzt `database`-Block parallel zum
+  bestehenden Snapshot (Promise.all).
+- 🔄 `<HealthCard>` zeigt einen `<DatabaseBadge>` mit Latenz-Anzeige
+  und Fallback-Text „Datenbank noch nicht konfiguriert".
+- 🔄 `.env.production.example` + `docs/DEPLOYMENT.md` um
+  `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
+  ergänzt; neuer Stolperfall-Eintrag „Free-Tier-Auto-Pause".
+- ⬆️ Dependency: `@supabase/supabase-js@^2`.
+- ✚ `src/tests/database-health.test.ts` (~30 Asserts):
+  ENV-Reader-Trim, Status-Mapping (ok/degraded/offline),
+  Privacy-Smoketest (Key + URL nicht im Dump), Header/URL-Capture.
+- 🛣️ Roadmap: Meilenstein 4 (Backend & Daten) von „⏳ geplant"
+  auf „🔄 in Arbeit", Session-Cluster 35–40 skizziert. 3 neue
+  Plan-Items (Health-Erweiterung, Stale-comingInSession-Audit,
+  Owner-Daten-ENV).
+- 🔁 state-refresh-light (Session 35 ist 5er-Multiple): 22/23
+  Smoketests grün, Stale-Stub-Befunde dokumentiert.
+
+21/22 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Bundle: shared 102 KB unverändert.
+
+**Hinweis**: persönliche Stammdaten des Auftraggebers werden NIE
+ins Repo committet — Code-Session 36 stellt das Impressum auf ENV
+um.
 
 ## [0.16.8] – Code-Session 34 – 2026-04-27
 

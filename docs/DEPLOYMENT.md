@@ -122,6 +122,10 @@ vercel env add OPENAI_API_KEY production
 vercel env add ANTHROPIC_API_KEY production
 vercel env add GEMINI_API_KEY production
 
+# Optional, ab Code-Session 35 — Datenbank-Health-Check:
+vercel env add SUPABASE_URL production
+vercel env add SUPABASE_ANON_KEY production
+
 # 4. Production-Deploy
 vercel --prod
 ```
@@ -259,3 +263,9 @@ Die Static-Export-`pageExtensions`-Filterung greift nur, wenn
 `STATIC_EXPORT=true` gesetzt ist. Auf Vercel ist das nicht der Fall —
 Routen sollten gefunden werden. Wenn doch nicht: prüfen, ob Vercel
 versehentlich die ENV gesetzt hat (Settings → Environment Variables).
+
+**Health-Endpunkt: `database.status = "offline"` trotz gesetzter
+Supabase-ENV.** Die Werte werden gelesen, aber der Endpoint antwortet
+nicht innerhalb von 2 Sekunden. Häufigste Ursache: Supabase-Projekt
+ist im Free-Tier nach 7 Tagen Inaktivität pausiert. Im Supabase-
+Dashboard auf **Restore project** klicken, dann erneut prüfen.
