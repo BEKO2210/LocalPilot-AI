@@ -145,6 +145,13 @@
 - [supabase Discussion #19418 – Rename folder with supabase-js](https://github.com/orgs/supabase/discussions/19418) — bestätigt: 2026 noch keine Folder-API, Loop über Files (57).
 - [supabase storage-js Issue #49 – Bucket-Rename](https://github.com/supabase/storage-js/issues/49) — Bucket-Rename existiert noch nicht (relevant nur als Negativ-Information, 57).
 
+### Pre-MVP-Audit + E2E-Test-Strategie (Code-Session 70)
+- [Next.js – Playwright Testing](https://nextjs.org/docs/pages/guides/testing/playwright) — offizielle Setup-Doku (Session 70-Vorbereitung für 71).
+- [MakerKit – End-to-End Testing Your SaaS with Playwright](https://makerkit.dev/blog/tutorials/playwright-testing) — SaaS-Pattern mit ~25 Tests in 3 Min, Critical-Paths-Fokus (70).
+- [TestDouble – E2E Auth Flows with Playwright + Next.js](https://testdouble.com/insights/how-to-test-auth-flows-with-playwright-and-next-js) — Email-Polling für Magic-Link, programmatisches Login zur Geschwindigkeit (70).
+- [BrowserStack – 15 Best Practices for Playwright 2026](https://www.browserstack.com/guide/playwright-best-practices) — stable Selectors, Page Objects, toPass-Retries (70).
+- [DeviQA – Guide to Playwright E2E 2026](https://www.deviqa.com/blog/guide-to-playwright-end-to-end-testing-in-2025/) — Auto-Waiting reduziert Flakiness; Retry-Pattern für unreliable Operations (70).
+
 ### Supabase Storage Recursive Operations (Code-Session 69)
 - [Supabase Discussion #4218 – Remove folder content](https://github.com/orgs/supabase/discussions/4218) — Native Folder-Delete-API existiert nicht; rekursiv iterieren ist Standard (69).
 - [Supabase Storage Folder-Operations Guide](https://supabase.com/docs/guides/troubleshooting/supabase-storage-inefficient-folder-operations-and-hierarchical-rls-challenges-b05a4d) — Folders sind Pseudo-Prefixes; List ist pro Ebene; rekursive Iteration vom Code (69).

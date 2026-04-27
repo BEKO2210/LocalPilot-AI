@@ -8020,3 +8020,134 @@ Light-Pass vor MVP-Stand. Inhalt:
    `STORAGE.md` und `AI.md`) mit Architektur-Übersicht
    für Phase-2-Sessions.
 
+## Code-Session 70 – Pre-MVP-Audit + Phase-1.5-Roadmap-Update
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Light-Pass · 5er-Multiple
+
+**Was**: Letzter Light-Pass vor MVP-Stand. Drei
+Skill-Anwendungen (simplify + security-review + manueller
+Audit), eine Hot-Path-Optimierung im CSRF-Helper, eine
+Surface-Reduktion, plus neue Recap-Doku
+`docs/MVP_RECAP.md` und Roadmap-Update für die vom User
+beauftragte **Phase 1.5: E2E-Test-Block** (vor UI/UX-Polish).
+
+**Meta-Auftrag**: Der User hat klar verlangt: „danach erst
+mal sehr viele Tests bevor wir an die UI/UX gehen ... alles
+muss funktionieren, teste alles durch wie ein Endbenutzer".
+Daraus folgt: zwischen MVP-Stand (S70) und UI/UX-Polish
+(früher als „Phase 2 ab S71" geplant) wird jetzt eine
+neue Phase 1.5 eingefügt — End-to-End-Tests mit dem
+`webapp-testing`-Skill (Playwright). UI/UX-Polish startet
+erst nach grüner E2E-Coverage.
+
+**Architektur-Entscheidung — Allow-List-Memoization**:
+`csrf.ts` parsed bei jedem mutating Request die ENV-
+Variable `LP_CSRF_ALLOWED_ORIGINS` neu (String-Split +
+URL-Parse). ENV ist post-boot unveränderlich, daher
+`CACHED_ALLOWED_ORIGINS` an Modul-Scope. Hot-Path-Win
+auf jeder Owner-Mutation.
+
+**Architektur-Entscheidung — `csrfErrorResponse`
+non-export**: Reuse-Agent fand, dass `csrfErrorResponse`
+nur intern aufgerufen wird (`enforceCsrf` ist der
+Public-Wrapper). Public-Surface von 3 → 2 Exports
+reduziert. Test umgestellt auf indirekten `enforceCsrf`-
+Test, gleiche 36 Asserts grün.
+
+**Architektur-Entscheidung — Konsolidierung der 6 Result-
+Mapper-Helpers BEWUSST abgelehnt**: business-update,
+services-update, image-upload, settings, ai-client,
+business-delete teilen die fetch+status-mapping-Shell.
+Reuse-Agent: ein generic `submitMutation<TOk, TKind>`
+würde den Call-Site-Code nicht reduzieren, weil jede
+Helper unterschiedliche ok-Payload-Shapes hat
+(local-fallback / slug_taken / rate-limit / static-build).
+Per-Domain-Divergenz ist real, sechs Near-Twins lesen
+sich besser als ein parametrisierter Monster.
+
+**simplify-Skill-Anwendung**: Drei Review-Agents parallel
+auf csrf.ts / user-input-sanitize.ts / error-reporter.ts /
+business-delete.ts. Findings:
+- **Reuse**: 1 konkrete Empfehlung (csrfErrorResponse
+  non-export) → angewendet.
+- **Quality**: `SANITIZE_DEFAULTS`-Konsolidierung möglich,
+  aber netto-Mehrwert klein — Skip.
+  `error-reporter.ts`-Tests-Hooks `__setSinkForTesting` /
+  `__getActiveSinkForTesting` sind sauber gekennzeichnet
+  (Underscore + nur in Test-Files importiert).
+- **Efficiency**: 1 konkreter Hot-Path-Win
+  (Allow-List-Memoize) → angewendet. Sentry-Bundle-Impact
+  via dynamic-import-Trick **bestätigt 0 KB** (`grep -i
+  sentry` auf Static-Build-Output: keine echten Module-
+  References, nur die String-Literal-Konstante).
+
+**security-review-Skill** (manuell via Agent, weil der
+direkte Skill-Aufruf den Git-Range nicht resolven konnte):
+- 🟢 **CSRF**: alle 10 mutating Routes geschützt; nur
+  read-only + `auth/callback` erwartet ausgenommen.
+- 🟢 **XSS via dangerouslySetInnerHTML**: nur in
+  Doc-Kommentaren, kein realer Render-Pfad.
+- 🟢 **Auth-Bypass**: alle nicht-public-Routes haben
+  `getCurrentUser`-Gate vor DB-Mutation.
+- 🟢 **Service-Role-Leakage**: 6 Importer von
+  `getServiceRoleClient`, alle in `runtime: "nodejs"`-
+  Routes oder server-only-Modulen.
+- 🟢 **Secrets-Leak**: keine Server-Vars in Components.
+- 🟢 **Open-Redirect**: alle redirectTo-Pfade gegen
+  `SAFE_PATH_RE`-Whitelist validiert.
+- 🟢 **ReDoS**: keine Greedy-Quantifier-Pattern auf
+  ungetrimmte User-Input gefunden.
+- **Fazit: keine Fixes vor MVP nötig.**
+
+**Dateien**:
+- 🔄 `src/lib/csrf.ts`: Allow-List-Memoization +
+  csrfErrorResponse non-export.
+- 🔄 `src/tests/csrf.test.ts`: indirekter `enforceCsrf`-
+  Test ersetzt direkten `csrfErrorResponse`-Test.
+- ✚ `docs/MVP_RECAP.md` (neu, ~5 KB):
+  Capability-Liste, Code-Inventur (10 mutating Routes,
+  8 Migrations, 21 Helper, 45 Tests, ~1.100+ Asserts,
+  102 KB Bundle, 0 KB Sentry-Impact), Helper-Übersicht,
+  Phase-1.5/2-Outlook.
+- 🔄 `docs/PROGRAM_PLAN.md`: Neue Sektion „Phase 1.5 →
+  E2E-Test-Block (Sessions 71–~76)" zwischen MVP-Phase
+  und UI/UX-Polish. Phase 2 verschoben auf 77–86+. Demo-
+  Logo jetzt Session 81 (war 76). Skill-Mapping
+  aktualisiert.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests grün**. Bundle 102 KB shared unverändert.
+
+**Light-Pass-Bilanz Sessions 66–70**:
+- 4 neue Helper-Module (csrf, user-input-sanitize,
+  error-reporter, business-delete) + 1 erweitert
+  (storage-cleanup mit recursive-delete)
+- ~145 neue Asserts on top
+- 1 Recap-Doku (`MVP_RECAP.md`)
+- 1 Hot-Path-Win (CSRF-Allow-List-Memoize)
+- 1 Surface-Reduktion (csrfErrorResponse non-export)
+- 5 Sessions × 0 Regressions
+- Pre-MVP-Security-Audit 🟢 alle 7 Bereiche
+
+**Roadmap**: **Phase 1 abgeschlossen — MVP-funktional
+erreicht**. Phase 1.5 ab Session 71 (User-Anweisung
+„sehr viele Tests"). Phase 2 ab Session 77.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Playwright-E2E-
+Patterns für Next.js (für Phase 1.5).
+
+**Status-Update**: ~99.5 % Richtung „erstes Betrieb-fertiges
+Produkt". Code-Inventur komplett, Security clean.
+Verbleibend bis 100% und produktiv: Phase 1.5 (~6 Sessions
+E2E-Coverage). Danach UI/UX + Brand-Identity in Phase 2.
+
+**Nächste Session**: Code-Session 71 = **Phase-1.5-Auftakt:
+Playwright-Setup + erste Smoke-Tests**. Begründung:
+User-Anweisung „sehr viele Tests, alles wie ein Endbenutzer
+durchspielen". `webapp-testing`-Skill als primäres Tool.
+Inhalt: `npm i -D @playwright/test`, `playwright.config.ts`,
+erste 3-5 Smoke-Tests (Login-Page lädt, Demo-Public-Site
+lädt, Account-Empty-State). Pflicht: Tests laufen ohne
+Supabase-ENV (Mock-Provider als Default). Plus
+`docs/TESTING.md` mit Anleitung „lokal testen" + „CI-
+Setup".
+

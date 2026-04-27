@@ -152,14 +152,12 @@ export function verifyCsrfOrigin(
 }
 
 /**
- * Convenience: wirft 403-NextResponse bei Mismatch. Aufruf in
- * Route: `const csrf = enforceCsrf(req); if (csrf) return csrf;`.
- *
- * Nutzt `Response` direkt statt `NextResponse`, damit der
- * Helper auch ohne Next.js-Context testbar bleibt (Tests
- * benutzen ein Stub-Request).
+ * Internal: 403-Response-Builder bei CSRF-Mismatch. Nicht
+ * öffentlich — Routen rufen `enforceCsrf` (das diesen Builder
+ * nutzt). `Response` statt `NextResponse` für Test-Kompatibilität
+ * ohne Next.js-Context.
  */
-export function csrfErrorResponse(reason: string): Response {
+function csrfErrorResponse(reason: string): Response {
   return new Response(
     JSON.stringify({
       error: "csrf_blocked",
@@ -178,16 +176,26 @@ export function csrfErrorResponse(reason: string): Response {
 }
 
 /**
- * Route-Level-Wrapper: liest die Allow-List aus
- * `LP_CSRF_ALLOWED_ORIGINS` ENV und ruft `verifyCsrfOrigin`.
- * Liefert `null` wenn ok, sonst eine fertig formatierte
- * 403-Response.
+ * Allow-List wird **einmal** beim Modul-Init aus ENV gelesen
+ * (Code-Session 70: Hot-Path-Memoization). ENV ist nach dem
+ * Server-Start unveränderlich — kein Grund, `process.env` +
+ * `parseAllowedOrigins` bei jedem mutating-Request neu
+ * auszuführen. Spart einen String-Split + URL-Parse pro
+ * Request.
+ */
+const CACHED_ALLOWED_ORIGINS: readonly string[] = parseAllowedOrigins(
+  typeof process !== "undefined" ? process.env["LP_CSRF_ALLOWED_ORIGINS"] : undefined,
+);
+
+/**
+ * Route-Level-Wrapper: nutzt die cachte Allow-List aus ENV
+ * und ruft `verifyCsrfOrigin`. Liefert `null` wenn ok, sonst
+ * eine fertig formatierte 403-Response.
  */
 export function enforceCsrf(req: Request): Response | null {
-  const allowedOrigins = parseAllowedOrigins(
-    process.env["LP_CSRF_ALLOWED_ORIGINS"],
-  );
-  const result = verifyCsrfOrigin(req, { allowedOrigins });
+  const result = verifyCsrfOrigin(req, {
+    allowedOrigins: CACHED_ALLOWED_ORIGINS,
+  });
   if (result.ok) return null;
   return csrfErrorResponse(result.reason);
 }

@@ -6,8 +6,111 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1 Restweg → MVP-funktional (Session 70)
-- **70** (Light-Pass): finaler Pre-MVP-Pass + Audit-Checkliste.
+### Phase 1.5 → End-to-End-Tests (Sessions 71–~76)
+**Vor** Phase 2 (UI/UX-Polish): User-Pflicht-Anweisung
+„sehr viele Tests, alles wie ein Endbenutzer durchspielen".
+- 71: Playwright-Setup + erste Smoke-Tests.
+- 72: Onboarding-Flow E2E.
+- 73: Business-Editor-E2E.
+- 74: Service-Liste-E2E.
+- 75: Settings + Danger-Zone E2E (5er-Multiple Light-Pass
+  auf E2E-Helpers).
+- 76: Public-Site + Lead-Retry-Queue E2E.
+- Erfolgskriterium: ≥25 grüne E2E-Tests +
+  `docs/TESTING.md`-Doku.
+
+### Phase 2 → UI/UX-Polish (Sessions ~77–~86+)
+Demo-Logo via `algorithmic-art`-Skill in Session 81. Details
+in `docs/PROGRAM_PLAN.md`.
+
+## [0.16.44] – Code-Session 70 – 2026-04-27 (Light-Pass + Pre-MVP-Audit)
+
+5er-Multiple. Letzter Phase-1-Light-Pass vor MVP-Stand. Drei
+Skill-Anwendungen: `simplify` auf Sessions 66–69-Helper,
+`security-review` auf den Branch, manueller Audit aller
+Pflicht-Items 61–69. Plus neue Recap-Doku
+[`docs/MVP_RECAP.md`](docs/MVP_RECAP.md) und Phase-1.5-
+Roadmap-Update (E2E-Test-Block vor UI/UX-Polish).
+
+- 🔄 `src/lib/csrf.ts`:
+  - `parseAllowedOrigins(process.env...)` an Modul-Scope
+    gehoben (`CACHED_ALLOWED_ORIGINS`). ENV ist post-boot
+    unveränderlich; früher lief der String-Split + URL-
+    Parse auf jedem mutating Request — jetzt einmalig beim
+    Modul-Init. Hot-Path-Win für jede Auth-Route.
+  - `csrfErrorResponse` non-export gemacht (war nur
+    intern genutzt; Public-Surface von 3 auf 2 Exports
+    reduziert).
+- 🔄 `src/tests/csrf.test.ts`: `csrfErrorResponse`-Test
+  durch indirekten `enforceCsrf`-Test mit Cross-Origin-
+  Stub ersetzt — gleiche 36 Asserts grün.
+- ✚ `docs/MVP_RECAP.md`:
+  - MVP-Capability-Liste (Auth, Self-Service-Cycle, AI,
+    Storage, Lead-System, Security-Stack mit
+    Pre-MVP-Audit-Status).
+  - Code-Inventur: 10 mutating Routes (alle CSRF-protected),
+    8 Migrations, 21 Pure-Helper-Module, 45 Smoketest-Files,
+    ~1.100+ Asserts, 102 KB shared Bundle, 0 KB
+    Sentry-Impact.
+  - Helper-Module-Übersicht (21 Files mit Zweck +
+    Sessions).
+  - Phase-1.5- + Phase-2-Outlook.
+- 🔄 `docs/PROGRAM_PLAN.md`:
+  - **Neue Sektion „Phase 1.5 → End-to-End-Test-Block
+    (Sessions 71–~76)"** zwischen MVP und UI/UX-Polish.
+    Pro Session ein User-Flow als Playwright-Test.
+    Erfolgskriterium ≥25 E2E-Tests.
+  - Phase 2 (UI/UX-Polish) verschoben auf Sessions
+    77–86+. Demo-Logo jetzt Session 81 (war 76).
+  - Skill-Mapping aktualisiert: `webapp-testing` ist
+    primärer Skill für Phase 1.5.
+
+**simplify-Skill-Anwendung am Diff**: Drei Review-Agents
+parallel auf csrf/sanitize/error-reporter/business-delete.
+Findings:
+- **Reuse**: Konsolidierung der 6 result-mapper-Helpers
+  (business-update / services-update / image-upload /
+  settings / ai-client / business-delete) bewusst
+  abgelehnt — die Per-Domain-Divergenz ist real, ein
+  generic `submitMutation<TOk, TKind>` würde den
+  Call-Site-Code nicht reduzieren.
+- **Quality**: `SANITIZE_DEFAULTS` und Sentry-Sample-Rate-
+  Defaults sind aktuell scattered, aber Refactor jetzt nicht
+  netto-positiv.
+- **Efficiency**: Eine konkrete Empfehlung umgesetzt:
+  Allow-List-Memoization in csrf.ts.
+
+**security-review-Skill (manuell als Agent ausgeführt, da
+der Skill den Git-Range nicht resolven konnte):**
+- **🟢 alle 7 Bereiche clean**: CSRF, XSS,
+  Auth-Bypass, Service-Role-Leakage, Secrets-Leak,
+  Open-Redirect, ReDoS. **Keine Fixes vor MVP nötig.**
+
+45/45 Smoketests grün (industry-presets seit Session 66
+gefixt). typecheck ✅, lint ✅, beide Builds ✅. Bundle
+102 KB shared unverändert.
+
+🛣️ Roadmap: **Phase 1 abgeschlossen — MVP-funktional
+erreicht**. Phase 1.5 startet mit Session 71 (Playwright-
+Setup + E2E-Tests pro User-Flow). Phase 2 ab Session 77.
+
+**Status-Update**: ~99.5 % Richtung „erstes Betrieb-fertiges
+Produkt". Code-Inventur:
+- **Self-Service-Cycle**: Onboarding → Editor → Slug-Wechsel
+  → Löschen
+- **AI-Pipeline**: 7 Methoden × 4 Provider × 1 Helper
+- **Storage-Stack**: Upload + DELETE-Cleanup + Slug-Move
+  + Recursive-Delete
+- **Security-Stack**: SameSite + CSRF + XSS-Sanitize +
+  Auth-Gate + Error-Tracking
+- **Lead-Pipeline**: Public-Form → DB → Retry-Queue →
+  Dashboard
+
+Verbleibend bis 100%: Phase-1.5-E2E-Coverage (User
+„sehr viele Tests"-Anweisung). Phase 2 dann UI/UX-Polish +
+Demo-Logo.
+
+## [0.16.43] – Code-Session 69 – 2026-04-27
 
 ## [0.16.43] – Code-Session 69 – 2026-04-27
 

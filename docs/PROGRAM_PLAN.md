@@ -380,57 +380,98 @@ beginnt die UI/UX-Polish-Phase.
 - **70** (Light-Pass, 5er-Multiple): finaler Pre-MVP-Pass —
   alle 7 Pflicht-Items prüfen, Audit-Checkliste schließen.
 
-### Phase 2 Restweg → UI/UX-Polish (Sessions 71–80+)
+### Phase 1.5 → End-to-End-Test-Block (Sessions 71–~76)
 
-Nach MVP-funktional folgt die mindestens 10-Sessions-tiefe
-Polish-Phase. Pro Session ein klar abgegrenzter Audit-Bereich
-mit (a) Snapshot des Ist-Stands, (b) Issue-Liste, (c) Fixes,
-(d) `webapp-testing`-Skill für Regression-Tests.
+**Vor** der UI/UX-Polish-Phase: alles wie ein End-User
+durchspielen. Anweisung des Auftraggebers: „Sehr viele
+Tests bevor wir an die UI/UX. Alles muss funktionieren,
+teste alles durch wie ein Endbenutzer."
 
-- **71**: Public-Site-Audit. Hero-Section, Service-Cards,
-  Lead-Form, Theme-Anwendung, Footer. Theme-Token-Konsistenz
-  prüfen.
-- **72**: Dashboard-Shell-Audit. Header, Sidebar/Tabs,
+Pro Session ein User-Flow als Playwright-E2E-Test. Skill:
+`webapp-testing` (Playwright-Test-Generator + Runner).
+Setup-Strategie: Tests laufen gegen lokale dev-Instanz mit
+in-memory Mock-Provider (kein echtes Supabase nötig in
+CI-Umgebung).
+
+- **71**: Setup-Session. `npm i -D @playwright/test`,
+  `playwright.config.ts`, erste Smoke-Tests: Login-Page lädt,
+  Public-Demo-Site lädt, Account-Page lädt mit Empty-State.
+  Kein-Backend-Mode: alle Tests grün ohne Supabase-ENV.
+- **72**: Onboarding-Flow E2E. Magic-Link-Page → Onboarding-
+  Form → Slug-Validation (kollidieren, reserviert, ok) →
+  erster Betrieb angelegt → Auto-Redirect zu Dashboard
+  (Session-63-Logik).
+- **73**: Business-Editor-E2E. Alle Sektionen
+  (Basisdaten / Branche / Adresse / Kontakt /
+  Öffnungszeiten / Branding), Logo+Cover-Upload-UI
+  (Mock-Mode), Speichern, Verwerfen, Demo-Defaults laden.
+- **74**: Service-Liste-E2E. Neuer Service, Edit, Delete
+  mit Confirm, Reorder via Pfeile, Limit-Verhalten, Service-
+  Bild-Upload mit UUID-Gating-Hint.
+- **75** (5er-Multiple, Light-Pass + E2E): Settings-E2E
+  (Slug-Wechsel mit Storage-Move-Indikator, Publish-Toggle,
+  Locale, Danger-Zone-Löschen mit Slug-Confirm) + Light-
+  Pass auf E2E-Test-Helpers (Stable Selectors, Test-Data-
+  Builders, Page-Objects).
+- **76**: Public-Site-E2E + Lead-Retry-Queue. Lead-Form
+  ausfüllen, Hero/Services/FAQ rendern, Mobile-CTA-
+  Streifen, Theme-Wechsel, Lead-Retry-Queue-Verhalten
+  bei `online`/`offline`-Events.
+
+Erfolgskriterium Phase 1.5: ≥25 grüne E2E-Tests, alle
+kritischen User-Flows abgedeckt, `TESTING.md`-Doku mit
+Anleitung „lokal testen" + „CI-Setup".
+
+### Phase 2 → UI/UX-Polish (Sessions ~77–~86+)
+
+Nach Phase-1.5 (E2E-Coverage steht) folgt die mindestens
+10-Sessions-tiefe Polish-Phase. Pro Session ein klar
+abgegrenzter Audit-Bereich mit (a) Snapshot des Ist-Stands,
+(b) Issue-Liste, (c) Fixes, (d) E2E-Tests aus Phase 1.5
+als Regression-Schutz.
+
+- **77**: Public-Site-Audit. Hero-Section, Service-Cards,
+  Lead-Form, Theme-Anwendung, Footer. Theme-Token-
+  Konsistenz prüfen.
+- **78**: Dashboard-Shell-Audit. Header, Sidebar/Tabs,
   Mobile-Nav, Empty-States, Auth-Card.
-- **73**: Editor-Audits — alle 5 Editoren (Business,
+- **79**: Editor-Audits — alle 5 Editoren (Business,
   Services, Settings, Reviews, Social) auf Buttons, Spacing,
   Validation-Hints, Banner-Konsistenz.
-- **74**: Form-System-Konsistenz. FormField, FormInput,
-  FormTextarea, FormSelect — Labels, Required-Marker,
-  Error-Anzeige, Hint-Pattern, Tab-Reihenfolge.
-- **75** (Light-Pass, 5er-Multiple): Type-System +
-  Component-Reuse-Pass mit `simplify`-Skill.
-- **76**: **Demo-Logo + Brand-Identity**. Aktuelles Logo
+- **80** (5er-Multiple, Light-Pass): Form-System-
+  Konsistenz + Component-Reuse-Pass mit `simplify`-Skill.
+- **81**: **Demo-Logo + Brand-Identity**. Aktuelles Logo
   ist text-only (LocalPilot AI). Mit `algorithmic-art`-Skill
   ein generatives p5.js-Mark + statische SVG-Variante
   produzieren. Brand-Tokens (`brand-guidelines`-Skill)
   definieren: Farben, Schriften, Spacing, Iconography.
-- **77**: Theme-Polish. `theme-factory`-Skill anwenden auf
+- **82**: Theme-Polish. `theme-factory`-Skill anwenden auf
   alle 10 Themes — Konsistenz-Audit der Farben, Schrift-
   Hierarchie, Buttons, Form-Surfaces. Public-Site-Theme-
   Switcher als Demo-Tool.
-- **78**: A11y-Audit. Tab-Order, ARIA-Labels, Contrast-
+- **83**: A11y-Audit. Tab-Order, ARIA-Labels, Contrast-
   Ratios (WCAG 2.2 AA), Focus-States, Reduced-Motion-Pfad.
-- **79**: Mobile/Tablet-Responsive-Audit. Breakpoints
-  (sm/md/lg/xl), Touch-Targets (≥44×44), Mobile-CTA-Streifen,
-  Tab-Bars.
-- **80** (Light-Pass, 5er-Multiple): finaler Polish-Pass +
-  Lighthouse-Run + Bundle-Cleanup.
+- **84**: Mobile/Tablet-Responsive-Audit. Breakpoints
+  (sm/md/lg/xl), Touch-Targets (≥44×44), Mobile-CTA-
+  Streifen, Tab-Bars.
+- **85** (5er-Multiple, Light-Pass): Type-System-Pass.
+- **86**: Finaler Polish-Pass + Lighthouse-Run + Bundle-
+  Cleanup + Production-Deploy-Doku.
 
 ### Skill-Mapping (Phase 2)
 
 Verfügbare Claude-Code-Skills, die in der UI/UX-Phase zentral
 werden:
 
-| Skill                  | Einsatz in Phase 2                              |
+| Skill                  | Einsatz in Phase 1.5/2                              |
 | ---------------------- | ----------------------------------------------- |
-| `simplify`             | Light-Pass-Sessions (65, 70, 75, 80) — Code-Diff-Review für Reuse + Quality + Efficiency. |
-| `webapp-testing`       | Audit-Sessions 71–79 — Playwright-Tests pro Bereich, Regression-Schutz vor Polish-Fixes. |
-| `algorithmic-art`      | Session 76 — Demo-Logo als generatives p5.js-Artwork mit Seed (reproduzierbar). |
-| `theme-factory`        | Sessions 76+77 — Brand-Tokens auf alle Artefakte (HTML/CSS/Slides/PDF) anwenden. |
-| `brand-guidelines`     | Session 76 — Brand-Definition (Farben, Schriften, Voice, Iconography) als Single-Source-of-Truth. |
+| `webapp-testing`       | **Phase 1.5 (Sessions 71–76)** — Playwright-Tests pro User-Flow. Regression-Schutz für Phase 2. |
+| `simplify`             | Light-Pass-Sessions (65 ✅, 70 ✅, 75, 80, 85) — Code-Diff-Review für Reuse + Quality + Efficiency. |
+| `algorithmic-art`      | Session 81 — Demo-Logo als generatives p5.js-Artwork mit Seed (reproduzierbar). |
+| `theme-factory`        | Sessions 81+82 — Brand-Tokens auf alle Artefakte (HTML/CSS/Slides/PDF) anwenden. |
+| `brand-guidelines`     | Session 81 — Brand-Definition (Farben, Schriften, Voice, Iconography) als Single-Source-of-Truth. |
 | `systematic-debugging` | Bei Bug-Hunting in Audit-Phasen — Senior-Dev-Pipeline statt Rumprobieren. |
-| `security-review`      | Session 70 (Pre-MVP) + vor Production-Deploy — Branch-weiter Security-Scan. |
+| `security-review`      | Session 70 (Pre-MVP) ✅ + vor Production-Deploy — Branch-weiter Security-Scan. |
 | `review`               | PR-Reviews vor `main`-Merge. |
 
 ### Meilenstein 5 — Production-Readiness

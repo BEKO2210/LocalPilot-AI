@@ -6,7 +6,7 @@
  */
 
 import {
-  csrfErrorResponse,
+  enforceCsrf,
   parseAllowedOrigins,
   verifyCsrfOrigin,
 } from "@/lib/csrf";
@@ -262,22 +262,42 @@ async function main() {
   assert(localIp.ok === true, "127.0.0.1 → ok");
 
   // ---------------------------------------------------------------------
-  // 12. csrfErrorResponse
+  // 12. enforceCsrf → 403-Response (indirekter csrfErrorResponse-Test)
   // ---------------------------------------------------------------------
-  const resp = csrfErrorResponse("Test reason");
-  assert(resp.status === 403, "csrfErrorResponse → 403");
+  // Cross-Origin-Request → enforceCsrf liefert eine 403-Response
+  // mit der gleichen Shape wie der frühere csrfErrorResponse-Export
+  // (der ist seit Session 70 internal).
+  const resp = enforceCsrf(
+    buildReq({
+      method: "POST",
+      origin: "https://evil.example",
+      host: "app.example.com",
+    }),
+  );
+  assert(resp !== null, "enforceCsrf bei Cross-Origin → Response");
+  assert(resp!.status === 403, "enforceCsrf → 403");
   assert(
-    resp.headers.get("content-type") === "application/json",
+    resp!.headers.get("content-type") === "application/json",
     "JSON-Response",
   );
-  const body = (await resp.json()) as {
+  const body = (await resp!.json()) as {
     error?: string;
     message?: string;
     detail?: string;
   };
   assert(body.error === "csrf_blocked", "error=csrf_blocked");
   assert(typeof body.message === "string", "message ist string");
-  assert(body.detail === "Test reason", "detail durchgereicht");
+  assert(typeof body.detail === "string", "detail vorhanden");
+
+  // Same-Origin → enforceCsrf liefert null
+  const okResp = enforceCsrf(
+    buildReq({
+      method: "POST",
+      origin: "https://app.example.com",
+      host: "app.example.com",
+    }),
+  );
+  assert(okResp === null, "enforceCsrf bei Same-Origin → null");
 
   // ---------------------------------------------------------------------
   // 13. PUT/PATCH/DELETE werden auch geprüft
