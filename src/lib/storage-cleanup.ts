@@ -136,3 +136,113 @@ export async function removeStoragePaths(
     };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Path-Rewrite + Move (Code-Session 57: Slug-Wechsel)
+// ---------------------------------------------------------------------------
+
+/**
+ * Ersetzt nur den Top-Level-Folder-Prefix eines Pfades.
+ *
+ * Beispiele:
+ *   `studio-haarlinie/logo.png`  + (`studio-haarlinie` →
+ *   `studio-haarlinie-2`) → `studio-haarlinie-2/logo.png`
+ *
+ *   `studio-haarlinie/services/x.png` → `studio-haarlinie-2/services/x.png`
+ *
+ *   `studio-haarlinie-old/logo.png` mit `oldPrefix=studio-haarlinie`
+ *   → null (kein exakter Prefix-Match — schützt vor Kollisionen
+ *   bei verwandten Slugs).
+ *
+ * Empty / falscher Prefix → null.
+ */
+export function rewritePathPrefix(
+  oldPath: string | null | undefined,
+  oldPrefix: string,
+  newPrefix: string,
+): string | null {
+  if (!oldPath || !oldPrefix || !newPrefix) return null;
+  const expected = `${oldPrefix}/`;
+  if (!oldPath.startsWith(expected)) return null;
+  return `${newPrefix}/${oldPath.slice(expected.length)}`;
+}
+
+export interface MoveResult {
+  readonly fromPath: string;
+  readonly toPath: string;
+  readonly ok: boolean;
+  readonly reason: string | null;
+}
+
+/**
+ * Storage-Move mit graceful Failure-Mode.
+ *
+ * Verwendet Supabase `storage.from(bucket).move(from, to)` — das
+ * ist eine atomare Server-Operation: bei Erfolg ist die Datei
+ * unter `to` verfügbar und unter `from` weg. Bei Fehler bleibt
+ * der ursprüngliche Pfad unverändert.
+ *
+ * **Kein Throw** — die aufrufende Route entscheidet bei `ok=false`,
+ * ob sie das DB-UPDATE trotzdem durchführt (z.B. URL auf null
+ * setzen statt blockieren).
+ */
+export async function moveStoragePath(
+  adminClient: SupabaseClient | null,
+  bucket: string,
+  fromPath: string,
+  toPath: string,
+): Promise<MoveResult> {
+  if (!adminClient) {
+    return {
+      fromPath,
+      toPath,
+      ok: false,
+      reason: "Service-Role-Client nicht verfügbar.",
+    };
+  }
+  if (fromPath === toPath) {
+    // Move auf identischen Pfad ist no-op und würde von Storage
+    // mit „resource already exists" abgelehnt — also vorab
+    // abfangen.
+    return { fromPath, toPath, ok: true, reason: null };
+  }
+  try {
+    const { error } = await adminClient.storage
+      .from(bucket)
+      .move(fromPath, toPath);
+    if (error) {
+      return {
+        fromPath,
+        toPath,
+        ok: false,
+        reason: error.message ?? "Storage-Move fehlgeschlagen.",
+      };
+    }
+    return { fromPath, toPath, ok: true, reason: null };
+  } catch (err) {
+    return {
+      fromPath,
+      toPath,
+      ok: false,
+      reason: err instanceof Error ? err.message : "Storage-Move fehlgeschlagen.",
+    };
+  }
+}
+
+/**
+ * Liefert die Public-URL für einen Storage-Pfad.
+ *
+ * Wrapper um `.storage.from(bucket).getPublicUrl(path)` —
+ * existiert hier, damit die Route keinen direkten Storage-
+ * API-Aufruf braucht. `null` wenn der Client fehlt (Tests /
+ * Static-Build).
+ */
+export function buildPublicUrl(
+  adminClient: SupabaseClient | null,
+  bucket: string,
+  path: string,
+): string | null {
+  if (!adminClient || !path) return null;
+  const { data } = adminClient.storage.from(bucket).getPublicUrl(path);
+  return data?.publicUrl ?? null;
+}

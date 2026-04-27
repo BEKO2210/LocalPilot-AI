@@ -7,16 +7,81 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Code-Sessions 57+: Live-Provider-Variante für Reviews/Social-
+- Code-Sessions 58+: Live-Provider-Variante für Reviews/Social-
   Panels (Auth-Bearer + `/api/ai/generate`), Direkt-Posten zu
   Buffer/Hootsuite/Meta-Graph, Multi-Member-Verwaltung, Default-
   Redirect bei einem Betrieb, Retry-Queue für Lead-`local-
-  fallback`, Storage-Cleanup-Job für Slug-Wechsel-Waisen
-  (logo/cover bei Slug-Wechsel), Service-Image-Upload-UI
-  (Schema + Storage-Cleanup sind ready), Edge-Runtime-
-  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
-  Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
-  Schema↔Migration-Drift-Test.
+  fallback`, Service-Image-Upload-UI (Schema + Storage-Cleanup
+  + Slug-Move sind ready), Edge-Runtime-Migration, CSRF-Schutz,
+  HTML-Sanitize-Whitelist, Impressum-Editor pro Betrieb,
+  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test.
+
+## [0.16.31] – Code-Session 57 – 2026-04-27
+
+Slug-Wechsel-Storage-Migration. Beim Slug-Rename werden Logo
+und Hero-Bild jetzt im Storage-Bucket vom alten auf den neuen
+Slug-Prefix gemoved — keine broken-image-Tags mehr auf der
+Public-Site nach einem Slug-Wechsel. Pattern aus Session 56
+direkt wiederverwendet (`extractStoragePath`,
+`removeStoragePaths`) plus zwei neue Helper.
+
+- 🔄 `src/lib/storage-cleanup.ts` erweitert um:
+  - `rewritePathPrefix(oldPath, oldPrefix, newPrefix)` —
+    pure, ersetzt nur den Top-Level-Folder-Anteil
+    (`<old-slug>/logo.png` → `<new-slug>/logo.png`); strikter
+    Boundary-Check verhindert Kollision mit verwandten Slugs
+    (z.B. `studio-haarlinie-old` → kein Match auf
+    `studio-haarlinie`).
+  - `moveStoragePath(client, bucket, from, to)` — graceful
+    Wrapper um `.storage.from(bucket).move(from, to)`. Kein
+    Throw, no-op bei identischen Pfaden, liefert
+    `{ fromPath, toPath, ok, reason }`.
+  - `buildPublicUrl(client, bucket, path)` — schmaler
+    Wrapper um `getPublicUrl`, damit die Settings-Route
+    keinen direkten Storage-API-Aufruf braucht.
+- 🔄 `src/tests/storage-cleanup.test.ts` von ~30 → ~52 Asserts:
+  `rewritePathPrefix` (Standard, Subfolder, falscher Prefix,
+  defensive Inputs), `moveStoragePath` (null-Client,
+  identische Pfade, Happy-Path, Error, Throw), `buildPublicUrl`
+  (null-Client, leerer Pfad, Stub-Match).
+- 🔄 `src/app/api/businesses/[slug]/settings/route.ts`:
+  Zwei-Phasen-Pattern. Phase 1: Slug-Update wie bisher (fängt
+  23505 → 409). Phase 2 nur bei `slugChanged`: pre-existing
+  `logo_url` + `cover_image_url` aus dem UPDATE-Result lesen,
+  per `extractStoragePath` + `rewritePathPrefix` neue Pfade
+  bauen, Service-Role-`moveStoragePath`, neue Public-URLs in
+  einem zweiten DB-UPDATE einspielen. Move-Failure setzt die
+  jeweilige URL auf `null` (kein 404-Bild auf der Public-Site)
+  und logged. Antwort enthält jetzt `imagesMoved` +
+  `imagesFailed`.
+- 🔄 `src/lib/business-settings.ts`: `SettingsUpdateResult.server`
+  um optionale `imagesMoved`/`imagesFailed` ergänzt
+  (rückwärtskompatibel — Settings-Test bleibt grün).
+
+37/38 Smoketests grün (industry-presets pre-existing red,
+Codex #11). +22 storage-cleanup-Asserts on top. typecheck ✅,
+lint ✅, beide Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt. Storage-Hygiene ist jetzt vollständig:
+DELETE räumt auf (Session 56), Slug-Wechsel migriert (Session
+57). Service-Image-Upload-UI als nächstes Quality-Item — alles
+darunter ist fertig.
+
+**Status-Update**: ~90 % Richtung „erstes Betrieb-fertiges
+Produkt". Verbleibend: Service-Image-Upload-UI,
+Live-Provider-Switch (Reviews/Social), Custom-Domain, Sentry,
+Lighthouse-CI, Multi-Member-Verwaltung.
+
+**Manueller Test**: Dashboard → „Einstellungen" → Slug ändern
+(z.B. `studio-haarlinie` → `studio-haarlinie-2`) → Speichern.
+Mit aktivem Supabase + Service-Role-Key zeigt Response
+`imagesMoved: 2` (Logo + Hero), Public-Site unter neuem Slug
+zeigt unverändert dieselben Bilder. Bei fehlendem
+Service-Role-Key oder Move-Fehler: `imagesFailed > 0`,
+betroffene `*_url`-Spalten sind null, User muss die Bilder
+unter dem neuen Slug neu hochladen.
+
+## [0.16.30] – Code-Session 56 – 2026-04-27
 
 ## [0.16.30] – Code-Session 56 – 2026-04-27
 

@@ -241,9 +241,23 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   (Dependabot moderate) + eslint-ReDoS-Fix (low) durch
   semver-minor-Bumps; `npm audit` ist nach diesem Commit auf
   0 Vulnerabilities.
-- 41+: Restliche Storage-Hygiene (Slug-Wechsel-Cleanup,
-  Service-Image-Upload-UI), RLS-Policies durchziehen,
-  Backup-Policy, Seed-Skript für Demo-Daten.
+- 57: Slug-Wechsel-Storage-Migration ✅. Pattern aus Session 56
+  weitergedreht: bei `PATCH /api/businesses/<slug>/settings`
+  mit `newSlug` werden Logo + Hero im `business-images`-Bucket
+  von `<old-slug>/...` auf `<new-slug>/...` per atomarem
+  `storage.move()` umbenannt; neue Public-URLs werden in
+  einem zweiten DB-UPDATE eingespielt. Two-Phase-Pattern:
+  UPDATE 1 (Slug, fängt 23505 → 409) → Move → UPDATE 2 (URLs).
+  Move-Failure setzt URL auf null (kein 404-Bild auf der
+  Public-Site). `storage-cleanup.ts` erweitert um
+  `rewritePathPrefix` (mit strikter `/`-Boundary), `moveStoragePath`,
+  `buildPublicUrl` (~22 neue Asserts on top, gesamt 52).
+  Damit ist Storage-Hygiene **vollständig**: DELETE räumt
+  auf (56), Slug-Wechsel migriert (57).
+- 41+: Service-Image-Upload-UI (Feature, ServiceCard-Slot
+  + Upload-Route-Erweiterung um `kind: "service"` mit
+  `serviceId`-Pfadbestandteil), Backup-Policy, Seed-Skript für
+  Demo-Daten.
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant

@@ -6493,3 +6493,111 @@ sie als Waisen, und die Public-Site zeigt sie nirgends mehr
 an. Klein, scharf, abgrenzbar — gute Folge-Session ohne
 Speedrun-Charakter.
 
+## Code-Session 57 – Slug-Wechsel-Storage-Migration
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Hygiene
+
+**Was**: Beim Slug-Rename via `PATCH /api/businesses/<slug>/
+settings` zeigten `logo_url`/`cover_image_url` weiter auf den
+**alten** Slug-Pfad (`<old-slug>/logo.png`) — das Bild lag
+also im Storage unter dem alten Pfad, die Public-Site fragt
+es aber nicht mehr ab (sie generiert ihre URLs aus dem neuen
+Slug-Kontext nicht; aber DB-URL ist hardcoded auf den alten
+Pfad). Fazit war: Slug-Wechsel ließ Bilder als Waisen liegen,
+und auf der Public-Site sah es zwar visuell richtig aus,
+aber nach `clearOverride()` oder Reload waren es weiterhin
+URLs zum alten Slug-Storage-Pfad — wenn später jemand den
+alten Slug neu vergibt, würde dieser Bilder erben.
+
+**Architektur-Entscheidung — Move statt Delete+Reupload**:
+`storage.from(bucket).move(from, to)` ist eine atomare
+Server-Operation: bei Erfolg ist die Datei unter `to` und
+unter `from` weg. Damit bleibt der Bild-Inhalt erhalten und
+der User muss nichts neu hochladen. Alternative wäre
+„DELETE + User muss neu hochladen" — schlechte UX und
+inkonsistent zur Session-50-Erwartung „Settings-Update
+ändert Profil-Daten, nicht Inhalte".
+
+**Architektur-Entscheidung — Zwei-Phasen-DB-Update**:
+1. UPDATE 1: Slug + isPublished + locale. Atomar, fängt
+   23505-Conflict, liefert die alten URLs zurück.
+2. Storage-Move auf den neuen Slug-Prefix.
+3. UPDATE 2 (nur falls Slug gewechselt UND Bilder migriert):
+   neue URLs in `logo_url`/`cover_image_url` einspielen.
+
+Phase 2 ist best-effort. Wenn Move fehlschlägt, setzen wir
+die URL auf `null` — die Public-Site zeigt dann nichts
+(statt 404), und der User merkt im Dashboard sofort, dass
+er das Bild neu hochladen muss.
+
+**Architektur-Entscheidung — strikter Prefix-Match**:
+`rewritePathPrefix` prüft `oldPath.startsWith(oldSlug + "/")`.
+Damit greift es bei `studio-haarlinie-old/logo.png` mit
+`oldSlug=studio-haarlinie` korrekt **nicht** — verhindert
+versehentliche Kollision bei verwandten Slugs.
+
+**WebSearch (Track A)**: bestätigt
+- [Supabase JS – storage-from-move](https://supabase.com/docs/reference/javascript/storage-from-move)
+  Move ist die offizielle API für Rename/Path-Change.
+- [Storage Troubleshooting – Inefficient folder operations](https://supabase.com/docs/guides/troubleshooting/supabase-storage-inefficient-folder-operations-and-hierarchical-rls-challenges-b05a4d):
+  Storage hat keine native Folder-Move-API; pro Datei einzeln
+  moven ist der Standard-Pattern.
+
+**Dateien**:
+- 🔄 `src/lib/storage-cleanup.ts` erweitert:
+  - `rewritePathPrefix(oldPath, oldPrefix, newPrefix)` —
+    pure, schreibt nur Top-Level-Folder um, mit strikter
+    `/`-Boundary-Prüfung.
+  - `moveStoragePath(client, bucket, from, to)` — Wrapper
+    um `.move()` mit no-op bei identischen Pfaden,
+    null-Client-Handling, try/catch um Throws.
+  - `buildPublicUrl(client, bucket, path)` — kapselt
+    `getPublicUrl` (Sync, baut URL ohne Server-Call).
+- 🔄 `src/tests/storage-cleanup.test.ts` von ~30 → ~52
+  Asserts. Neue Asserts für Path-Rewrite (Standard-Fall,
+  Subfolder, Boundary-Schutz, defensive Inputs), Move
+  (null-Client, identische Pfade, Happy-Path, Error, Throw),
+  buildPublicUrl (null-Client, Stub-Match).
+- 🔄 `src/app/api/businesses/[slug]/settings/route.ts`:
+  - SELECT um `logo_url, cover_image_url` erweitert (war
+    vorher nur `id, slug`).
+  - Nach UPDATE 1: bei `slugChanged` für jedes der zwei
+    Bild-Felder den alten Pfad extrahieren, neuen Pfad
+    bauen, Service-Role-Move, URL-Patch sammeln.
+  - UPDATE 2 mit dem URL-Patch (nur bei Bedarf).
+  - Antwort um `imagesMoved` + `imagesFailed`.
+- 🔄 `src/lib/business-settings.ts`: `SettingsUpdateResult.server`
+  um optionale `imagesMoved`/`imagesFailed`. Bestehende
+  Tests bleiben grün (Optional-Felder).
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**37/38 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +22 storage-cleanup-Asserts.
+
+**Roadmap**: 1 abgehakt (Slug-Wechsel-Migration). Storage-
+Hygiene ist jetzt **vollständig**: DELETE räumt auf (56),
+Slug-Wechsel migriert (57). Was bleibt für Storage-Komplettheit:
+Service-Image-Upload-UI — das ist aber **Feature**, nicht
+Hygiene.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — Supabase Storage
+Move + Folder-Operations 2026.
+
+**Status-Update**: ~90 % Richtung „erstes Betrieb-fertiges
+Produkt". Storage- + Security-Hygiene sind komplett.
+Verbleibend: Service-Image-Upload-UI (Feature), Live-Provider-
+Switch (Quality), Custom-Domain (Ops), Sentry (Observability),
+Lighthouse-CI (CI/CD), Multi-Member-Verwaltung (Skalierung).
+
+**Nächste Session**: Code-Session 58 = **Service-Image-Upload-
+UI**. Begründung: Mit Session 56 (Cleanup) + 57 (Slug-Move)
+ist die Storage-Hygiene fertig — der Cleanup-Pfad existiert,
+bevor das Feature gebaut wird, das ihn produziert. Genau die
+richtige Reihenfolge: zuerst Aufräum-Pflicht erfüllt, dann
+Feature, das Müll erzeugen kann. ServiceCard bekommt einen
+`ImageUploadField`-Slot symmetrisch zum Logo/Cover-Pattern
+aus Session 51, die Upload-Route von `kind: "logo"|"cover"`
+auf `kind: "service"` mit `serviceId`-Pfadbestandteil
+erweitert. Storage-Cleanup beim Service-DELETE läuft bereits
+(Session 56), und die DB hat die `image_url`-Spalte schon
+seit Migration 0002.
+

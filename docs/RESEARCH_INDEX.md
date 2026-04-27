@@ -105,6 +105,12 @@
 - [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
 - [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
 
+### Storage-Move für Slug-Wechsel (Code-Session 57)
+- [Supabase JS – storage-from-move](https://supabase.com/docs/reference/javascript/storage-from-move) — `move(fromPath, toPath)` ist offizielle Rename-API; atomar, gleiche Bucket-Restriktion (57).
+- [Supabase Docs – Storage Folder-Operations & Hierarchical RLS](https://supabase.com/docs/guides/troubleshooting/supabase-storage-inefficient-folder-operations-and-hierarchical-rls-challenges-b05a4d) — Storage hat keine native Folder-Move-API; pro Datei einzeln ist Standard-Pattern (57).
+- [supabase Discussion #19418 – Rename folder with supabase-js](https://github.com/orgs/supabase/discussions/19418) — bestätigt: 2026 noch keine Folder-API, Loop über Files (57).
+- [supabase storage-js Issue #49 – Bucket-Rename](https://github.com/supabase/storage-js/issues/49) — Bucket-Rename existiert noch nicht (relevant nur als Negativ-Information, 57).
+
 ### Storage-Cleanup-Patterns + Dependabot-Vulns (Code-Session 56)
 - [Supabase Docs – Delete Objects](https://supabase.com/docs/guides/storage/management/delete-objects) — Storage-API für DELETE; SQL-only-DELETE produziert orphans (56).
 - [supabase Discussion #36755 – Feature Request: Native Storage File Deletion Trigger on Row Delete](https://github.com/orgs/supabase/discussions/36755) — bestätigt: native DB→Storage-Trigger existiert 2026 noch nicht, Application-Cleanup ist Pflicht (56).

@@ -6,9 +6,12 @@
  */
 
 import {
+  buildPublicUrl,
   collectStoragePaths,
   extractStoragePath,
+  moveStoragePath,
   removeStoragePaths,
+  rewritePathPrefix,
 } from "@/lib/storage-cleanup";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -224,7 +227,139 @@ async function main() {
   assert(thrown.failed === 1, "throw → failed");
   assert(thrown.reason === "Netzwerk-Abriss", "Throw-Message als Reason");
 
-  console.log("storage-cleanup smoketest ✅ (~30 Asserts)");
+  // -------------------------------------------------------------------
+  // 15. rewritePathPrefix: Standard-Fall
+  // -------------------------------------------------------------------
+  assert(
+    rewritePathPrefix("studio-haarlinie/logo.png", "studio-haarlinie", "studio-haarlinie-2") ===
+      "studio-haarlinie-2/logo.png",
+    "Top-Level-Slug ersetzt",
+  );
+
+  // Subfolder bleibt erhalten
+  assert(
+    rewritePathPrefix(
+      "studio-haarlinie/services/x.png",
+      "studio-haarlinie",
+      "neuer-slug",
+    ) === "neuer-slug/services/x.png",
+    "Subfolder bleibt nach Prefix-Rewrite",
+  );
+
+  // -------------------------------------------------------------------
+  // 16. rewritePathPrefix: Kein Prefix-Match → null
+  // -------------------------------------------------------------------
+  assert(
+    rewritePathPrefix(
+      "studio-haarlinie-old/logo.png",
+      "studio-haarlinie",
+      "neuer-slug",
+    ) === null,
+    "Verwandter Slug ohne `/`-Boundary → null (Kollisions-Schutz)",
+  );
+
+  assert(
+    rewritePathPrefix("other/logo.png", "studio", "neu") === null,
+    "Falscher Top-Level-Folder → null",
+  );
+
+  // -------------------------------------------------------------------
+  // 17. rewritePathPrefix: defensive Inputs
+  // -------------------------------------------------------------------
+  assert(rewritePathPrefix(null, "a", "b") === null, "null path → null");
+  assert(rewritePathPrefix(undefined, "a", "b") === null, "undefined → null");
+  assert(rewritePathPrefix("", "a", "b") === null, "leer → null");
+  assert(rewritePathPrefix("a/x.png", "", "b") === null, "leerer oldPrefix → null");
+  assert(rewritePathPrefix("a/x.png", "a", "") === null, "leerer newPrefix → null");
+
+  // -------------------------------------------------------------------
+  // 18. moveStoragePath: null-Client → graceful
+  // -------------------------------------------------------------------
+  const moveNoClient = await moveStoragePath(null, BUCKET, "old/x.png", "new/x.png");
+  assert(moveNoClient.ok === false, "kein Client → ok=false");
+  assert(moveNoClient.reason !== null, "Reason gesetzt");
+  assert(moveNoClient.fromPath === "old/x.png", "fromPath durchgereicht");
+  assert(moveNoClient.toPath === "new/x.png", "toPath durchgereicht");
+
+  // -------------------------------------------------------------------
+  // 19. moveStoragePath: Identische Pfade → no-op ok=true
+  // -------------------------------------------------------------------
+  const moveNoOp = await moveStoragePath(stubClient, BUCKET, "x/y.png", "x/y.png");
+  assert(moveNoOp.ok === true, "identische Pfade → ok=true (no-op)");
+
+  // -------------------------------------------------------------------
+  // 20. moveStoragePath: Happy-Path
+  // -------------------------------------------------------------------
+  let moveCalledFrom: string | null = null;
+  let moveCalledTo: string | null = null;
+  const moveOkClient = {
+    storage: {
+      from: () => ({
+        move: async (from: string, to: string) => {
+          moveCalledFrom = from;
+          moveCalledTo = to;
+          return { data: null, error: null };
+        },
+      }),
+    },
+  } as unknown as SupabaseClient;
+  const moveOk = await moveStoragePath(moveOkClient, BUCKET, "a/logo.png", "b/logo.png");
+  assert(moveOk.ok === true, "Happy-Path ok=true");
+  assert(moveCalledFrom === "a/logo.png", "from korrekt durchgereicht");
+  assert(moveCalledTo === "b/logo.png", "to korrekt durchgereicht");
+
+  // -------------------------------------------------------------------
+  // 21. moveStoragePath: Storage-Error wird graceful gehandelt
+  // -------------------------------------------------------------------
+  const moveErrClient = {
+    storage: {
+      from: () => ({
+        move: async () => ({ data: null, error: { message: "Resource not found" } }),
+      }),
+    },
+  } as unknown as SupabaseClient;
+  const moveErr = await moveStoragePath(moveErrClient, BUCKET, "a/x.png", "b/x.png");
+  assert(moveErr.ok === false, "Error → ok=false");
+  assert(moveErr.reason === "Resource not found", "Reason aus error.message");
+
+  // -------------------------------------------------------------------
+  // 22. moveStoragePath: Throw wird graceful gehandelt
+  // -------------------------------------------------------------------
+  const moveThrowClient = {
+    storage: {
+      from: () => ({
+        move: async () => {
+          throw new Error("Netzwerk weg");
+        },
+      }),
+    },
+  } as unknown as SupabaseClient;
+  const moveThrow = await moveStoragePath(moveThrowClient, BUCKET, "a/x.png", "b/x.png");
+  assert(moveThrow.ok === false, "Throw → ok=false");
+  assert(moveThrow.reason === "Netzwerk weg", "Throw-Message als Reason");
+
+  // -------------------------------------------------------------------
+  // 23. buildPublicUrl
+  // -------------------------------------------------------------------
+  assert(buildPublicUrl(null, BUCKET, "a/x.png") === null, "null Client → null URL");
+  assert(buildPublicUrl(stubClient, BUCKET, "") === null, "leerer Pfad → null URL");
+
+  const urlClient = {
+    storage: {
+      from: () => ({
+        getPublicUrl: (p: string) => ({
+          data: { publicUrl: `https://example.supabase.co/storage/v1/object/public/${BUCKET}/${p}` },
+        }),
+      }),
+    },
+  } as unknown as SupabaseClient;
+  const built = buildPublicUrl(urlClient, BUCKET, "neu/logo.png");
+  assert(
+    built === `https://example.supabase.co/storage/v1/object/public/${BUCKET}/neu/logo.png`,
+    "Public-URL korrekt zusammengebaut",
+  );
+
+  console.log("storage-cleanup smoketest ✅ (~52 Asserts)");
 }
 
 void main().catch((err) => {
@@ -232,4 +367,4 @@ void main().catch((err) => {
   process.exit(1);
 });
 
-export const __STORAGE_CLEANUP_SMOKETEST__ = { totalAssertions: 30 };
+export const __STORAGE_CLEANUP_SMOKETEST__ = { totalAssertions: 52 };
