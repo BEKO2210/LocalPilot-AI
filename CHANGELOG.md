@@ -7,15 +7,59 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant — Backend-Sprint
-- **Code-Session 37: Erstes Supabase-Schema** (`businesses`-Tabelle
-  als read-only Spiegel der Mocks + Repository-Layer mit
-  feature-flag-Switch localStorage ↔ Supabase). Health-Endpunkt
-  testet ab dann echte Tabellen-Calls statt nur REST-Root-Ping.
-- Code-Sessions 38+: Multi-Tenant-Auth mit echten User-Accounts
-  (Magic-Link via `@supabase/ssr`), Storage-Bucket für Logos,
-  Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
-  Settings-Editor mit Legal-Sektion, Impressum-Editor pro Betrieb
-  (für Reseller-Szenarien).
+- **Code-Session 38: services + reviews-Migrationen** (0002 + 0003)
+  + Repository-Erweiterung. Public-Site bekommt alles, was sie für
+  Vollanzeige braucht, optional aus DB.
+- Code-Sessions 39+: faqs + leads-Migrationen, Magic-Link-Auth via
+  `@supabase/ssr`, Storage-Bucket für Logos, Edge-Runtime-Migration,
+  CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-Editor mit
+  Legal-Sektion, Impressum-Editor pro Betrieb (für Reseller),
+  Seed-Skript für Demo-Daten.
+
+## [0.16.11] – Code-Session 37 – 2026-04-27
+
+Erstes konkretes Schema. `businesses`-Tabelle (Migration 0001)
+mit RLS-Pflicht-Aktivierung + Public-Read-Policy, Repository-
+Layer abstrahiert Mock ↔ Supabase, Health-Probe schärfer.
+
+- ✚ `supabase/migrations/0001_businesses.sql` — Hybrid-Schema
+  (Top-Level-Spalten + JSONB für Adresse/Kontakt/Öffnungszeiten),
+  3 Indizes, `updated_at`-Trigger, RLS aktiv, Read-Policy für
+  veröffentlichte Betriebe (Public-Site darf ohne Auth).
+- ✚ `docs/SUPABASE_SCHEMA.md` — Schema-Referenz + Migrations-
+  Roadmap (0002–0007).
+- ✚ `src/core/database/repositories/business.ts` — schmales
+  read-only Interface (`findBySlug`, `listSlugs`, `listAll`),
+  Mock + Supabase-Impl, Row→Schema-Mapping mit `BusinessSchema.parse`
+  als Schema-Drift-Bollwerk.
+- ✚ `src/core/database/repositories/index.ts` — `resolveDataSource`,
+  Soft-Fallback bei halb-konfigurierter ENV (kein Crash).
+- 🔄 `src/core/database/health.ts` — neue Option `probe:
+  "rest-root" | "businesses-table"`, 404-Sonderfall mit
+  „Migration fehlt"-Meldung.
+- 🔄 `src/app/api/ai/health/route.ts` — automatisch businesses-
+  table-Probe, sobald `LP_DATA_SOURCE=supabase`.
+- 🔄 `.env.production.example` — `LP_DATA_SOURCE=mock` als
+  expliziter Default-Switch.
+- ✚ `src/tests/business-repository.test.ts` (~30 Asserts):
+  Mock-Roundtrip, Resolver-ENV-Logik, Soft-Fallback mit
+  stderr-Capture, Health-Probe (200/401/404/Default).
+
+23/24 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Bundle: shared 102 KB unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Health-Tabellen-Probe), 2 neu
+(Datenquellen-Badge, Seed-Skript). Session-Cluster im
+Meilenstein 4 von 35–40 auf 35–41+ präzisiert.
+
+**Manueller Schritt für den Auftraggeber** (optional, wenn
+Supabase scharf gemacht werden soll):
+1. Supabase-Projekt anlegen, URL + anon-Key in Vercel-ENV.
+2. SQL aus `supabase/migrations/0001_businesses.sql` im
+   Supabase-Dashboard ausführen.
+3. `LP_DATA_SOURCE=supabase` setzen.
+
+Bis dahin läuft alles unverändert auf Mock-Daten.
 
 ## [0.16.10] – Code-Session 36 – 2026-04-27
 

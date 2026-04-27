@@ -30,6 +30,12 @@ export interface DatabaseHealth {
   readonly reason?: string;
   /** Ist `SUPABASE_URL` + `SUPABASE_ANON_KEY` gesetzt? */
   readonly configured: boolean;
+  /**
+   * Was wurde gepingt? `"rest-root"` ist der Lebenszeichen-Check
+   * (immer aktiv). `"businesses-table"` ist der schärfere Check
+   * gegen die echte Tabelle (ab Code-Session 37, RLS muss erlauben).
+   */
+  readonly probe?: "rest-root" | "businesses-table";
 }
 
 const DEFAULT_TIMEOUT_MS = 2000;
@@ -38,6 +44,13 @@ const DEGRADED_THRESHOLD_MS = 1500;
 export interface CheckDatabaseHealthOptions {
   readonly timeoutMs?: number;
   readonly fetchImpl?: typeof fetch;
+  /**
+   * Welche Sonde wird benutzt? Default `"rest-root"` — pingt nur die
+   * REST-Root-URL (tabellenunabhängig, schnell, RLS-frei). Mit
+   * `"businesses-table"` wird ein zero-row-`select` gegen die
+   * `businesses`-Tabelle gefahren — testet auch PostgREST + RLS.
+   */
+  readonly probe?: "rest-root" | "businesses-table";
 }
 
 export async function checkDatabaseHealth(
@@ -55,32 +68,60 @@ export async function checkDatabaseHealth(
 
   const fetchImpl = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const probe = options.probe ?? "rest-root";
+
+  // PostgREST liefert auf eine `select`-Anfrage gegen die Tabelle
+  // mit `Range: 0-0` ein einzelnes Row-Fenster, ohne dass die
+  // Tabelle leer sein dürfte — selbst eine leere Tabelle gibt 200.
+  // Das ist deutlich aussagekräftiger als der REST-Root-Ping, weil
+  // es PostgREST + RLS-Policy mit-prüft.
+  const url =
+    probe === "businesses-table"
+      ? `${sb.url}/rest/v1/businesses?select=id&limit=1`
+      : `${sb.url}/rest/v1/`;
+  const headers: Record<string, string> = {
+    apikey: sb.anonKey!,
+    accept: "application/json",
+  };
+  if (probe === "businesses-table") {
+    // Range-Header zwingt PostgREST, einen Zähler zu liefern, falls
+    // die Policy es zulässt. Schadet nicht, falls nicht.
+    headers["range"] = "0-0";
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const startedAt = Date.now();
 
   try {
-    const res = await fetchImpl(`${sb.url}/rest/v1/`, {
+    const res = await fetchImpl(url, {
       method: "GET",
-      headers: {
-        apikey: sb.anonKey!,
-        accept: "application/json",
-      },
+      headers,
       signal: controller.signal,
     });
     const latencyMs = Date.now() - startedAt;
 
-    // PostgREST liefert auf das Root-Resource je nach Konfiguration
-    // 200 (OpenAPI-Schema), 401 (RLS) oder 404 — alles drei sind
-    // valide Lebenszeichen, weil ein TCP-fähiger Server geantwortet
-    // hat. Erst 5xx + Netzwerk-Error werten wir als degraded.
+    // 5xx → degraded. 4xx ist OK (Server lebt; 401 = RLS, 404 = Tabelle
+    // existiert noch nicht — beides Konfig, kein Server-Problem).
     if (res.status >= 500) {
       return {
         status: "degraded",
         configured: true,
         latencyMs,
+        probe,
         reason: `HTTP ${res.status}`,
+      };
+    }
+    // Bei `businesses-table`: 404 ist ein Setup-Hinweis (Migration nicht
+    // gelaufen) — wir markieren es als `degraded` mit klarer Meldung,
+    // damit der Auftraggeber im UI sieht, dass die Tabelle fehlt.
+    if (probe === "businesses-table" && res.status === 404) {
+      return {
+        status: "degraded",
+        configured: true,
+        latencyMs,
+        probe,
+        reason: "Tabelle 'businesses' fehlt — Migration noch nicht gelaufen",
       };
     }
     if (latencyMs > DEGRADED_THRESHOLD_MS) {
@@ -88,6 +129,7 @@ export async function checkDatabaseHealth(
         status: "degraded",
         configured: true,
         latencyMs,
+        probe,
         reason: `Antwort > ${DEGRADED_THRESHOLD_MS} ms`,
       };
     }
@@ -95,6 +137,7 @@ export async function checkDatabaseHealth(
       status: "ok",
       configured: true,
       latencyMs,
+      probe,
     };
   } catch (err) {
     const latencyMs = Date.now() - startedAt;
@@ -103,6 +146,7 @@ export async function checkDatabaseHealth(
       status: aborted ? "offline" : "degraded",
       configured: true,
       latencyMs,
+      probe,
       reason: aborted
         ? `Timeout nach ${timeoutMs} ms`
         : err instanceof Error

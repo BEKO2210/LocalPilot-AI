@@ -90,6 +90,14 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Supabase Multi-Tenant-Schema + RLS (Code-Session 37)
+- [Supabase Docs – Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security) — Pflicht-Aktivierung pro Tabelle (37).
+- [Supabase – Authorization via Row Level Security](https://supabase.com/features/row-level-security) — Pattern-Referenz (37).
+- [MakerKit – Supabase RLS Best Practices 2026](https://makerkit.dev/blog/tutorials/supabase-rls-best-practices) — Production-Patterns + Performance-Tipps (37).
+- [DesignRevision – Supabase RLS Guide: Policies That Actually Work](https://designrevision.com/blog/supabase-row-level-security) — Häufige Fallen (37).
+- [AntStack – Multi-Tenant Applications with RLS on Supabase](https://www.antstack.com/blog/multi-tenant-applications-with-rls-on-supabase-postgress/) — `tenant_id`-Spalte + Policy-Setup (37).
+- [Logto – Multi-tenancy implementation with PostgreSQL](https://blog.logto.io/implement-multi-tenancy) — Schema-vs-Row-basiert (37).
+
 ### § 5 DDG / Impressum-Pflichtangaben (Code-Session 36)
 - [IHK Chemnitz – Impressumspflicht (TMG/DDG)](https://www.ihk.de/chemnitz/recht-und-steuern/rechtsinformationen/internetrecht/pflichtangaben-im-internet-die-impressumspflicht-4401580) — Pflichtfelder + Zwei-Klick-Vorgabe (36).
 - [Rickert.law – Impressumspflicht nach § 5 TMG](https://rickert.law/impressumspflicht-nach-%C2%A7-5-tmg/) — Übergang TMG→DDG zum 14.05.2024 (36).

@@ -94,13 +94,17 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
 - 35: Supabase-Client-Skeleton + Database-Health-Check (read-only) ✅
 - 36: Plattform-Impressum + Datenschutz aus `LP_OWNER_*`-ENV ✅
   (Stammdaten leak-sicher per Konstruktion, Demo-Mode-Hinweis)
-- 37+: Schema-Entwurf (`businesses`, `services`, `leads`,
-  `consents`), erste Read-Pfade hinter Feature-Flag, Repository-
-  Layer abstrahiert localStorage + Supabase einheitlich.
-- 38+: Magic-Link-Auth via `@supabase/ssr`, Multi-Tenant-Bucket
-  pro Betrieb, Session-Bindung an `business_id`.
-- 40+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
-  durchziehen, Backup-Policy.
+- 37: `businesses`-Schema (Migration 0001) + Repository-Layer mit
+  Mock/Supabase-Resolver (`LP_DATA_SOURCE=...`) +
+  Health-Probe `businesses-table` ✅
+- 38: `services` + `reviews`-Tabellen (Migrationen 0002 + 0003),
+  Repository-Erweiterung, Public-Site optional aus DB.
+- 39: `faqs` + `leads`-Tabellen (Migrationen 0004 + 0005) inkl.
+  `consents`-Audit-Trail aus Code-Session 32.
+- 40: `business_owners` + Magic-Link-Auth via `@supabase/ssr`,
+  Multi-Tenant-Bucket, `auth.uid()`-RLS-Policies.
+- 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
+  durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant
@@ -333,17 +337,25 @@ aktiven Session.
   - Status-History (letzte 7 Tage Budget-Verbrauch) für
     Auftraggeber-Reports.
   - Slack-/Email-Alert wenn `percentUsed > 80 %` an einem Tag.
-- **Database-Health erweitern** (aus Code-Session 35): aktuell
-  pingt der Health-Check nur die REST-Root-URL. Folge-Items:
-  - Lightweight `select count(*) from businesses limit 0`
-    sobald das Schema steht — testet auch PostgREST + RLS, nicht
-    nur TCP-Reachability.
+- ~~**Database-Health: schärferer Tabellen-Probe**~~
+  (Code-Session 37 ✅, `businesses-table`-Probe via
+  `select=id&limit=1`). Folge-Items:
   - Cache-Layer mit 30-Sekunden-TTL (Server-Cache), damit ein
     aggressiver Refresh-Klick nicht jedes Mal 1–2 s blockt.
   - **Auto-Pause-Detection**: Free-Tier-Projekte schlafen nach
     7 d Inaktivität. Health-Check sollte diesen Spezialfall
     erkennen (HTTP 404 + spezifischer Body) und im UI „Projekt
     pausiert — auf Restore klicken" anzeigen.
+- **Repository-Pfad-Switch im Dashboard sichtbar machen** (aus
+  Code-Session 37): aktuell zeigt der Health-Block nur, dass DB
+  „ok" ist. Sinnvoll wäre ein Badge „Datenquelle: mock | supabase",
+  damit der Auftraggeber unterscheiden kann, welche Daten gerade
+  am Public-Site-Output hängen.
+- **Seed-Skript für Demo-Daten** (aus Code-Session 37): sobald
+  die Migration läuft, müssen die 6 Demo-Betriebe in der Tabelle
+  landen, sonst zeigt `LP_DATA_SOURCE=supabase` eine leere
+  Public-Site. Skript: `supabase/seed.sql` mit `insert ... on
+  conflict (slug) do nothing` aus den Mock-Daten.
 - **Stale-`comingInSession`-Audit** (aus Light-Pass Session 35):
   Bronze-User sehen `comingInSession={11}` (Services) bzw.
   `={12}` (Leads), obwohl die Features längst gebaut sind — die

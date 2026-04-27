@@ -4947,3 +4947,75 @@ in einer `.env.local` (die ist in `.gitignore`).
 Repository-Layer). Damit zeigt `database.status` „ok" mit
 echten Tabellen-Calls statt nur REST-Root-Ping.
 
+---
+
+## Code-Session 37 – Erstes Supabase-Schema + Repository-Layer
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Erstes konkretes Tabellen-Schema (`businesses`, hybrid:
+Top-Level-Spalten + JSONB für geschachtelte Strukturen). RLS aktiv,
+Public-Read auf veröffentlichte Betriebe, Schreib-Policies
+explizit blockiert (kommen mit Auth in Session 40). Repository-
+Layer abstrahiert Mock vs. Supabase über ein schmales Interface
+(`findBySlug`, `listSlugs`, `listAll`); Resolver schaltet via
+`LP_DATA_SOURCE`-ENV. Database-Health pingt jetzt die
+`businesses`-Tabelle, wenn der Repo-Pfad auf Supabase steht — 404
+liefert eine klare „Migration fehlt"-Meldung statt nebulös
+„degraded".
+
+**Dateien**:
+- ✚ `supabase/migrations/0001_businesses.sql` — Tabelle, 3 Indizes,
+  `updated_at`-Trigger, RLS aktiv, Public-Read-Policy.
+- ✚ `docs/SUPABASE_SCHEMA.md` — Schema-Referenz, Migrations-
+  Workflow, Roadmap (0002–0007).
+- ✚ `src/core/database/repositories/business.ts` — `BusinessRepository`-
+  Interface, Mock-Impl (`createMockBusinessRepository`), Supabase-
+  Impl (`createSupabaseBusinessRepository`) mit Row→Schema-Mapping
+  und `BusinessSchema.parse` als Bollwerk gegen Schema-Drift.
+- ✚ `src/core/database/repositories/index.ts` — `resolveDataSource`,
+  `getBusinessRepository` mit Soft-Fallback (supabase + leere
+  ENV → mock + stderr-Hinweis, kein Crash).
+- 🔄 `src/core/database/health.ts` — neue Option `probe:
+  "rest-root" | "businesses-table"`, eigene URL- und Header-
+  Mappings, 404-Sonderfall mit Migrations-Hinweis.
+- 🔄 `src/app/api/ai/health/route.ts` — wählt automatisch den
+  schärferen Probe, wenn `LP_DATA_SOURCE=supabase`.
+- 🔄 `.env.production.example` — `LP_DATA_SOURCE=mock` (Default-
+  Switch) ergänzt.
+- ✚ `src/tests/business-repository.test.ts` (~30 Asserts):
+  Mock-Roundtrip (findBySlug, listSlugs, listAll, missing-slug),
+  Resolver-Switch (mock / supabase / soft-fallback mit
+  stderr-Capture), Health-Probe-businesses-table (200/401/404/
+  Default-rest-root).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **23/24 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Database-Health-Erweiterung), 2
+neue Folge-Items (Datenquellen-Badge im Dashboard, Seed-Skript
+für Demo-Daten). Session-Cluster im Meilenstein 4 von 35–40 auf
+35–41+ präzisiert.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase Multi-Tenant-
+Schema + RLS.
+
+**Manueller Schritt für den Auftraggeber** (sobald gewünscht):
+1. Supabase-Projekt anlegen, URL + anon-Key in Vercel-ENV
+   (`vercel env add SUPABASE_URL production` etc.).
+2. Migration einspielen: Dashboard → SQL Editor → Inhalt von
+   `supabase/migrations/0001_businesses.sql` einfügen → Run.
+3. (Optional) `LP_DATA_SOURCE=supabase` setzen → ab dann liest
+   die Public-Site aus Supabase. Solange die Tabelle leer ist,
+   zeigt `/demo` eine leere Liste — Seed kommt in einer der
+   nächsten Sessions.
+
+Solange diese Schritte nicht ausgeführt sind, bleibt alles wie
+vorher: Mock-Daten, kein Crash, `LP_DATA_SOURCE` defaultet auf
+`mock`.
+
+**Nächste Session**: Code-Session 38 — **Services + Reviews-
+Migrationen** (0002 + 0003) und Repository-Erweiterung. Public-
+Site bekommt damit alles, was sie für eine Vollanzeige braucht,
+optional aus DB.
+
