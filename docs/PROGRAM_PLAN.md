@@ -208,6 +208,13 @@ aktiven Session.
   Tool nötig) und setzt direkt auf compiled Grammar Constraints.
   Risk: ältere Modelle unterstützen es nicht — pinning auf
   Sonnet-4.5+ erforderlich.
+- **Gemini Context Caching aktivieren** (aus Code-Session 26):
+  Gemini hat eigene `caches.create(...)`-API für lange,
+  wiederverwendete Prefixe (System-Prompt + Schema). Lohnt sich
+  ab größeren Aufruf-Zahlen. Der erste Setup in Session 26
+  hat es bewusst weggelassen, weil ohne Volumen kein Effekt.
+  Folge-Session: Cache-Layer mit TTL-Tracking, getrennte Cost-
+  Bucket pro Branche/Variant.
 
 ### Track B · Security & Compliance
 - DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen

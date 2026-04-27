@@ -6,21 +6,116 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant (Meilenstein 2 – KI-Schicht, Live-Provider-Phase)
-- Code-Session 26: Gemini-Provider scharf, erste Live-Methode
-  (`generateWebsiteCopy`).
-- Code-Session 27: Gemini-Provider, zweite Live-Methode.
+### Geplant (Meilenstein 2 – KI-Schicht)
+- **Code-Session 27: KI-Assistent-Playground-UI** — Tab-/Karten-
+  Picker für alle 7 Methoden, clientseitiger Mock-Aufruf,
+  Copy-to-Clipboard, Provider-Auswahl-Badge. Damit endlich auch
+  visuell sichtbar, was die Schicht kann.
 - Code-Sessions 28+: Cost-Tracking + Rate-Limit-UI, AI-API-Route
-  hinter Auth, Dashboard-UI je Capability, DOMPurify-Sanitizer.
+  hinter Auth (für echte Live-Provider-Calls aus dem UI),
+  DOMPurify-Sanitizer auf übernommene KI-Outputs.
 
 ### Self-Extending Backlog
-Code-Session 25 hat 1 neues Item in `docs/PROGRAM_PLAN.md` ergänzt
-und einen bestehenden Punkt verschärft:
-- (verschärft) `zodToToolInputSchema`-Helper für Anthropic — jetzt
-  zwei hand-geschriebene Tool-Schemas, Drift-Risiko wächst.
-- (neu) Anthropic Structured-Outputs (`output_config.format`)
-  migration prüfen — ersetzt Tool-Use als Strukturierungs-
-  Workaround, lohnt sich nach 4–5 Anthropic-Methoden.
+Code-Session 26 hat 1 neues Item in `docs/PROGRAM_PLAN.md` ergänzt
+(Track A: Gemini Context Caching aktivieren — eigene
+`caches.create(...)`-API mit TTL-Tracking + Cost-Bucket pro
+Branche/Variant, lohnt sich ab größerem Volumen).
+
+## [0.15.6] – Code-Session 26 – 2026-04-27
+
+### Added
+- **Gemini-Provider erste Live-Methode**: `generateWebsiteCopy`
+  ist jetzt scharf. Damit haben **alle drei externen Live-Provider**
+  (OpenAI, Anthropic, Gemini) mindestens eine scharfe Methode.
+  Ohne `GEMINI_API_KEY` fällt der Resolver weiterhin defensiv auf
+  den Mock-Provider zurück.
+  - `src/core/ai/providers/gemini/_client.ts` (neu) — gemeinsamer
+    Client-Builder + Error-Mapper für alle zukünftigen Gemini-
+    Methoden:
+    - `getGeminiApiKey(opts?)` mit defensivem Vor-Check, wirft
+      `AIProviderError("no_api_key")`.
+    - `getGeminiModel(opts?)` liest `GEMINI_MODEL` aus der ENV,
+      Default `gemini-2.0-flash`.
+    - `buildGeminiClient(opts?)` instanziiert `GoogleGenAI`.
+    - `mapGeminiError(err)` mappt SDK-`ApiError` über HTTP-Status:
+      401/403 → `no_api_key`, 429 → `rate_limited`,
+      5xx → `provider_unavailable`, 400 → `invalid_input`.
+  - `src/core/ai/providers/gemini/website-copy.ts` (neu) —
+    `geminiGenerateWebsiteCopy(input)`:
+    - **Structured Output via `responseJsonSchema`** + `responseMimeType:
+      "application/json"`. Gemini hat seit v1.x ein natives JSON-
+      Schema-Feld (kein Tool-Use-Workaround wie bei Anthropic, kein
+      Helper-Modul wie bei OpenAI).
+    - **Property-Reihenfolge im Schema = Reihenfolge im Prompt**:
+      laut 2026-Best-Practices kann eine Mismatch-Reihenfolge das
+      Modell verwirren und zu malformed Output führen. Wir nennen
+      die Felder in beiden Stellen in derselben Reihenfolge.
+    - Identische Stilrichtlinien wie OpenAI/Anthropic-Provider —
+      Tonalitäts-Konsistenz beim Provider-Wechsel.
+    - JSON-Parse + `WebsiteCopyOutputSchema.parse` als doppelte
+      Validierung.
+    - **Kein Caching in dieser Iteration**: Gemini-Caching geht
+      über die separate `caches.create(...)`-API und lohnt sich
+      erst ab größerem Volumen. Auf Roadmap.
+- `src/core/ai/providers/gemini-provider.ts`: komponiert nun den
+  Stub mit der scharfen Methode. 6 weitere Methoden bleiben Stub.
+- Smoketest `src/tests/ai-gemini-provider.test.ts` (neu) mit zwei
+  Modi (analog zu OpenAI/Anthropic-Smoketests):
+  - **Strukturell** (12 Asserts, immer aktiv): Provider-Key, alle 7
+    Methoden sind Funktionen, ohne Key → `no_api_key` vor Netzwerk-
+    Call, ungültiges Input → `invalid_input`, Resolver mit Key →
+    gemini, übrige 6 Methoden werfen `provider_unavailable`.
+  - **Live** (opt-in via `LP_TEST_GEMINI_LIVE=1` +
+    `GEMINI_API_KEY`): echter Call, Output gegen
+    `WebsiteCopyOutputSchema` validiert.
+
+### Dependencies
+- **`@google/genai@^1`** als dritte (und damit letzte) externe
+  AI-SDK-Dependency hinzugefügt. Modernes SDK; das deprecate
+  `@google/generative-ai` wäre die Alternative gewesen, aber
+  Google bewegt sich in Richtung `@google/genai`. Optionale
+  peer-dep auf `@modelcontextprotocol/sdk` wird von uns nicht
+  installiert (nicht benötigt).
+- Bundle bleibt **unverändert bei 102 KB** — Tree-Shaking räumt
+  alle drei AI-SDKs sauber aus dem Client-Bundle.
+
+### Notes
+- **Recherche** (Session-Protokoll): Quellen zu Gemini Structured
+  Output (`responseJsonSchema`, `propertyOrdering`,
+  Komplexitäts-Limits) im RUN_LOG-Eintrag „Code-Session 26".
+- **Keine UI-Änderung**, keine API-Route. Diff ~22 KB Code, ~5 KB
+  Test, ~3 KB Doku. 3 neue Dateien, 2 geänderte (+ `package.json`/
+  `package-lock.json`).
+- Alle Verifikationen grün: `typecheck`, `lint`, `build:static`,
+  alle 6 Smoketests (Mock ~380, Resolver 22, OpenAI 14,
+  Anthropic 14, Gemini 12, Themes inkl. Hex-Asserts).
+
+## [0.15.5] – Code-Session 25 (UI-Patch) – 2026-04-27
+
+### Fixed
+- **`/dashboard/[slug]/ai`-Stub auf echten Stand aktualisiert**.
+  Die generische `ComingSoonSection` mit „Folgt in Session 13"
+  und „Provider-Adapter für Mock, OpenAI, Anthropic und Gemini"
+  als Zukunfts-Versprechen wurde durch eine ehrliche Status-Seite
+  ersetzt:
+  - Header-Badge: **„Backend bereit · UI in Session 27"**.
+  - **Provider-Status-Tabelle** mit 7 Methoden × 4 Provider
+    (Mock, OpenAI, Anthropic, Gemini), Checkmark/Clock-Icons.
+    Reflektiert den tatsächlichen Stand (Mock: alle 7 scharf,
+    OpenAI/Anthropic: je 2, Gemini: 1 nach Code-Session 26).
+  - Beschreibung pro Methode (Variants, Tonalitäten, Plattformen).
+  - Paket-Status-Block mit aktualisierter Botschaft („Sobald die
+    UI in Code-Session 27 fertig ist…").
+  - Empty-State erklärt: Methoden funktionieren headless (siehe
+    Smoketests im Repo), Dashboard-UI folgt in Code-Session 27
+    als „KI-Assistent-Playground".
+- Reine Doku-Seite, keine neue Logik. Erste Live-Sichtbarkeit für
+  den Auftraggeber, dass Backend tatsächlich existiert.
+
+### Notes
+- Commit `6bed32f` separat von Session-26-Code committed, damit
+  der Patch sofort auf GitHub Pages live geht und der Auftraggeber
+  den ehrlichen Status sieht, während Session 26 noch läuft.
 
 ## [0.15.4] – Code-Session 25 – 2026-04-27
 
