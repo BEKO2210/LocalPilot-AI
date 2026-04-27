@@ -7,12 +7,58 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht)
-- Code-Session 14: Mock-Provider mit `generateWebsiteCopy`-Beispieltext.
-- Code-Sessions 15–17: Mock für Service-Beschreibung, FAQ, Antworten.
+- Code-Session 15: Mock für `improveServiceDescription`.
+- Code-Session 16: Mock für `generateFaqs`.
+- Code-Session 17: Mock für `generateCustomerReply`.
 - Code-Sessions 18–20: Mock für Social-Posts, Bewertungs-Anfragen, Angebote.
 - Code-Sessions 21–22: OpenAI-Provider scharf (mit Caching).
 - Code-Sessions 23–24: Anthropic-Provider scharf.
 - Code-Session 25: Cost-Tracking + Rate-Limit-UI.
+
+## [0.13.2] – Code-Session 14 – 2026-04-27
+
+### Added
+- **Mock-Provider `generateWebsiteCopy` ist scharf** (atomarer Schritt
+  unter dem neuen Session-Protokoll):
+  - `src/core/ai/providers/mock/website-copy.ts` – deterministische
+    Implementierung von `mockGenerateWebsiteCopy(input)`. Liest das
+    `IndustryPreset` über `getPresetOrFallback`, befüllt
+    `heroTitle` / `heroSubtitle` aus den Branchen-Defaults und
+    formuliert den `aboutText` aus Tonalität, USPs und Standort.
+    Vier Varianten (`hero`, `about`, `services_intro`,
+    `benefits_intro`) verändern die Schwerpunktsetzung.
+  - `{{city}}`-Platzhalter werden ersetzt, fehlt `city`, greift ein
+    neutraler Fallback. `hint` wird als „Ihre Vorgabe: …" an den
+    `aboutText` angehängt.
+  - Defensive Längenbegrenzung (`clamp` an Wortgrenze) plus
+    abschließende Validierung gegen `WebsiteCopyOutputSchema` —
+    eine Mock-Antwort kann später keine strengeren Schema-Checks
+    brechen.
+  - `src/core/ai/providers/mock-provider.ts` komponiert jetzt den
+    Stub mit der neuen Methode (`{ ...stub, generateWebsiteCopy }`).
+    Die übrigen 6 Methoden bleiben am Stub und werfen weiterhin
+    `AIProviderError("provider_unavailable")` mit klarer Nachricht.
+- Smoketest `src/tests/ai-mock-provider.test.ts` (~30 Assertions):
+  2 Branchen × 4 Varianten → vollständige Outputs, Längen-Limits
+  eingehalten, `{{city}}`-Substitution greift, ohne `city` keine
+  Template-Reste, USPs/businessName landen im `aboutText`,
+  Mock ist deterministisch (zweimal identisch), `hint` wird
+  übernommen, ungültiges Input wirft `invalid_input`,
+  zu kurzer `businessName` ebenfalls, alle 6 anderen Methoden
+  werfen weiterhin `provider_unavailable`, `mockProvider.key === "mock"`.
+
+### Notes
+- **Recherche** (Session-Protokoll): siehe RUN_LOG-Eintrag
+  „Code-Session 14" für die Quellen zu deterministischen Mock-LLM-
+  Providern und template-basierten Lokalbetrieb-Texten 2026.
+- **Bewusst klein gehalten**: nur eine von sieben Mock-Methoden. Keine
+  UI-Änderung, keine neuen Dependencies, kein Bundle-Zuwachs (Mock-
+  Modul wird tree-shaken solange noch keine Seite es importiert).
+- Diff-Größe ~16 KB, 2 neue Dateien (`mock/website-copy.ts`, Smoketest),
+  1 geänderte Datei (`mock-provider.ts`). Alle Verifikationen grün
+  (`typecheck`, `lint`, `build:static`, beide Smoketests).
+- Folge-Sessions ergänzen Schritt für Schritt die übrigen 6 Methoden,
+  jeweils mit eigenem Smoketest. Roadmap in `docs/PROGRAM_PLAN.md`.
 
 ## [0.13.1] – Code-Session 13 – 2026-04-27
 

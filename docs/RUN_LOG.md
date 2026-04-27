@@ -1789,3 +1789,174 @@ Bewusst NICHT: andere 6 Methoden, UI, echte Provider.
 - [DEV Community – Building AI Agent With Multiple AI Model Providers Using an LLM Gateway](https://dev.to/crosspostr/building-ai-agent-with-multiple-ai-model-providers-using-an-llm-gateway-openai-anthropic-gemini-fl2)
 - [AISIX AI Gateway – Provider Abstraction](https://docs.api7.ai/aisix/core-concepts/provider-abstraction)
 - [pydantic-ai – Model Architecture and Provider System](https://deepwiki.com/pydantic/pydantic-ai/4.1-model-architecture-and-provider-system)
+
+---
+
+## Code-Session 14 – Mock-Provider: `generateWebsiteCopy`
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar)
+Meilenstein: 2 (KI-Schicht)
+
+### 1. Was wurde umgesetzt?
+
+Der Mock-Provider erhält die erste echte Methode. Bewusst nur eine
+von sieben — die anderen bleiben Stubs und werden in Folge-Sessions
+einzeln scharf gemacht.
+
+- `src/core/ai/providers/mock/website-copy.ts` (neu) implementiert
+  `mockGenerateWebsiteCopy(input): Promise<WebsiteCopyOutput>`:
+  - Validierung des Inputs via `WebsiteCopyInputSchema.safeParse`
+    → bei Fehler `AIProviderError("invalid_input", …)`.
+  - `getPresetOrFallback(industryKey)` liefert die Branchen-Defaults
+    (Hero-Title, Hero-Subtitle, Tagline, Zielgruppe, Label).
+  - `{{city}}`-Platzhalter werden über `substituteCity` ersetzt;
+    fehlt `city`, greift „Ihrer Stadt" als Fallback.
+  - Vier Varianten verändern den Schwerpunkt:
+    - `hero` → Preset-Hero unverändert, About fasst Tonalität +
+      Standort + USPs zusammen.
+    - `about` → Hero auf den Betriebsnamen fokussiert, About
+      ausführlicher mit Mission und USP-Bulletliste.
+    - `services_intro` → Hero kündigt die Leistungen an,
+      About bleibt knapp („klar beschrieben, fair bepreist").
+    - `benefits_intro` → Hero rahmt drei Argumente, About
+      formuliert sie als 1./2./3.
+  - `joinTone`, `uspBullets`, `compactAudience`, `clamp` sind kleine,
+    pure Helper. `clamp` schneidet auf Wortgrenze, damit die
+    Schema-Limits (160/280/1200) nie hart überlaufen.
+  - Letzter Schritt: `WebsiteCopyOutputSchema.parse(result)` als
+    defensives Sicherheitsnetz. So kann der Mock später keine
+    strengeren Schema-Checks an anderer Stelle brechen.
+- `src/core/ai/providers/mock-provider.ts` (geändert) komponiert den
+  Stub mit der neuen Methode:
+  ```ts
+  export const mockProvider: AIProvider = {
+    ...stub,
+    generateWebsiteCopy: mockGenerateWebsiteCopy,
+  };
+  ```
+  Stub-Fehlermeldung präzisiert auf „Diese Mock-Methode ist noch
+  nicht implementiert. Sie wird in einer der folgenden Code-Sessions
+  ergänzt."
+- `src/tests/ai-mock-provider.test.ts` (neu) – Smoketest mit
+  ~30 Assertions:
+  - 2 Branchen (`hairdresser`, `auto_workshop`) × 4 Varianten →
+    `heroTitle`/`heroSubtitle`/`aboutText` nicht leer und ≤ Limit.
+  - `{{city}}`-Substitution: „Bremen" / „Leipzig" landen im Output;
+    ohne `city` keine Template-Reste.
+  - USP („Termine auch samstags") und `businessName` („Salon Sophia")
+    erscheinen im `about`-Variant-Output.
+  - Determinismus: zweimal identischer Input → identische Antwort.
+  - `hint` taucht im `aboutText` auf.
+  - Ungültiges Input → `AIProviderError("invalid_input")`. Auch
+    `businessName` mit nur einem Zeichen wird abgefangen.
+  - Die übrigen 6 Methoden werfen weiterhin
+    `AIProviderError("provider_unavailable")`.
+  - `mockProvider.key === "mock"`.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (2 Dateien):
+- `src/core/ai/providers/mock/website-copy.ts`
+- `src/tests/ai-mock-provider.test.ts`
+
+Geändert:
+- `src/core/ai/providers/mock-provider.ts`
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~16 KB. Klar im Session-Limit (30–80 KB), eher noch unter
+dem Untergrenzen-Soll — die Methode ist isoliert und ein Wachstum auf
+6 weitere Methoden würde linear weitergehen.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → alle Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.generateWebsiteCopy({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich", "modern"],
+    uniqueSellingPoints: ["Termine auch samstags"],
+  },
+  variant: "about",
+});
+// → { heroTitle: "Über Salon Sophia",
+//     heroSubtitle: "…",
+//     aboutText: "Salon Sophia steht für freundlich und modern …" }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit. Eine
+Dashboard-Karte, die diese Methode aufruft, kommt in einer
+späteren Session.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                    | Status |
+| ------------------------------------------------------------ | ------ |
+| `generateWebsiteCopy` deterministisch, branchenneutral       | ✅      |
+| `IndustryPreset` als Quelle für Hero-Defaults genutzt        | ✅      |
+| Vier Varianten liefern unterschiedliche Outputs              | ✅      |
+| `{{city}}` wird ersetzt, Fallback ohne `city` greift         | ✅      |
+| Tonalität + USPs erscheinen sichtbar im `aboutText`          | ✅      |
+| Defensive Input-Validierung → `invalid_input`                | ✅      |
+| Output gegen `WebsiteCopyOutputSchema` validiert             | ✅      |
+| Übrige 6 Methoden bleiben Stubs (`provider_unavailable`)     | ✅      |
+| Smoketest: 2 Branchen × 4 Varianten + Edge-Cases (~30 Asserts)| ✅      |
+| Build/Typecheck/Lint grün                                    | ✅      |
+| Session-Größe im Limit                                       | ✅ (~16 KB) |
+| Recherche-Step durchgeführt + Quellen zitiert                | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 15**: `improveServiceDescription`-Mock — short/long-
+  Description aus Service-Titel + Tonalität + Branchen-Vokabular.
+- **Code-Session 16**: `generateFaqs`-Mock — 6 generische FAQ-Paare
+  je Branche, abgeleitet aus `preset.commonQuestions` (falls vorhanden)
+  oder aus dem Topic-Hint.
+- **Code-Session 17**: `generateCustomerReply`-Mock — drei
+  Antwort-Tonalitäten (`short`/`friendly`/`professional`).
+- **Später**: API-Route, Dashboard-UI, echte Provider mit Caching,
+  Cost-Tracking.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 15 – Mock-Provider: `improveServiceDescription`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 Best Practices: prägnante Leistungs-
+   beschreibungen für KMU-Webseiten" + „content templates for
+   service pages local business German".
+2. `src/core/ai/providers/mock/service-description.ts` neu, analog zu
+   `website-copy.ts`: Input → Validierung → Preset → deterministische
+   Komposition (`shortDescription` ≤ 240, `longDescription` mit
+   Vorgehensbeschreibung, USP-Anker, optionalem CTA).
+3. `mock-provider.ts` um die zweite Methode erweitern.
+4. `src/tests/ai-mock-provider.test.ts` ergänzt um Service-Description-
+   Block (gleiche 2 Branchen, je 2 `targetLength`-Werte).
+5. CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere 5 Methoden, UI, echte Provider.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [DeepEval – Building Deterministic Eval Cases for LLM Apps (2025/2026)](https://www.deepeval.com/blog/deterministic-evals-for-llm-apps)
+- [PromptLayer Blog – Mock LLM Providers in Test Suites](https://promptlayer.com/blog/mock-llm-providers-testing)
+- [LangChain Docs – FakeListLLM & Deterministic Test Doubles](https://python.langchain.com/docs/integrations/llms/fake)
+- [Smashing Magazine – Writing Hero & About Copy for Local Service Sites](https://www.smashingmagazine.com/2025/10/local-service-website-copy-patterns/)
+- [Nielsen Norman – „Above the Fold" Content for Small-Business Sites](https://www.nngroup.com/articles/above-the-fold/)
