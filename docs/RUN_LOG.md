@@ -5200,3 +5200,56 @@ RLS-Falle.
 echte Multi-Tenant-Bindung; danach kann das Dashboard pro
 User die eigenen Leads sehen.
 
+---
+
+## Code-Session 41 – Multi-Tenant-Schema (business_owners + Owner-RLS)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: DB-Teil der Multi-Tenant-Bindung. M:N-Junction
+`business_owners` mit Rollen (owner/editor/viewer), zwei
+`security definer`-Helper (`is_business_owner`,
+`has_business_access`), Owner-scoped Policies an
+`businesses`/`services`/`reviews`/`faqs`/`leads`. SSR-Auth-
+Infrastruktur (`@supabase/ssr`) wandert auf Session 42, Login-UI
+auf Session 43 — bewusst atomar gesplittet.
+
+**Dateien**:
+- ✚ `supabase/migrations/0006_business_owners.sql` — Tabelle
+  (FK businesses + auth.users cascade, role-CHECK,
+  unique-Constraint), 2 Indizes, 2 SECURITY-DEFINER-Helper.
+  RLS auf business_owners selbst: 4 Policies (SELECT eigene,
+  INSERT-by-owner, UPDATE-by-owner, DELETE-by-owner-or-self).
+- ✚ `supabase/migrations/0007_owner_rls_policies.sql` —
+  Owner-scoped Policies an 5 Tabellen. businesses bekommt
+  UPDATE/DELETE/SELECT-with-drafts; services/reviews/faqs
+  bekommen full-CRUD-by-owner; leads bekommt SELECT (alle
+  Rollen via `has_business_access`), UPDATE (owner/editor),
+  DELETE (nur owner). Die "Allow authenticated read of all
+  leads (temp)"-Policy aus 0005 wird ersetzt.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Sektionen 0006 + 0007 mit
+  RLS-Operations-Matrix, Helper-Funktions-Doku, Henne-Ei-
+  Hinweis (businesses-INSERT bleibt service-role-only).
+
+**Verifikation**: typecheck ✅, lint ✅. Keine TS-Änderungen,
+deshalb Builds + Smoketests unverändert grün (24/25, industry-
+presets pre-existing red, Codex #11). Bundle: shared 102 KB
+unverändert.
+
+**Roadmap**: 1 Item abgehakt (Multi-Tenant-DB-Teil), Session
+42 + 43 explizit ausgesplittet (SSR-Setup, dann UI).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase Multi-Tenant-
+Owner + Helper-Functions.
+
+**Manueller Schritt**: Migrationen 0006 + 0007 im Supabase-SQL-
+Editor nach 0001–0005 ausführen. Idempotent — wiederholtes
+Ausführen ist sicher.
+
+Wichtig: solange `business_owners` leer ist (Magic-Link-Auth
+folgt in 42), ändert sich für anonyme Public-Site-Besucher
+nichts. Public-Read-Policies aus 0001–0004 bleiben aktiv.
+
+**Nächste Session**: Code-Session 42 — **`@supabase/ssr`-Setup +
+Magic-Link-Login**. Server- und Browser-Clients, `/api/auth/magic-
+link`-Route, `/api/auth/callback`-Route. Login-UI folgt in 43.
+

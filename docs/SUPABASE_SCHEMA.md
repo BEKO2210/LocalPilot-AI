@@ -236,7 +236,60 @@ zurück — inhaltsidentisch zur DB-Zeile.
 | `network`    | (Fetch-Layer)       | Netzwerk-/Timeout-Fehler                      |
 | `unknown`    | (sonst)             | Sonstige PostgREST-Fehler                     |
 
+### 0006 — `business_owners` (Code-Session 41)
+
+Multi-Tenant-Bindung User ↔ Betrieb. M:N via Junction-Table mit Rollen.
+
+**Datei:** [`supabase/migrations/0006_business_owners.sql`](../supabase/migrations/0006_business_owners.sql)
+
+**Spalten:** `id`, `business_id` (FK businesses cascade), `user_id`
+(FK `auth.users` cascade), `role text CHECK (in 'owner','editor','viewer')`
+default `'owner'`, `created_at`. Unique `(business_id, user_id)` —
+ein User-Business-Paar nur einmal.
+
+**Helper-Funktionen** (beide `security definer stable`, damit aus
+nachgelagerten RLS-Policies aufrufbar ohne Recursion):
+
+- `is_business_owner(business_id, user_id default auth.uid())` →
+  `true` für Rollen `owner` oder `editor`. Schreibe-Pfad-Check.
+- `has_business_access(business_id, user_id default auth.uid())` →
+  `true` für jede Rolle (auch `viewer`). Lese-Pfad-Check für private
+  Daten wie Leads.
+
+**RLS auf `business_owners` selbst:**
+
+| Operation | Policy                                                              |
+| --------- | ------------------------------------------------------------------- |
+| SELECT    | User sieht eigene Membership-Zeilen (`user_id = auth.uid()`)         |
+| INSERT    | nur bestehender Owner darf Mitglieder hinzufügen (Initial via service-role) |
+| UPDATE    | nur Owner darf Rollen ändern                                         |
+| DELETE    | Owner ODER User selbst (Self-Service-Verlassen)                      |
+
+### 0007 — Owner-scoped RLS-Policies (Code-Session 41)
+
+**Datei:** [`supabase/migrations/0007_owner_rls_policies.sql`](../supabase/migrations/0007_owner_rls_policies.sql)
+
+Erweitert `businesses`/`services`/`reviews`/`faqs`/`leads` um
+Owner-scoped Policies. Public-Read-Policies bleiben unverändert,
+mit einer Ausnahme: die temporäre `"Allow authenticated read of all
+leads"` aus 0005 wird durch eine Owner-scoped Policy ersetzt.
+
+**RLS-Operations-Matrix nach 0007:**
+
+| Tabelle      | anon SELECT      | auth (Owner) SELECT | auth (Owner) INSERT | auth (Owner) UPDATE | auth (Owner) DELETE |
+| ------------ | ---------------- | ------------------- | ------------------- | ------------------- | ------------------- |
+| `businesses` | ✅ wenn published | ✅ alle eigenen      | ❌ (service-role)    | ✅ eigene            | ✅ eigene            |
+| `services`   | ✅ aktiv+pub      | ✅ alle eigene       | ✅ eigene            | ✅ eigene            | ✅ eigene            |
+| `reviews`    | ✅ pub+pub        | ✅ alle eigene       | ✅ eigene            | ✅ eigene            | ✅ eigene            |
+| `faqs`       | ✅ aktiv+pub      | ✅ alle eigene       | ✅ eigene            | ✅ eigene            | ✅ eigene            |
+| `leads`      | ❌                | ✅ via `has_business_access` | ✅ (anon) mit Consent | ✅ (owner/editor) eigene | ✅ (nur owner) eigene |
+
+`businesses INSERT` bleibt blockiert wegen Henne-Ei: ein neuer Betrieb
+hat keine Owner, also keinen Insert-Berechtigten. Der Onboarding-Pfad
+nutzt einen `service_role`-Client, der RLS umgeht (Code-Session 42+).
+
 ## Roadmap
 
-- **0006** (Session 41) — `business_owners`-Tabelle (Multi-Tenant-Auth via `auth.users`-FK), RLS-Policies werden Owner-bezogen, plus Magic-Link-Auth via `@supabase/ssr`.
-- **0007+** — Storage-Buckets für Logos und Hero-Bilder, Backup-Policy.
+- **Session 42** — `@supabase/ssr`-Setup (server + browser Clients), Magic-Link-Login + Callback-Route. Auth-Infrastruktur ohne UI-Polish.
+- **Session 43** — Login-UI + Dashboard-Auth-Wiring (Login-Page, geschützte Dashboard-Routen).
+- **0008+** — Storage-Buckets für Logos und Hero-Bilder, Backup-Policy.

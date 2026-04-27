@@ -107,9 +107,12 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   supabase) ✅ — RLS-Falle gefangen via client-side ID + INSERT
   ohne chained SELECT; 5-Kind-Error-Mapping (validation/rls/
   constraint/network/unknown). Magic-Link-Auth wandert auf 41.
-- 41: `business_owners` + Magic-Link-Auth via `@supabase/ssr`,
-  Multi-Tenant-Bucket, `auth.uid()`-RLS-Policies — eigene atomare
-  Session.
+- 41: `business_owners`-Tabelle (Migration 0006) + Owner-scoped
+  RLS-Policies an 5 Tabellen (Migration 0007) ✅ DB-Teil; SSR-
+  Auth-Infrastruktur wandert auf 42, UI auf 43 (atomar).
+- 42: `@supabase/ssr`-Setup (server + browser Clients), Magic-Link-
+  Login + Callback-Route. Auth-Infrastruktur ohne UI-Polish.
+- 43: Login-UI + Dashboard-Auth-Wiring.
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 

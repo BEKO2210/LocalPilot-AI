@@ -6,15 +6,53 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant — Backend-Sprint
-- **Code-Session 41: business_owners + Magic-Link-Auth** (Migration
-  0006). Erste echte Multi-Tenant-Bindung mit `@supabase/ssr`.
-- Code-Sessions 42+: Public-Lead-Form auf LeadRepository umstellen,
+### Geplant — Auth-Sprint
+- **Code-Session 42: `@supabase/ssr`-Setup + Magic-Link-Login**
+  (Server-/Browser-Clients, Magic-Link-Route, Callback-Route).
+  Auth-Infrastruktur ohne UI-Polish.
+- **Code-Session 43: Login-UI + Dashboard-Auth-Wiring** (Login-Page,
+  geschützte Dashboard-Routen).
+- Code-Sessions 44+: Public-Lead-Form auf LeadRepository umstellen,
   Storage-Bucket für Logos, Edge-Runtime-Migration, CSRF-Schutz,
   HTML-Sanitize-Whitelist, Settings-Editor mit Legal-Sektion,
   Impressum-Editor pro Betrieb (für Reseller), Seed-Skript für
-  Demo-Daten, Schema↔Migration-Drift-Test, **Dependency-Sweep**
-  (next 16, zod 4, tailwind 4, ts 6, eslint 10, …).
+  Demo-Daten, Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+
+## [0.16.15] – Code-Session 41 – 2026-04-27
+
+DB-Teil der Multi-Tenant-Bindung. SSR-Auth-Setup folgt in 42,
+UI in 43 — bewusst atomar gesplittet.
+
+- ✚ `supabase/migrations/0006_business_owners.sql` — M:N-Junction
+  User ↔ Betrieb mit Rollen (`owner`/`editor`/`viewer`),
+  Unique-Constraint auf `(business_id, user_id)`, 2 Indizes.
+  Zwei `security definer stable`-Helper:
+  `is_business_owner(business_id, user_id default auth.uid())`
+  für Schreibe-Pfade (owner+editor), `has_business_access(...)`
+  für Lese-Pfade (alle Rollen). RLS auf business_owners selbst:
+  SELECT-eigene, INSERT-by-owner, UPDATE-by-owner,
+  DELETE-by-owner-or-self.
+- ✚ `supabase/migrations/0007_owner_rls_policies.sql` — Owner-
+  scoped Policies an 5 Tabellen. `businesses` UPDATE/DELETE/
+  SELECT-with-drafts; `services`/`reviews`/`faqs` full-CRUD-
+  by-owner; `leads` SELECT (alle Rollen), UPDATE (owner+editor),
+  DELETE (nur owner). Die temporäre Read-all-leads-Policy aus
+  0005 wird ersetzt. Public-Read-Policies aus 0001–0004 bleiben
+  unverändert. `businesses` INSERT bleibt service-role-only
+  (Henne-Ei-Hinweis).
+- 🔄 `docs/SUPABASE_SCHEMA.md` — Sektionen 0006 + 0007 mit
+  RLS-Operations-Matrix nach 0007 (Tabelle × Operation × Rolle).
+
+24/25 Smoketests grün, keine TS-Änderungen. Bundle: 102 KB
+shared unverändert.
+
+🛣️ Roadmap: Session 42 + 43 explizit ausgesplittet
+(SSR-Infrastruktur → UI).
+
+**Manueller Schritt**: Migrationen 0006 + 0007 im Supabase-SQL-
+Editor nach 0001–0005 ausführen. Idempotent. Solange noch keine
+Magic-Link-Auth aktiv ist (kommt in 42), ändert sich für anonyme
+Besucher nichts.
 
 ## [0.16.14] – Code-Session 40 – 2026-04-27
 

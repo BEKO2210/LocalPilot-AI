@@ -90,6 +90,13 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Supabase Multi-Tenant-Owner + Helper-Functions (Code-Session 41)
+- [Supabase Docs – RLS auth.uid() & auth.jwt()](https://supabase.com/docs/guides/database/postgres/row-level-security) — Built-in JWT-Helper (41).
+- [Supabase Docs – AI Prompt: Database RLS Policies](https://supabase.com/docs/guides/getting-started/ai-prompts/database-rls-policies) — Idiomatische Policy-Vorlagen (41).
+- [Medium / JigsDev – Supabase RLS Explained With Real Examples](https://medium.com/@jigsz6391/supabase-row-level-security-explained-with-real-examples-6d06ce8d221c) — Owner-Junction-Pattern (41).
+- [Dev.to – Mastering Supabase RLS as a Beginner](https://dev.to/asheeshh/mastering-supabase-rls-row-level-security-as-a-beginner-5175) — security-definer Helper-Functions (41).
+- [Dev.to – LockIn Multi-Tenant Architecture mit Supabase RLS](https://dev.to/blackie360/-enforcing-row-level-security-in-supabase-a-deep-dive-into-lockins-multi-tenant-architecture-4hd2) — Performance-Hinweise + Recursion-Vermeidung (41).
+
 ### Supabase Insert + RLS-Falle (Code-Session 40)
 - [Supabase Issue #35368 – RLS Check Failing on INSERT Despite WITH CHECK true](https://github.com/supabase/supabase/issues/35368) — implizites SELECT nach INSERT erfordert SELECT-Policy (40).
 - [Supabase Discussion #36619 – RLS Check Failing on INSERT](https://github.com/orgs/supabase/discussions/36619) — Workaround `returning: 'minimal'` bzw. ID client-side (40).
