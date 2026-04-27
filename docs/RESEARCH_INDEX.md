@@ -105,6 +105,11 @@
 - [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
 - [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
 
+### File-Upload-UX-Pattern (Code-Session 58)
+- [MUI – Image List Component](https://mui.com/material-ui/react-image-list/) — Standard-Pattern „Bild pro Card" mit Vorschau-Tile + Replace-Button (58).
+- [Eleken – File Upload UI Tips](https://www.eleken.co/blog-posts/file-upload-ui) — Klare Dropzone, Format-Hint, Replace-Action im selben Modul (58).
+- [ReactScript – React File Upload Components 2026](https://reactscript.com/best-file-upload/) — Render-Props-Pattern für UI-Wiederverwendung (58).
+
 ### Storage-Move für Slug-Wechsel (Code-Session 57)
 - [Supabase JS – storage-from-move](https://supabase.com/docs/reference/javascript/storage-from-move) — `move(fromPath, toPath)` ist offizielle Rename-API; atomar, gleiche Bucket-Restriktion (57).
 - [Supabase Docs – Storage Folder-Operations & Hierarchical RLS](https://supabase.com/docs/guides/troubleshooting/supabase-storage-inefficient-folder-operations-and-hierarchical-rls-challenges-b05a4d) — Storage hat keine native Folder-Move-API; pro Datei einzeln ist Standard-Pattern (57).

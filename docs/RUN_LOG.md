@@ -6601,3 +6601,128 @@ erweitert. Storage-Cleanup beim Service-DELETE läuft bereits
 (Session 56), und die DB hat die `image_url`-Spalte schon
 seit Migration 0002.
 
+## Code-Session 58 – Service-Image-Upload-UI
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Owner kann pro Service ein Bild hochladen — direkt
+in der ServiceCard, identisches Pattern wie Logo/Cover beim
+Business-Editor. Schema (`services.image_url`), DB-Spalte
+(Migration 0002), Bulk-Update-Roundtrip (Session 55),
+Storage-Cleanup beim DELETE (Session 56) waren alle bereits
+da; mit dieser Session ist auch der Upload-Schreibweg
+verdrahtet.
+
+**Architektur-Entscheidung — UUID v4 ab Erstellung**:
+Bisher erzeugte `generateNewServiceId(slug)` Pseudo-IDs vom
+Format `svc-<slug>-<8-Zeichen>`, die der Server-PUT beim
+Save zur echten UUID promotierte. Das funktioniert für
+Stamm-Daten, aber nicht für Service-Bild-Uploads: das Bild
+muss unter seiner endgültigen UUID liegen, sonst wird es
+beim ersten Save zur Storage-Waise. Ich stelle die Funktion
+auf `crypto.randomUUID()` um — das ist a) eine echte
+UUID v4, b) wird vom Server akzeptiert (passes
+`looksLikeDbUuid`-Check), c) der Bild-Upload ist sofort
+möglich für neu hinzugefügte Services. Demo-Daten mit
+Pseudo-IDs aus mock-data behalten ihre IDs bis zum ersten
+Save; dort wird ein UI-Hint angezeigt.
+
+**Architektur-Entscheidung — UUID-Gating in der UI**:
+Wenn die Service-ID keine echte UUID ist (Demo-Daten), sperrt
+das Image-Field mit einem amber Hint („Bild kannst du
+hochladen, sobald die Leistung einmal gespeichert ist."). Das
+verhindert Storage-Waisen unter Pseudo-Pfaden und macht den
+Workflow explizit. Server-seitig ist die UUID-Pflicht via
+strengem Regex am Route-Handler abgesichert (Path-Injection-
+Schutz).
+
+**Architektur-Entscheidung — gleicher Bucket, neuer
+Sub-Folder**: `<slug>/services/<serviceId>.<ext>` statt eines
+zweiten Buckets. Vorteile: bestehende RLS-Policies +
+Storage-Cleanup-Logik (Session 56) + Slug-Move (Session 57)
+funktionieren ohne Anpassung. Der Slug-Move-Pfad migriert
+allerdings aktuell nur `logo`/`cover` — Service-Bilder
+beim Slug-Wechsel zu mit-moven ist Folge-Session 59.
+
+**WebSearch (Track C)**: bestätigt
+- [MUI – Image List Component](https://mui.com/material-ui/react-image-list/)
+  Standard-Pattern für „Bild pro Karte" ist Vorschau-Tile +
+  Replace/Remove neben Card-Content.
+- [Eleken – File Upload UI Tips](https://www.eleken.co/blog-posts/file-upload-ui)
+  Klares Dropzone-Tile, kurzer Hint mit Format-Anforderungen,
+  Replace-Button — alles im selben Modul gehalten.
+- [ReactScript – React File Upload Components](https://reactscript.com/best-file-upload/)
+  Render-Props-Pattern für UI-Wiederverwendung; wir
+  re-use'n stattdessen die existierende `ImageUploadField`-
+  Komponente mit zwei neuen Props (`disabled`, `compact`).
+
+**Dateien**:
+- 🔄 `src/lib/business-image-upload.ts`:
+  - `ImageKind` += `"service"`.
+  - `buildStoragePath(slug, kind, mime, options?)`: bei
+    `kind="service"` braucht `options.serviceId`. Throw bei
+    Verstoß. Pfad: `<slug>/services/<serviceId>.<ext>`.
+  - `submitImageUpload(slug, kind, file, deps, options?)`:
+    `options.serviceId` ins FormData. Client-Pre-Validation
+    blockt `service`-Upload ohne `serviceId` — kein
+    fetch-Roundtrip.
+- 🔄 `src/tests/business-image-upload.test.ts`: ~35 → ~40
+  Asserts. Service-Pfad mit serviceId, Throw ohne, Client-
+  Validation, FormData-Capture für `serviceId`.
+- 🔄 `src/app/api/businesses/[slug]/image/route.ts`:
+  - `kind`-Validation erweitert um `"service"`.
+  - `UUID_RE` (v1-5, Variant `[89ab]`) als
+    Path-Injection-Schutz.
+  - `serviceId` wird aus FormData gezogen und an
+    `buildStoragePath(..., { serviceId })` übergeben.
+- 🔄 `src/components/dashboard/business-edit/image-upload-field.tsx`:
+  Drei neue optionale Props (`serviceId`, `disabled`,
+  `disabledHint`, `compact`). `submitImageUpload(..., {
+  serviceId })` wird durchgereicht. `compact` schaltet das
+  Vorschau-Tile auf `h-14 w-14` (für In-Card-Layout).
+  `disabledHint` als amber-Text unter den Buttons, wenn
+  gesperrt.
+- 🔄 `src/components/dashboard/services-edit/service-card.tsx`:
+  - `slug`-Prop hinzugefügt (vom Form durchgereicht).
+  - `serviceId = watch(...id)`, `imageUrl = watch(...imageUrl)`,
+    `hasRealUuid = looksLikeDbUuid(serviceId)`.
+  - `ImageUploadField` mit `kind="service"`, `compact`,
+    UUID-Gating, hidden `imageUrl`-Input, optionaler
+    Error-Anzeige.
+- 🔄 `src/components/dashboard/services-edit/services-edit-form.tsx`:
+  - `generateNewServiceId(slug)` → `crypto.randomUUID()`.
+  - `slug={business.slug}` durchgereicht an `<ServiceCard>`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**37/38 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +5 image-upload-Asserts. Bundle 102 KB shared
+unverändert.
+
+**Roadmap**: 1 abgehakt (Service-Image-Upload-UI). Storage-
+Hygiene-Stack ist symmetrisch nutzbar: Upload (51 + 58),
+DELETE-Cleanup (56), Slug-Wechsel-Move (57). 1 Folge-Item:
+**Service-Bilder beim Slug-Wechsel mit-migrieren** — aktuell
+moved Session 57 nur `logo_url` und `cover_image_url`. Mit
+58 gibt's `services.image_url` pro Row, die bei Slug-Rename
+auch von `<old-slug>/services/<id>.<ext>` →
+`<new-slug>/services/<id>.<ext>` gemoved werden muss.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — File-Upload-UX-
+Patterns 2026.
+
+**Status-Update**: ~91 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Editor ist auf allen Public-Site-
+sichtbaren Pfaden fertig (Stamm, Logo, Cover, Slug, Service-
+Liste, Service-Bilder). Verbleibend: Service-Bilder-Slug-
+Migration (klein), Live-Provider-Switch, Custom-Domain,
+Sentry, Lighthouse-CI, Multi-Member-Verwaltung.
+
+**Nächste Session**: Code-Session 59 = **Service-Bilder beim
+Slug-Wechsel mit-migrieren**. Begründung: Session 57 hat den
+Move-Pattern und die Pfad-Rewrite-Logik etabliert; jetzt
+rollen wir ihn auf `services.image_url` aus. Pro Row im
+`services`-Table mit `image_url` zum alten Slug-Prefix wird
+`storage.move()` ausgeführt und das URL-Feld in einem Bulk-
+Update aktualisiert. Klein (~30 Zeilen Settings-Route +
+~5 Asserts), aber sauber abgrenzbar — schließt die
+Storage-Hygiene-Lücke aus 58.
+

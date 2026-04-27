@@ -7,14 +7,92 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Code-Sessions 58+: Live-Provider-Variante für Reviews/Social-
-  Panels (Auth-Bearer + `/api/ai/generate`), Direkt-Posten zu
-  Buffer/Hootsuite/Meta-Graph, Multi-Member-Verwaltung, Default-
-  Redirect bei einem Betrieb, Retry-Queue für Lead-`local-
-  fallback`, Service-Image-Upload-UI (Schema + Storage-Cleanup
-  + Slug-Move sind ready), Edge-Runtime-Migration, CSRF-Schutz,
+- Code-Sessions 59+: Service-Bilder beim Slug-Wechsel mit-
+  migrieren (analog Session 57, aber für `services.image_url`
+  pro Row), Live-Provider-Variante für Reviews/Social-Panels
+  (Auth-Bearer + `/api/ai/generate`), Direkt-Posten zu
+  Buffer/Hootsuite/Meta-Graph, Multi-Member-Verwaltung,
+  Default-Redirect bei einem Betrieb, Retry-Queue für Lead-
+  `local-fallback`, Edge-Runtime-Migration, CSRF-Schutz,
   HTML-Sanitize-Whitelist, Impressum-Editor pro Betrieb,
   Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test.
+
+## [0.16.32] – Code-Session 58 – 2026-04-27
+
+Service-Image-Upload-UI scharf. Owner kann ab sofort pro
+Service ein Bild hochladen — die DB-Spalte (`services.image_url`),
+das Schema und der Storage-Cleanup-Pfad existierten bereits
+seit Sessions 38/56; jetzt ist auch der Schreibweg verdrahtet.
+
+- 🔄 `src/lib/business-image-upload.ts`:
+  - `ImageKind` von `"logo" | "cover"` auf
+    `"logo" | "cover" | "service"` erweitert.
+  - `buildStoragePath` akzeptiert ein `{ serviceId }`-Options-
+    Argument; bei `kind="service"` resultiert
+    `<slug>/services/<serviceId>.<ext>`. Throw, wenn
+    `serviceId` fehlt — beugt versehentlichem Pfad-Müll vor.
+  - `submitImageUpload` nimmt `options.serviceId` durch und
+    packt es ins FormData. Client-Pre-Validation gibt
+    `validation`-Result, wenn `service`-Upload ohne
+    `serviceId` versucht wird.
+- 🔄 `src/tests/business-image-upload.test.ts`:
+  +5 Asserts (~40 gesamt). Service-Pfad mit serviceId,
+  Throw bei fehlender ID, Client-Validation ohne fetch-
+  Roundtrip, FormData-`serviceId`-Wert wird korrekt
+  durchgereicht.
+- 🔄 `src/app/api/businesses/[slug]/image/route.ts`:
+  Akzeptiert `kind="service"` mit Pflicht-Feld `serviceId`
+  (UUID-Regex, kein Path-Injection-Vektor). Unverändert
+  RLS-getrieben (Owner-Check via Server-Auth-Client) +
+  Service-Role-Storage-Upload.
+- 🔄 `src/components/dashboard/business-edit/image-upload-field.tsx`:
+  Zwei neue optionale Props: `disabled` + `disabledHint` für
+  UUID-Gating im Service-Kontext, `compact` für eine
+  kleinere Vorschau (54×54 statt 80×80) zur In-Card-
+  Verwendung. `serviceId` wird durchgereicht.
+- 🔄 `src/components/dashboard/services-edit/service-card.tsx`:
+  Neuer `slug`-Prop. `ImageUploadField` mit
+  `kind="service"`, `serviceId={hasRealUuid ? id : undefined}`,
+  `compact`. Wenn die Service-ID noch eine Pseudo-ID ist
+  (Mock-Daten ohne erstes Save), zeigt das Feld einen
+  amber-Hint „Bild kannst du hochladen, sobald die Leistung
+  einmal gespeichert ist." `imageUrl` als hidden RHF-Input
+  registriert.
+- 🔄 `src/components/dashboard/services-edit/services-edit-form.tsx`:
+  `generateNewServiceId(slug)` erzeugt ab sofort eine echte
+  UUID v4 (`crypto.randomUUID()`), nicht mehr eine Pseudo-ID
+  `svc-<slug>-<random8>`. Damit ist Bild-Upload für *neu
+  hinzugefügte* Services sofort möglich; für Demo-Daten mit
+  Pseudo-IDs erst nach dem ersten Speichern (wo der Server
+  die ID promotiert). `slug` wird an `<ServiceCard>`
+  durchgereicht.
+
+37/38 Smoketests grün (industry-presets pre-existing red,
+Codex #11). +5 image-upload-Asserts on top. typecheck ✅,
+lint ✅, beide Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Service-Image-Upload-UI). Damit ist
+auch der Bild-Schreibpfad für den Hauptinhalt der Public-
+Site (Service-Karten) self-service-fähig. 1 Folge-Item:
+Service-Bilder beim Slug-Wechsel mit-migrieren — Session 57
+deckt aktuell nur logo/cover ab; nach 58 gibt's auch
+`services.image_url`, das mit-gemoved werden muss.
+
+**Status-Update**: ~91 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Editor ist auf allen Public-Site-
+sichtbaren Pfaden fertig (Stamm, Logo, Cover, Slug, Service-
+Liste, Service-Bilder). Verbleibend: Service-Bilder-Slug-
+Migration (klein), Live-Provider-Switch, Custom-Domain,
+Sentry, Lighthouse-CI, Multi-Member-Verwaltung.
+
+**Manueller Test**: Dashboard → „Leistungen" → „Neue
+Leistung anlegen" → Card öffnen → „Bild" → „Hochladen" →
+PNG/JPEG/WebP unter 5 MB → emerald „Bild hochgeladen." →
+„Speichern" → bei aktivem Supabase: Public-Site zeigt das
+Bild. Bei Demo-Daten: erst „Speichern" klicken (UUID-
+Promotion auf Server), dann Bild hochladen.
+
+## [0.16.31] – Code-Session 57 – 2026-04-27
 
 ## [0.16.31] – Code-Session 57 – 2026-04-27
 

@@ -46,9 +46,24 @@ type ServicesEditFormProps = {
   business: Business;
 };
 
+/**
+ * Erzeugt eine echte UUID v4 für neue Services (Code-Session 58).
+ *
+ * Vorher: Pseudo-IDs wie `svc-<slug>-<random8>` — die Server-PUT-
+ * Route ersetzte sie durch `crypto.randomUUID()`. Das funktionierte
+ * für reine Stamm-Daten, aber nicht für Service-Bild-Uploads:
+ * Bilder müssen unter ihrer endgültigen UUID liegen, sonst werden
+ * sie beim ersten Save zur Storage-Waise. Mit echter UUID schon
+ * im Form-State läuft Bild-Upload sofort, ohne erstes „Speichern".
+ *
+ * Fallback: Kleinwahrscheinlich nötig (alle modernen Browser haben
+ * `crypto.randomUUID`), aber wenn die API fehlt, geben wir eine
+ * Pseudo-ID — der Server lässt sie zu UUID promotieren, der
+ * Bild-Upload bleibt dann bis zum ersten Save gesperrt.
+ */
 function generateNewServiceId(slug: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `svc-${slug}-${crypto.randomUUID().slice(0, 8)}`;
+    return crypto.randomUUID();
   }
   return `svc-${slug}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -376,6 +391,7 @@ export function ServicesEditForm({ business }: ServicesEditFormProps) {
             {fields.map((field, index) => (
               <li key={field._rhfId}>
                 <ServiceCard
+                  slug={business.slug}
                   index={index}
                   total={fields.length}
                   onMoveUp={() => index > 0 && swap(index, index - 1)}

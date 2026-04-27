@@ -254,9 +254,19 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   `buildPublicUrl` (~22 neue Asserts on top, gesamt 52).
   Damit ist Storage-Hygiene **vollständig**: DELETE räumt
   auf (56), Slug-Wechsel migriert (57).
-- 41+: Service-Image-Upload-UI (Feature, ServiceCard-Slot
-  + Upload-Route-Erweiterung um `kind: "service"` mit
-  `serviceId`-Pfadbestandteil), Backup-Policy, Seed-Skript für
+- 58: Service-Image-Upload-UI ✅. ServiceCard bekommt einen
+  `ImageUploadField`-Slot mit UUID-Gating (Pseudo-IDs
+  blockiert, echte UUID v4 sofort funktional). Upload-Route
+  akzeptiert `kind="service"` mit Pflicht-`serviceId`
+  (Path-Injection-Schutz via UUID-Regex). Pfad-Konvention
+  `<slug>/services/<serviceId>.<ext>` im selben
+  `business-images`-Bucket — Storage-Cleanup beim DELETE
+  (56) und Slug-Wechsel-Move (57) sind bereits zuständig.
+  `generateNewServiceId(slug)` umgestellt von Pseudo-ID auf
+  echte UUID v4 (`crypto.randomUUID`), damit neu hinzugefügte
+  Services sofort Bild-Upload-fähig sind.
+- 41+: Service-Bilder beim Slug-Wechsel mit-migrieren
+  (Folge-Session 59), Backup-Policy, Seed-Skript für
   Demo-Daten.
 
 ### Meilenstein 5 — Production-Readiness

@@ -39,6 +39,8 @@ export const dynamic = "force-dynamic";
 const BUCKET = "business-images";
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIMES = ["image/png", "image/jpeg", "image/webp"];
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 interface RouteContext {
   readonly params: Promise<{ slug: string }>;
@@ -101,16 +103,44 @@ export async function POST(
   }
 
   const rawKind = String(formData.get("kind") ?? "").trim();
-  if (rawKind !== "logo" && rawKind !== "cover") {
+  if (rawKind !== "logo" && rawKind !== "cover" && rawKind !== "service") {
     return NextResponse.json(
       {
         error: "invalid_kind",
-        message: "Feld 'kind' muss 'logo' oder 'cover' sein.",
+        message: "Feld 'kind' muss 'logo', 'cover' oder 'service' sein.",
       },
       { status: 400 },
     );
   }
   const kind: ImageKind = rawKind;
+
+  // Service-spezifisch: serviceId Pflicht + UUID-Validierung
+  // (verhindert Path-Injection wie `..` oder Slashes im Pfad-
+  // Segment).
+  let serviceId: string | undefined;
+  if (kind === "service") {
+    const raw = String(formData.get("serviceId") ?? "").trim();
+    if (!raw) {
+      return NextResponse.json(
+        {
+          error: "missing_service_id",
+          message: "Feld 'serviceId' fehlt für kind='service'.",
+        },
+        { status: 400 },
+      );
+    }
+    if (!UUID_RE.test(raw)) {
+      return NextResponse.json(
+        {
+          error: "invalid_service_id",
+          message:
+            "serviceId muss eine echte UUID sein. Service erst speichern, dann Bild hochladen.",
+        },
+        { status: 400 },
+      );
+    }
+    serviceId = raw;
+  }
 
   const fileEntry = formData.get("file");
   if (!(fileEntry instanceof File)) {
@@ -158,7 +188,7 @@ export async function POST(
     );
   }
 
-  const path = buildStoragePath(slug, kind, fileEntry.type);
+  const path = buildStoragePath(slug, kind, fileEntry.type, { serviceId });
   const { error: uploadErr } = await adminClient.storage
     .from(BUCKET)
     .upload(path, fileEntry, {
