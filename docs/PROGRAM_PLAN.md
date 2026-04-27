@@ -120,6 +120,81 @@ Pro Quartal:
 
 Dieser Meilenstein endet nie.
 
+## Self-Extending Backlog
+
+Verbindlich ab Code-Session 18: jede Session erweitert diesen Backlog
+um **mindestens einen** neuen Punkt aus Recherche, Implementierung
+oder Beobachtung. Erst wenn ein Punkt erledigt ist, wandert er aus
+der Liste in den RUN_LOG.
+
+Die Punkte sind nach Track gruppiert. Jede Code-Session darf jeden
+Track bedienen — die Wahl trifft der nächste Plan-Step in der jeweils
+aktiven Session.
+
+### Track A · Innovation & neue Capabilities
+- WhatsApp-Business-Cloud-API als Versand-Pfad für Review-Requests
+  (Meilenstein 3) — höchste Conversion in der Recherche zu
+  Code-Session 18.
+- AI-gestützter A/B-Test für Review-Request-Tonalitäten: jede Variante
+  bekommt einen Tracking-Param, Conversion wird gemessen.
+- „Best Time to Ask"-Heuristik: aus Lead-Daten den optimalen Zeitpunkt
+  für die Bewertungs-Anfrage ableiten (z. B. 2–6 h nach Termin).
+- Antwort-Generator als API-Route hinter Auth (statt rein clientseitig),
+  damit später Cost-Tracking + Audit-Log möglich werden.
+- View-Transitions-API für Dashboard-Tab-Wechsel — verbessert die
+  „App-Feel"-Wahrnehmung auf dem Handy spürbar.
+
+### Track B · Security & Compliance
+- DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen
+  KI-Output, bevor er in einen Public-Site-Block geschrieben wird.
+- npm-audit-Lauf in CI, plus monatlicher Auto-Bump-Pass mit
+  `npm outdated` + Smoketest.
+- DSGVO-Hinweis-Block für die Bewertungs-Anfrage-Versendung
+  (Einwilligung, Speicherdauer, Widerruf).
+- Rate-Limit auf der KI-Layer (Mock + zukünftig echte Provider) mit
+  zentraler Konfiguration und transparenter Fehlermeldung im UI.
+- Content-Security-Policy + Subresource-Integrity Header für den
+  produktiven Build.
+
+### Track C · Observability & Qualität
+- Strukturierte Telemetrie der Mock-Provider-Aufrufe (Welche Methode,
+  welche Branche, welche Variante), damit später echte Calls mit
+  derselben Pipeline angezeigt werden können.
+- Lighthouse-CI als Gate: Performance + A11y + Best Practices
+  müssen ≥ 95 bleiben, sonst Fail.
+- Vitest oder ein vergleichbarer Test-Runner ergänzt den jetzigen
+  „Smoketest-via-tsx"-Ansatz, sobald die Test-Tiefe wächst.
+- Visual-Regression-Tests (Playwright) für die kritischen Public-Site-
+  Sektionen.
+
+### Track D · DX & Refactor
+- Gemeinsamen `clamp`/`polish`/`substituteCity`-Helper in
+  `src/core/ai/providers/mock/_helpers.ts` extrahieren — derzeit
+  duplizieren website-copy / service-description / customer-reply
+  / review-request diese Funktionen leicht abweichend.
+- `topicToQA` aus `faqs.ts` und `detectTopic` aus `customer-reply.ts`
+  teilen sich eine ähnliche Stamm-Erkennung — ein gemeinsames
+  `topic-detection.ts`-Modul vermeidet zukünftige Drift.
+- Smoketest-Datei wird zu groß (>700 Zeilen) — Aufteilung pro Methode
+  parallel zur Aufteilung der Implementierung.
+
+### Track E · Vertikalisierung
+- Branchen-Presets von 13 auf mindestens 20 erweitern; Kandidaten:
+  Heizungsbauer, Dachdecker, Imbiss, Hundesalon, Physiotherapie,
+  Massage, Steuerberater.
+- Pro Branche: dedizierte `reviewRequestTemplates` (sms ergänzen, ist
+  bei einigen Presets noch nicht abgedeckt — Code-Session 18 musste
+  daher synthetisieren).
+
+### Track F · Doku & Onboarding
+- Architektur-Diagramm (Mermaid) für den AI-Adapter — wie greifen
+  Resolver, Provider, Mock-Methoden und API-Route ineinander.
+- „Wie ergänze ich eine Branche in 30 Min."-Checkliste in
+  `docs/ADD_INDUSTRY.md`.
+- Recherche-Quellen aus den RUN_LOG-Einträgen in einer
+  `docs/RESEARCH_INDEX.md` thematisch sortieren — wird mit der Zeit
+  zum belegten Wissensspeicher des Programms.
+
 ## Meilenstein-Wechsel-Entscheidung
 
 Wir wechseln den Fokus, wenn **alle drei** zutreffen:

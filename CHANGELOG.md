@@ -7,12 +7,87 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht)
-- Code-Session 18: Mock für `generateReviewRequest`.
 - Code-Session 19: Mock für `generateSocialPost`.
 - Code-Session 20: Mock für `generateOfferCampaign` (schließt Mock-Phase ab).
 - Code-Sessions 21–22: OpenAI-Provider scharf (mit Caching).
 - Code-Sessions 23–24: Anthropic-Provider scharf.
 - Code-Session 25: Cost-Tracking + Rate-Limit-UI.
+
+### Self-Extending Backlog
+Ab Code-Session 18 erweitert jede Session `docs/PROGRAM_PLAN.md` um
+mindestens einen neuen Punkt aus Recherche, Implementierung oder
+Beobachtung. Tracks A–F (Innovation, Security, Observability, DX,
+Vertikalisierung, Doku) wachsen mit. Neue Punkte aus Code-Session 18
+sind dort eingetragen.
+
+## [0.13.6] – Code-Session 18 – 2026-04-27
+
+### Added
+- **Mock-Provider `generateReviewRequest` ist scharf** (fünfte von
+  sieben Mock-Methoden — atomarer Schritt unter dem
+  Session-Protokoll):
+  - `src/core/ai/providers/mock/review-request.ts` —
+    deterministische Implementierung. Liefert pro Aufruf 3 Varianten
+    für den angefragten Channel: requested-Tone an Index 0, dann
+    die zwei übrigen in kanonischer Reihenfolge (`short`, `friendly`,
+    `follow_up`).
+  - **Quellen-Strategie** je Variante:
+    1. Match in `preset.reviewRequestTemplates` auf
+       `(channel, tone)` → diese Vorlage wird verwendet.
+    2. Synthese über eine Channel-Tone-Matrix:
+       - **whatsapp**: kurz/locker, dezentes Emoji nur in `friendly`.
+       - **sms**: sehr kurz, kein Emoji, klar.
+       - **email**: längere Form, Anrede + Absatz-Struktur.
+       - **in_person**: gesprochener Stil mit deutschen
+         Anführungszeichen.
+  - **Substitution** für `{{customerName}}`, `{{reviewLink}}`,
+    `{{businessName}}`. Fehlt `customerName`/`reviewLink`, kommen
+    neutrale Platzhalter (`und Hallo` / `[Bewertungs-Link einfügen]`)
+    zum Einsatz, die der Anwender vor dem Versand füllt.
+  - Output gegen `ReviewRequestOutputSchema` validiert; `clamp` als
+    Sicherheitsnetz auf das 1000-Zeichen-Body-Limit.
+- `mock-provider.ts` komponiert die fünfte Methode dazu
+  (`{ ...stub, generateWebsiteCopy, improveServiceDescription,
+  generateFaqs, generateCustomerReply, generateReviewRequest }`).
+  Die übrigen 2 Methoden bleiben Stubs.
+- Smoketest `src/tests/ai-mock-provider.test.ts` um einen Block
+  10a–10h erweitert (~52 zusätzliche Assertions, ~130 gesamt):
+  4 Channels × 3 Tones → 3 Varianten/Aufruf, alle im Limit, alle
+  drei Tones je Aufruf vertreten, kein Platzhalter-Rest;
+  Substitution greift; Fallback-Platzhalter ohne `reviewLink`;
+  Preset-Match greift bei (whatsapp, friendly) für Friseur
+  („der neue Schnitt"); Synthese greift bei sms (Friseur-Preset
+  hat keine sms-Vorlage); in_person hat „…"-Stil; Determinismus;
+  ungültige `reviewLink`-URL → `invalid_input`.
+  Block 11 zählt jetzt nur noch 2 Stub-Methoden.
+
+### Changed (Programm-Methodik)
+- **Roadmap erweitert sich ab sofort selbst.** Ohne weiteres Zutun
+  des Auftraggebers. Verbindlich ab Code-Session 18:
+  - **`Claude.md`** — neuer Punkt 7 in der Programm-Philosophie
+    (Roadmap erweitert sich selbst, jede Session muss
+    mindestens einen Punkt zu `PROGRAM_PLAN.md` hinzufügen).
+  - **`docs/SESSION_PROTOCOL.md`** — neuer Schritt 6
+    „Roadmap-Selbstaktualisierung", Commit/Push wandert auf
+    Schritt 7.
+  - **`docs/PROGRAM_PLAN.md`** — neue Sektion „Self-Extending
+    Backlog" mit 6 Tracks (A: Innovation, B: Security & Compliance,
+    C: Observability & Qualität, D: DX & Refactor,
+    E: Vertikalisierung, F: Doku & Onboarding). Erste Punkte aus
+    Code-Session 18 sind eingetragen.
+
+### Notes
+- **Recherche** (Session-Protokoll): Quellen zu 2026-Review-Request-
+  Conversion-Rates und Channel-Effektivität (WhatsApp ~98 % Open
+  Rate, SMS-Response 45 %, in_person höchste Conversion, single
+  Follow-Up verdoppelt Antwort) im RUN_LOG-Eintrag „Code-Session 18".
+- **Bewusst klein gehalten**: nur eine zusätzliche Mock-Methode plus
+  die Methodik-Erweiterung. Keine UI-Änderung, keine neuen
+  Dependencies, kein Bundle-Zuwachs.
+- Diff ~30 KB (mehr als sonst, weil zusätzlich 3 Methodik-Doc-
+  Dateien aktualisiert wurden), 1 neue Datei Code, 5 geänderte.
+  Alle Verifikationen grün (`typecheck`, `lint`, `build:static`,
+  beide Smoketests).
 
 ## [0.13.5] – Code-Session 17 – 2026-04-27
 

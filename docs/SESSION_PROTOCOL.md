@@ -82,7 +82,29 @@ Bei UI-Änderungen zusätzlich:
   Plus: **Quellen** der Recherche aus Schritt 2.
 - Bei größerem Feature: eigene `docs/<FEATURE>.md`.
 
-### 6. Commit + Push
+### 6. Roadmap-Selbstaktualisierung (verbindlich ab Code-Session 18)
+
+Vor dem Commit erweitert jede Session `docs/PROGRAM_PLAN.md` um
+**mindestens einen** neuen Punkt. Quellen für neue Punkte:
+
+- Recherche-Step aus 2 (Innovation, neue AI-Modelle, neue Plattform-
+  Features, Industry-Trends).
+- Beobachtungen aus der Implementierung (Refactor-Wünsche, Test-
+  Lücken, Performance-Beobachtungen, UX-Schliff).
+- Sicherheits-Updates (CVEs, Dependency-Bumps, Browser-Verhalten,
+  GDPR-Themen).
+- Tech-Debt aus dem RUN_LOG.
+
+Format: Stichpunkt unter dem passenden Meilenstein. Wenn der Punkt
+in keinen passt, kommt er unter „Innovation Loop ♾️" oder es wird
+ein neuer Meilenstein eröffnet.
+
+**Faustregel**: Geht eine Session „leer" raus (also ohne neuen
+Plan-Punkt), wurde der Recherche-Step nicht gründlich genug gemacht
+oder die Beobachtungen aus der Implementierung wurden nicht
+festgehalten. Beides ist ein Protokoll-Verstoß.
+
+### 7. Commit + Push
 
 Conventional Commit, Branch `claude/setup-localpilot-foundation-xx0GE`
 oder spätere Feature-Branches.
