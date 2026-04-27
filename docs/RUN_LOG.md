@@ -7658,3 +7658,119 @@ Editor-User Schreibrecht hat, durchaus relevant).
 Pure-Helper-Pattern: Whitelist-Sanitizer für Plain-Text +
 optional Markdown-/Limited-HTML-Pfad. Klein, scharf.
 
+## Code-Session 67 – HTML-Sanitize-Whitelist auf User-Input
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Security-Hardening
+
+**Was**: Defense-in-Depth gegen XSS auf der Schreibstelle.
+Bevor User-Input (Owner + Lead) in die DB landet, durchläuft
+er einen HTML-Stripper + Whitespace-Normalisierung +
+Length-Cap. React's `{text}`-Rendering schützt primär beim
+Lesen, aber Logs/Email-Templates/zukünftige Markdown-
+Renderer würden ungeschützten Input direkt als HTML rendern.
+Sanitize *am Schreibpunkt* schützt alle Nachverbraucher.
+
+**Architektur-Entscheidung — Wiederverwendung von
+`sanitizeText`**: Session 27 hat den HTML-Stripper bereits
+für AI-Output gebaut (Entity-Decoder + Control-Char-Cleanup
++ iterativer Strip). Statt eine zweite Implementation zu
+schreiben, wrappt der neue Helper diesen mit
+Whitespace-Normalisierung + Domain-Wrappern. Eine
+gemeinsame Quelle für die Strip-Logik = ein
+Audit-/Update-Punkt.
+
+**Architektur-Entscheidung — kein DOMPurify**:
+DOMPurify/`isomorphic-dompurify` braucht JSDOM (~120 KB im
+Server-Bundle). Lohnt sich, sobald wir eine Markdown-
+**Whitelist** (Bold/Italic/Listen) brauchen. Solange wir
+User-Input ausschließlich als Plain-Text rendern, reicht
+der konservative Stripper aus.
+
+**Architektur-Entscheidung — Domain-Wrapper statt
+generischer Map**: Statt eines „mapStringFields(obj,
+fn)"-Helpers gibt es drei Domain-Wrapper:
+`sanitizeBusinessProfileStrings`,
+`sanitizeServiceStrings`, `sanitizeLeadStrings`. Vorteil:
+pro Feld kann der passende Modus (single/multi-line) +
+Length-Limit explizit gesetzt werden. Tagline ist
+Single-Line-200, Description ist Multi-Line-5000, Country
+ist Single-Line-2 (ISO-Code) — alles im Wrapper als Code,
+nicht als magic-Tabelle.
+
+**Architektur-Entscheidung — extraFields auch sanitized**:
+Lead-Forms in 19 Branchen-Presets können extraFields
+liefern (`vehicleModel`, `objectType`, `drivingClass`).
+Diese werden im Dashboard und in Leads-Tabellen gerendert.
+Daher: Keys + String-Werte sanitized; Number/Boolean
+bleiben als sicherer Typ; leere Keys gefiltert (verhindert
+JSON-Injection-Tricks).
+
+**WebSearch (Track D)**: bestätigt
+- [OneUptime – How to Sanitize User Input in React](https://oneuptime.com/blog/post/2026-01-15-sanitize-user-input-react-injection/view)
+  Server-side Sanitize ist Pflicht; React-Auto-Escape
+  reicht nicht für Logs/Templates.
+- [Zod Discussion #1358 – Sanitize via transform](https://github.com/colinhacks/zod/discussions/1358)
+  Zod selbst sanitized nicht; transform() ist der Hook.
+  Wir nutzen *vor* der Validation, weil unser Sanitize
+  schon Length-Caps macht und Zod-Errors auf
+  bereits-gestripptem Input klarere Meldungen liefern.
+- [Saud Patel – Server-Side Validation and Sanitization](https://medium.com/@saudpatel.mscit22/server-side-validation-and-sanitization-using-zod-in-node-js-55e46e126635)
+  Pattern: sanitize → validate → DB-Insert. Genau unser
+  Flow.
+- [Ahmed Adel – zod-xss-sanitizer](https://github.com/AhmedAdelFahim/zod-xss-sanitizer)
+  Existing-Package — wir verzichten wegen Dep-Bloat
+  (eigener Helper ist ~5 KB statt ~30 KB + transitive Deps).
+
+**Dateien**:
+- ✚ `src/lib/user-input-sanitize.ts` — pure Helper:
+  - `sanitizeUserText(input, {maxLength, singleLine})` als
+    Hauptfunktion.
+  - `sanitizeUserSingleLine` und `sanitizeUserMultiLine`
+    als Convenience-Wrapper.
+  - 3 Domain-Wrapper für BusinessProfile, Service, Lead.
+  - Wiederverwendet `sanitizeText` aus Session 27.
+- ✚ `src/tests/user-input-sanitize.test.ts` (~45 Asserts):
+  defensive Inputs (null/undefined/number/object),
+  HTML-Strip-Bypass (entity-encoded + numeric),
+  Single-vs-Multi-Line-Pipeline, Length-Limits,
+  Domain-Wrapper, extraFields-Edge-Cases (number/boolean
+  bleiben, leere Keys filtern), Idempotenz,
+  doppelt-encoded Entity-Schutz.
+- 🔄 `/api/onboarding` (POST): name + tagline single-line,
+  description multi-line — vor `validateOnboarding`.
+- 🔄 `/api/businesses/[slug]` (PATCH):
+  `sanitizeBusinessProfileStrings` nach `parseSnakeRowAsProfile`,
+  vor DB-UPDATE.
+- 🔄 `/api/businesses/[slug]/services` (PUT):
+  `sanitizeServiceStrings` pro Service-Row im
+  Re-Map-Block, vor `ServiceSchema.safeParse`.
+- 🔄 `/api/leads` (POST): `sanitizeLeadStrings` vor
+  `repo.create()` — auch extraFields.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**43/43 Smoketests grün**. +1 user-input-sanitize-Test (~45
+Asserts). Bundle 102 KB shared unverändert.
+
+**Roadmap**: 1 Pflicht-Item abgehakt. Phase-1-Restweg:
+- **68**: Sentry-Integration. DSN-ENV, Browser+Server-
+  Init, Source-Map-Upload, ErrorBoundary in Layout.
+- **69**: „Betrieb löschen"-Flow.
+- **70** (Light-Pass): Pre-MVP-Pass + Audit-Checkliste.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — User-Input-XSS-
+Sanitize-Patterns 2026.
+
+**Status-Update**: ~97.5 % Richtung „erstes Betrieb-fertiges
+Produkt". Defense-in-Depth-Security-Stack komplett:
+SameSite-Cookies + CSRF-Origin-Check (S66) + HTML-Sanitize
+(S67). Verbleibend Phase 1: 3 Sessions.
+
+**Nächste Session**: Code-Session 68 = **Sentry-Integration**.
+Begründung: Sentry ist Production-Pflicht für Error-Tracking
++ Performance-Monitoring. Integration in Browser (`onError`/
+`onUnhandledRejection` + React-ErrorBoundary) und Server
+(`/api/*`-Route-Errors + Logger). DSN aus ENV
+(`NEXT_PUBLIC_SENTRY_DSN`), Sampling-Rate konservativ
+(default 0.1), Sourcemap-Upload nur in Production-Build.
+Bundle-Impact ist signifikant (~30-40 KB) — daher genau
+prüfen und Tree-shaking nutzen.
+

@@ -43,6 +43,7 @@ import {
   removeStoragePaths,
 } from "@/lib/storage-cleanup";
 import { enforceCsrf } from "@/lib/csrf";
+import { sanitizeServiceStrings } from "@/lib/user-input-sanitize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -150,8 +151,11 @@ export async function PUT(
   for (let i = 0; i < incoming.length; i++) {
     const r = incoming[i];
     if (!r) continue;
-    // Re-Map snake → camel für ServiceSchema-Validierung
-    const camelDraft = {
+    // Re-Map snake → camel für ServiceSchema-Validierung.
+    // XSS-Defense-in-Depth (Session 67): String-Felder durch
+    // den User-Input-Sanitizer schicken, bevor das Schema sie
+    // validiert.
+    const camelDraft = sanitizeServiceStrings({
       id: typeof r.id === "string" && looksLikeDbUuid(r.id) ? r.id : crypto.randomUUID(),
       businessId,
       ...(typeof r.category === "string" ? { category: r.category } : {}),
@@ -166,7 +170,7 @@ export async function PUT(
       isFeatured: r.is_featured === true,
       isActive: r.is_active === true,
       sortOrder: typeof r.sort_order === "number" ? r.sort_order : i,
-    };
+    });
     const result = ServiceSchema.safeParse(camelDraft);
     if (!result.success) {
       for (const issue of result.error.issues) {

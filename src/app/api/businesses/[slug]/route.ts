@@ -30,6 +30,7 @@ import {
 } from "@/core/validation/business-profile.schema";
 import { profileToBusinessRow } from "@/lib/business-update";
 import { enforceCsrf } from "@/lib/csrf";
+import { sanitizeBusinessProfileStrings } from "@/lib/user-input-sanitize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,6 +81,13 @@ export async function PATCH(
   let profile: BusinessProfile;
   try {
     profile = parseSnakeRowAsProfile(body);
+    // XSS-Defense-in-Depth (Code-Session 67): User-Input vor
+    // dem DB-Insert von HTML-Tags + Control-Chars säubern.
+    // Public-Site-Render via React-`{text}` ist primär durch
+    // Auto-Escaping geschützt — sanitize hier ist Schutz gegen
+    // spätere Markdown-/HTML-Renderer und gegen
+    // Logs/Email-Templates.
+    profile = sanitizeBusinessProfileStrings(profile);
   } catch (err) {
     if (err instanceof ValidationError) {
       return NextResponse.json(

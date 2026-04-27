@@ -346,10 +346,16 @@ beginnt die UI/UX-Polish-Phase.
   10 Routen geschützt). Bearer-Token bypasst (CLI/Server-zu-
   Server). Außerdem industry-presets-Test (Codex #11)
   gefixt — 42/42 Tests grün.
-- **67**: HTML-Sanitize-Whitelist auf User-Inputs, die in
-  Public-Site rendern (Service-Beschreibungen, Tagline,
-  About-Text). Aktuell läuft sanitize nur auf AI-Output —
-  User-Input direkt eingeben kann theoretisch HTML-Injection.
+- **67** ✅: HTML-Sanitize-Whitelist auf User-Inputs vor dem
+  DB-Insert. Pure Helper `lib/user-input-sanitize.ts` (~250
+  Zeilen, ~45 Asserts) wrappt den existierenden
+  `sanitizeText`-Stripper aus Session 27 mit
+  Whitespace-Normalisierung + Length-Cap + 3
+  Domain-Wrappern (BusinessProfile, Service, Lead inkl.
+  extraFields). 4 mutating Routen gehärtet
+  (onboarding, business PATCH, services PUT, leads POST).
+  Defense-in-Depth-Security-Stack komplett: SameSite +
+  CSRF + HTML-Sanitize.
 - **68**: Sentry-Integration für Error-Tracking (Browser +
   Server). DSN-ENV, sourcemap-Upload im CI, Error-Boundary
   in Layout.

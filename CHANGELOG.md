@@ -6,12 +6,87 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1 Restweg → MVP-funktional (Sessions 67–70)
-- **67**: HTML-Sanitize-Whitelist auf User-Input.
+### Phase 1 Restweg → MVP-funktional (Sessions 68–70)
 - **68**: Sentry-Integration.
 - **69**: „Betrieb löschen"-Flow mit rekursivem
   Storage-Cleanup.
 - **70** (Light-Pass): finaler Pre-MVP-Pass + Audit-Checkliste.
+
+## [0.16.41] – Code-Session 67 – 2026-04-27
+
+XSS-Defense-in-Depth: User-Input wird vor dem DB-Insert durch
+einen Whitelist-Sanitizer geschickt. React's `{text}`-Rendering
+schützt primär; Sanitize-Layer schützt zusätzlich gegen
+zukünftige Markdown-/HTML-Renderer, Email-Templates,
+Logs/Analytics. 4 mutating Routen gehärtet, 1 Pure Helper
+mit 3 Domain-Wrappern + ~45 Asserts.
+
+- ✚ `src/lib/user-input-sanitize.ts` — pure Helper
+  (~250 Zeilen):
+  - `sanitizeUserText(input, options?)` als Hauptfunktion
+    mit Pipeline: Non-string → "", `sanitizeText` (HTML-
+    Strip + Entity-Decode + Control-Char-Cleanup),
+    Whitespace-Normalisierung (single/multi-line),
+    Length-Cap (Default 50 KB).
+  - `sanitizeUserSingleLine(input, maxLength?)` und
+    `sanitizeUserMultiLine(input, maxLength?)` als
+    Convenience-Wrapper.
+  - **Multi-Line-Logik**: CRLF/CR → LF; pro Zeile
+    Trailing/Leading-Whitespace-Trim; mehr als 2
+    aufeinanderfolgende Newlines → 2; Block-Trim.
+  - **Single-Line-Logik**: alle Whitespace-Sequenzen
+    (inkl. Tab + Newline) → 1 Space, dann Trim.
+  - 3 Domain-Wrapper:
+    - `sanitizeBusinessProfileStrings(profile)`: name,
+      tagline, description, contact.* (phone/whatsapp/
+      email/website/google*Url), address.*
+      (street/postalCode/city/country) — pro Feld passender
+      Modus + Length-Limit.
+    - `sanitizeServiceStrings(service)`: title, short/long-
+      Description, category, priceLabel, durationLabel.
+    - `sanitizeLeadStrings(lead)`: name, phone, email,
+      message, preferredDate/Time, **plus extraFields**
+      (Keys auch sanitized + leere Keys gefiltert,
+      Number/Boolean bleiben bestehen).
+- ✚ `src/tests/user-input-sanitize.test.ts` (~45 Asserts):
+  defensive Inputs, HTML-Strip-Bypass-Versuche
+  (Entity-encoded + numeric), Single-/Multi-Line-Whitespace,
+  Length-Limit, alle Domain-Wrapper inkl. extraFields-
+  Edge-Cases, Idempotenz, doppelt-encoded Entity-Schutz.
+- 🔄 4 mutating Routen gepatcht:
+  - `/api/onboarding`: `name` + `tagline` single-line,
+    `description` multi-line.
+  - `/api/businesses/[slug]` (PATCH):
+    `sanitizeBusinessProfileStrings` nach Body-Parse, vor
+    Schema-Validation.
+  - `/api/businesses/[slug]/services` (PUT):
+    `sanitizeServiceStrings` pro Service-Row im Re-Map-
+    Block.
+  - `/api/leads`: `sanitizeLeadStrings` direkt vor
+    `repo.create()`.
+
+43/43 Smoketests grün. typecheck ✅, lint ✅, beide Builds
+✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 Pflicht-Item abgehakt (HTML-Sanitize). Phase 1
+Restweg: Sentry (68), „Betrieb löschen" (69), Pre-MVP-Pass
+(70).
+
+**Status-Update**: ~97.5 % Richtung „erstes Betrieb-fertiges
+Produkt". Security-Layer 2/2 (XSS) live. Defense-in-Depth-
+Stack: SameSite-Cookies + CSRF-Origin-Check (S66) +
+HTML-Sanitize (S67). Verbleibend: Sentry, „Betrieb löschen",
+Pre-MVP-Pass.
+
+**Manueller Test**: Onboarding-Form mit `<script>alert(1)
+</script>` als Tagline → DB enthält nur "alert(1)" (Tag
+gestrippt). Service-Beschreibung mit `&lt;img src=x
+onerror=foo&gt;` → DB enthält "foo" (Entity-decoded, dann
+strippt). Lead-Form mit doppelt-encoded
+`&amp;lt;script&amp;gt;` → DB enthält nichts ge­fährliches
+(Stripper läuft iterativ).
+
+## [0.16.40] – Code-Session 66 – 2026-04-27
 
 ## [0.16.40] – Code-Session 66 – 2026-04-27
 

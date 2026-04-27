@@ -27,6 +27,10 @@ import {
   validateOnboarding,
 } from "@/lib/onboarding-validate";
 import { enforceCsrf } from "@/lib/csrf";
+import {
+  sanitizeUserMultiLine,
+  sanitizeUserSingleLine,
+} from "@/lib/user-input-sanitize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,16 +80,20 @@ export async function POST(req: Request): Promise<Response> {
   }
   const b = body as Record<string, unknown>;
 
-  // 3) Pure-Validation
+  // 3) Pure-Validation. String-Felder werden vor der
+  // Validation durch den User-Input-Sanitizer geschickt
+  // (XSS-Defense-in-Depth, Code-Session 67) — name/tagline
+  // single-line, description multi-line. Slug, industryKey,
+  // themeKey, packageTier sind enum-artig und werden vom
+  // Validator strikt geprüft, daher kein Sanitize-Risiko.
   const validation = validateOnboarding({
     slug: typeof b["slug"] === "string" ? b["slug"] : "",
-    name: typeof b["name"] === "string" ? b["name"] : "",
+    name: sanitizeUserSingleLine(b["name"], 200),
     industryKey: typeof b["industryKey"] === "string" ? b["industryKey"] : "",
     themeKey: typeof b["themeKey"] === "string" ? b["themeKey"] : "",
     packageTier: typeof b["packageTier"] === "string" ? b["packageTier"] : "",
-    tagline: typeof b["tagline"] === "string" ? b["tagline"] : "",
-    description:
-      typeof b["description"] === "string" ? b["description"] : "",
+    tagline: sanitizeUserSingleLine(b["tagline"], 240),
+    description: sanitizeUserMultiLine(b["description"], 5_000),
   });
 
   if (!validation.ok) {

@@ -145,6 +145,12 @@
 - [supabase Discussion #19418 – Rename folder with supabase-js](https://github.com/orgs/supabase/discussions/19418) — bestätigt: 2026 noch keine Folder-API, Loop über Files (57).
 - [supabase storage-js Issue #49 – Bucket-Rename](https://github.com/supabase/storage-js/issues/49) — Bucket-Rename existiert noch nicht (relevant nur als Negativ-Information, 57).
 
+### User-Input-XSS-Sanitize-Patterns (Code-Session 67)
+- [OneUptime – How to Sanitize User Input in React](https://oneuptime.com/blog/post/2026-01-15-sanitize-user-input-react-injection/view) — Server-side Sanitize ist Pflicht, React-Auto-Escape reicht nicht für Logs/Templates (67).
+- [Zod Discussion #1358 – Sanitize via transform](https://github.com/colinhacks/zod/discussions/1358) — Zod selbst sanitized nicht; transform() ist der Hook (67).
+- [Saud Patel – Server-Side Validation and Sanitization](https://medium.com/@saudpatel.mscit22/server-side-validation-and-sanitization-using-zod-in-node-js-55e46e126635) — Pattern: sanitize → validate → DB-Insert (67).
+- [Ahmed Adel – zod-xss-sanitizer](https://github.com/AhmedAdelFahim/zod-xss-sanitizer) — Existing-Package; wir verzichten wegen Dep-Bloat, übernehmen die Idee (67).
+
 ### CSRF-Schutz für mutating API-Routen (Code-Session 66)
 - [Next.js – Data Security Guide](https://nextjs.org/docs/app/guides/data-security) — Server Actions haben automatischen Origin-Check; Custom-API-Routes müssen ihn selbst implementieren (66).
 - [Authgear – Next.js Security Best Practices 2026](https://www.authgear.com/post/nextjs-security-best-practices) — Defense-in-Depth: SameSite + Origin + optional Token (66).
