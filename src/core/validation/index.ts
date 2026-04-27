@@ -15,4 +15,5 @@ export * from "./theme.schema";
 export * from "./pricing.schema";
 export * from "./industry.schema";
 export * from "./business.schema";
+export * from "./business-profile.schema";
 export * from "./ai.schema";

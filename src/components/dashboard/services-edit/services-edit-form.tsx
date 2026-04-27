@@ -1,0 +1,330 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import {
+  FormProvider,
+  useFieldArray,
+  useForm,
+  type SubmitHandler,
+} from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Plus,
+  Save,
+  Sparkles,
+  Undo2,
+} from "lucide-react";
+import { z } from "zod";
+import { ServiceSchema } from "@/core/validation/service.schema";
+import {
+  clearServicesOverride,
+  getServicesOverride,
+  setServicesOverride,
+} from "@/lib/mock-store";
+import { getPresetOrFallback } from "@/core/industries";
+import { isLimitExceeded } from "@/core/pricing";
+import type { Business } from "@/types/business";
+import type { Service } from "@/types/service";
+import { ServiceCard } from "./service-card";
+import { ServicesSummary } from "./services-summary";
+
+export const ServicesFormSchema = z.object({
+  services: z.array(ServiceSchema),
+});
+export type ServicesFormValues = z.infer<typeof ServicesFormSchema>;
+
+type ServicesEditFormProps = {
+  business: Business;
+};
+
+function generateNewServiceId(slug: string): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `svc-${slug}-${crypto.randomUUID().slice(0, 8)}`;
+  }
+  return `svc-${slug}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Standard-Werte für eine neue, leere Leistung. */
+function buildEmptyService(business: Business, sortOrder: number): Service {
+  return {
+    id: generateNewServiceId(business.slug),
+    businessId: business.id,
+    title: "",
+    shortDescription: "",
+    longDescription: "",
+    tags: [],
+    isFeatured: false,
+    isActive: true,
+    sortOrder,
+  };
+}
+
+/**
+ * Sortiert Services nach `sortOrder` und schreibt sie auf saubere
+ * fortlaufende Werte (0..n-1) zurück. So bleibt die Reihenfolge stabil,
+ * auch wenn der User mit den Pfeil-Buttons swappt.
+ */
+function normalizeOrder(services: readonly Service[]): Service[] {
+  return [...services]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((s, i) => ({ ...s, sortOrder: i }));
+}
+
+export function ServicesEditForm({ business }: ServicesEditFormProps) {
+  const initial = useMemo<ServicesFormValues>(
+    () => ({ services: normalizeOrder(business.services) }),
+    [business.services],
+  );
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [hasOverride, setHasOverride] = useState(false);
+
+  const methods = useForm<ServicesFormValues>({
+    resolver: zodResolver(ServicesFormSchema),
+    defaultValues: initial,
+    mode: "onBlur",
+  });
+  const { fields, append, remove, swap } = useFieldArray({
+    control: methods.control,
+    name: "services",
+    keyName: "_rhfId",
+  });
+
+  // Hydrate aus localStorage, falls vorhanden.
+  useEffect(() => {
+    const stored = getServicesOverride(business.slug);
+    if (stored) {
+      methods.reset(
+        { services: normalizeOrder(stored) },
+        { keepDefaultValues: true },
+      );
+      setHasOverride(true);
+    } else {
+      setHasOverride(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [business.slug]);
+
+  const tier = business.packageTier;
+  const preset = getPresetOrFallback(business.industryKey);
+
+  const watchedServices = methods.watch("services") ?? [];
+  const count = watchedServices.length;
+  const activeCount = watchedServices.filter((s) => s?.isActive).length;
+  const featuredCount = watchedServices.filter((s) => s?.isFeatured).length;
+
+  const overLimit = isLimitExceeded(tier, "maxServices", count);
+  const atLimit = !overLimit && isLimitExceeded(tier, "maxServices", count - 1);
+  const errors = methods.formState.errors;
+  const errorCount = errors.services
+    ? Object.keys(errors.services).filter((k) => /^\d+$/.test(k)).length
+    : 0;
+  const isDirty = methods.formState.isDirty;
+
+  const onSubmit: SubmitHandler<ServicesFormValues> = (data) => {
+    const normalized = normalizeOrder(data.services);
+    if (isLimitExceeded(tier, "maxServices", normalized.length)) {
+      // UI-Hinweis steht bereits über die Summary-Karte – wir blockieren
+      // hier zusätzlich das Speichern, damit kein kaputter Zustand entsteht.
+      return;
+    }
+    const ok = setServicesOverride(business.slug, normalized);
+    if (ok) {
+      methods.reset({ services: normalized });
+      setSavedAt(new Date());
+      setHasOverride(true);
+    }
+  };
+
+  function handleResetOverride() {
+    clearServicesOverride(business.slug);
+    methods.reset(initial);
+    setHasOverride(false);
+    setSavedAt(null);
+  }
+
+  function handleDiscard() {
+    const stored = getServicesOverride(business.slug);
+    methods.reset({ services: normalizeOrder(stored ?? business.services) });
+  }
+
+  function handleAddEmpty() {
+    if (overLimit || atLimit) return;
+    append(buildEmptyService(business, count));
+  }
+
+  function handleImportPreset() {
+    const next: Service[] = preset.defaultServices.map((s, i) => ({
+      id: generateNewServiceId(business.slug),
+      businessId: business.id,
+      title: s.title,
+      shortDescription: s.shortDescription,
+      longDescription: "",
+      category: s.category,
+      priceLabel: s.defaultPriceLabel,
+      durationLabel: s.defaultDurationLabel,
+      tags: [],
+      isFeatured: false,
+      isActive: true,
+      sortOrder: i,
+    }));
+    methods.reset(
+      { services: next.slice(0, business.services.length || next.length) },
+      { keepDefaultValues: true },
+    );
+  }
+
+  return (
+    <FormProvider {...methods}>
+      <form onSubmit={methods.handleSubmit(onSubmit)} noValidate className="space-y-6">
+        {/* Status-Bar */}
+        <div className="sticky top-0 z-30 -mx-2 flex flex-wrap items-center gap-2 rounded-2xl border border-ink-200 bg-white/95 px-4 py-3 shadow-soft backdrop-blur">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-ink-900">
+              Leistungen verwalten
+            </p>
+            <p className="text-xs text-ink-600">
+              {hasOverride
+                ? "Lokale Anpassung aktiv – Demo-Defaults sind zurücksetzbar."
+                : "Demo-Stand. Änderungen werden im Browser gespeichert."}
+              {savedAt
+                ? ` · Gespeichert um ${savedAt.toLocaleTimeString("de-DE")}.`
+                : null}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {errorCount > 0 ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
+                <AlertCircle className="h-3 w-3" aria-hidden />
+                {errorCount} Karten mit Fehlern
+              </span>
+            ) : null}
+            {hasOverride ? (
+              <button
+                type="button"
+                onClick={handleResetOverride}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50"
+              >
+                <Undo2 className="h-3.5 w-3.5" aria-hidden />
+                Demo-Defaults laden
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleDiscard}
+              disabled={!isDirty}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-50"
+            >
+              Verwerfen
+            </button>
+            <button
+              type="submit"
+              disabled={!isDirty || overLimit}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              <Save className="h-3.5 w-3.5" aria-hidden />
+              Speichern
+            </button>
+          </div>
+        </div>
+
+        {savedAt ? (
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <CheckCircle2 className="h-4 w-4" aria-hidden />
+            Gespeichert. Reihenfolge und Änderungen sind im Browser persistiert.
+          </div>
+        ) : null}
+
+        <ServicesSummary
+          tier={tier}
+          count={count}
+          activeCount={activeCount}
+          featuredCount={featuredCount}
+        />
+
+        {/* Liste oder Empty State */}
+        {fields.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-ink-300 bg-white p-8 text-center">
+            <p className="text-sm font-semibold text-ink-900">
+              Noch keine Leistungen
+            </p>
+            <p className="mt-1 text-xs text-ink-500">
+              Starten Sie leer oder übernehmen Sie die typischen Leistungen aus
+              dem Branchen-Preset <strong>{preset.label}</strong>.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={handleAddEmpty}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:opacity-90"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                Erste Leistung anlegen
+              </button>
+              <button
+                type="button"
+                onClick={handleImportPreset}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-2 text-xs font-medium text-ink-700 hover:bg-ink-50"
+              >
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                Aus Branchen-Preset übernehmen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {fields.map((field, index) => (
+              <li key={field._rhfId}>
+                <ServiceCard
+                  index={index}
+                  total={fields.length}
+                  onMoveUp={() => index > 0 && swap(index, index - 1)}
+                  onMoveDown={() =>
+                    index < fields.length - 1 && swap(index, index + 1)
+                  }
+                  onRemove={() => remove(index)}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Footer-Aktion */}
+        {fields.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-ink-300 bg-white p-4">
+            <p className="text-xs text-ink-600">
+              {atLimit || overLimit
+                ? "Limit erreicht – Pakete vergleichen, um mehr Leistungen freizuschalten."
+                : `Sie können noch ${
+                    isLimitExceeded(tier, "maxServices", count)
+                      ? 0
+                      : Math.max(
+                          0,
+                          (() => {
+                            const limit =
+                              business.packageTier === "bronze"
+                                ? 10
+                                : business.packageTier === "silber"
+                                  ? 30
+                                  : 100;
+                            return limit - count;
+                          })(),
+                        )
+                  } Leistungen hinzufügen.`}
+            </p>
+            <button
+              type="button"
+              onClick={handleAddEmpty}
+              disabled={overLimit || atLimit}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              Neue Leistung hinzufügen
+            </button>
+          </div>
+        ) : null}
+      </form>
+    </FormProvider>
+  );
+}

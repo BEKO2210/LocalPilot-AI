@@ -23,8 +23,8 @@ Autowerkstatt bis zur Reinigungsfirma – und ist im Kern bewusst branchenneutra
 - Bronze/Silber/Gold-Pakete als echte Produktlogik (Feature-Locks im UI)
 - Branchen-Presets (Friseur, Werkstatt, Reinigung, Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop, …)
 
-Aktueller Stand: **Session 8** – Marketing-Funnel ausgebaut, eigene `/pricing`-Seite mit Feature-Vergleichsmatrix, Live-Demo-Showcase auf der Startseite.
-Weitere Funktionen folgen in den Sessions 9–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
+Aktueller Stand: **Session 11** – Services-Editor mit `useFieldArray`, Sortierung, Paket-Limit-Indikator, „Aus Preset übernehmen"-Import, Inline-Bestätigung beim Entfernen und localStorage-Mock-Store unter `/dashboard/[slug]/services`.
+Weitere Funktionen folgen in den Sessions 12–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
 
 ---
 
@@ -191,6 +191,9 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - [`docs/MOCK_DATA.md`](./docs/MOCK_DATA.md) – Demo-Betriebe, Aggregation, Daten-Hygiene
 - [`docs/PUBLIC_SITE.md`](./docs/PUBLIC_SITE.md) – Public Site Generator, Sektionen, SEO
 - [`docs/MARKETING.md`](./docs/MARKETING.md) – Marketing-Funnel, /pricing-Aufbau, Konversionspfad
+- [`docs/DASHBOARD.md`](./docs/DASHBOARD.md) – Dashboard-Routen, Sidebar/Mobile-Nav, Sub-Page-Vorschau
+- [`docs/BUSINESS_EDITOR.md`](./docs/BUSINESS_EDITOR.md) – Business-Editor, RHF + Zod, Mock-Store, Live-Preview
+- [`docs/SERVICES_EDITOR.md`](./docs/SERVICES_EDITOR.md) – Services-Editor, useFieldArray, Sortierung, Paket-Limits
 - [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) – GitHub Pages und Vercel
 - [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) – Was wurde in welcher Session gebaut?
 - [`CHANGELOG.md`](./CHANGELOG.md) – Versionshistorie
@@ -222,7 +225,14 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - ✅ **Marketing-Funnel** auf der Startseite (11-Schritt-Funnel), eigene
   `/pricing`-Seite mit Feature-Vergleichsmatrix und Limits-Tabelle,
   Live-Demo-Showcase, Beispiel-Stimmen, ROI-Sektion
+- ✅ **Dashboard-Grundstruktur** unter `/dashboard/[slug]` mit Sidebar +
+  Mobile-Nav, Übersicht und 7 Sub-Routen
+- ✅ **Business-Editor** unter `/dashboard/[slug]/business` mit
+  React-Hook-Form + Zod, 6 Sektionen, Live-Themed-Preview,
+  localStorage-Mock-Store
+- ✅ **Services-Editor** unter `/dashboard/[slug]/services` mit
+  `useFieldArray`, Sortier-Pfeilen, Paket-Limit-Indikator,
+  „Aus Preset übernehmen", Inline-Bestätigung beim Entfernen
 - ✅ **GitHub-Pages-Deployment** über Workflow `.github/workflows/deploy.yml`
   mit konditionellem Static-Export
-- ⏳ Dashboard, KI-System –
-  folgen in Sessions 9 bis 22
+- ⏳ Lead-System, KI – folgen in Sessions 12 bis 22

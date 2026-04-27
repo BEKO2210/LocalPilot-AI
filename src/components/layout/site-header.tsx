@@ -5,6 +5,7 @@ import { LinkButton } from "@/components/ui/button";
 const NAV = [
   { href: "/#loesung", label: "Lösung" },
   { href: "/demo", label: "Demos" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/pricing", label: "Pakete" },
   { href: "/themes", label: "Designs" },
   { href: "/#faq", label: "FAQ" },

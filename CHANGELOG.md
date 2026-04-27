@@ -7,7 +7,183 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 9+: Dashboard-Grundstruktur, Betriebsdaten, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+- Session 12+: Lead-System, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.11.0] – Session 11 – 2026-04-27
+
+### Added
+- **Services-Editor** unter `/dashboard/[slug]/services` – CRUD für
+  Leistungen. Nutzt RHF + zod (gleiches Pattern wie Session 10) plus
+  `useFieldArray` für die Service-Liste:
+  - **`<ServicesEditForm>`** – top-level Client-Form mit Status-Bar
+    (lokaler Override-Hinweis, Fehlerzähler, Speichern/Verwerfen/
+    Demo-Defaults laden), `useFieldArray` für append/remove/swap und
+    Block-Speichern bei Limit-Überschreitung.
+  - **`<ServiceCard>`** – kollabierbare `<details>`-Karte pro Service
+    mit Titel, Kategorie, Preis-Label, Dauer, Kurzbeschreibung,
+    Aktiv-/Hervorgehoben-Toggles, Inline-Entfernen-Bestätigung,
+    Reihenfolge-Pfeilen (↑↓) und versteckten System-Feldern (id,
+    businessId, sortOrder).
+  - **`<ServicesSummary>`** – Live-Indikator mit Fortschrittsbar,
+    Active-/Featured-Countern und Warnungen für „Limit erreicht" /
+    „Über Limit" plus Upgrade-Link nach `/pricing`.
+- **Mock-Store** `src/lib/mock-store/services-overrides.ts`:
+  `getServicesOverride` / `setServicesOverride` /
+  `clearServicesOverride` / `hasServicesOverride` mit versionierten
+  localStorage-Schlüsseln (`lp:services-override:v1:<slug>`) und
+  defensiver Schema-Validierung. Plus `getEffectiveServices(slug,
+  fallback)` für die spätere Public-Site-Integration.
+- **Empty-State** bei leerer Liste: zwei Wege – „Erste Leistung
+  anlegen" oder „Aus Branchen-Preset übernehmen" (konvertiert
+  `preset.defaultServices` zu vollständigen `Service`-Objekten mit
+  frischen IDs).
+- **Sortierungs-Normalisierung**: Beim Laden und Speichern werden
+  `sortOrder`-Werte auf 0..n-1 zurückgeschrieben.
+- **Paket-Gating**: Bronze (`service_management` nicht enthalten) zeigt
+  weiterhin `<ComingSoonSection>` plus Public-Site-Hinweis. Silber/Gold
+  bekommen den vollen Editor. Limit-Logik nutzt `isLimitExceeded()`,
+  Speichern ist bei Über-Limit blockiert.
+- Smoketest `src/tests/services-edit.test.ts` (~12 Assertions):
+  Form-Schema akzeptiert alle 6 Demo-Listen, `sortOrder` pro Business
+  eindeutig und nicht-negativ ganzzahlig, Service-IDs projektweit
+  eindeutig, Paket-Limits stimmen, Mock-Store SSR-sicher.
+- `docs/SERVICES_EDITOR.md` mit Architektur, Datenfluss, Funktionen,
+  Persistierungs-API, Paket-Gating-Tabelle.
+
+### Changed
+- **`src/components/dashboard/nav-config.ts`** – `services`-Eintrag
+  ohne `comingInSession` (jetzt produktiv für Silber/Gold). Sidebar
+  markiert ihn nicht mehr als „Vorschau".
+- **`src/tests/dashboard.test.ts`** – akzeptiert jetzt ≥ 3 produktive
+  Sektionen (Übersicht + Betriebsdaten + Leistungen).
+- **`src/lib/mock-store/index.ts`** re-exportiert `services-overrides`.
+
+### Notes
+- Bundle-Größe der Services-Page: 5,09 KB First-Load JS plus geteilte
+  Chunks (RHF wird mit dem Business-Editor geteilt).
+- Persistierung läuft client-only, kein Backend nötig. Public Site
+  zeigt weiterhin die Demo-Services – Sync via Repository-Layer
+  (Session 19).
+- Branchenneutralität gewahrt: keine `if (industryKey === "...")`-
+  Verzweigungen, der „Aus Preset übernehmen"-Knopf liest
+  `preset.defaultServices` aus dem aktuellen `IndustryPreset`.
+
+## [0.10.0] – Session 10 – 2026-04-27
+
+### Added
+- **Business-Editor** unter `/dashboard/[slug]/business`:
+  React-Hook-Form + Zod-Resolver, validiert gegen
+  `BusinessProfileSchema` (neuer Subset von `BusinessSchema` mit den
+  editierbaren Feldern). 6 Sektionen:
+  1. **Basisdaten** – Name, Tagline (`{{city}}`-Platzhalter), Beschreibung
+  2. **Branche & Paket** – Branchen-Select aus 13 Presets, Paket nur
+     anzeigen mit Link auf `/pricing`
+  3. **Adresse** – Street, PLZ, Stadt, ISO-Land
+  4. **Kontakt** – Telefon, WhatsApp, E-Mail, Website, Google-Maps-URL,
+     Google-Bewertungslink
+  5. **Öffnungszeiten** – 7-Tage-Editor mit `useFieldArray` für
+     mehrere Slots pro Tag (z. B. Mittagspause), „geschlossen"-Toggle
+     pro Tag
+  6. **Branding & Design** – visueller `<ThemePickerField>` (10 Themes
+     als Karten mit Color-Swatches), optionale Override-Felder für
+     Primär-/Sekundär-/Akzentfarbe, Logo-/Cover-URL-Felder
+- **`<BusinessEditPreview>`** – Live-Vorschau mit `<ThemeProvider>`
+  und `useWatch()`. Reagiert sofort auf Änderungen von Name, Tagline,
+  Theme und Farb-Overrides. Sticky-Sidebar auf Desktop, oben auf
+  Mobile.
+- **Mock-Store** in `src/lib/mock-store/`:
+  - `business-overrides.ts` – `getOverride` / `setOverride` /
+    `clearOverride` / `hasOverride` mit localStorage-Persistierung.
+    Versionierter Schlüssel `lp:business-override:v1:<slug>`,
+    defensive Validierung gegen Schema-Drift.
+  - `business-profile.ts` – `profileFromBusiness` (Extraktion aus
+    `Business`) und `mergeBusinessWithProfile` (für die Preview).
+- **Form-Primitive** in `src/components/forms/`:
+  `<FormSection>` (3-Spalten-Layout mit Eyebrow + Header links),
+  `<FormField>` (Label + Hilfetext + Inline-Fehler),
+  `<FormInput>` / `<FormTextarea>` / `<FormSelect>` mit konsistenter
+  Error-State-Visualisierung.
+- **Dashboard-Status**: Sidebar zeigt `Betriebsdaten` jetzt als
+  produktive Sektion (kein „Vorschau"-Badge mehr, kein
+  `comingInSession`).
+- **Smoketest** `src/tests/business-edit.test.ts`: alle 6 Demo-Profile
+  parsen, Merge erhält System-Felder (id, slug, packageTier, services),
+  Schema-Regeln greifen mit sprechenden Fehlern, leere Override-
+  Strings werden zu `undefined` transformiert.
+- `docs/BUSINESS_EDITOR.md` mit Architektur, Datenfluss,
+  Persistierungs-API, Static-Export-Notes, Erweiterungsanleitung.
+- Dependencies: `react-hook-form@7.54.2`, `@hookform/resolvers@3.10.0`.
+
+### Changed
+- **`src/components/dashboard/nav-config.ts`** – `business`-Eintrag
+  ohne `comingInSession` (jetzt produktiv). Sidebar markiert ihn nicht
+  mehr als „Vorschau".
+- **`src/tests/dashboard.test.ts`** – akzeptiert jetzt ≥ 2 produktive
+  Sektionen statt exakt 1.
+- **`src/core/validation/index.ts`** re-exportiert das neue
+  `BusinessProfileSchema`.
+
+### Notes
+- Bundle-Größe der Editor-Page: ~66 KB First-Load JS
+  (RHF + Resolver + Form-Felder). Andere Routen unverändert.
+- Persistierung läuft **client-only** über localStorage. Kein Backend,
+  keine Telemetrie. Andere Demo-Besucher:innen sehen die Anpassungen
+  nicht – Supabase folgt in Session 19.
+- Statisches Prerendering bleibt grün – die Editor-Page ist Server
+  Component, das interaktive Form ist eine `"use client"`-Komponente,
+  die mit der bekannten Hydration-Strategie nachlädt.
+- Branchenneutralität: alle Branchen-spezifischen Inhalte kommen aus
+  dem zugewiesenen `IndustryPreset` (für die Branchenauswahl) bzw. aus
+  dem Theme (für Design). Keine `if`-Verzweigung im Form-Code.
+
+## [0.9.0] – Session 9 – 2026-04-27
+
+### Added
+- **Dashboard-Grundstruktur** unter `/dashboard`:
+  - **`/dashboard`** – Demo-Picker mit 6 Karten (Counter für Anfragen,
+    Bewertung, Leistungen + Tier-Badge + Branche/Stadt + aktiver Link
+    auf `/dashboard/<slug>`).
+  - **`/dashboard/[slug]`** – per-Business-Übersicht mit
+    `<DashboardShell>` (Sidebar + Mobile-Nav + BusinessHeader). 5 Cards:
+    `<PackageStatusCard>` (Tier, Preise, Bronze→Gold-Fortschritt, nächste
+    Stufe), `<PreviewLinkCard>` (Veröffentlichungsstatus + Public-Site-
+    Öffnen), `<LeadsSummaryCard>` (Status-Counts), `<QuickActionsCard>`
+    (4 Quick-Actions, paketabhängig gegated), `<RecentLeadsList>` (5
+    jüngste Anfragen mit Status, Quelle, Anrufen-Link).
+  - **7 Sub-Routen** als statisch prerendete Vorschauen mit
+    `<ComingSoonSection>` (Roadmap-Bullets, Paket-Gating-Hinweis):
+    `business`, `services`, `leads`, `ai`, `reviews`, `social`, `settings`.
+  - **`/dashboard/[slug]/not-found.tsx`** – 404 im Marketing-Layout.
+- **`<DashboardShell>`** – Layout-Hülle mit Sticky-`<BusinessHeader>`
+  (Tier-Badge, `<details>`-basierter Demo-Switcher, Public-Site-Button),
+  persistenter Sidebar (md+), horizontalem Mobile-Nav-Strip.
+- **`nav-config.ts`** – Single Source of Truth `DASHBOARD_NAV` für
+  Sidebar, Mobile-Nav und Quickactions plus `dashboardHref(slug, key)`-
+  Helper.
+- **`<DashboardCard>`** und **`<EmptyState>`** als wiederverwendbare
+  Primitive.
+- **Header-Nav** zeigt jetzt einen „Dashboard"-Link, damit der Picker
+  von der Marketing-Seite aus erreichbar ist.
+- Smoketest `src/tests/dashboard.test.ts`: Nav-Konfiguration vollständig
+  und konsistent, jede Sub-Route hat eine `comingInSession`-Nummer im
+  sinnvollen Bereich, `dashboardHref()` löst korrekt auf, alle
+  Demo-Slugs sind erreichbar.
+- `docs/DASHBOARD.md` mit Routenbaum, Komponenten-Übersicht,
+  UX-Konventionen, Static-Export-Notes und Erweiterungsanleitung.
+
+### Notes
+- Build:static produziert jetzt deutlich mehr Routen
+  (1× Picker + 6 Slugs × 8 Sektionen = 49 Dashboard-Pages; insgesamt
+  **62 prerendete Routen**).
+- Reine Server Components – kein Client-JS für die Navigation,
+  Demo-Switcher nutzt natives `<details>`. Static-Export-tauglich.
+- Alle Dashboard-Routen tragen `robots: { index: false, follow: false }`.
+- Branchenneutrale, nicht-technische Sprache: „Anfragen" statt „Leads",
+  „Aktiver Demo-Betrieb" statt „Tenant", „Letzte Anfragen" statt
+  „Recent submissions".
+- Quick-Actions sind paketabhängig (`hasFeature` / `requiredTierFor`):
+  in Bronze sind die KI-Aktionen optisch gedimmt mit Hinweis
+  „Verfügbar ab Silber".
 
 ## [0.8.0] – Session 8 – 2026-04-27
 

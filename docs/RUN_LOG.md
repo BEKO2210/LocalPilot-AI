@@ -1035,11 +1035,387 @@ horizontal mit `overflow-x-auto`, Erste-Spalte ist sticky.
 
 ### 6. Was ist der nächste empfohlene Run?
 
-**Session 9 – Dashboard-Grundstruktur.**
+**Session 9 – Dashboard-Grundstruktur.** (s. u.)
 
-Route `/dashboard` mit Sidebar/Mobile-Navigation, Übersicht-Page (Paketstatus,
-offene Leads, Vorschau-Link auf eigene Public Site, Schnellaktionen,
-leere Zustände, Dashboard-Karten). Branchenneutrale Sprache („Anfragen"
-statt „Leads", „Inhalte" statt „Entities"). Static-Export-tauglich
-durch Server Components – falls später Interaktivität gebraucht wird,
-gezielt Client-Komponenten an die richtigen Stellen.
+---
+
+## Session 9 – Dashboard-Grundstruktur
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- **`/dashboard`** – Demo-Picker mit 6 Karten. Pro Karte: Branche,
+  Tier-Badge, Anfragen/Bewertung/Leistungen-Counter, aktiver Link auf
+  `/dashboard/<slug>`.
+- **`/dashboard/[slug]`** – per-Business-Übersicht mit
+  `<DashboardShell>` (Sticky-`<BusinessHeader>` + persistente Sidebar
+  auf md+ + horizontaler Mobile-Nav-Strip). 5 Cards:
+  - **`<PackageStatusCard>`** – Tier, monatlich/Setup-Preis,
+    Bronze→Gold-Fortschrittsbar, Hinweis auf nächste Stufe.
+  - **`<PreviewLinkCard>`** – Veröffentlichungsstatus + Public-Site-
+    Öffnen-Button + Einstellungen.
+  - **`<LeadsSummaryCard>`** – Status-Counts in 6 farbcodierten Boxen
+    (Neu/Kontaktiert/Qualifiziert/Gewonnen/Verloren/Archiviert).
+  - **`<QuickActionsCard>`** – 4 Schnellaktionen (Neue Leistung,
+    Anfragen prüfen, Bewertung anfragen, KI-Text erstellen),
+    paketabhängig gegated mit „Verfügbar ab Silber/Gold"-Hinweis.
+  - **`<RecentLeadsList>`** – 5 jüngste Anfragen mit Status, Quelle,
+    Datum, optional `tel:`-Anrufen-Link.
+- **7 statisch prerendete Sub-Routen** (Stubs):
+  `business`, `services`, `leads`, `ai`, `reviews`, `social`,
+  `settings`. Jede zeigt `<ComingSoonSection>` mit Roadmap-Bullets aus
+  Claude.md, der zugewiesenen Session-Nummer und (wo passend) einem
+  Paket-Gating-Hinweis (nutzt `hasFeature()`/`requiredTierFor()`).
+- **`/dashboard/[slug]/not-found.tsx`** – freundliche 404-Seite.
+- **`<DashboardShell>`** als Layout-Hülle. **`<BusinessHeader>`** mit
+  `<details>`-basiertem Demo-Switcher (kein Client-JS), Tier-Badge und
+  Public-Site-Button. **`<DashboardSidebar>`** und
+  **`<DashboardMobileNav>`** lesen aus derselben `DASHBOARD_NAV`-Liste.
+- **`nav-config.ts`** als Single Source of Truth: 8 Nav-Sektionen
+  (Übersicht + 7 Sub) mit Label, Icon, Path-Suffix und
+  `comingInSession`-Markierung.
+- **`<DashboardCard>`** und **`<EmptyState>`** als wiederverwendbare
+  Primitive.
+- **Header-Nav** im Site-Header zeigt jetzt einen „Dashboard"-Link.
+- Smoketest `src/tests/dashboard.test.ts` mit ~15 Assertions
+  (Nav-Vollständigkeit, eindeutige Keys, gültige Session-Nummern,
+  korrekte Href-Auflösung, Slug-Konsistenz).
+- `docs/DASHBOARD.md` mit Routenbaum, Komponenten-Übersicht,
+  UX-Konventionen, Static-Export-Notes, Erweiterungsanleitung.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (24 Dateien):
+- `src/components/dashboard/{nav-config,dashboard-shell,dashboard-sidebar,
+  dashboard-mobile-nav,business-header,dashboard-card,empty-state,
+  coming-soon-section,index}.tsx/.ts` (9 Dateien)
+- `src/components/dashboard/overview/{package-status-card,
+  leads-summary-card,preview-link-card,quick-actions-card,
+  recent-leads-list}.tsx` (5 Dateien)
+- `src/app/dashboard/page.tsx` (Picker)
+- `src/app/dashboard/[slug]/{layout,page,not-found}.tsx` (3 Dateien)
+- `src/app/dashboard/[slug]/{business,services,leads,ai,reviews,
+  social,settings}/page.tsx` (7 Dateien, alle Stubs)
+- `src/tests/dashboard.test.ts`
+- `docs/DASHBOARD.md`
+
+Geändert:
+- `src/components/layout/site-header.tsx` (Dashboard-Link)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck       # tsc --noEmit + Smoketests
+npm run lint            # 0 warnings/errors
+npm run build:static    # Static Export, jetzt 62 prerendete Routen
+npm run dev             # http://localhost:3000/dashboard
+```
+
+Schnell-Check:
+
+```bash
+curl -s -o /dev/null -w "%{http_code} /dashboard\n" http://localhost:3000/dashboard
+for slug in studio-haarlinie autoservice-mueller glanzwerk-reinigung beauty-atelier meisterbau-schneider fahrschule-stadtmitte; do
+  curl -s -o /dev/null -w "%{http_code} /dashboard/$slug\n" "http://localhost:3000/dashboard/$slug"
+done
+curl -s -o /dev/null -w "%{http_code} /dashboard/nope\n" http://localhost:3000/dashboard/nope
+# erwartet: Picker 200 + 6× 200 + Bad-Slug 404
+```
+
+Auf dem Handy: Demo-Picker zeigt 6 Karten, eine Karte antippen führt
+zur Übersicht. Mobile-Nav-Strip oberhalb des Inhalts ist horizontal
+scrollbar; jeder Tab zeigt entweder echten Inhalt (Übersicht) oder die
+Vorschau-Sektion mit Roadmap.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                       | Status                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| Dashboard wirkt professionell   | ✅ konsistente Karten, klare Typo, Tier-/Status-Badges, Mobile-First    |
+| Navigation klar                 | ✅ Sidebar + Mobile-Strip aus derselben Konfiguration; aktive Markierung |
+| Nicht-technische Sprache        | ✅ „Anfragen", „Aktiver Demo-Betrieb", „Vorschau" statt Tech-Jargon     |
+| Responsive                      | ✅ Sidebar erst ab `md:`, Mobile bekommt horizontalen Nav-Strip         |
+| Übersicht                       | ✅ 5 Cards plus Recent-Leads                                            |
+| Paketstatus                     | ✅ `<PackageStatusCard>` mit Fortschrittsbar                            |
+| Offene Leads                    | ✅ `<LeadsSummaryCard>` + `<RecentLeadsList>`                           |
+| Vorschau-Link                   | ✅ `<PreviewLinkCard>` mit Public-Site-Öffnen                          |
+| Schnellaktionen                 | ✅ `<QuickActionsCard>` mit paketabhängigem Gating                      |
+| Dashboard-Karten                | ✅ wiederverwendbares `<DashboardCard>`                                 |
+| Leere Zustände                  | ✅ `<EmptyState>` (genutzt in `<LeadsSummaryCard>` und `<RecentLeadsList>`) |
+
+### 5. Was ist offen?
+
+- **Session 10** – `business`-Sub-Route ausbauen (Stammdaten-Formular,
+  React Hook Form, Zod, Live-Vorschau).
+- **Session 11** – `services`-Sub-Route mit CRUD + Sortierung +
+  Paket-Limits.
+- **Session 12** – `leads`-Sub-Route mit Filter, Detail-Drawer,
+  echtes Anfrageformular auf der Public Site.
+- **Sessions 13–17** – `ai`, `reviews`, `social` mit Provider-Adapter
+  und Vorlagen-Cards.
+- **Session 18** – `settings`-Sub-Route + Feature-Lock-Vergleichsmatrix.
+- **Session 19** – Auth via Supabase, Demo-Picker entfällt für
+  eingeloggte Sitzungen, Repository-Layer ersetzt
+  `getMockBusinessBySlug` transparent.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 10 – Betriebsdaten und Branding bearbeiten.** (s. u.)
+
+---
+
+## Session 10 – Betriebsdaten und Branding bearbeiten
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- **Business-Editor** unter `/dashboard/[slug]/business` ersetzt den
+  Stub aus Session 9. React-Hook-Form + Zod-Resolver, validiert gegen
+  `BusinessProfileSchema` (neu, Subset von `BusinessSchema`).
+- **6 Form-Sektionen**:
+  1. Basisdaten – Name, Tagline (`{{city}}`-Platzhalter), Beschreibung
+  2. Branche & Paket – Industry-Select aus 13 Presets, Paket-Anzeige
+     (Display only, mit Link auf `/pricing`)
+  3. Adresse – Street, PLZ, Stadt, ISO-Land
+  4. Kontakt – Telefon, WhatsApp, E-Mail, Website, Maps, Bewertungslink
+  5. Öffnungszeiten – `<OpeningHoursEditor>` mit `useFieldArray`,
+     pro Tag „geschlossen" oder mehrere Slots (Mittagspause möglich)
+  6. Branding & Design – `<ThemePickerField>` (10 Themes als Karten),
+     optionale Color-Overrides, Logo- und Cover-URL-Felder
+- **`<BusinessEditPreview>`** – Live-Vorschau mit `<ThemeProvider>` +
+  `useWatch()`. Reagiert sofort auf Änderungen. Sticky-Sidebar Desktop,
+  oben auf Mobile.
+- **Mock-Store** in `src/lib/mock-store/`:
+  `getOverride`/`setOverride`/`clearOverride`/`hasOverride` über
+  localStorage mit versioniertem Schlüssel
+  (`lp:business-override:v1:<slug>`) und defensiver Schema-Validierung.
+- **Form-Primitive** in `src/components/forms/`:
+  `<FormSection>`, `<FormField>`, `<FormInput>`, `<FormTextarea>`,
+  `<FormSelect>`.
+- **Status-Bar** im Editor (sticky): „Lokale Anpassung aktiv", Anzahl
+  Fehler, Demo-Defaults laden, Verwerfen, Speichern.
+- **Sidebar** zeigt `Betriebsdaten` jetzt als produktive Sektion.
+- **Smoketest** `src/tests/business-edit.test.ts` (~10 Assertions).
+- **`docs/BUSINESS_EDITOR.md`** mit Architektur und Erweiterungsanleitung.
+- Dependencies ergänzt: `react-hook-form@7.54.2`,
+  `@hookform/resolvers@3.10.0`.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (12 Dateien):
+- `src/core/validation/business-profile.schema.ts`
+- `src/lib/mock-store/{business-overrides,business-profile,index}.ts`
+- `src/components/forms/{form-section,form-field,index}.tsx/.ts`
+- `src/components/dashboard/business-edit/{business-edit-form,
+  business-edit-preview,opening-hours-editor,theme-picker-field,
+  index}.tsx/.ts`
+- `src/tests/business-edit.test.ts`
+- `docs/BUSINESS_EDITOR.md`
+
+Geändert:
+- `src/app/dashboard/[slug]/business/page.tsx` (Stub → echter Editor)
+- `src/components/dashboard/nav-config.ts` (`business` jetzt produktiv)
+- `src/core/validation/index.ts` (re-exportiert Profile-Schema)
+- `src/tests/dashboard.test.ts` (≥ 2 produktive Sektionen)
+- `package.json` / `package-lock.json`
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm install               # RHF + Resolvers nachziehen
+npm run typecheck         # tsc --noEmit + Smoketests
+npm run lint              # 0 warnings/errors
+npm run build:static      # Static Export
+npm run dev               # http://localhost:3000/dashboard/beauty-atelier/business
+```
+
+Manuelle Schritte im Browser:
+1. `/dashboard/beauty-atelier/business` öffnen.
+2. Name oder Tagline ändern → Live-Vorschau aktualisiert sich sofort.
+3. Theme wechseln → Vorschau übernimmt Farben/Schriften.
+4. „Speichern" tippen → grüner Hinweis, Reload zeigt persistierten Stand.
+5. „Demo-Defaults laden" → Original kommt zurück.
+6. Pflichtfeld leeren → Inline-Fehler + Error-Counter im Status-Bar.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                       | Status                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| Betreiber kann Betrieb bearbeiten | ✅ alle 6 Demo-Slugs unter `/dashboard/<slug>/business`               |
+| Änderungen sind sichtbar        | ✅ Live-Themed-Preview + Reload zeigt persistierten Stand               |
+| Formular ist einfach            | ✅ 6 klar getrennte Sektionen, deutsche Labels & Hilfetexte             |
+| Validierung verständlich        | ✅ Inline-Fehler unter dem Feld, Fehler-Counter im Status-Bar           |
+| Business-Formular               | ✅ vollständig, Schema-validiert                                         |
+| Kontaktdaten / Adresse          | ✅ je eigene Sektion                                                     |
+| Öffnungszeiten                  | ✅ 7-Tage-Editor mit „geschlossen"-Toggle und mehreren Slots             |
+| Branche wählen                  | ✅ Select aus 13 Presets                                                 |
+| Paket anzeigen                  | ✅ Display-Card mit Link auf `/pricing`                                 |
+| Theme wählen                    | ✅ Visueller Picker mit Color-Swatches                                   |
+| Farben ändern                   | ✅ Drei Override-Felder (primary/secondary/accent)                       |
+| Logo / Bildplatzhalter          | ✅ Logo-URL + Cover-URL als Felder                                       |
+| Speichern mit Mock-Layer        | ✅ localStorage über `business-overrides.ts`                             |
+
+### 5. Was ist offen?
+
+- **Session 11** – `services`-Sub-Route mit CRUD-Form und Sortierung
+  (gleiches RHF + Mock-Store-Pattern).
+- **Session 12** – Lead-System (echtes Anfrageformular auf Public Site
+  + Detail-Drawer im Dashboard).
+- **Sessions 13–17** – KI-Provider, Bewertungs-Booster, Social-Generator.
+- **Session 18** – `settings`-Page (Slug, Veröffentlichungsstatus,
+  Locale).
+- **Session 19** – Storage-Backend für Logo/Cover-Upload + Supabase-
+  Repository (ersetzt localStorage-Mock).
+- Optional: nativer `<input type="color">` statt Hex-Text-Feld.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 11 – Leistungen verwalten.** (s. u.)
+
+---
+
+## Session 11 – Leistungen verwalten
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- **Services-Editor** unter `/dashboard/[slug]/services` ersetzt den
+  Stub aus Session 9. Pattern: gleiche RHF + Zod-Resolver +
+  localStorage-Architektur wie der Business-Editor (Session 10), aber
+  mit `useFieldArray` für die Service-Liste.
+- **`<ServicesEditForm>`** als top-level Client-Form mit:
+  - sticky Status-Bar (lokaler Override-Hinweis, Fehler-Counter,
+    Speichern/Verwerfen/Demo-Defaults laden),
+  - Block-Speichern bei Limit-Überschreitung (kein kaputter Zustand),
+  - „Verwerfen" fällt auf den persistierten Override zurück,
+    nicht auf den Demo-Default.
+- **`<ServiceCard>`** als kollabierbare `<details>`-Karte:
+  - Header mit Titel, Kategorie, Preis-Label, „Hervorgehoben"/
+    „Inaktiv"/„Fehler"-Badges, Reihenfolge-Pfeilen (↑↓),
+    Aufklapp-Pfeil.
+  - Body: Form-Felder Titel*, Kategorie, Preis-Label, Dauer,
+    Kurzbeschreibung; Toggles für Aktiv und Hervorgehoben;
+    Inline-Bestätigung beim Entfernen.
+  - Versteckte System-Felder (`id`, `businessId`, `sortOrder`)
+    werden mit `register("...")` mitgeführt.
+  - Karten mit Validierungsfehlern öffnen sich automatisch.
+- **`<ServicesSummary>`** mit Live-Indikator:
+  - „X von Y Leistungen genutzt" inkl. Fortschrittsbar.
+  - Aktiv-/Featured-Counter.
+  - Warnungen für „Limit erreicht" / „Über Limit" mit Upgrade-Link
+    nach `/pricing`.
+- **Empty-State** bei leerer Liste: zwei Wege – „Erste Leistung
+  anlegen" (leeres Service-Objekt) oder „Aus Branchen-Preset
+  übernehmen" (konvertiert `preset.defaultServices` zu vollständigen
+  `Service`-Objekten mit frischen IDs).
+- **Sortier-Logik**: ↑↓-Pfeile per Karte rufen `useFieldArray.swap()`.
+  Beim Speichern werden `sortOrder`-Werte konsekutiv auf 0..n-1
+  zurückgeschrieben (`normalizeOrder`).
+- **Mock-Store** `src/lib/mock-store/services-overrides.ts` –
+  `getServicesOverride` / `setServicesOverride` /
+  `clearServicesOverride` / `hasServicesOverride` mit
+  versionierten localStorage-Schlüsseln
+  (`lp:services-override:v1:<slug>`) und defensiver
+  Schema-Validierung. Plus `getEffectiveServices(slug, fallback)` als
+  Hook für die spätere Public-Site-Integration.
+- **Paket-Gating**: Bronze (`service_management` nicht enthalten)
+  zeigt weiterhin `<ComingSoonSection>` plus Public-Site-Hinweis.
+  Silber/Gold bekommen den vollen Editor. `isLimitExceeded()` blockt
+  das Speichern bei Über-Limit-Zuständen.
+- **Smoketest** `src/tests/services-edit.test.ts` (~12 Assertions):
+  Form-Schema akzeptiert alle 6 Demo-Listen, `sortOrder` pro Business
+  eindeutig und nicht-negativ ganzzahlig, Service-IDs projektweit
+  eindeutig, Paket-Limits stimmen, Mock-Store SSR-sicher.
+- **`docs/SERVICES_EDITOR.md`** mit Architektur, Datenfluss,
+  Funktionen, Persistierungs-API, Paket-Gating-Tabelle.
+- Sidebar zeigt `Leistungen` jetzt als produktive Sektion (kein
+  „Vorschau"-Badge mehr für Silber/Gold).
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (7 Dateien):
+- `src/lib/mock-store/services-overrides.ts`
+- `src/components/dashboard/services-edit/{services-edit-form,
+  service-card,services-summary,index}.tsx/.ts` (4 Dateien)
+- `src/tests/services-edit.test.ts`
+- `docs/SERVICES_EDITOR.md`
+
+Geändert:
+- `src/app/dashboard/[slug]/services/page.tsx` (Stub → Editor mit
+  Bronze-Gate)
+- `src/components/dashboard/nav-config.ts` (`services` jetzt produktiv)
+- `src/lib/mock-store/index.ts` (re-exportiert services-overrides)
+- `src/tests/dashboard.test.ts` (≥ 3 produktive Sektionen erwartet)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck         # tsc --noEmit + Smoketests
+npm run lint              # 0 warnings/errors
+npm run build:static      # Static Export
+npm run dev               # http://localhost:3000/dashboard/beauty-atelier/services
+```
+
+Manuell im Browser:
+1. `/dashboard/beauty-atelier/services` (Gold) öffnen → voller Editor.
+2. Neue Leistung hinzufügen → leere Karte erscheint, Title-Pflichtfeld
+   blockt das Speichern bis ausgefüllt.
+3. ↑↓-Pfeile → Reihenfolge ändert sich.
+4. Aktiv-Toggle ausschalten → Karte wird optisch gedimmt, Badge
+   „Inaktiv".
+5. „Speichern" → grüner Hinweis, Reload zeigt persistierten Stand.
+6. „Demo-Defaults laden" → Original kommt zurück.
+7. `/dashboard/meisterbau-schneider/services` (Bronze) → zeigt
+   Coming-Soon mit Upgrade-Hinweis statt Editor.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                     | Status                                                                                       |
+| ----------------------------- | -------------------------------------------------------------------------------------------- |
+| Leistungen vollständig verwaltbar | ✅ Liste, Anlegen, Bearbeiten, Aktiv/Inaktiv, Featured, Sortierung, Löschen, Preset-Import |
+| Bronze-Limit greift           | ✅ `isLimitExceeded` blockt Speichern; UI zeigt „Limit erreicht"/„Über Limit"               |
+| UI einfach                    | ✅ kollabierbare Karten, klare Toggles, Inline-Bestätigung beim Entfernen                    |
+| Keine kaputten Zustände       | ✅ Speichern blockiert bei Over-Limit, Sort-Order bei Save normalisiert                      |
+| Services-Liste                | ✅ vollständig                                                                                |
+| Service anlegen / bearbeiten / löschen | ✅                                                                                       |
+| aktiv/inaktiv                 | ✅                                                                                           |
+| Preislabel / Kategorie / Beschreibung | ✅                                                                                       |
+| Sortierung                    | ✅ ↑↓-Pfeile + Auto-Normalisierung                                                            |
+| Paketlimit beachten           | ✅ Live-Bar + Save-Block                                                                      |
+| Vorschau zur Public Site      | ✅ via BusinessHeader-Button (Session 9) auf jeder Dashboard-Seite                            |
+
+### 5. Was ist offen?
+
+- **Session 12** – Lead-System: echte Anfrageformular-Submission auf
+  der Public Site (Server Action) plus Detail-Drawer im Dashboard.
+- **Sessions 13–17** – KI-Assistent für Service-Beschreibungen,
+  FAQ-Generator, Bewertungs-Booster, Social-Generator.
+- **Session 18** – Settings-Page (Slug, Veröffentlichung, Locale).
+- **Session 19** – Repository-Layer ersetzt
+  `services-overrides.ts` transparent (Supabase-Tabelle pro Service,
+  echte Sync zwischen Dashboard und Public Site).
+- Optional: Drag-and-Drop für Sortierung statt ↑↓-Pfeile (UX-Polish).
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 12 – Lead-System.**
+
+Drei Bauteile parallel:
+1. **Public Site**: Anfrageformular auf `/site/[slug]` aktivieren –
+   Felder kommen aus `preset.leadFormFields`, Submission via Server
+   Action (oder client-only Mock-Store, falls Static-Export beibehalten
+   wird).
+2. **Dashboard `/leads`**: Liste eingegangener Anfragen mit Filter
+   (Status, Quelle), Detail-Drawer, Status-Wechsel, Notizen,
+   Antwort-Vorlagen mit Copy-to-Clipboard.
+3. **Mock-Store** `leads-overrides.ts` analog zu Sessions 10/11, plus
+   `appendLead(slug, lead)`-Helper für die Public-Site-Submission.
