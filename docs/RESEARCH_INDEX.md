@@ -90,6 +90,12 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Magic-Link UX + a11y (Code-Session 43)
+- [Scalekit – Magic Link login in Next.js 15](https://www.scalekit.com/blog/passwordless-authentication-next-js) — Status-Feedback-Patterns (43).
+- [Next.js – Architecture: Accessibility](https://nextjs.org/docs/architecture/accessibility) — `aria-live`, `aria-atomic` Empfehlungen (43).
+- [Next.js Learn – App Router: Improving Accessibility](https://nextjs.org/learn/dashboard-app/improving-accessibility) — Status-Region-Pattern für Forms (43).
+- [Vercel Engineering – Improving the accessibility of our Next.js site](https://vercel.com/blog/improving-the-accessibility-of-our-nextjs-site) — Vercel-eigene a11y-Lessons-Learned (43).
+
 ### @supabase/ssr + Next.js 15 Magic-Link (Code-Session 42)
 - [Supabase Docs – Creating a Supabase client for SSR](https://supabase.com/docs/guides/auth/server-side/creating-a-client) — `createServerClient` + `createBrowserClient`-Pattern (42).
 - [Supabase Docs – Setting up Server-Side Auth for Next.js](https://supabase.com/docs/guides/auth/server-side/nextjs) — Cookie-Handler, `getUser()` statt `getSession()` (42).

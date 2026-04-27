@@ -314,6 +314,21 @@ nutzt einen `service_role`-Client, der RLS umgeht (Code-Session 42+).
   `exchangeCodeForSession`, dann redirect auf `next` (gleiche
   Path-Validierung). Bei Fehler redirect auf `/login?error=...`.
 
+### Pages (Code-Session 43)
+
+- **`/login`** — Static-prerenderable Server Component. Enthält
+  den `<LoginForm>` (Client) und `<LoginErrorBanner>` (Client mit
+  `useSearchParams` in `<Suspense>`, damit der Server-Pfad ohne
+  `await searchParams` auskommt — sonst Static-Export-Bruch).
+- **`/account`** — Reine Client Component. Holt den User über
+  `getBrowserSupabaseClient().auth.getUser()`. Vier Zustände:
+  `loading`, `authed` (E-Mail + User-ID + Logout), `guest` (Link
+  nach `/login`), `unconfigured` (Demo-Modus-Hinweis, falls
+  `NEXT_PUBLIC_SUPABASE_*` nicht gesetzt).
+- **Footer-Link**: bisher nicht ergänzt — folgt mit der Multi-
+  Tenant-Wiring-Session, sobald „Mein Account" inhaltlich mehr
+  zeigt als nur die User-ID.
+
 ### Roadmap
 
 - **Session 43** — Login-UI + Dashboard-Auth-Wiring (Login-Page mit Magic-Link-Form, geschützte Dashboard-Routen via `getCurrentUser()`).

@@ -5328,3 +5328,76 @@ Dashboard-Auth-Wiring**. `/login`-Page mit Magic-Link-Form,
 `/dashboard`-Routen auf `getCurrentUser()` umstellen, Logout-
 Button, Session-State-UI.
 
+---
+
+## Code-Session 43 – Login-UI + Account-Page (Magic-Link)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: User kann jetzt Magic-Link anfordern und sieht den
+Login-Status. `/login` (static-prerenderable) plus `/account`
+(client-side Auth-Check, vier Zustände). Status-Mapping als pure
+Helper-Funktion extrahiert (testbar). aria-live-Region für
+Screenreader-Feedback. Dashboard-Wiring kommt erst, wenn echte
+Multi-Tenant-Daten da sind — sonst doppelt-Arbeit.
+
+**Dateien**:
+- ✚ `src/lib/auth-status.ts` — pure Helper: `IDLE_STATUS`,
+  `SENDING_STATUS`, `SUCCESS_STATUS`-Konstanten;
+  `statusFromApiResponse(status, body)` mappt 503/400/5xx auf
+  User-Messages (mit Sonderfall `supabase_not_configured` →
+  Demo-Mode-Hinweis statt technischer 503);
+  `statusFromNetworkError(err)` für fetch-failures;
+  `looksLikeEmail(input)` für Submit-Button-Enable.
+- ✚ `src/tests/auth-status.test.ts` (~30 Asserts):
+  Status-Konstanten, alle Mapping-Pfade (503-special / generic-503
+  / 400-invalid_email / 400-other / 401 / 5xx / exotische Codes),
+  Netzwerk-Errors mit + ohne Error-Objekt, looksLikeEmail-
+  Edge-Cases.
+- ✚ `src/app/login/login-form.tsx` — Client Component, fetched
+  POST `/api/auth/magic-link`. aria-live="polite" + aria-atomic
+  auf der Status-Region. Submit-Button erst aktiv, wenn
+  `looksLikeEmail(email)` true ist.
+- ✚ `src/app/login/error-banner.tsx` — Client Component,
+  `useSearchParams` in `<Suspense>`, vermeidet `await
+  searchParams`-Pattern (würde Static-Export brechen). Maps
+  `?error=missing_code|auth_not_configured|...` auf User-Texte.
+- ✚ `src/app/login/page.tsx` — Server Component, statisch.
+  Headline + LoginForm + Demo-/Datenschutz-/Impressum-Links.
+- ✚ `src/app/account/page.tsx` — Client Component (4 Zustände:
+  loading, authed, guest, unconfigured). Holt User via
+  `getBrowserSupabaseClient().auth.getUser()`, signOut-Button,
+  Demo-Mode-Karte falls ENV nicht gesetzt.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **26/27 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). `/login` + `/account` beide ○ (static-prerendered),
+Pages-kompatibel. Bundle: `/account` 64 kB page-bundle wegen
+`@supabase/supabase-js`-Import (one-off, nur beim Account-Besuch
+relevant). Shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Login-UI). Footer-Link auf
+`/account` + Dashboard-Wiring wandern auf eine spätere Session,
+sobald Multi-Tenant-Daten existieren.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Magic-Link UX + a11y.
+
+**Manueller Test (sobald Auth-ENV gesetzt)**:
+1. `npm run dev`, dann `/login` öffnen.
+2. E-Mail eingeben, „Login-Link senden".
+3. Erfolgs-Card erscheint.
+4. Mailbox öffnen, Link klicken → wird auf `/account` umgeleitet,
+   E-Mail + User-ID sichtbar.
+5. „Abmelden" → Redirect zurück nach `/login`.
+
+Auf der Static-Pages-Vorschau ohne API-Routen:
+- `/login` zeigt das Form, Submit liefert „Login-Link konnte
+  nicht gesendet werden" (404 → fetch-failure → Demo-Mode-Hinweis).
+- `/account` zeigt direkt die Demo-Mode-Karte.
+
+**Nächste Session**: offen — natürliche Kandidaten:
+1. **Public-Lead-Form auf LeadRepository umstellen** (verbindet
+   Session 40 mit der UI; Form schreibt optional nach Supabase).
+2. **Dependency-Sweep** (17 Major-Bumps angesammelt).
+3. **Onboarding-Flow** (initialer business_owner-Insert per
+   Service-Role nach erstem Login).
+

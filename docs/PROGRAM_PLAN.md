@@ -112,8 +112,9 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Auth-Infrastruktur wandert auf 42, UI auf 43 (atomar).
 - 42: `@supabase/ssr`-Setup (server + browser Clients), Magic-Link-
   Route + Callback-Route, Middleware mit Session-Refresh ✅
-- 43: Login-UI + Dashboard-Auth-Wiring (Login-Page mit Magic-Link-
-  Form, geschützte Dashboard-Routen via `getCurrentUser()`).
+- 43: Login-UI + Account-Page (Magic-Link-Form mit aria-live-
+  Status, Browser-Client-Auth-Check) ✅. Geschützte Dashboard-
+  Routen folgen, sobald Multi-Tenant-Daten da sind.
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 

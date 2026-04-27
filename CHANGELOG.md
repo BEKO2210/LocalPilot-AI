@@ -6,15 +6,48 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant — Auth-Sprint
-- **Code-Session 43: Login-UI + Dashboard-Auth-Wiring** (Login-Page
-  mit Magic-Link-Form, geschützte Dashboard-Routen via
-  `getCurrentUser()`).
-- Code-Sessions 44+: Public-Lead-Form auf LeadRepository umstellen,
-  Storage-Bucket für Logos, Edge-Runtime-Migration, CSRF-Schutz,
+### Geplant — frei wählbar
+- **Public-Lead-Form auf LeadRepository umstellen** (verbindet
+  Session 40 mit der UI; Form schreibt optional nach Supabase).
+- **Onboarding-Flow** (initialer business_owner-Insert per Service-
+  Role nach erstem Login).
+- **Dependency-Sweep** (17 Major-Bumps angesammelt: next 16,
+  zod 4, tailwind 4, ts 6, eslint 10, …).
+- Storage-Bucket für Logos, Edge-Runtime-Migration, CSRF-Schutz,
   HTML-Sanitize-Whitelist, Settings-Editor mit Legal-Sektion,
   Impressum-Editor pro Betrieb (für Reseller), Seed-Skript für
-  Demo-Daten, Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+  Demo-Daten, Schema↔Migration-Drift-Test.
+
+## [0.16.17] – Code-Session 43 – 2026-04-27
+
+Magic-Link-Login-UI. User kann jetzt einen Login-Link anfordern
+und sieht seinen Auth-Status. Dashboard-Wiring kommt erst mit
+Multi-Tenant-Daten — sonst doppelte Arbeit.
+
+- ✚ `src/lib/auth-status.ts` — pure Helper für Status-Messages.
+  Mappt 503-supabase_not_configured auf User-freundlichen
+  Demo-Mode-Hinweis. `looksLikeEmail` für Submit-Button-Enable.
+- ✚ `src/app/login/login-form.tsx` — Client Component, aria-live
+  Status-Region, fetched POST `/api/auth/magic-link`.
+- ✚ `src/app/login/error-banner.tsx` — Client Component,
+  `useSearchParams` in `<Suspense>` (vermeidet `await
+  searchParams`, das Static-Export bricht).
+- ✚ `src/app/login/page.tsx` — Server Component, statisch.
+- ✚ `src/app/account/page.tsx` — Client Component, 4 Zustände
+  (loading/authed/guest/unconfigured), Logout-Button.
+- ✚ `src/tests/auth-status.test.ts` (~30 Asserts):
+  Status-Konstanten, alle Mapping-Pfade,
+  Netzwerk-Error-Behandlung, Email-Format-Heuristik.
+
+26/27 Smoketests grün (industry-presets pre-existing red, Codex
+#11). `/login` + `/account` beide static-prerendered (○),
+Pages-kompatibel. Shared-Bundle 102 KB unverändert; `/account`
+trägt 64 kB Supabase-Client (one-off pro Besuch).
+
+**Manueller Test** (mit Auth-ENV): `/login` → E-Mail → Link in
+Mailbox → Klick → `/account` zeigt eingeloggten User → Logout
+→ zurück nach `/login`. Auf Static-Pages-Vorschau zeigt
+`/account` direkt den Demo-Mode-Hinweis.
 
 ## [0.16.16] – Code-Session 42 – 2026-04-27
 
