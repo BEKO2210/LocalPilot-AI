@@ -4618,3 +4618,54 @@ Nonce bei SSR-Auslieferung.
 Block im Public-Site-Lead-Form (Pflicht-Checkbox „Datenschutz
 gelesen", Verlinkung auf `/datenschutz`, Speicherdauer-Hinweis
 beim Submit). Vorbedingung für ersten echten Betrieb live.
+
+---
+
+## Code-Session 32 – DSGVO-Lead-Einwilligungs-Block + Datenschutz/Impressum
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Lead-Form bekommt Pflicht-Checkbox mit aktivem Opt-In, Link
+auf Datenschutzerklärung + Impressum, Speicherdauer-Hinweis. Schema-
+seitig ist `consent: { givenAt, policyVersion }` jetzt Pflichtfeld
+auf jedem Lead — Audit-Trail nach DSGVO Art. 7 Abs. 1.
+Datenschutzerklärung und Impressum kommen pro Demo-Betrieb mit
+Standard-Sektionen und Business-Daten-Substitution. **Letzte
+Vorbedingung für ersten echten Betrieb live ist damit erfüllt.**
+
+**Dateien**:
+- ✚ `src/core/legal.ts` — `PRIVACY_POLICY_VERSION`,
+  `LEAD_RETENTION_MONTHS` (12), `buildConsent()`-Helper.
+- 🔄 `src/core/validation/lead.schema.ts` — `LeadConsentSchema`,
+  `consent` als Pflichtfeld.
+- 🔄 `src/data/mock-leads.ts` — Factory backfilled `consent` auf
+  `createdAt` + aktuelle Policy-Version (alle 25 Demo-Leads).
+- 🔄 `src/lib/mock-store/leads-overrides.ts` — Storage-Version
+  v1 → v2 (alte Einträge ohne consent werden sauber verworfen).
+- 🔄 `src/components/public-site/public-lead-form.tsx` —
+  `consentChecked`-State, aktives Opt-In (kein pre-checked!),
+  separate Fehlerzeile, Submit `disabled={!consentChecked}`.
+- ✚ `src/app/site/[slug]/datenschutz/page.tsx` — 7 Standard-
+  Sektionen, Business-Substitution, MVP-Hinweis.
+- ✚ `src/app/site/[slug]/impressum/page.tsx` — Anbieter, Kontakt,
+  Verantwortliche, ODR-Verweis.
+- ✚ `src/tests/lead-consent.test.ts` (60 Asserts).
+- 🔄 `src/tests/leads-system.test.ts` + `schema-validation.test.ts`
+  — Probe-Lead bekommt consent-Feld.
+- 🔄 `docs/CODEX_BACKLOG.md` +1 Item: `industry-presets.test.ts`
+  bereits vor Session 32 rot (Eintrag #11, Codex-Sweep).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **18 von 19 Smoketests grün** (industry-presets pre-existing
+red, Codex #11).
+
+**Roadmap**: 1 Item abgehakt, 5 Folge-Items in Track G/B
+(Settings-Editor mit Legal-Sektion, Datenschutzerklärung-Editor
+mit Versions-Bump, AVV-Vorlage für Reseller-Fall,
+Lead-Retention-Cron, Widerrufs-Handler-Endpoint).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — DSGVO/EuGH-Referenzen.
+
+**Nächste Session**: Code-Session 33 — Cookie/JWT-Auth statt
+Bearer-Token-Stub (Track G). Aktuell hängt der Auth-State im
+localStorage als simpler Token; Cookies + Server-Validation sind
+die nächste Ausbaustufe Richtung Multi-Tenant.

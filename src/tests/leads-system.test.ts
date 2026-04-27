@@ -80,6 +80,11 @@ const probeLead: Lead = LeadSchema.parse({
   message: "Probe",
   status: "new",
   notes: "",
+  // Code-Session 32: consent ist Pflichtfeld
+  consent: {
+    givenAt: "2026-04-27T10:00:00Z",
+    policyVersion: "v1-2026-04",
+  },
   createdAt: "2026-04-27T10:00:00Z",
   updatedAt: "2026-04-27T10:00:00Z",
 });

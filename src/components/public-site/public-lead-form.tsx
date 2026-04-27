@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle2, AlertTriangle, Send } from "lucide-react";
 import { LeadSchema } from "@/core/validation/lead.schema";
+import { LEAD_RETENTION_MONTHS, buildConsent } from "@/core/legal";
 import { appendLead, generateLeadId } from "@/lib/mock-store/leads-overrides";
 import type { Business } from "@/types/business";
 import type { LeadFormField } from "@/types/lead";
@@ -134,6 +136,8 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
     return init;
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -195,7 +199,8 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
       if (STANDARD_FIELD_KEYS.has(k)) standard[k] = trimmed;
       else extra[k] = trimmed;
     }
-    const now = new Date().toISOString();
+    const nowDate = new Date();
+    const now = nowDate.toISOString();
     return {
       id: generateLeadId(business.slug),
       businessId: business.id,
@@ -210,6 +215,7 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
       extraFields: extra,
       status: "new" as const,
       notes: "",
+      consent: buildConsent(nowDate),
       createdAt: now,
       updatedAt: now,
     };
@@ -218,9 +224,16 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitError(null);
+    setConsentError(null);
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      return;
+    }
+    if (!consentChecked) {
+      setConsentError(
+        "Bitte bestätigen Sie die Einwilligung in die Datenverarbeitung, damit wir Ihre Anfrage bearbeiten dürfen.",
+      );
       return;
     }
 
@@ -252,6 +265,8 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
     for (const f of fields) cleared[f.key] = "";
     setValues(cleared);
     setErrors({});
+    setConsentChecked(false);
+    setConsentError(null);
     setSuccess(false);
     setSubmitError(null);
   }
@@ -330,20 +345,78 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
         </p>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
+      {/* DSGVO-Pflicht-Einwilligung. Aktives Opt-In, nicht vorausgefüllt. */}
+      <div
+        className="space-y-2 border-t pt-4"
         style={{ borderColor: "rgb(var(--theme-border))" }}
       >
+        <label
+          htmlFor="lead-consent"
+          className="flex items-start gap-2.5 text-xs"
+          style={{ color: "rgb(var(--theme-muted-fg))" }}
+        >
+          <input
+            id="lead-consent"
+            type="checkbox"
+            checked={consentChecked}
+            onChange={(e) => {
+              setConsentChecked(e.target.checked);
+              if (e.target.checked) setConsentError(null);
+            }}
+            required
+            aria-invalid={Boolean(consentError)}
+            className="mt-0.5 h-4 w-4 flex-none cursor-pointer"
+          />
+          <span>
+            Ich habe die{" "}
+            <Link
+              href={`/site/${business.slug}/datenschutz`}
+              className="font-medium underline underline-offset-2"
+              style={{ color: "rgb(var(--theme-foreground))" }}
+            >
+              Datenschutzerklärung
+            </Link>{" "}
+            gelesen und willige ein, dass meine Angaben zur Bearbeitung
+            meiner Anfrage gespeichert werden. Die Einwilligung kann
+            jederzeit per E-Mail an den Betrieb widerrufen werden.{" "}
+            <span className="opacity-80">
+              Speicherdauer: maximal {LEAD_RETENTION_MONTHS} Monate, sofern
+              keine Geschäftsbeziehung zustande kommt.
+            </span>
+            <span className="ml-1 text-rose-600" aria-hidden>
+              *
+            </span>
+          </span>
+        </label>
+        {consentError ? (
+          <p
+            className="flex items-start gap-1.5 text-xs font-medium text-rose-600"
+            role="alert"
+          >
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden />
+            {consentError}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p
           className="text-[11px]"
           style={{ color: "rgb(var(--theme-muted-fg))" }}
         >
-          Mit dem Senden stimmen Sie zu, dass wir Ihre Angaben für die
-          Bearbeitung Ihrer Anfrage nutzen. Demo-Submission – Daten bleiben
-          ausschließlich in Ihrem Browser.
+          Demo-Submission — Daten bleiben in dieser Vorschau ausschließlich
+          in Ihrem Browser.{" "}
+          <Link
+            href={`/site/${business.slug}/impressum`}
+            className="underline underline-offset-2"
+            style={{ color: "rgb(var(--theme-foreground))" }}
+          >
+            Impressum
+          </Link>
         </p>
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !consentChecked}
           className="inline-flex items-center gap-1.5 rounded-theme-button px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
           style={{
             backgroundColor: "rgb(var(--theme-primary))",

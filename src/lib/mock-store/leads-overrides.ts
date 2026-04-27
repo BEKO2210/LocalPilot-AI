@@ -18,7 +18,11 @@ import type { Lead } from "@/types/lead";
 import type { LeadStatus } from "@/types/common";
 
 const STORAGE_PREFIX = "lp:leads-override:";
-const STORAGE_VERSION = "v1";
+// v2 (Code-Session 32): LeadSchema verlangt `consent`-Feld; alte
+// v1-Einträge ohne consent würden vom Reader sowieso verworfen
+// (safeParse fail), aber wir bumpen explizit, damit der Speicherslot
+// frisch startet.
+const STORAGE_VERSION = "v2";
 
 const LeadsOverrideSchema = z.array(LeadSchema);
 

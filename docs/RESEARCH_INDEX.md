@@ -88,7 +88,17 @@
 - [Next.js – API Routes in Static Export Warning](https://nextjs.org/docs/messages/api-routes-static-export) (28).
 - [Next.js – Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers) (28).
 
-## Track D · Security & Sanitization
+## Track D · Security & Sanitization / Compliance
+
+### DSGVO / Lead-Einwilligung (Code-Session 32)
+- [LeadGenApp – DSGVO-Formular: Einholung der Einwilligung mit Online-Formularen](https://leadgenapp.io/de/DSGVO-Formular/) — Aktiver Opt-In (32).
+- [LeadScraper – Lead Generierung DSGVO-konform 2026 + Checkliste](https://www.leadscraper.de/blog/lead-generieren-dsgvo) — Storage-Duration + Pflichtangaben (32).
+- [CMS Hasche Sigle – EuGH: Einwilligung muss aktiv erklärt werden](https://www.cmshs-bloggt.de/tmc/datenschutzrecht/dsgvo-einwilligung-checkbox-erklarung/) — Cookie-Pre-Check verboten (32).
+- [Webcellent – DSGVO-Datenschutz-Checkbox-Pflicht für Kontaktformulare](https://www.webcellent.com/blog/eu-dsgvo-datenschutz-checkbox-pflicht-fuer-kontaktformulare/) (32).
+- [datenschutz-janolaw – Freiwillige Einwilligung mit Checkbox](https://www.datenschutz-janolaw.de/info-faq/informationen/dsgvo/einwilligung.html) (32).
+- [it-daily – 6 Tipps für datenschutzkonforme Lead-Generierung](https://www.it-daily.net/it-sicherheit/datenschutz-grc/6-tipps-fuer-die-datenschutzkonforme-lead-generierung) (32).
+
+
 
 ### Sanitization & Prompt-Injection (Code-Session 31)
 - [DOMPurify (cure53)](https://github.com/cure53/DOMPurify) — XSS-Sanitizer für HTML/SVG/MathML mit Whitelist-Modus (31).

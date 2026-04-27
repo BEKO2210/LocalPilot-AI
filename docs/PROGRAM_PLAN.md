@@ -255,6 +255,25 @@ aktiven Session.
   `npm outdated` + Smoketest.
 - DSGVO-Hinweis-Block für die Bewertungs-Anfrage-Versendung
   (Einwilligung, Speicherdauer, Widerruf).
+- ~~**DSGVO-Lead-Einwilligung**~~ (Code-Session 32 ✅, Lead-Form
+  hat aktive Pflicht-Checkbox + Versions-Stempel + Speicherdauer-
+  Hinweis + Verlinkung auf `/datenschutz` und `/impressum`).
+  Folge-Items:
+  - **Settings-Editor mit Legal-Sektion** (Meilenstein 4): USt-IdNr.,
+    Aufsichtsbehörde, Berufshaftpflicht, individueller
+    Datenschutzbeauftragter pro Betrieb.
+  - **Datenschutzerklärung-Editor** im Dashboard, damit der
+    Auftraggeber den Stub-Text durch eigene anwaltlich geprüfte
+    Texte ersetzen kann (mit automatischem Versions-Bump bei
+    inhaltlicher Änderung).
+  - **Auftragsverarbeitungsvertrag-Vorlage** für den Reseller-Fall
+    (LocalPilot AI vs. der lokale Betrieb als Verantwortlicher).
+  - **Lead-Retention-Cron**: alte Leads über
+    `LEAD_RETENTION_MONTHS` automatisch löschen (sobald Backend
+    steht — aktuell nur localStorage, also User-kontrolliert).
+  - **Widerrufs-Handler-Endpoint** (`/api/lead/withdraw`): Anfragender
+    sendet E-Mail-Verifikations-Token, Lead wird sofort entfernt +
+    Audit-Eintrag.
 - Rate-Limit auf der KI-Layer (Mock + zukünftig echte Provider) mit
   zentraler Konfiguration und transparenter Fehlermeldung im UI.
 - Content-Security-Policy + Subresource-Integrity Header für den

@@ -206,6 +206,24 @@ build:static; alle internen Links funktionieren (manuelle Stichprobe).
 
 ---
 
+### #11 — `[needs-review]` `industry-presets.test.ts` schlägt seit unbekannter Session fehl
+
+**Pfad:** `src/tests/industry-presets.test.ts`
+
+**Symptom:** Der Test versucht `getPresetOrFallback("definitely_not_a_real_key" as IndustryKey)` aufzurufen und erwartet, dass die Funktion stillschweigend den Fallback-Preset liefert. Tatsächlich wirft die Funktion (oder eine inneren Schema-Parse), weil `IndustryKeySchema` den unbekannten Wert nicht durchlässt.
+
+**Beobachtung von Code-Session 32:** der Fehler war bereits in Commit `86d10f1` (Session 31) vorhanden, **unabhängig** von der Consent-Arbeit. Wahrscheinlich seit einer schema-strikteren Zod-Version oder einem früheren Refactor liegen geblieben.
+
+**Wahrscheinliche Fixe** (Codex bitte erst recherchieren, dann genau einen umsetzen):
+- (a) `getPresetOrFallback`: `safeParse` statt `parse` verwenden, bei Fehler Fallback zurückgeben.
+- (b) Test-Eintrag aktualisieren: ein gültiger key, dessen Preset bewusst entfernt wurde, statt eines komplett ungültigen.
+
+**Boundary:** Codex darf den Test-Eintrag aktualisieren oder `getPresetOrFallback` mit minimalem Diff fixen. Wenn der Fix die `getPresetOrFallback`-Signatur oder das Default-Verhalten ändert: stoppen und in `[needs-review]` belassen.
+
+**Verifikation:** `npx tsx src/tests/industry-presets.test.ts` läuft grün.
+
+---
+
 ### #10 — `[pre-approved]` Deutsche Anführungszeichen in JSX-Prop-Strings escapen
 
 **Suchpfad:** `src/app/**/*.tsx`, `src/components/**/*.tsx`

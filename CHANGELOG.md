@@ -6,14 +6,50 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant (Meilenstein 2 + DSGVO)
-- **Code-Session 32: DSGVO-Lead-Einwilligungs-Block** im Public-Site-
-  Lead-Form (Pflicht-Checkbox „Datenschutz gelesen", Verlinkung auf
-  `/datenschutz`-Stub, Speicherdauer-Hinweis beim Submit).
-  Vorbedingung für ersten echten Betrieb live.
-- Code-Sessions 33+: echte Cookie/JWT-Auth, Edge-Runtime-Migration,
-  Vercel-SSR-Deploy, Status-History, HTML-Sanitize-Whitelist mit
-  isomorphic-dompurify (sobald Markdown-Rendering kommt).
+### Geplant
+- **Code-Session 33: Cookie/JWT-Auth** statt Bearer-Token-Stub
+  (Track G). Auth-State in HttpOnly-Cookie, Server-Validation,
+  Vorbedingung für Multi-Tenant.
+- Code-Sessions 34+: Edge-Runtime-Migration, Vercel-SSR-Deploy,
+  Status-History, HTML-Sanitize-Whitelist (`isomorphic-dompurify`),
+  Settings-Editor mit Legal-Sektion (USt-IdNr., Aufsichtsbehörde,
+  Berufshaftpflicht), Datenschutzerklärung-Editor mit Versions-Bump.
+
+## [0.16.6] – Code-Session 32 – 2026-04-27
+
+DSGVO-Lead-Einwilligungs-Block. **Letzte Vorbedingung für ersten
+zahlenden Betrieb live ist damit erfüllt** (Schema, Form, Datenschutz,
+Impressum, Audit-Trail).
+
+- ✚ `src/core/legal.ts` — `PRIVACY_POLICY_VERSION` (`v1-2026-04`),
+  `LEAD_RETENTION_MONTHS` (12), `buildConsent()`-Helper.
+- 🔄 `LeadSchema` — `consent: { givenAt, policyVersion }` ist
+  Pflichtfeld. Audit-Trail nach DSGVO Art. 7 Abs. 1.
+- 🔄 `mock-leads.ts` — `lead()`-Factory backfilled `consent` auf
+  `createdAt` für alle 25 Demo-Leads.
+- 🔄 `leads-overrides.ts` — Storage-Version v1 → v2.
+- 🔄 `PublicLeadForm` — aktives Opt-In (kein pre-checked!),
+  separate Fehlerzeile, Submit-Button gesperrt ohne Häkchen,
+  Speicherdauer-Hinweis, Link auf Datenschutzerklärung + Impressum.
+- ✚ `/site/[slug]/datenschutz` — 7 Standard-Sektionen
+  (Verantwortlicher, Daten, Zweck/Rechtsgrundlage, Speicherdauer,
+  Empfänger, Betroffenenrechte, Cookies/Storage).
+- ✚ `/site/[slug]/impressum` — Anbieter, Kontakt, Verantwortliche,
+  Haftungsausschluss, ODR-Verweis. MVP-Hinweis auf fehlende USt-IdNr.
+- ✚ `src/tests/lead-consent.test.ts` (60 Asserts: Schema, Helper,
+  alle 25 Demo-Leads × 2).
+- 🔄 `leads-system.test.ts` + `schema-validation.test.ts` — Probe-
+  Lead bekommt consent-Feld.
+- 🛣️ Roadmap +5 Folge-Items: Settings-Editor mit Legal-Sektion,
+  Datenschutzerklärung-Editor (Versions-Bump), AVV-Vorlage,
+  Lead-Retention-Cron, Widerrufs-Handler-Endpoint.
+- 🧹 Codex-Backlog +1 (#11): `industry-presets.test.ts` ist seit
+  vor Session 32 rot — pre-existing, unabhängig von Consent-Arbeit.
+
+Bundle: shared 102 KB unverändert; 2 neue Public-SSG-Routen
+`/site/[slug]/datenschutz` und `/site/[slug]/impressum`.
+
+## [0.16.5] – Code-Session 31 – 2026-04-27
 
 ## [0.16.5] – Code-Session 31 – 2026-04-27
 
