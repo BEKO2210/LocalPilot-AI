@@ -7,12 +7,60 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht)
-- Code-Session 16: Mock für `generateFaqs`.
 - Code-Session 17: Mock für `generateCustomerReply`.
-- Code-Sessions 18–20: Mock für Social-Posts, Bewertungs-Anfragen, Angebote.
+- Code-Session 18: Mock für `generateReviewRequest`.
+- Code-Session 19: Mock für `generateSocialPost`.
+- Code-Session 20: Mock für `generateOfferCampaign` (schließt Mock-Phase ab).
 - Code-Sessions 21–22: OpenAI-Provider scharf (mit Caching).
 - Code-Sessions 23–24: Anthropic-Provider scharf.
 - Code-Session 25: Cost-Tracking + Rate-Limit-UI.
+
+## [0.13.4] – Code-Session 16 – 2026-04-27
+
+### Added
+- **Mock-Provider `generateFaqs` ist scharf** (dritte von sieben
+  Mock-Methoden — atomarer Schritt unter dem Session-Protokoll):
+  - `src/core/ai/providers/mock/faqs.ts` – deterministische
+    Implementierung mit dreistufiger Quellen-Strategie:
+    1. `preset.defaultFaqs` als Saat (branchen-typische Standard-
+       fragen, ~4 pro Preset),
+    2. aus `topics` abgeleitete Q/A-Paare über Stichwort-Templates
+       (Preis, Termin, Öffnungszeiten, Stornierung, Zahlung,
+       Anfahrt, Garantie) plus generischer Fallback,
+    3. lokale „Sind Sie auch in {{city}} und Umgebung aktiv?"-
+       Frage, sobald `city` gesetzt ist und Platz übrig ist.
+  - **Deduplizierung** über `normalizeQuestion`: lowercase, NFKD-
+    Diakritika entfernt, alles außer Buchstaben/Zahlen entfernt.
+    Doppelte Fragen werden verworfen, auch wenn sich Schreibweise
+    oder Satzzeichen unterscheiden.
+  - Antwort-Längen orientieren sich an aktuellen AEO-/AI-Search-
+    Empfehlungen (~30–60 Wörter pro Antwort) und bleiben unter dem
+    Schema-Limit. `clamp` schneidet auf Wortgrenze als Sicherheits-
+    netz.
+  - Output gegen `FaqGenerationOutputSchema` validiert.
+- `mock-provider.ts` komponiert die dritte Methode dazu
+  (`{ ...stub, generateWebsiteCopy, improveServiceDescription,
+  generateFaqs }`). Die übrigen 4 Methoden bleiben Stubs.
+- Smoketest `src/tests/ai-mock-provider.test.ts` um einen
+  ~15-Assertions-Block für `generateFaqs` erweitert (~60 Assertions
+  gesamt): 2 Branchen × 2–3 `count`-Werte mit Längen-Checks,
+  Preset-Saatfrage erscheint, Topic „Stornierung"/„Preise" wählen
+  spezialisierte Templates, lokale Frage greift mit `city` und
+  fehlt ohne, Deduplizierung bei doppelten Topics, `count=1` →
+  genau 1 Q/A, Determinismus, `count=0` → `invalid_input`.
+  Block für die jetzt nur noch 4 Stub-Methoden entsprechend
+  angepasst.
+
+### Notes
+- **Recherche** (Session-Protokoll): Quellen zu 2026-FAQ-Schema-
+  Best-Practices, AEO-/AI-Search-Patterns und Local-SEO-Q/A-
+  Formaten im RUN_LOG-Eintrag „Code-Session 16".
+- **Bewusst klein gehalten**: nur eine zusätzliche Mock-Methode.
+  Keine UI-Änderung, keine neuen Dependencies, kein Bundle-Zuwachs
+  (Mock-Modul bleibt tree-shaken solange noch keine Seite es
+  importiert). Diff ~15 KB, 1 neue Datei, 2 geänderte. Alle
+  Verifikationen grün (`typecheck`, `lint`, `build:static`,
+  beide Smoketests).
 
 ## [0.13.3] – Code-Session 15 – 2026-04-27
 

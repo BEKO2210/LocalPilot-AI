@@ -363,16 +363,162 @@ async function run(): Promise<void> {
   );
 
   // -----------------------------------------------------------------------
-  // 8. Übrige 5 Methoden müssen weiterhin provider_unavailable werfen.
+  // 8. generateFaqs (Code-Session 16)
+  // -----------------------------------------------------------------------
+  // 8a. 2 Branchen × 2 count-Werte → vollständige Outputs, jeweils
+  //     im Schema-Limit (≥ 1, ≤ count).
+  // -----------------------------------------------------------------------
+
+  async function checkFaqShape(
+    context: AIBusinessContext,
+    label: string,
+    count: number,
+  ): Promise<void> {
+    const out = await mockProvider.generateFaqs({
+      context,
+      topics: [],
+      count,
+    });
+    assert(
+      out.faqs.length >= 1 && out.faqs.length <= count,
+      `${label}/count=${count}: faqs.length zwischen 1 und count`,
+    );
+    for (const f of out.faqs) {
+      assert(
+        f.question.length >= 3 && f.question.length <= 240,
+        `${label}/count=${count}: question im Limit`,
+      );
+      assert(
+        f.answer.length >= 3 && f.answer.length <= 2000,
+        `${label}/count=${count}: answer im Limit`,
+      );
+    }
+  }
+
+  await checkFaqShape(baseContextHairdresser, "hairdresser", 3);
+  await checkFaqShape(baseContextHairdresser, "hairdresser", 6);
+  await checkFaqShape(baseContextAutoWorkshop, "auto_workshop", 4);
+
+  // 8b. Preset-Saatfragen erscheinen in der Ausgabe (Friseur-Preset hat
+  //     z. B. „Wie buche ich einen Termin?", Werkstatt-Preset hat
+  //     „Wie schnell bekomme ich einen Termin?").
+  const fHair = await mockProvider.generateFaqs({
+    context: baseContextHairdresser,
+    topics: [],
+    count: 4,
+  });
+  assert(
+    fHair.faqs.some((f) => f.question.toLowerCase().includes("termin")),
+    "hairdresser: Preset-Saatfrage zu Termin enthalten",
+  );
+
+  // 8c. Topic „Stornierung" landet als spezialisierte Q/A in der Ausgabe.
+  const fTopic = await mockProvider.generateFaqs({
+    context: baseContextHairdresser,
+    topics: ["Stornierung"],
+    count: 8,
+  });
+  assert(
+    fTopic.faqs.some(
+      (f) => f.question.toLowerCase().includes("absag") ||
+        f.question.toLowerCase().includes("stornier"),
+    ),
+    "topic 'Stornierung' → eigene Q/A im Ergebnis",
+  );
+
+  // 8d. Topic „Preise" → Preis-Template wird gewählt (Frage enthält
+  //     „Was kostet").
+  const fPrice = await mockProvider.generateFaqs({
+    context: baseContextHairdresser,
+    topics: ["Preise"],
+    count: 8,
+  });
+  assert(
+    fPrice.faqs.some((f) => f.question.toLowerCase().includes("kostet")),
+    "topic 'Preise' → 'Was kostet'-Frage erzeugt",
+  );
+
+  // 8e. Lokale Frage: bei gesetztem city und genug count taucht
+  //     „Sind Sie auch in <city>" auf.
+  const fLocal = await mockProvider.generateFaqs({
+    context: baseContextHairdresser,
+    topics: [],
+    count: 20,
+  });
+  assert(
+    fLocal.faqs.some((f) => f.question.includes("Bremen")),
+    "Lokale Frage mit city erscheint bei genug Platz",
+  );
+
+  // 8f. Ohne city wird die lokale Frage nicht erzeugt.
+  const fNoCity = await mockProvider.generateFaqs({
+    context: { ...baseContextHairdresser, city: undefined },
+    topics: [],
+    count: 20,
+  });
+  assert(
+    fNoCity.faqs.every((f) => !/sind sie auch in/i.test(f.question)),
+    "Ohne city: keine lokale Frage",
+  );
+
+  // 8g. Deduplizierung: doppelte Topics führen nicht zu doppelten Q/As.
+  const fDedup = await mockProvider.generateFaqs({
+    context: baseContextAutoWorkshop,
+    topics: ["Preise", "Preise", "preise"],
+    count: 10,
+  });
+  const dedupKeys = fDedup.faqs.map((f) =>
+    f.question.toLowerCase().replace(/[^a-z0-9]+/g, ""),
+  );
+  assert(
+    new Set(dedupKeys).size === dedupKeys.length,
+    "Deduplizierung: keine doppelten Fragen-Schlüssel",
+  );
+
+  // 8h. count = 1 liefert genau 1 Q/A.
+  const fOne = await mockProvider.generateFaqs({
+    context: baseContextHairdresser,
+    topics: [],
+    count: 1,
+  });
+  assert(fOne.faqs.length === 1, "count=1 → genau 1 Q/A");
+
+  // 8i. Determinismus: zweimal identisch.
+  const f1 = await mockProvider.generateFaqs({
+    context: baseContextHairdresser,
+    topics: ["Preise", "Stornierung"],
+    count: 5,
+  });
+  const f2 = await mockProvider.generateFaqs({
+    context: baseContextHairdresser,
+    topics: ["Preise", "Stornierung"],
+    count: 5,
+  });
+  assert(
+    JSON.stringify(f1.faqs) === JSON.stringify(f2.faqs),
+    "generateFaqs deterministisch",
+  );
+
+  // 8j. Defensive: count = 0 → invalid_input (Schema verlangt ≥ 1).
+  let fCaught: unknown = null;
+  try {
+    await mockProvider.generateFaqs({
+      context: baseContextHairdresser,
+      topics: [],
+      count: 0,
+    });
+  } catch (err) {
+    fCaught = err;
+  }
+  assert(
+    fCaught instanceof AIProviderError && fCaught.code === "invalid_input",
+    "count=0 → invalid_input",
+  );
+
+  // -----------------------------------------------------------------------
+  // 9. Übrige 4 Methoden müssen weiterhin provider_unavailable werfen.
   // -----------------------------------------------------------------------
   const placeholderContext = baseContextHairdresser;
-  await expectUnavailable("generateFaqs", () =>
-    mockProvider.generateFaqs({
-      context: placeholderContext,
-      topics: [],
-      count: 3,
-    }),
-  );
   await expectUnavailable("generateReviewRequest", () =>
     mockProvider.generateReviewRequest({
       context: placeholderContext,
@@ -405,7 +551,7 @@ async function run(): Promise<void> {
     }),
   );
 
-  // 9. Provider-Key
+  // 10. Provider-Key
   assert(mockProvider.key === "mock", "mockProvider.key === 'mock'");
 }
 
@@ -415,5 +561,6 @@ export const __AI_MOCK_PROVIDER_SMOKETEST__ = {
   industries: 2,
   variants: VARIANTS.length,
   serviceLengths: 3,
-  totalAssertions: 45,
+  faqCounts: 3,
+  totalAssertions: 60,
 };

@@ -2149,3 +2149,208 @@ Bewusst NICHT: andere 4 Methoden, UI, echte Provider.
 - [Sitepoint – AI Agent Testing Automation: Developer Workflows for 2026](https://www.sitepoint.com/ai-agent-testing-automation-developer-workflows-for-2026/)
 - [CopilotKit/llmock – Deterministic mock LLM server with fixture-based routing](https://github.com/CopilotKit/llmock)
 - [DEV Community – MockLLM, a simulated LLM API for development and testing](https://dev.to/lukehinds/mockllm-a-simulated-large-language-model-api-for-development-and-testing-2d53)
+
+---
+
+## Code-Session 16 – Mock-Provider: `generateFaqs`
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar)
+Meilenstein: 2 (KI-Schicht)
+
+### 1. Was wurde umgesetzt?
+
+Dritte von sieben Mock-Methoden ist scharf. Die übrigen 4 bleiben
+Stubs und folgen einzeln in den nächsten Sessions.
+
+- `src/core/ai/providers/mock/faqs.ts` (neu) implementiert
+  `mockGenerateFaqs(input): Promise<FaqGenerationOutput>`:
+  - Validierung des Inputs via `FaqGenerationInputSchema.safeParse`
+    → bei Fehler `AIProviderError("invalid_input", …)`.
+  - **Quellen-Strategie** (in dieser Reihenfolge, bis `count`
+    erreicht ist):
+    1. `preset.defaultFaqs` – branchen-typische Saat (~4 Q/A
+       pro Preset, z. B. „Wie buche ich einen Termin?",
+       „Verliere ich die Herstellergarantie, wenn Sie warten?").
+    2. Aus `topics` abgeleitete Q/A-Paare über Stichwort-Stamm-
+       erkennung. Erkannt werden:
+       - **Preis/Kost/Tarif** → „Was kostet …?"
+       - **Termin/Buch/Reserv** → „Wie kann ich einen Termin …
+         vereinbaren?"
+       - **Zeit/Öffnung/Sprechzeit** → „Wann haben Sie geöffnet?"
+       - **Stornier/Absag/Verschieb** → „Was passiert, wenn ich
+         einen Termin absagen muss?"
+       - **Zahl/Bezahl/Rechnung/Kasse** → „Welche Zahlungs-
+         möglichkeiten bieten Sie an?"
+       - **Park/Anfahrt/Adresse/Barriere** → „Wie komme ich zu
+         Ihnen und gibt es Parkplätze?"
+       - **Garantie/Gewähr** → „Welche Garantie geben Sie auf
+         Ihre Arbeit?"
+       - sonst: generischer Fallback mit Topic in Anführungs-
+         strichen + Branchen-Label im Antwortsatz.
+    3. **Lokale Q/A**: ist `city` gesetzt und es ist noch Platz
+       übrig, kommt „Sind Sie auch in {{city}} und Umgebung
+       aktiv?" als Q/A. Hilft für Local-AEO-Pickup.
+  - **Deduplizierung** via `normalizeQuestion`: lowercase, NFKD
+    + `\p{Diacritic}`-Strip, dann alles außer Buchstaben/Zahlen
+    entfernen. Doppelte Fragen werden verworfen, unabhängig von
+    Schreibweise, Satzzeichen oder Diakritika.
+  - **Antwort-Längen** orientieren sich an aktuellen AEO-Empfehlungen
+    (~30–60 Wörter pro Antwort, AI-extraktionsfreundlich) und
+    bleiben unter dem Schema-Limit. `clamp` schneidet auf
+    Wortgrenze als Sicherheitsnetz.
+  - **Notfall-Fallback**: sollte ein Preset wider Erwarten leere
+    `defaultFaqs` haben und kein `topics`/`city` mitkommen, wird
+    eine Kontakt-Q/A nachgeschoben, damit `min: 1` aus dem
+    Schema garantiert ist.
+  - Output gegen `FaqGenerationOutputSchema.parse(…)` validiert.
+- `src/core/ai/providers/mock-provider.ts` komponiert die dritte
+  Methode dazu:
+  ```ts
+  export const mockProvider: AIProvider = {
+    ...stub,
+    generateWebsiteCopy: mockGenerateWebsiteCopy,
+    improveServiceDescription: mockImproveServiceDescription,
+    generateFaqs: mockGenerateFaqs,
+  };
+  ```
+  Status-Header im Datei-Kommentar von 15 → 16 hochgezogen.
+- `src/tests/ai-mock-provider.test.ts` um Block 8a–8j erweitert
+  (~15 zusätzliche Assertions, ~60 gesamt):
+  - 8a: 2 Branchen × 3 `count`-Werte → Output-Shape passt
+    (Längen, ≥ 1 und ≤ count).
+  - 8b: Preset-Saatfrage zu Termin erscheint.
+  - 8c: Topic „Stornierung" → Frage enthält „absag"/„stornier".
+  - 8d: Topic „Preise" → Frage enthält „kostet".
+  - 8e: Mit `city` und genug Platz erscheint die lokale Frage.
+  - 8f: Ohne `city` keine lokale Frage.
+  - 8g: Doppelte Topics → keine doppelten Fragen-Schlüssel.
+  - 8h: `count=1` → genau 1 Q/A.
+  - 8i: Determinismus.
+  - 8j: `count=0` → `invalid_input`.
+- Block 9 zählt jetzt nur noch 4 weitere Methoden, die
+  `provider_unavailable` werfen müssen (generateFaqs wurde aus
+  diesem Block entfernt).
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (1 Datei):
+- `src/core/ai/providers/mock/faqs.ts`
+
+Geändert:
+- `src/core/ai/providers/mock-provider.ts`
+- `src/tests/ai-mock-provider.test.ts`
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~15 KB. Klar im Session-Limit (30–80 KB).
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → ~60 Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.generateFaqs({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich", "modern"],
+    uniqueSellingPoints: ["Termine auch samstags"],
+  },
+  topics: ["Preise", "Stornierung"],
+  count: 6,
+});
+// → { faqs: [
+//     { question: "Wie buche ich einen Termin?", answer: "…" },
+//     { question: "Was kostet ein Termin?", answer: "…" },
+//     { question: "Was kostet Preise bei Ihnen?", answer: "…" }, // ← Topic
+//     { question: "Was passiert, wenn ich einen Termin absagen muss?", … },
+//     …
+//     { question: "Sind Sie auch in Bremen und Umgebung aktiv?", … },
+//   ] }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit. Eine
+Dashboard-Karte für „FAQ generieren" kommt in einer späteren
+Session, sobald genug Mock-Methoden für ein gemeinsames KI-Panel
+verfügbar sind.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                         | Status |
+| ----------------------------------------------------------------- | ------ |
+| `generateFaqs` deterministisch, branchenneutral                   | ✅      |
+| Preset-Saat → Topics → lokale Frage in dieser Reihenfolge         | ✅      |
+| 7 Stichwort-Templates + generischer Fallback                      | ✅      |
+| Deduplizierung über NFKD-/Diakritika-/Punkt-Normalisierung        | ✅      |
+| `count=1` und `count=20` werden eingehalten                       | ✅      |
+| Lokale Frage greift mit `city`, fehlt ohne                        | ✅      |
+| Defensive Input-Validierung → `invalid_input`                     | ✅      |
+| Output gegen `FaqGenerationOutputSchema` validiert                | ✅      |
+| Übrige 4 Methoden bleiben Stubs (`provider_unavailable`)          | ✅      |
+| Smoketest +15 Assertions (~60 gesamt)                             | ✅      |
+| Build/Typecheck/Lint grün                                         | ✅      |
+| Session-Größe im Limit                                            | ✅ (~15 KB) |
+| Recherche-Step durchgeführt + Quellen zitiert                     | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 17**: `generateCustomerReply`-Mock — drei
+  Antwort-Tonalitäten (`short`/`friendly`/`professional`),
+  Kunden-Nachricht spiegeln + freundlich beantworten.
+- **Code-Session 18**: `generateReviewRequest`-Mock — Templates
+  aus `preset.reviewRequestTemplates` als Saat, kanal-/tone-spezifisch.
+- **Code-Session 19**: `generateSocialPost`-Mock —
+  short/long Post + Hashtags + Image-Idea + CTA, plattform-bewusst.
+- **Code-Session 20**: `generateOfferCampaign`-Mock — schließt die
+  Mock-Phase ab.
+- **Später**: API-Route, Dashboard-UI, echte Provider mit Caching,
+  Cost-Tracking.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 17 – Mock-Provider: `generateCustomerReply`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 customer reply tone short/friendly/professional
+   patterns local service business German" + „mirroring customer
+   message in support reply".
+2. `src/core/ai/providers/mock/customer-reply.ts` neu, analog zu den
+   bisherigen Mock-Methoden: nimmt die Kunden-Nachricht, extrahiert
+   1–2 Schlüsselbegriffe, baut eine Antwort gemäß `tone`:
+   - `short`: 1–2 Sätze.
+   - `friendly`: 3–4 Sätze, persönlicher Tonfall.
+   - `professional`: 3–4 Sätze, sachlich, mit konkretem
+     nächsten Schritt.
+3. `mock-provider.ts` um die vierte Methode erweitern
+   (Status-Header 16 → 17).
+4. `src/tests/ai-mock-provider.test.ts` um Customer-Reply-Block
+   ergänzt (3 Tones × 2 Branchen, Schlüsselbegriff-Spiegelung,
+   Determinismus, `invalid_input`).
+5. CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere 3 Methoden, UI, echte Provider.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [Stackmatix – Structured Data AI Search: Schema Markup Guide (2026)](https://www.stackmatix.com/blog/structured-data-ai-search)
+- [Zumeirah – How To Optimize FAQ Schema For AI Overviews & LLMs In 2026](https://zumeirah.com/optimize-faq-schema-for-ai-overviews/)
+- [Frase.io – Are FAQ Schemas Important for AI Search, GEO & AEO?](https://www.frase.io/blog/faq-schema-ai-search-geo-aeo)
+- [Frase.io – Answer Engine Optimization: Complete AEO Guide (2026)](https://www.frase.io/blog/what-is-answer-engine-optimization-the-complete-guide-to-getting-cited-by-ai)
+- [Knapsack Creative – Local SEO & AEO Trends for 2026](https://knapsackcreative.com/blog/seo/local-seo-aeo-trends)
+- [Passionfruit – FAQ Schema for AI Answers: Setup Guide & Examples](https://www.getpassionfruit.com/blog/faq-schema-for-ai-answers)
+- [WeWeb – Top 10 FAQ Templates for SEO & UX in 2026](https://www.weweb.io/blog/faq-templates-seo-ux-examples)
+- [Inogic – CRM Data Deduplication: 2026 FAQ Guide (fuzzy matching, phonetic similarity)](https://www.inogic.com/blog/2026/02/beyond-deduplication-a-2026-faq-guide-to-clean-unified-ai-ready-crm-data/)
