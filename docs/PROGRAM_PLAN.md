@@ -310,9 +310,17 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   AIPlayground-Migration auf `callAIGenerate` als Light-Pass
   Session 65 (konsolidiert ~100 Zeilen inline-Error-Handling
   aus Session 28).
+- 63: Default-Redirect bei einem Betrieb ✅. Owner mit
+  genau einem Betrieb landen ab sofort nach Login direkt im
+  Dashboard — Account-Übersicht ist nur noch sichtbar bei
+  0/2+ Betrieben oder explizitem `?stay=1`-Bypass. Pure
+  Helper `shouldRedirectToSingle(list, options?)` mit
+  Whitespace-Slug-Defensive; UI nutzt `router.replace`
+  statt `push` (kein Back-Button-Loop). +7 Asserts on top,
+  39/40 Smoketests grün.
 - 41+: Backup-Policy, Seed-Skript für Demo-Daten,
   „Betrieb löschen"-Flow mit rekursivem Storage-Cleanup,
-  Default-Redirect bei einem Betrieb (Session 63).
+  Retry-Queue für Lead-`local-fallback` (Session 64).
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant

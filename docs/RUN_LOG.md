@@ -7179,3 +7179,117 @@ direkt auf `/dashboard/<slug>`. Klein, scharf, UX-Boost.
 Alternative wäre Multi-Member-Verwaltung (größere Session)
 oder Direkt-Posten (Track A) — beides danach.
 
+## Code-Session 63 – Default-Redirect bei einem Betrieb
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · UX
+
+**Was**: Owner mit nur einem Betrieb sehen die Account-
+Übersicht aktuell als unnötigen Zwischenstop zwischen Login
+und Dashboard. Diese Session fügt einen automatischen
+Redirect ein: bei `businesses.length === 1` springt
+`/account` direkt auf `/dashboard/<slug>`. Bypass über
+Query-Param `?stay=1`, damit Multi-Business-Vorbereitung
+(„Neuer Betrieb"-Flow, „Account wechseln") weiter
+funktioniert.
+
+**Architektur-Entscheidung — Pure Helper + Client-Side
+Redirect**: Account-Page ist seit Session 43 eine Client
+Component (Static-Export-Kompatibilität). Server-Side
+Redirect wäre eleganter (kein Loader-Flicker), aber bricht
+den Static-Build. Pure Helper `shouldRedirectToSingle()`
+kapselt die Entscheidungs-Logik testbar; UI macht
+`router.replace(target)` im `useEffect`. Loader-State
+(`redirecting`) verhindert kurzen Karten-Flash.
+
+**Architektur-Entscheidung — `replace` statt `push`**:
+`router.replace(target)` ersetzt die Account-URL im
+Browser-Verlauf, statt sie zu pushen. Sonst würde Back-
+Navigation aus dem Dashboard wieder auf `/account` landen,
+das sofort wieder redirectet — Endlosschleife mit dem
+Back-Button. `replace` ist genau das richtige Tool für
+„dieser Schritt soll im Verlauf nicht existieren".
+
+**Architektur-Entscheidung — `?stay=1` statt
+`useSearchParams`-Hook**: Next.js 15 verlangt
+`<Suspense>`-Wrapping um `useSearchParams`-Konsumenten beim
+Static-Export. Account-Page ist `"use client"` und liest
+URL-Params nur einmal beim Initial-Render — `window.location.
+search` ist da pragmatischer und kompatibel mit
+Static-Build.
+
+**Architektur-Entscheidung — Whitespace-Slug → null**:
+Defensive: wenn ein Membership-Slug versehentlich leer ist
+(Daten-Inkonsistenz), redirecten wir nicht. Sonst landet
+der User auf `/dashboard/` (führender Slash, kein Slug),
+was eine 404 erzeugt. Lieber Liste anzeigen, User sieht
+das Problem, kann es selbst beheben.
+
+**WebSearch (Track C)**: bestätigt
+- [Next.js – Redirecting](https://nextjs.org/docs/app/guides/redirecting)
+  Server-side `redirect()` ist Best-Practice in Server-
+  Components. Für Client Components ist `router.replace()`
+  korrekt.
+- [WorkOS – Next.js App Router Authentication 2026](https://workos.com/blog/nextjs-app-router-authentication-guide-2026)
+  Defense-in-Depth: Middleware/Server-Layout/Page-Level —
+  unsere Account-Page macht den Auth-Check auf Page-Level,
+  was nach den Empfehlungen 2026 sicher ist (CVE-2025-29927
+  betraf nur Middleware-only-Auth).
+- [Wisp Blog – Best Practices for Redirecting Users
+  Post-Authentication](https://www.wisp.blog/blog/best-practices-for-redirecting-users-post-authentication-in-nextjs)
+  Bestätigt: Replace statt Push für Post-Auth-Flows ist
+  der Standard, vermeidet Back-Button-Schleifen.
+
+**Dateien**:
+- 🔄 `src/lib/account-businesses.ts`:
+  - Neuer pure Helper `shouldRedirectToSingle(list, options?)
+    → string | null`.
+  - Bedingungen: genau 1 Membership AND
+    `!options.stay` AND nicht-leerer Slug.
+- 🔄 `src/tests/account-businesses.test.ts`: ~33 → ~40
+  Asserts. 7 neue Test-Cases (1 Betrieb, 0 Betriebe, 2+
+  Betriebe, stay=true, stay=false, Whitespace-Slug,
+  langer Slug).
+- 🔄 `src/app/account/page.tsx`:
+  - Neuer `redirecting`-State.
+  - Neuer `useEffect`-Block nach dem Lade-Effekt: liest
+    `?stay=1` aus `window.location.search`, ruft
+    `shouldRedirectToSingle(list, {stay})`, bei Treffer
+    `setRedirecting(true)` + `router.replace(target)`.
+  - Neuer Render-Branch zwischen `auth.kind === "loading"`
+    und `auth.kind === "authed"`: zeigt Loader „Du hast nur
+    einen Betrieb — wir öffnen direkt das Dashboard …"
+    während des Redirects.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**39/40 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +7 Asserts in account-businesses.test.ts.
+
+**Roadmap**: 1 abgehakt. Folge-UX-Items, klein:
+- Dashboard-Header bekommt einen „Alle Betriebe"-Link mit
+  `?stay=1`-Bypass (vermutlich erst sinnvoll, sobald
+  Multi-Member existiert).
+- Back-Link aus Account-Liste zum letzten Dashboard
+  (sessionStorage-State).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Next.js
+Post-Auth-Redirect-Patterns 2026.
+
+**Status-Update**: ~95.5 % Richtung „erstes Betrieb-fertiges
+Produkt". UX-First-Click-Distance ist minimiert (Login →
+Dashboard ohne Zwischenstop für Solo-Owner). Verbleibend:
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member,
+„Betrieb löschen"-Flow, AIPlayground-Konsolidierung,
+Direkt-Posten.
+
+**Nächste Session**: Code-Session 64 = **Retry-Queue für
+Lead-`local-fallback`**. Begründung: Sessions 56–63 haben
+Storage-Hygiene + UX-Polish abgehakt. Was die echte
+Production-Tauglichkeit blockiert: wenn ein Lead vom
+Public-Site-Formular (Session 12) wegen Netzwerk-Hänger
+nur lokal landet (`local-fallback`-Result), gibt es aktuell
+keinen Re-Try-Pfad — die Anfrage geht in localStorage und
+wird nie zur DB geflushed, sobald die Verbindung wieder
+da ist. Klein-bis-mittlere Session: localStorage-basierte
+Retry-Queue mit Exponential-Backoff, max-Versuchs-Limit,
+und einem unobtrusive UI-Indikator („3 Anfragen in der
+Warteschlange").
+

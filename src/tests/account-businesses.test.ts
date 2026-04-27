@@ -8,9 +8,11 @@
  * Zeilen liefert.
  */
 
+import type { BusinessMembership as BM } from "@/lib/account-businesses";
 import {
   mapMembershipRow,
   roleLabel,
+  shouldRedirectToSingle,
   sortMemberships,
   tierLabel,
   type BusinessMembership,
@@ -205,5 +207,63 @@ assert(
   `Output hat genau die erwarteten Keys (war: ${actualKeys.join(",")})`,
 );
 
-console.log("account-businesses smoketest ✅ (~33 Asserts)");
-export const __ACCOUNT_BUSINESSES_SMOKETEST__ = { totalAssertions: 30 };
+// ---------------------------------------------------------------------------
+// 8. shouldRedirectToSingle (Code-Session 63)
+// ---------------------------------------------------------------------------
+
+const stubA: BM = {
+  businessId: "a-id",
+  slug: "studio-haarlinie",
+  name: "Studio Haarlinie",
+  industryKey: "hairdresser",
+  packageTier: "silber",
+  tagline: "",
+  role: "owner",
+  isPublished: true,
+};
+const stubB: BM = {
+  ...stubA,
+  businessId: "b-id",
+  slug: "auto-mueller",
+  name: "Auto Müller",
+  industryKey: "auto_workshop",
+};
+
+assert(
+  shouldRedirectToSingle([stubA]) === "/dashboard/studio-haarlinie",
+  "1 Betrieb → /dashboard/<slug>",
+);
+assert(shouldRedirectToSingle([]) === null, "0 Betriebe → null");
+assert(
+  shouldRedirectToSingle([stubA, stubB]) === null,
+  "2+ Betriebe → null",
+);
+assert(
+  shouldRedirectToSingle([stubA], { stay: true }) === null,
+  "stay=true → null",
+);
+assert(
+  shouldRedirectToSingle([stubA], { stay: false }) === "/dashboard/studio-haarlinie",
+  "stay=false → Redirect",
+);
+
+// Whitespace-Slug → null (Daten-Inkonsistenz nicht kaschieren)
+const stubEmpty: BM = { ...stubA, slug: "   " };
+assert(
+  shouldRedirectToSingle([stubEmpty]) === null,
+  "Whitespace-Slug → null",
+);
+
+// Langer Slug durchgereicht
+const stubLong: BM = {
+  ...stubA,
+  slug: "auto-werkstatt-mueller-und-soehne-2026",
+};
+assert(
+  shouldRedirectToSingle([stubLong]) ===
+    "/dashboard/auto-werkstatt-mueller-und-soehne-2026",
+  "langer Slug durchgereicht",
+);
+
+console.log("account-businesses smoketest ✅ (~40 Asserts)");
+export const __ACCOUNT_BUSINESSES_SMOKETEST__ = { totalAssertions: 40 };

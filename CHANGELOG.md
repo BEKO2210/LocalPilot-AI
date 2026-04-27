@@ -7,14 +7,73 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Code-Sessions 63+: Direkt-Posten zu Buffer/Hootsuite/Meta-
-  Graph, Multi-Member-Verwaltung, Default-Redirect bei einem
-  Betrieb, Retry-Queue für Lead-`local-fallback`,
-  „Betrieb löschen"-Flow mit rekursivem Storage-Cleanup,
-  Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
-  Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
-  Schema↔Migration-Drift-Test, AIPlayground auf
-  `ai-client.ts`-Helper migrieren (Light-Pass Session 65).
+- Code-Sessions 64+: Direkt-Posten zu Buffer/Hootsuite/Meta-
+  Graph, Multi-Member-Verwaltung, Retry-Queue für Lead-
+  `local-fallback`, „Betrieb löschen"-Flow mit rekursivem
+  Storage-Cleanup, Edge-Runtime-Migration, CSRF-Schutz,
+  HTML-Sanitize-Whitelist, Impressum-Editor pro Betrieb,
+  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test,
+  AIPlayground auf `ai-client.ts`-Helper migrieren
+  (Light-Pass Session 65).
+
+## [0.16.37] – Code-Session 63 – 2026-04-27
+
+Default-Redirect bei einem Betrieb. Owner mit nur einem
+Betrieb landen ab sofort nach dem Login direkt im
+Dashboard — die Account-Übersicht ist nur noch sichtbar,
+wenn explizit angefragt (`?stay=1`) oder bei 0/2+ Betrieben.
+Ein Klick weniger im Standard-Onboarding-Flow.
+
+- 🔄 `src/lib/account-businesses.ts`: neuer pure Helper
+  `shouldRedirectToSingle(list, options?) → string | null`.
+  Liefert `/dashboard/<slug>` nur wenn:
+  - genau 1 Membership in der Liste
+  - `options.stay !== true`
+  - Slug nicht-leer (Whitespace-Slug → null als Daten-
+    Inkonsistenz-Schutz, kaschiert nichts).
+- 🔄 `src/tests/account-businesses.test.ts`: ~33 → ~40
+  Asserts. Tests für 1/0/2+ Betriebe, `stay`-Bypass,
+  Whitespace-Slug, lange Slugs.
+- 🔄 `src/app/account/page.tsx`:
+  - Neuer `useEffect` nach Liste-Lade-Effekt: wenn
+    `shouldRedirectToSingle(list, {stay})` einen Pfad
+    liefert, `router.replace(target)` (statt `push`,
+    damit Account nicht im Verlauf landet → keine
+    Back-Button-Schleife).
+  - `stay` wird aus `window.location.search` gelesen
+    (`?stay=1`); kein `useSearchParams`-Hook, weil das
+    Static-Export-Suspense-Wrapping bräuchte.
+  - Neuer `redirecting`-State zeigt während des Redirects
+    einen Loader-Block („Du hast nur einen Betrieb — wir
+    öffnen direkt das Dashboard …") statt der Liste, damit
+    keine Karten kurz aufblitzen.
+
+39/40 Smoketests grün (industry-presets pre-existing red,
+Codex #11). +7 Asserts in account-businesses.test.ts.
+typecheck ✅, lint ✅, beide Builds ✅. Bundle 102 KB
+shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Default-Redirect). UX-Polish-Stack
+ist auf der ersten produktiven Schwelle. Nächste mögliche
+UX-Items: Header-Link „Account" mit `?stay=1` aus dem
+Dashboard zur Liste, Back-Link aus Account zum Dashboard,
+„Betrieb wechseln"-Selector im Dashboard-Header. Alle drei
+sind klein und können in einer kombinierten Polish-Session
+ausgerollt werden.
+
+**Status-Update**: ~95.5 % Richtung „erstes Betrieb-fertiges
+Produkt". UX-First-Click-Distance ist minimiert. Verbleibend:
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member-Verwaltung,
+„Betrieb löschen"-Flow, AIPlayground-Konsolidierung,
+Direkt-Posten.
+
+**Manueller Test**: Login → wenn 1 Betrieb → direkt im
+Dashboard. Wenn 0 Betriebe → Empty-State auf `/account`.
+Wenn 2+ Betriebe → Liste auf `/account`. Manuelles Auflisten
+der Betriebe (für späteren Multi-Business-Owner): URL
+`/account?stay=1`.
+
+## [0.16.36] – Code-Session 62 – 2026-04-27
 
 ## [0.16.36] – Code-Session 62 – 2026-04-27
 

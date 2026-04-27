@@ -20,6 +20,7 @@ import { getBrowserSupabaseClient } from "@/core/database/supabase-browser";
 import {
   fetchBusinessesForUser,
   roleLabel,
+  shouldRedirectToSingle,
   tierLabel,
   type BusinessMembership,
   type MembershipRole,
@@ -55,6 +56,7 @@ export default function AccountPage() {
   const router = useRouter();
   const [auth, setAuth] = useState<AuthState>({ kind: "loading" });
   const [businesses, setBusinesses] = useState<BusinessesState>({ kind: "idle" });
+  const [redirecting, setRedirecting] = useState(false);
 
   // Auth-Check
   useEffect(() => {
@@ -110,6 +112,28 @@ export default function AccountPage() {
     };
   }, [auth]);
 
+  // Single-Business-Default-Redirect (Code-Session 63).
+  //
+  // Wenn der Owner nur einen Betrieb hat, ist die Account-Liste
+  // nur ein Klick zwischen Login und Dashboard. Springen wir
+  // direkt durch — außer der User ist absichtlich hier
+  // (Query-Param `?stay=1`, z.B. „Neuen Betrieb anlegen" oder
+  // einen vorhandenen verlassen). `router.replace` statt `push`,
+  // damit die Account-URL nicht im Browser-Verlauf landet —
+  // sonst würde Back-Navigation in einer Schleife zwischen
+  // Account und Dashboard hängen.
+  useEffect(() => {
+    if (businesses.kind !== "ready") return;
+    const stay =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("stay") === "1";
+    const target = shouldRedirectToSingle(businesses.list, { stay });
+    if (target) {
+      setRedirecting(true);
+      router.replace(target);
+    }
+  }, [businesses, router]);
+
   async function handleSignOut() {
     const client = getBrowserSupabaseClient();
     if (!client) return;
@@ -127,6 +151,12 @@ export default function AccountPage() {
         <p className="mt-6 flex items-center gap-2 text-sm text-ink-600">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           Login-Status wird geprüft …
+        </p>
+      ) : redirecting ? (
+        <p className="mt-6 flex items-center gap-2 text-sm text-ink-600">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          Du hast nur einen Betrieb — wir öffnen direkt das
+          Dashboard …
         </p>
       ) : auth.kind === "authed" ? (
         <>
