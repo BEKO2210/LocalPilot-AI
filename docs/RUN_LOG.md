@@ -1664,3 +1664,128 @@ Bewusst NICHT in dieser Session:
 - [Basecamp – Shape Up: Stop Running in Circles and Ship Work that Matters](https://basecamp.com/shapeup)
 - [ProductPlan – Shape Up Method Glossary](https://www.productplan.com/glossary/shape-up-method)
 - [Curious Lab – What is Basecamp's Shape Up method?](https://www.curiouslab.io/blog/what-is-basecamps-shape-up-method-a-complete-overview)
+
+---
+
+## Code-Session 13 – AI-Provider-Scaffold
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar)
+Meilenstein: 2 (KI-Schicht)
+
+### 1. Was wurde umgesetzt?
+
+Erste Session nach dem neuen Protokoll. Bewusst klein gehalten.
+
+- `src/core/ai/providers/_stub.ts` – `buildStubProvider(key, message)`-
+  Helper, baut einen typisierten `AIProvider`, dessen 7 Methoden alle
+  `AIProviderError("provider_unavailable")` werfen. So kann jeder
+  einzelne Provider später Methode für Methode scharf gemacht werden,
+  ohne dass die Resolver-Logik angepasst werden muss.
+- 4 Provider-Stub-Module (`mock`, `openai`, `anthropic`, `gemini`),
+  jeweils einzeilig: nur der Aufruf von `buildStubProvider` mit eigener
+  Fehlermeldung (welche Code-Session den jeweiligen Provider scharf
+  macht).
+- `src/core/ai/ai-client.ts` mit:
+  - `getAIProvider(opts?)` – liest `AI_PROVIDER` aus der ENV (oder
+    aus dem optionalen `opts.env` für Tests/API-Routes), wählt den
+    passenden Provider, prüft den jeweils nötigen API-Key
+    (`OPENAI_API_KEY`/`ANTHROPIC_API_KEY`/`GEMINI_API_KEY`), fällt
+    defensiv auf `mock` zurück bei jedem Problem (kein Wert,
+    ungültiger Wert, leerer Key). Wirft niemals.
+  - `describeActiveProvider(opts?)` für spätere Diagnose-Karten:
+    welcher Provider würde zurückkommen und warum (`explicit`,
+    `fallback_unset`, `fallback_invalid`, `fallback_no_key`).
+  - `AI_PROVIDERS`-Lookup-Map (read-only) für Tests/Debug.
+- `src/core/ai/index.ts` – Barrel.
+- `src/tests/ai-provider-resolver.test.ts` mit 22 Assertions, die alle
+  Resolver-Pfade abdecken.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (8 Dateien):
+- `src/core/ai/ai-client.ts`
+- `src/core/ai/index.ts`
+- `src/core/ai/providers/_stub.ts`
+- `src/core/ai/providers/{mock,openai,anthropic,gemini}-provider.ts`
+- `src/tests/ai-provider-resolver.test.ts`
+
+Geändert:
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Entfernt: `.gitkeep` in `src/core/ai/providers` und `src/core/ai/prompts`.
+
+Diff-Größe ~30 KB. Liegt klar im Session-Limit (30–80 KB).
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck      # tsc --noEmit – Smoketest läuft mit
+npm run lint           # 0 warnings/errors
+npm run build:static   # Static-Export bleibt grün
+```
+
+Programmatisch:
+
+```ts
+import { getAIProvider, describeActiveProvider } from "@/core/ai";
+
+getAIProvider().key;                              // "mock" (ohne ENV)
+getAIProvider({ providerKey: "openai" }).key;     // "mock" (ohne API-Key)
+describeActiveProvider({ env: { AI_PROVIDER: "anthropic" } });
+// → { requested: "anthropic", active: "mock", reason: "fallback_no_key" }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                              | Status |
+| ------------------------------------------------------ | ------ |
+| `src/core/ai/`-Verzeichnis-Skelett + Re-Export-Barrel  | ✅      |
+| 4 Provider-Stubs, alle werfen `provider_unavailable`   | ✅      |
+| `getAIProvider()`-Resolver mit ENV-Gate                | ✅      |
+| Defensiver Fallback auf `mock` bei jedem Problem       | ✅      |
+| Smoketest deckt alle Resolver-Pfade ab (22 Assertions) | ✅      |
+| Build/Typecheck/Lint grün                              | ✅      |
+| Session-Größe im Limit (30–80 KB)                      | ✅ (~30 KB) |
+
+### 5. Was ist offen?
+
+- **Code-Session 14**: Mock-Provider mit `generateWebsiteCopy`-
+  Implementation. Branchenneutrale, hochwertige Beispieltexte mit
+  `{{city}}`-Platzhalter-Substitution, abgeleitet aus dem
+  `IndustryPreset`. Nur diese eine Methode – die anderen 6 bleiben
+  Stubs.
+- **Code-Sessions 15–17**: je eine weitere Mock-Methode
+  (`improveServiceDescription`, `generateFaqs`, `generateCustomerReply`).
+- **Später**: API-Route `/api/ai/generate` (sobald wir SSR-fähig sind),
+  Dashboard-Karte unter `/dashboard/[slug]/ai`, echte Provider mit
+  Caching, Cost-Tracking.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 14 – Mock-Provider: `generateWebsiteCopy`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 Patterns für branchenneutrale Beispiel-Website-
+   Texte" + Best-Practices für Mock-AI.
+2. `mock-provider.ts`: `generateWebsiteCopy` ersetzt den Stub durch
+   eine deterministische, branchenneutrale Implementation, die aus
+   dem `AIBusinessContext` (Industry-Key, City, Tonalität, USPs)
+   ein `WebsiteCopyOutput` zusammenbaut. Unterschiedliche `variant`-
+   Werte liefern unterschiedliche Texte.
+3. Smoketest: `mockProvider.generateWebsiteCopy({ context, variant })`
+   für jeweils 2 Branchen × 2 Varianten testet, dass Title/Subtitle/
+   AboutText nicht leer und nicht generisch sind.
+4. CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere 6 Methoden, UI, echte Provider.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [DEV Community – Multi-Provider AI App: OpenAI + Anthropic + Google in One SDK](https://dev.to/neurolink/multi-provider-ai-app-openai-anthropic-google-in-one-sdk-40n6)
+- [DEV Community – Building AI Agent With Multiple AI Model Providers Using an LLM Gateway](https://dev.to/crosspostr/building-ai-agent-with-multiple-ai-model-providers-using-an-llm-gateway-openai-anthropic-gemini-fl2)
+- [AISIX AI Gateway – Provider Abstraction](https://docs.api7.ai/aisix/core-concepts/provider-abstraction)
+- [pydantic-ai – Model Architecture and Provider System](https://deepwiki.com/pydantic/pydantic-ai/4.1-model-architecture-and-provider-system)

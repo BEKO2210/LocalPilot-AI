@@ -6,13 +6,50 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant (Meilenstein 2 – KI-Schicht, in atomaren Code-Sessions ab 13)
-- Code-Sessions 13–14: AI-Provider-Scaffold + Mock für Website-Texte.
+### Geplant (Meilenstein 2 – KI-Schicht)
+- Code-Session 14: Mock-Provider mit `generateWebsiteCopy`-Beispieltext.
 - Code-Sessions 15–17: Mock für Service-Beschreibung, FAQ, Antworten.
 - Code-Sessions 18–20: Mock für Social-Posts, Bewertungs-Anfragen, Angebote.
 - Code-Sessions 21–22: OpenAI-Provider scharf (mit Caching).
 - Code-Sessions 23–24: Anthropic-Provider scharf.
 - Code-Session 25: Cost-Tracking + Rate-Limit-UI.
+
+## [0.13.1] – Code-Session 13 – 2026-04-27
+
+### Added
+- **AI-Provider-Scaffold** (klein nach neuem Protokoll):
+  - `src/core/ai/providers/_stub.ts` – `buildStubProvider(key, message)`-
+    Helper, baut einen `AIProvider`, dessen 7 Methoden alle
+    `AIProviderError("provider_unavailable")` werfen.
+  - `mock-provider.ts`, `openai-provider.ts`, `anthropic-provider.ts`,
+    `gemini-provider.ts` – jeweils eine Stub-Instanz mit eigener
+    Fehlermeldung („Folgt in Code-Session 14+/21+/23+/später").
+  - `src/core/ai/ai-client.ts` mit `getAIProvider(opts?)`-Resolver:
+    liest `AI_PROVIDER`, prüft den jeweils nötigen API-Key
+    (`OPENAI_API_KEY`/`ANTHROPIC_API_KEY`/`GEMINI_API_KEY`), fällt
+    defensiv auf `mock` zurück bei jedem Problem (kein Wert, ungültiger
+    Wert, leerer Key). Wirft niemals.
+  - `describeActiveProvider(opts?)` für Diagnose-Anzeigen
+    (welcher Provider würde geladen, mit welchem Grund?).
+  - `AI_PROVIDERS`-Lookup-Map exportiert für Tests/Debug.
+  - Barrel `src/core/ai/index.ts`.
+- Smoketest `src/tests/ai-provider-resolver.test.ts` (~22 Assertions):
+  Default → mock, explizit mock, ungültig → mock, jeder Provider ohne
+  API-Key → mock, jeder Provider mit Key → korrekt, leerer Key zählt
+  als „kein Key", `providerKey`-Argument hat Vorrang vor ENV,
+  `AIProviderError` korrekt konstruierbar, `describeActiveProvider`
+  gibt sprechende Diagnose-Strings zurück.
+
+### Notes
+- **Bewusst NICHT in dieser Session**: konkrete Mock-Texte,
+  echte API-Calls, Dashboard-UI, Caching, Cost-Tracking. Folgen
+  inkrementell in Code-Sessions 14+ je ein Mini-Schritt.
+- Diff-Größe ~30 KB, 7 neue Dateien, keine Source-Datei der UI
+  geändert. Bundle bleibt unverändert (~13 prerenderte Routen,
+  AI-Modul ist tree-shaken solange noch keine UI es importiert).
+- Keine neuen Dependencies. SDKs (`openai`, `@anthropic-ai/sdk`,
+  `@google/generative-ai`) ziehen wir erst dann ein, wenn die
+  jeweiligen Provider scharf gemacht werden.
 
 Folge-Meilensteine (Engagement, Backend, Production-Readiness,
 Vertikalisierung, Innovation Loop) sind in `docs/PROGRAM_PLAN.md`
