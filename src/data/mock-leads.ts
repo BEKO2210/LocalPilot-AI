@@ -1,4 +1,5 @@
 import { LeadSchema } from "@/core/validation/lead.schema";
+import { PRIVACY_POLICY_VERSION } from "@/core/legal";
 import type { Lead } from "@/types/lead";
 import { daysAgo, makeBusinessId, makeLeadId, MOCK_NOW } from "./mock-helpers";
 
@@ -8,10 +9,24 @@ import { daysAgo, makeBusinessId, makeLeadId, MOCK_NOW } from "./mock-helpers";
  * mit branchenspezifischen Zusatzfeldern (`extraFields`).
  *
  * Alle Datensätze werden über `LeadSchema.parse(...)` validiert.
+ *
+ * **Code-Session 32**: `consent` ist Pflichtfeld. Demo-Leads bekommen
+ * automatisch einen Consent-Stempel auf `createdAt` mit der aktuellen
+ * Policy-Version — so spiegeln sie den realen Datenshape, ohne dass
+ * jeder Demo-Eintrag den Block manuell mitschreiben muss.
  */
 
-function lead(input: Omit<Lead, never>): Lead {
-  return LeadSchema.parse(input);
+function lead(
+  input: Omit<Lead, "consent"> & { consent?: Lead["consent"] },
+): Lead {
+  const withConsent: Lead = {
+    ...input,
+    consent: input.consent ?? {
+      givenAt: input.createdAt,
+      policyVersion: PRIVACY_POLICY_VERSION,
+    },
+  };
+  return LeadSchema.parse(withConsent);
 }
 
 // ---------------------------------------------------------------------------

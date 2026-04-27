@@ -4401,3 +4401,549 @@ Live-Provider-Aufruf aus Browser; USP-Editor pro Betrieb.
 
 **Nächste Session**: Code-Session 28 — `/api/ai/generate`-Route
 mit Auth-Stub, Provider-Dropdown im Playground.
+
+---
+
+## Code-Session 28 – AI-API-Route + Provider-Dropdown im Playground
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Erste API-Route der App. `POST /api/ai/generate` dispatcht
+mit Bearer-Auth-Stub via `LP_AI_API_KEY` an alle 4 Provider.
+Playground bekommt einen Provider-Dropdown (Mock / OpenAI /
+Anthropic / Gemini) + Token-Eingabefeld. Static-Export skippt die
+Route über `pageExtensions: ["tsx","jsx"]`-Filter — keine
+Build-Konflikte, GitHub Pages bleibt grün.
+
+**Dateien**:
+- ✚ `src/app/api/ai/generate/route.ts` (POST + GET-Health-Check,
+  Zod-Discriminated-Union-Validierung der 7 Methoden,
+  AIProviderError-→-HTTP-Status-Mapping, `runtime: "nodejs"`,
+  `dynamic: "force-dynamic"`)
+- 🔄 `next.config.mjs` (`pageExtensions` conditional: `["tsx","jsx"]`
+  für Static-Export, alle für SSR — schließt `route.ts` im
+  Pages-Build aus)
+- 🔄 `src/components/dashboard/ai-playground/method-configs.ts`
+  (`apiName` + `buildInput` pro Methoden-Config; sieben
+  `build<Method>Input`-Helper extrahiert)
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx`
+  (Provider-Dropdown-Card + Token-Input, persistiert via
+  localStorage `lp:ai-api-token:v1`; `handleGenerate` dispatcht
+  Mock direkt vs. fetch zu `/api/ai/generate`; klare 404-Message
+  im Static-Export-Pfad)
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅
+(Route wird gefiltert), build (SSR) ✅ (Route als `ƒ /api/ai/generate`
+sichtbar), alle 6 Smoketests ✅. Bundle 102 KB shared, /ai-Route
+164 KB (+1 KB).
+
+**Roadmap**: PROGRAM_PLAN — Item „AI-API-Route mit Auth"
+abgehakt, ersetzt durch 5 Folge-Items (Cookie-/JWT-Auth,
+Edge-Runtime-Migration, Cost-Tracking-Pipeline, Rate-Limiting,
+Vercel-SSR-Deploy).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C (Methodik) — neu:
+- [Next.js – Static Exports Guide](https://nextjs.org/docs/app/guides/static-exports) — `pageExtensions`-Filter-Pattern.
+- [Next.js – API Routes in Static Export Warning](https://nextjs.org/docs/messages/api-routes-static-export) — Limitierung verstanden.
+- [Next.js – Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers) — App-Router-Patterns.
+
+**Nächste Session**: Code-Session 29 — Cost-Tracking-Pipeline auf
+Server-Side (Token-Counts in Cost-Bucket loggen, Per-Betrieb-Cap).
+Vorbedingung: Vercel-SSR-Deploy als zweite Deploy-Pipeline.
+
+---
+
+## Code-Session 29 – Cost-Tracking-Pipeline + Daily-Budget-Cap
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Server-side Cost-Estimation + Daily-Budget-Cap für die
+KI-API-Route. Token-Heuristik (4 Zeichen ≈ 1 Token), 2026-aktuelle
+Pricing-Tabelle (Mock $0, gpt-4o-mini $0.15/$0.60, claude-sonnet-4-5
+$3/$15, gemini-2.0-flash $0.10/$0.40 per Mio Tokens). In-Memory-
+Bucket-Tracker mit Tageswechsel-Reset + Pre-Flight-Cap-Check
+(429 wenn überschritten). Playground zeigt Cost-Bar mit
+Tagesbudget-Anteil pro API-Call.
+
+**Dateien**:
+- ✚ `src/core/ai/cost/pricing.ts` (Pricing-Tabelle pro Provider×Model,
+  `estimateTokens`, `estimateCost`, `formatCostUsd`)
+- ✚ `src/core/ai/cost/budget.ts` (In-Memory-Bucket-Map mit
+  UTC-Tag-Schlüssel, `previewBudget`, `chargeBudget`,
+  `getDailyCapUsd` aus `LP_AI_DAILY_CAP_USD` ENV mit Fallback $1.00)
+- 🔄 `src/app/api/ai/generate/route.ts` (Pre-Flight-Cap-Check vor
+  Provider-Call → 429 mit Cost-Block; nach Call: Output-Cost
+  berechnen, Bucket buchen, Cost-Block in Antwort)
+- 🔄 `src/components/dashboard/ai-playground/types.ts`
+  (`PlaygroundCostInfo`-Interface, optional auf jedem
+  `GenerationResult`)
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx`
+  (Cost aus API-Response übernehmen)
+- 🔄 `src/components/dashboard/ai-playground/result-panel.tsx`
+  (`<CostBar>`-Komponente mit Token-Counts, USD-Estimate und
+  Tagesbudget-Progress)
+- ✚ `src/tests/ai-cost.test.ts` (24 Asserts: Token-Heuristik,
+  Pricing-Tabelle, Budget-Tracking, Bucket-Isolation)
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅, alle 7 Smoketests ✅ (Mock ~380, Resolver 22, OpenAI 14,
+Anthropic 14, Gemini 12, Themes inkl. Hex, **Cost 24 NEU**).
+
+**Roadmap**: 1 Item abgehakt (Cost-Cap pro Betrieb), ersetzt durch
+5 Folge-Items (Bucket-Key per Betrieb, Persistenter Store, Monthly-
+Cap, Cost-Audit-Log, echte Provider-Usage statt Heuristik).
+
+**Quellen**: `RESEARCH_INDEX.md` Track A (AI-Provider-Token-Pricing).
+
+**Nächste Session**: Code-Session 30 — Rate-Limit-UI im Playground
+(`429`-Antwort sichtbar als „Limit erreicht — wann reset?"-Karte)
+und Provider-Health-Indicator.
+
+---
+
+## Code-Session 30 – Rate-Limit-UI + Provider-Health + State-Refresh
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Zweite API-Route (`GET /api/ai/health`) liefert Auth-gated
+Snapshot aller 4 Provider (`available`, `keyPresent`, `model`,
+optional `reason`) plus Tagesbudget-Status und nächste UTC-Reset-
+Zeit. Im Playground neue `<HealthCard>` zeigt das auf Mount/Refresh.
+Bei 429-Antworten von `/api/ai/generate` blendet der Playground
+statt einer generischen Fehlerbox eine `<RateLimitCard>` mit Live-
+Countdown bis Reset und „auf Mock wechseln"-CTA ein. 429-Antworten
+tragen jetzt 2026-Standard-Header `X-RateLimit-Limit`,
+`X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`.
+
+**Plus State-Refresh-Light** (Cadence-Trigger N % 5 === 0): alle 8
+Smoketests grün, Stale-Stub-Audit clean (nur Bronze-Tier-Gating-
+Treffer in services/leads — beabsichtigt), Codex-Backlog ohne
+`[done]`-Items, README-Matrix passt.
+
+**Dateien**:
+- ✚ `src/core/ai/health.ts` (`getHealthSnapshot(env)` pure-function;
+  Privacy-by-Design, Key-Wert tauchen nirgends im Snapshot auf)
+- ✚ `src/app/api/ai/health/route.ts` (GET-Handler mit gleicher Auth
+  wie POST `/api/ai/generate`)
+- ✚ `src/components/dashboard/ai-playground/health-card.tsx`
+  (Client-Side Fetch + Refresh-Button + Provider-Liste mit
+  Check/Warning-Icons)
+- ✚ `src/tests/ai-health.test.ts` (18 Asserts: empty-env, apiAuth-
+  Spiegel, Privacy, Modell-Override, Budget-Block, Cap-Override,
+  resetAtUtc-Logik)
+- 🔄 `src/app/api/ai/generate/route.ts` (429 mit Standard-Headers
+  + `resetAtUtc` im Cost-Block)
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx`
+  (HealthCard eingehängt, `<RateLimitCard>` mit Live-Countdown
+  und „Auf Mock wechseln"-CTA, Rate-Limit-Status getrennt von
+  generischen Errors)
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅ — beide API-Routen `/api/ai/generate` und `/api/ai/health` als
+`ƒ` sichtbar. Alle 8 Smoketests ✅ (Mock ~380, Resolver 22, OpenAI 14,
+Anthropic 14, Gemini 12, Themes inkl. Hex, Cost 24, **Health 18 NEU**).
+
+**State-Refresh-Light** (N=30):
+- Smoketest-Regression: 8/8 grün.
+- Stale-Stub-Audit: 3 Treffer, alle intentional (Tier-Gating + echtes Future).
+- Codex-Backlog: 9 `[pre-approved]`, 1 `[blocked]`, 0 `[done]` zum Archivieren.
+- README rolling-status: unverändert ok.
+
+**Roadmap**: PROGRAM_PLAN +3 Folge-Items in Track C
+(Public-Status-Page, Status-History 7-Tage, Slack-/Email-Alert
+bei >80 % Budget).
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — neue Quellen aus dem
+Rate-Limit-UX-Suchlauf (UptimeSignal, GetKnit, NousResearch-Issue).
+
+**Nächste Session**: Code-Session 31 — DOMPurify-Sanitizer für
+übernommene KI-Outputs (Track B Security: bevor ein Mock/Live-
+Text in den Public-Site-Block wandert, sanitizen).
+
+---
+
+## Code-Session 31 – KI-Output-Sanitizer (Track B Security)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Defense-in-Depth gegen Prompt-Injection-XSS. Jeder
+KI-Output (Mock direkt im Browser, Live über die API-Route)
+durchläuft `sanitizeAIOutput` bevor er ans UI geht. Strippt
+HTML-Tags, dekodiert Entities zuerst (klassischer Filter-Bypass
+wird so erwischt), entfernt Control-Chars, behält legitime
+Sonderzeichen (`<` im Fließtext, Umlaute, Emojis, Anführungszeichen,
+Zeilenumbrüche). Echtes Risiko ist real: CVE-2026-25802 zeigt
+Prompt-Injection → Stored XSS in einem LLM-Gateway.
+
+**Designentscheidung — bewusst kein DOMPurify (yet)**:
+`isomorphic-dompurify` zieht `jsdom` (~120 KB) ins Server-Bundle.
+Lohnt sich, sobald wir einen **HTML-Whitelist-Modus** brauchen
+(Markdown-Renderer, Reicher-Text-Editor). Bis dahin reicht ein
+zero-dep Plain-Text-Stripper. Stub `sanitizeAIOutputAsHtml` wirft
+explizit, damit niemand versehentlich unsicheres HTML durchlässt.
+
+**Dateien**:
+- ✚ `src/core/ai/sanitize.ts` (≈ 130 Zeilen): `sanitizeText` mit
+  Entity-Decode + iterativem Tag-Strip + Control-Char-Removal,
+  `sanitizeAIOutput<T>` rekursiv über Strings/Arrays/Objects (Numbers/
+  Booleans/null bleiben), `sanitizeAIOutputAsHtml`-Stub für Track-B-
+  Folgesession.
+- 🔄 `/api/ai/generate`: Output **vor** Cost-Estimation und Response
+  durch `sanitizeAIOutput`. Cost-Token-Count basiert dann auf dem
+  ausgelieferten (sanitized) Text — konsistent.
+- 🔄 `ai-playground.tsx`: auch der Mock-Direktaufruf-Pfad sanitiziert.
+  Defense-in-Depth, falls Mock-Skripte später durch echte KI-Fixtures
+  ersetzt werden.
+- ✚ `src/tests/ai-sanitize.test.ts` (29 Asserts): Plain-Text bleibt,
+  Script/IMG/A-Tags raus, Entity-Bypasses (`&lt;`, dezimal `&#60;`,
+  hex `&#x3C;`) erwischt, Nested-Tag-Bypass (`<<script>script>...`)
+  durch Iterativ-Strip neutralisiert, Sonderzeichen wie `<` mit
+  Space, `&`, Anführungszeichen, Umlaute, Emojis, Zeilenumbrüche
+  bleiben, Control-Chars gestrippt (außer `\t\n\r`), rekursive
+  Anwendung auf Output-Strukturen, Stub wirft.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅, alle 9 Smoketests ✅ (Mock ~380, Resolver 22, OpenAI 14,
+Anthropic 14, Gemini 12, Themes inkl. Hex, Cost 24, Health 18,
+**Sanitize 29 NEU**).
+
+**Roadmap**: 1 Item abgehakt (DOMPurify-Sanitizer Plain-Text), 3
+Folge-Items in Track B: HTML-Whitelist-Pfad mit `isomorphic-dompurify`,
+Property-based Test-Suite mit `fast-check`, Strict-CSP-Header via
+Nonce bei SSR-Auslieferung.
+
+**Quellen**: `RESEARCH_INDEX.md` Track B (Security) — neu:
+- [DOMPurify (cure53)](https://github.com/cure53/DOMPurify)
+- [isomorphic-dompurify](https://github.com/kkomelin/isomorphic-dompurify)
+- [CVE-2026-25802 — Prompt Injection to Stored XSS](https://cvereports.com/reports/CVE-2026-25802)
+- [Focused.io — LLM Output Sanitization (OWASP LLM05)](https://focused.io/lab/improper-ai-output-handling---owasp-llm05)
+
+**Nächste Session**: Code-Session 32 — DSGVO-Lead-Einwilligungs-
+Block im Public-Site-Lead-Form (Pflicht-Checkbox „Datenschutz
+gelesen", Verlinkung auf `/datenschutz`, Speicherdauer-Hinweis
+beim Submit). Vorbedingung für ersten echten Betrieb live.
+
+---
+
+## Code-Session 32 – DSGVO-Lead-Einwilligungs-Block + Datenschutz/Impressum
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Lead-Form bekommt Pflicht-Checkbox mit aktivem Opt-In, Link
+auf Datenschutzerklärung + Impressum, Speicherdauer-Hinweis. Schema-
+seitig ist `consent: { givenAt, policyVersion }` jetzt Pflichtfeld
+auf jedem Lead — Audit-Trail nach DSGVO Art. 7 Abs. 1.
+Datenschutzerklärung und Impressum kommen pro Demo-Betrieb mit
+Standard-Sektionen und Business-Daten-Substitution. **Letzte
+Vorbedingung für ersten echten Betrieb live ist damit erfüllt.**
+
+**Dateien**:
+- ✚ `src/core/legal.ts` — `PRIVACY_POLICY_VERSION`,
+  `LEAD_RETENTION_MONTHS` (12), `buildConsent()`-Helper.
+- 🔄 `src/core/validation/lead.schema.ts` — `LeadConsentSchema`,
+  `consent` als Pflichtfeld.
+- 🔄 `src/data/mock-leads.ts` — Factory backfilled `consent` auf
+  `createdAt` + aktuelle Policy-Version (alle 25 Demo-Leads).
+- 🔄 `src/lib/mock-store/leads-overrides.ts` — Storage-Version
+  v1 → v2 (alte Einträge ohne consent werden sauber verworfen).
+- 🔄 `src/components/public-site/public-lead-form.tsx` —
+  `consentChecked`-State, aktives Opt-In (kein pre-checked!),
+  separate Fehlerzeile, Submit `disabled={!consentChecked}`.
+- ✚ `src/app/site/[slug]/datenschutz/page.tsx` — 7 Standard-
+  Sektionen, Business-Substitution, MVP-Hinweis.
+- ✚ `src/app/site/[slug]/impressum/page.tsx` — Anbieter, Kontakt,
+  Verantwortliche, ODR-Verweis.
+- ✚ `src/tests/lead-consent.test.ts` (60 Asserts).
+- 🔄 `src/tests/leads-system.test.ts` + `schema-validation.test.ts`
+  — Probe-Lead bekommt consent-Feld.
+- 🔄 `docs/CODEX_BACKLOG.md` +1 Item: `industry-presets.test.ts`
+  bereits vor Session 32 rot (Eintrag #11, Codex-Sweep).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **18 von 19 Smoketests grün** (industry-presets pre-existing
+red, Codex #11).
+
+**Roadmap**: 1 Item abgehakt, 5 Folge-Items in Track G/B
+(Settings-Editor mit Legal-Sektion, Datenschutzerklärung-Editor
+mit Versions-Bump, AVV-Vorlage für Reseller-Fall,
+Lead-Retention-Cron, Widerrufs-Handler-Endpoint).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — DSGVO/EuGH-Referenzen.
+
+**Nächste Session**: Code-Session 33 — Cookie/JWT-Auth statt
+Bearer-Token-Stub (Track G). Aktuell hängt der Auth-State im
+localStorage als simpler Token; Cookies + Server-Validation sind
+die nächste Ausbaustufe Richtung Multi-Tenant.
+
+---
+
+## Code-Session 33 – Cookie/JWT-Auth + Login/Logout/Me-Endpunkte
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Cookie-basierte Session-Auth ergänzt den Bearer-Token-Pfad.
+HS256-JWT in HttpOnly-Cookie, signiert per Node `crypto`, kein
+externes JWT-Lib. UI bekommt Login-Form über `<AuthCard>`. Bestehender
+Bearer-Pfad bleibt für CLI/Scripting. `/api/ai/generate` und
+`/api/ai/health` nutzen jetzt einen geteilten `checkAuth`-Helper.
+
+**Dateien**:
+- ✚ `src/core/ai/auth/session.ts` — `signSessionToken`,
+  `verifySessionToken`, `buildSessionToken`. Pure HMAC-SHA256 +
+  Base64URL via `node:crypto`. Strict-Header-Compare verhindert
+  `alg=none`-Bypass. `crypto.timingSafeEqual` für die Signatur-
+  Prüfung.
+- ✚ `src/core/ai/auth/check.ts` — `checkAuth(req, env)` versucht
+  Cookie zuerst, dann Bearer. `getAuthConfig(env)` löst die ENV-
+  Defaults zentral auf (`LP_AI_PASSWORD` → `LP_AI_API_KEY`,
+  `LP_AI_SESSION_SECRET` → `LP_AI_API_KEY`).
+- ✚ `src/app/api/auth/login/route.ts` — POST, Passwort-Validierung,
+  setzt HttpOnly-Cookie, 7 Tage TTL, `SameSite=Lax`, `Secure` in
+  Production.
+- ✚ `src/app/api/auth/logout/route.ts` — POST, idempotent, löscht
+  Cookie via `Max-Age=0`.
+- ✚ `src/app/api/auth/me/route.ts` — GET, gibt
+  `{ authenticated, principal, via }` zurück. Keine sensiblen Daten.
+- 🔄 `src/app/api/ai/generate/route.ts` — alter Inline-Auth-Stub
+  raus, neuer `checkAuth(req)` rein.
+- 🔄 `src/app/api/ai/health/route.ts` — gleiche Refaktorierung.
+- ✚ `src/components/dashboard/ai-playground/auth-card.tsx` —
+  Client-Side Login-/Logout-Form. Status-Polling bei Mount via
+  `/api/auth/me`. Saubere Fallback-Texte für Static-Build (404)
+  und nicht-konfigurierte ENV (503).
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx` —
+  `<AuthCard>` an erster Stelle. Live-Provider-Calls senden
+  Cookie automatisch via `credentials: "same-origin"`; Bearer-
+  Token-Input bleibt für CLI/Power-User.
+- ✚ `src/tests/auth-session.test.ts` (35 Asserts): Token-Format
+  (3 Base64URL-Teile), Verify mit korrektem/falschem Secret,
+  Tampered-Signature, alg=none-Header-Bypass-Versuch,
+  Expired-Token, Garbage-Inputs, leeres Secret wirft, Cookie-Pfad
+  in checkAuth, Bearer-Pfad, ohne ENV → 503.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **5 API-Routen** im SSR-Build sichtbar (`/api/ai/generate`,
+`/api/ai/health`, `/api/auth/{login,logout,me}`). **19/19
+Smoketests grün** (industry-presets pre-existing red bleibt
+Codex-#11).
+
+**Roadmap**: 1 großes Item abgehakt (Cookie/JWT-Auth), 4
+Folge-Items: Edge-Runtime-Migration (Web Crypto statt Node),
+Vercel-SSR-Deploy als zweite Pipeline, Multi-Tenant-Auth (echte
+User-Accounts), CSRF-Schutz (Origin-Header-Check / Double-Submit-
+Token).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Cookie/JWT-Patterns
+2026.
+
+**Nächste Session**: Code-Session 34 — Vercel-SSR-Deploy-Pipeline.
+Damit kommen die API-Routen tatsächlich live (GitHub Pages bleibt
+für die Static-Seiten). Dann erst kann der Auftraggeber Cookie-
+Auth + Live-Provider produktiv testen.
+
+---
+
+## Code-Session 34 – Vercel-SSR-Deploy-Pipeline (Infrastructure-as-Code)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Zwei-Pipeline-Architektur ist scharf. GitHub Pages liefert
+weiter den statischen Showcase, Vercel kommt als zweite Pipeline für
+SSR + alle API-Routen (Auth, AI-Generate, Health). Beide Pipelines
+bauen aus demselben Code; Weiche ist `STATIC_EXPORT=true`. Vercel
+auto-detect übernimmt den Rest, ein expliziter `vercel.json`
+verankert Region (Frankfurt) + API-Cache-Header reproduzierbar.
+
+**Hinweis**: ich kann nicht selbst auf Vercel deployen — die
+`vercel link` + `vercel env add` + `vercel --prod`-Schritte muss
+der Auftraggeber einmal manuell ausführen. Komplette Anleitung
+steht in [`docs/DEPLOYMENT.md`](./DEPLOYMENT.md).
+
+**Dateien**:
+- ✚ `vercel.json` — explizit `framework: "nextjs"`, `regions: ["fra1"]`
+  (DACH-Markt), `buildCommand: "npm run build"` (KEIN
+  `STATIC_EXPORT`), `outputDirectory: ".next"`, plus Cache-Control-
+  Header für `/api/:path*`.
+- ✚ `.env.production.example` — Vorlage aller benötigten ENV-
+  Variablen mit Beschreibung. **Niemals echte Werte hier reinschreiben**,
+  nur als Liste für `vercel env add`.
+- 🔄 `docs/DEPLOYMENT.md` — komplett neu strukturiert: Teil A
+  Pages-Setup (bestehend), Teil B Vercel-Setup (neu), Vergleichs-
+  Tabelle „was sieht man wo", Smoke-Test-curl-Befehle, Roll-back-
+  Anleitung, Stolperfallen-Sektion auf 7 Einträge erweitert.
+- 🔄 `README.md` — Live-Preview-Sektion auf Dual-Pipeline aktualisiert,
+  Vergleichs-Tabelle übernommen.
+- ✚ `src/tests/deployment-config.test.ts` (~25 Asserts): vercel.json
+  parst und hat richtige Werte (framework, region, buildCommand,
+  api-Header), `.env.production.example` listet alle Pflicht-Vars
+  und enthält keine echten Secrets, GitHub-Pages-Workflow setzt
+  `STATIC_EXPORT=true` und triggert auf `main` + `claude/**`,
+  `package.json`-Skripte sind konsistent, `next.config.mjs` hat
+  den `pageExtensions`-Filter.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **20/20 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Vercel-SSR-Deploy), 3 Folge-Items:
+Edge-Runtime-Migration (Web Crypto statt `node:crypto`),
+Custom-Domain auf Vercel, Vercel-Logs-Adapter zu Sentry/Logflare.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Vercel-Deployment-2026.
+
+**Manueller Schritt für den Auftraggeber** (einmalig, ≈ 5 min):
+1. `npm i -g vercel`
+2. `vercel link` im Repo-Root
+3. `vercel env add LP_AI_API_KEY production`
+4. `vercel env add LP_AI_PASSWORD production`
+5. `vercel env add LP_AI_SESSION_SECRET production` (32-Byte-Random,
+   Generator-Befehl im DEPLOYMENT.md)
+6. Optional Provider-Keys (`OPENAI_API_KEY`, …)
+7. `vercel --prod`
+
+Danach läuft jeder Push auf `main` automatisch nach Production,
+jeder andere Branch erzeugt eine Preview-URL.
+
+**Nächste Session**: Code-Session 35 — **Backend-Sprint-Auftakt**:
+erste Supabase-Anbindung (read-only, sodass der API-Health-
+Endpunkt einen `database`-Status anzeigen kann). Vorbedingung für
+Multi-Tenant-Auth mit echten User-Accounts.
+
+---
+
+## Code-Session 35 – Supabase-Skeleton + Database-Health (Backend-Auftakt)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Meilenstein 4 (Backend & Daten) ist eröffnet. Erste
+ENV-gegate Supabase-Anbindung steht, ohne Crash-Risiko: ohne
+`SUPABASE_URL` / `SUPABASE_ANON_KEY` läuft die App weiter komplett
+im Mock-/localStorage-Modus. Health-Endpunkt liefert jetzt einen
+`database`-Block mit Status `ok` / `degraded` / `offline`,
+Latenz und sicherem `reason`-Text. Dashboard-Card zeigt einen
+neuen Database-Badge unter den Provider-Karten.
+
+**Dateien**:
+- ✚ `src/core/database/client.ts` — `getSupabaseClient(env)`,
+  `readSupabaseEnv`, `isSupabaseConfigured`. Cache mit Reset-Helper
+  für Smoketests. Ohne ENV → `null` zurück, App läuft weiter.
+- ✚ `src/core/database/health.ts` — `checkDatabaseHealth(env, opts)`,
+  AbortController-Timeout (Default 2 s), Threshold-Mapping
+  (>1.5 s → `degraded`). Roh-`fetch` auf `/rest/v1/` statt SDK-Call,
+  damit der Check tabellenunabhängig bleibt.
+- 🔄 `src/app/api/ai/health/route.ts` — `Promise.all` mit
+  `checkDatabaseHealth`, Database-Block hängt am bestehenden
+  HealthSnapshot.
+- 🔄 `src/components/dashboard/ai-playground/health-card.tsx` —
+  `<DatabaseBadge>` mit Icon-Mapping (CheckCircle/AlertTriangle/
+  Database) und Latenz-Anzeige. Fallback-Text „noch nicht
+  konfiguriert" für Mock-only Setups.
+- 🔄 `.env.production.example` — `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY` (für Multi-Tenant-Auth in 36+).
+- 🔄 `docs/DEPLOYMENT.md` — Vercel-ENV-Block ergänzt; neuer
+  Stolperfall-Eintrag „Free-Tier-Auto-Pause".
+- 🔄 `package.json` — `@supabase/supabase-js@^2`.
+- ✚ `src/tests/database-health.test.ts` (~30 Asserts):
+  ENV-Reader-Trim, ohne ENV → offline, 200 → ok, 401 (RLS) → ok,
+  503 → degraded, slow → degraded, AbortError → offline,
+  Netzwerk-Fehler → degraded, Privacy-Smoketest (Key + URL nicht
+  im Dump), Header/URL-Capture.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **21/22 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: Meilenstein 4 von „⏳ geplant" auf „🔄 in Arbeit"
+gehoben (Session-Cluster 35–40 skizziert). 3 neue Folge-Items:
+Database-Health-Erweiterung (Tabellen-Check, Cache-Layer,
+Auto-Pause-Detection), Stale-`comingInSession`-Audit
+(Bronze-Locks vs. echte Coming-Soon), Owner-Daten via ENV
+(neuer Codex-Item, siehe Backlog #12).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase-Health-Patterns
+2026.
+
+**state-refresh-light** (Session 35 % 5 = 0):
+- Smoketest-Regression: 21/22 grün, industry-presets bleibt
+  Codex-#11.
+- Stale-Stub-Audit: 3 Treffer (`services/page.tsx:43`,
+  `leads/page.tsx:43`, `settings/page.tsx:31`). Erstere zwei
+  sind Bronze-Lock-UX-Drift (kein „Coming Soon", sondern
+  Tier-Lock — als neues Plan-Item dokumentiert). Settings ist
+  echt offen (Backend-Schema fehlt) — Label bleibt korrekt.
+- README-Provider-Matrix: keine Änderung nötig (keine neue
+  Live-Methode in Session 35, nur Database-Layer).
+- Codex-Backlog: nur #11 needs-review aktiv, kein Codex-Done
+  seit letztem Pass.
+
+**Hinweis Auftraggeber**: persönliche Stammdaten (Name, Adresse,
+Telefon) werden bewusst **nicht** ins Repo committet. Stattdessen
+plane ich Code-Session 36 als „Impressum auf ENV-Variablen
+umstellen" (`LP_OWNER_NAME`, `LP_OWNER_ADDRESS`, …) — dann nur in
+Vercel/lokal setzen, niemals in GitHub.
+
+**Nächste Session**: Code-Session 36 — **Owner-Daten via ENV +
+erstes Supabase-Schema**: Impressum/Datenschutz aus
+ENV-Variablen, parallel `businesses`-Tabelle in Supabase
+(read-only, Mock-Spiegelung). Ab da kann der Auftraggeber seine
+echten Stammdaten nutzen, ohne sie in den Quellcode einzuchecken.
+
+---
+
+## Code-Session 36 – Plattform-Impressum + Datenschutz aus `LP_OWNER_*`-ENV
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Auftraggeber-Stammdaten (Name, Adresse, Telefon, E-Mail,
+USt-IdNr.) landen ab jetzt **niemals** im Repo. Ihre Quelle ist
+ausschließlich die `LP_OWNER_*`-ENV-Map auf Vercel/lokal. Solange
+die Pflichtfelder nicht gesetzt sind, läuft die Plattform im
+sichtbaren Demo-Mode (gelber Hinweis-Block, klare Setup-Anweisung).
+Neue Routen `/impressum` + `/datenschutz` für die LocalPilot-AI-
+Plattform selbst (Demo-Betriebs-Versionen unter `/site/<slug>/...`
+bleiben unverändert mit Mock-Daten).
+
+**Dateien**:
+- 🔄 `src/core/legal.ts` — `getOwnerInfo(env)`, `OwnerInfo`-
+  Interface, `PLATFORM_NAME`-Konstante. Pflichtfelder NAME +
+  STREET + POSTAL_CODE + CITY + EMAIL → `configured=true`,
+  sonst Demo-Owner-Fallback. ENV-Reader trimmt Whitespace
+  (whitespace-only zählt als leer).
+- ✚ `src/app/impressum/page.tsx` — Plattform-Impressum nach
+  § 5 DDG (TMG abgelöst zum 14.05.2024) + § 18 MStV. Sektionen:
+  Anbieter, Kontakt, USt-IdNr. (optional), Verantwortlich für
+  Inhalt, Haftung, Online-Streitbeilegung. Demo-Notice mit
+  ENV-Var-Liste + Hinweis auf `.env.production.example`.
+- ✚ `src/app/datenschutz/page.tsx` — Plattform-Datenschutz mit
+  7 Standard-Sektionen (Verantwortlicher, Datenarten, Zweck +
+  Rechtsgrundlage, Speicherdauer, Empfänger inkl. Vercel-DPA,
+  Betroffenenrechte, Cookies). Verlinkt `/impressum`.
+- 🔄 `src/components/layout/site-footer.tsx` — `<a href="#impressum">`
+  Anchors raus, echte `<Link href="/impressum">` rein.
+  `#kontakt` bleibt als TODO (siehe PROGRAM_PLAN).
+- 🔄 `.env.production.example` — neuer `LP_OWNER_*`-Block mit
+  Pflicht/Optional-Markierung, Default-Country „Deutschland".
+- 🔄 `docs/DEPLOYMENT.md` — Vercel-`env-add`-Block ergänzt + neuer
+  Stolperfall „Anbieter noch nicht konfiguriert trotz Production".
+- ✚ `src/tests/owner-info.test.ts` (~25 Asserts):
+  empty-ENV → Demo, Pflichtfeld-fehlt → Demo, voll konfiguriert
+  → Daten kommen durch, Country-Override, Whitespace-Trim,
+  optionale Felder fehlen sauber im Output (nicht als `undefined`-
+  Key), Privacy-Smoketest (NAME-Probe leakt nicht in Demo).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **22/23 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Neue Static-Routes: `/impressum`, `/datenschutz`
+(je 170 B page-bundle, 106 KB shared). Bundle-Total stabil.
+
+**Roadmap**: 1 großes Item abgehakt (Owner-ENV-Pfad), 2 Folge-
+Items angelegt: Impressum-Editor im Dashboard für Multi-Tenant
+(Reseller-Szenario), Footer-`#kontakt`-Verifikation
+(Sektion bauen oder Anchor weg).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — § 5 DDG / Impressum-
+Pflichtangaben.
+
+**Hinweis Auftraggeber**: deine Stammdaten aus dem letzten Chat
+sind **NICHT** im Code committet. Setze sie bitte in deiner Vercel-
+Production-ENV als `LP_OWNER_NAME` / `LP_OWNER_STREET` /
+`LP_OWNER_POSTAL_CODE` / `LP_OWNER_CITY` / `LP_OWNER_EMAIL`
+(+ optional `LP_OWNER_PHONE`, `LP_OWNER_TAX_ID`). Lokal genauso
+in einer `.env.local` (die ist in `.gitignore`).
+
+**Nächste Session**: Code-Session 37 — **Erstes Supabase-Schema**
+(`businesses`-Tabelle als read-only Spiegel der Mocks +
+Repository-Layer). Damit zeigt `database.status` „ok" mit
+echten Tabellen-Calls statt nur REST-Root-Ping.
+

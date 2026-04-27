@@ -68,8 +68,19 @@ export function contextFromBusiness(business: Business): AIBusinessContext {
   };
 }
 
+/** API-Methoden-Name in `/api/ai/generate` (matches dem Server-Schema). */
+export type ApiMethodName =
+  | "generateWebsiteCopy"
+  | "improveServiceDescription"
+  | "generateFaqs"
+  | "generateCustomerReply"
+  | "generateReviewRequest"
+  | "generateSocialPost"
+  | "generateOfferCampaign";
+
 interface MethodConfig {
   readonly id: PlaygroundMethodId;
+  readonly apiName: ApiMethodName;
   readonly label: string;
   readonly description: string;
   readonly icon: LucideIcon;
@@ -84,6 +95,14 @@ interface MethodConfig {
     business: Business,
     values: PlaygroundFormValues,
   ) => Promise<GenerationResult>;
+  /**
+   * Liefert nur den Input (ohne Aufruf), damit der Container ihn
+   * an die API-Route übergeben kann.
+   */
+  readonly buildInput: (
+    business: Business,
+    values: PlaygroundFormValues,
+  ) => unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -113,8 +132,22 @@ function asBool(v: unknown, fallback = false): boolean {
 // Methoden-Configs
 // ---------------------------------------------------------------------------
 
+function buildWebsiteCopyInput(
+  business: Business,
+  values: PlaygroundFormValues,
+): WebsiteCopyInput {
+  return {
+    context: contextFromBusiness(business),
+    variant: (values.variant ?? "hero") as WebsiteCopyInput["variant"],
+    ...(asString(values.hint).length > 0
+      ? { hint: asString(values.hint) }
+      : {}),
+  };
+}
+
 const websiteCopyConfig: MethodConfig = {
   id: "website-copy",
+  apiName: "generateWebsiteCopy",
   label: "Website-Texte",
   description:
     "Hero-Titel, Hero-Untertitel und Über-uns-Text. Vier Varianten je nach Sektion.",
@@ -141,21 +174,32 @@ const websiteCopyConfig: MethodConfig = {
     },
   ],
   defaults: { variant: "hero", hint: "" },
+  buildInput: buildWebsiteCopyInput,
   async call(business, values) {
-    const input: WebsiteCopyInput = {
-      context: contextFromBusiness(business),
-      variant: (values.variant ?? "hero") as WebsiteCopyInput["variant"],
-      ...(asString(values.hint).length > 0
-        ? { hint: asString(values.hint) }
-        : {}),
-    };
-    const output = await mockProvider.generateWebsiteCopy(input);
+    const output = await mockProvider.generateWebsiteCopy(
+      buildWebsiteCopyInput(business, values),
+    );
     return { method: "website-copy", output };
   },
 };
 
+function buildServiceDescriptionInput(
+  business: Business,
+  values: PlaygroundFormValues,
+): ServiceDescriptionInput {
+  return {
+    context: contextFromBusiness(business),
+    serviceTitle: asString(values.serviceTitle),
+    currentDescription: asString(values.currentDescription),
+    targetLength:
+      (values.targetLength as ServiceDescriptionInput["targetLength"]) ??
+      "medium",
+  };
+}
+
 const serviceDescriptionConfig: MethodConfig = {
   id: "service-description",
+  apiName: "improveServiceDescription",
   label: "Service-Beschreibung",
   description:
     "Kurz- und Langversion einer Leistungsbeschreibung. Bestehender Text wird poliert.",
@@ -192,22 +236,37 @@ const serviceDescriptionConfig: MethodConfig = {
     targetLength: "medium",
     currentDescription: "",
   },
+  buildInput: buildServiceDescriptionInput,
   async call(business, values) {
-    const input: ServiceDescriptionInput = {
-      context: contextFromBusiness(business),
-      serviceTitle: asString(values.serviceTitle),
-      currentDescription: asString(values.currentDescription),
-      targetLength:
-        (values.targetLength as ServiceDescriptionInput["targetLength"]) ??
-        "medium",
-    };
-    const output = await mockProvider.improveServiceDescription(input);
+    const output = await mockProvider.improveServiceDescription(
+      buildServiceDescriptionInput(business, values),
+    );
     return { method: "service-description", output };
   },
 };
 
+function buildFaqsInput(
+  business: Business,
+  values: PlaygroundFormValues,
+): FaqGenerationInput {
+  const topicsRaw = asString(values.topics);
+  const topics =
+    topicsRaw.length > 0
+      ? topicsRaw
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s.length >= 2)
+      : [];
+  return {
+    context: contextFromBusiness(business),
+    topics,
+    count: asNumber(values.count, 6),
+  };
+}
+
 const faqsConfig: MethodConfig = {
   id: "faqs",
+  apiName: "generateFaqs",
   label: "FAQ-Generator",
   description:
     "Branchen-typische Fragen aus dem Preset, optional ergänzt um eigene Themen.",
@@ -230,27 +289,29 @@ const faqsConfig: MethodConfig = {
     },
   ],
   defaults: { count: 6, topics: "" },
+  buildInput: buildFaqsInput,
   async call(business, values) {
-    const topicsRaw = asString(values.topics);
-    const topics =
-      topicsRaw.length > 0
-        ? topicsRaw
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s.length >= 2)
-        : [];
-    const input: FaqGenerationInput = {
-      context: contextFromBusiness(business),
-      topics,
-      count: asNumber(values.count, 6),
-    };
-    const output = await mockProvider.generateFaqs(input);
+    const output = await mockProvider.generateFaqs(
+      buildFaqsInput(business, values),
+    );
     return { method: "faqs", output };
   },
 };
 
+function buildCustomerReplyInput(
+  business: Business,
+  values: PlaygroundFormValues,
+): CustomerReplyInput {
+  return {
+    context: contextFromBusiness(business),
+    customerMessage: asString(values.customerMessage),
+    tone: (values.tone ?? "friendly") as CustomerReplyInput["tone"],
+  };
+}
+
 const customerReplyConfig: MethodConfig = {
   id: "customer-reply",
+  apiName: "generateCustomerReply",
   label: "Kunden-Antwort",
   description:
     "Höfliche Antwort auf eine Kundennachricht in drei Tonalitäten.",
@@ -277,19 +338,33 @@ const customerReplyConfig: MethodConfig = {
     },
   ],
   defaults: { customerMessage: "", tone: "friendly" },
+  buildInput: buildCustomerReplyInput,
   async call(business, values) {
-    const input = {
-      context: contextFromBusiness(business),
-      customerMessage: asString(values.customerMessage),
-      tone: (values.tone ?? "friendly") as CustomerReplyInput["tone"],
-    } satisfies CustomerReplyInput;
-    const output = await mockProvider.generateCustomerReply(input);
+    const output = await mockProvider.generateCustomerReply(
+      buildCustomerReplyInput(business, values),
+    );
     return { method: "customer-reply", output };
   },
 };
 
+function buildReviewRequestInput(
+  business: Business,
+  values: PlaygroundFormValues,
+): ReviewRequestInput {
+  const customerName = asString(values.customerName);
+  const reviewLink = asString(values.reviewLink);
+  return {
+    context: contextFromBusiness(business),
+    channel: (values.channel ?? "whatsapp") as ReviewRequestInput["channel"],
+    tone: (values.tone ?? "friendly") as ReviewRequestInput["tone"],
+    ...(customerName.length > 0 ? { customerName } : {}),
+    ...(reviewLink.length > 0 ? { reviewLink } : {}),
+  };
+}
+
 const reviewRequestConfig: MethodConfig = {
   id: "review-request",
+  apiName: "generateReviewRequest",
   label: "Bewertungs-Anfrage",
   description:
     "Vorlagen für WhatsApp/SMS/E-Mail/persönlich, je drei Tonalitäten.",
@@ -336,23 +411,32 @@ const reviewRequestConfig: MethodConfig = {
     customerName: "",
     reviewLink: "",
   },
+  buildInput: buildReviewRequestInput,
   async call(business, values) {
-    const customerName = asString(values.customerName);
-    const reviewLink = asString(values.reviewLink);
-    const input: ReviewRequestInput = {
-      context: contextFromBusiness(business),
-      channel: (values.channel ?? "whatsapp") as ReviewRequestInput["channel"],
-      tone: (values.tone ?? "friendly") as ReviewRequestInput["tone"],
-      ...(customerName.length > 0 ? { customerName } : {}),
-      ...(reviewLink.length > 0 ? { reviewLink } : {}),
-    };
-    const output = await mockProvider.generateReviewRequest(input);
+    const output = await mockProvider.generateReviewRequest(
+      buildReviewRequestInput(business, values),
+    );
     return { method: "review-request", output };
   },
 };
 
+function buildSocialPostInput(
+  business: Business,
+  values: PlaygroundFormValues,
+): SocialPostInput {
+  return {
+    context: contextFromBusiness(business),
+    platform: (values.platform ?? "instagram") as SocialPostInput["platform"],
+    goal: (values.goal ?? "more_appointments") as SocialPostInput["goal"],
+    topic: asString(values.topic),
+    length: (values.length ?? "medium") as SocialPostInput["length"],
+    includeHashtags: asBool(values.includeHashtags, true),
+  };
+}
+
 const socialPostConfig: MethodConfig = {
   id: "social-post",
+  apiName: "generateSocialPost",
   label: "Social-Media-Post",
   description:
     "Plattform-bewusste Posts mit Hashtag-Pool und CTA. 5 Plattformen × 8 Goals.",
@@ -415,22 +499,31 @@ const socialPostConfig: MethodConfig = {
     length: "medium",
     includeHashtags: true,
   },
+  buildInput: buildSocialPostInput,
   async call(business, values) {
-    const input: SocialPostInput = {
-      context: contextFromBusiness(business),
-      platform: (values.platform ?? "instagram") as SocialPostInput["platform"],
-      goal: (values.goal ?? "more_appointments") as SocialPostInput["goal"],
-      topic: asString(values.topic),
-      length: (values.length ?? "medium") as SocialPostInput["length"],
-      includeHashtags: asBool(values.includeHashtags, true),
-    };
-    const output = await mockProvider.generateSocialPost(input);
+    const output = await mockProvider.generateSocialPost(
+      buildSocialPostInput(business, values),
+    );
     return { method: "social-post", output };
   },
 };
 
+function buildOfferCampaignInput(
+  business: Business,
+  values: PlaygroundFormValues,
+): OfferCampaignInput {
+  const validUntil = asString(values.validUntil);
+  return {
+    context: contextFromBusiness(business),
+    offerTitle: asString(values.offerTitle),
+    details: asString(values.details),
+    ...(validUntil.length > 0 ? { validUntil } : {}),
+  };
+}
+
 const offerCampaignConfig: MethodConfig = {
   id: "offer-campaign",
+  apiName: "generateOfferCampaign",
   label: "Angebots-Kampagne",
   description:
     "Headline + Subline + Body + zeit-orientiertes CTA. Echte Knappheit nur mit `validUntil`.",
@@ -459,15 +552,11 @@ const offerCampaignConfig: MethodConfig = {
     },
   ],
   defaults: { offerTitle: "", details: "", validUntil: "" },
+  buildInput: buildOfferCampaignInput,
   async call(business, values) {
-    const validUntil = asString(values.validUntil);
-    const input: OfferCampaignInput = {
-      context: contextFromBusiness(business),
-      offerTitle: asString(values.offerTitle),
-      details: asString(values.details),
-      ...(validUntil.length > 0 ? { validUntil } : {}),
-    };
-    const output = await mockProvider.generateOfferCampaign(input);
+    const output = await mockProvider.generateOfferCampaign(
+      buildOfferCampaignInput(business, values),
+    );
     return { method: "offer-campaign", output };
   },
 };

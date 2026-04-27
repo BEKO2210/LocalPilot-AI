@@ -208,17 +208,25 @@ stehen in [`docs/CODEX_BACKLOG.md`](./docs/CODEX_BACKLOG.md), das Log in
 
 ## 🌐 Live-Preview / Deployment
 
-Auf jedem Push auf `main` oder `claude/**` deployt
-[`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml) den
-Static-Export nach **GitHub Pages**:
+LocalPilot AI deployt auf **zwei Pipelines parallel**:
 
-```
-https://beko2210.github.io/LocalPilot-AI/
-```
+| Pipeline | Was                                                | URL-Pattern                                  |
+| -------- | -------------------------------------------------- | -------------------------------------------- |
+| **GitHub Pages** | Statische Routen (Marketing, Public-Site, Dashboard-UI im Mock-Modus) | `https://beko2210.github.io/LocalPilot-AI/` |
+| **Vercel**       | SSR + alle `/api/*`-Routen (Auth, AI-Generate, Health) | (eingerichtet via `vercel link`)            |
 
-Einmaliger Setup-Schritt: **Settings → Pages → Source → GitHub Actions**.
-Vollständige Anleitung (inkl. Vercel-Pfad für SSR-Routen):
-[`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
+Pages liefert den schnellen, kostenlosen Showcase. Vercel kommt für
+alles, was einen Server braucht: Login-Cookies, KI-Live-Calls,
+Cost-Tracking, Rate-Limits.
+
+Beide Pipelines bauen aus **demselben** Code — die einzige Weiche ist
+die ENV `STATIC_EXPORT=true` (im Pages-Workflow gesetzt, auf Vercel
+nicht). Alle API-Routen werden im Static-Export über
+`pageExtensions`-Filter ausgeschlossen.
+
+Vollständige Anleitung (Setup-Befehle, ENV-Variablen, Smoke-Tests,
+Roll-back): [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
+Pflicht-ENV-Vorlage: [`.env.production.example`](./.env.production.example).
 
 ---
 

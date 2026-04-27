@@ -37,9 +37,28 @@ export const LeadFormFieldSchema = z.object({
 export type LeadFormField = z.infer<typeof LeadFormFieldSchema>;
 
 /**
+ * DSGVO-Einwilligungs-Stempel pro Lead.
+ *
+ * Pflichtfeld: ohne Einwilligung darf kein Lead in den Storage.
+ * `givenAt` = Zeitstempel des aktiven Opt-In durch den Anfragenden.
+ * `policyVersion` = Stand der Datenschutzerklärung, der zu diesem
+ * Zeitpunkt galt — wird im `src/core/legal.ts`-Modul zentral
+ * gepflegt. Audit-Trail nach DSGVO Art. 7 Abs. 1.
+ */
+export const LeadConsentSchema = z.object({
+  givenAt: IsoDateSchema,
+  policyVersion: z.string().min(1).max(40),
+});
+export type LeadConsent = z.infer<typeof LeadConsentSchema>;
+
+/**
  * Lead = Kundenanfrage. Pflichtfelder sind absichtlich knapp gehalten:
  * Name + Telefon ODER E-Mail reichen für eine erste Kontaktaufnahme.
  * Branchenspezifische Zusatzfelder landen in `extraFields`.
+ *
+ * **Code-Session 32**: `consent` ist jetzt Pflicht. Storage-Version
+ * der `leads-overrides` wurde parallel auf v2 angehoben — alte
+ * Einträge ohne consent werden vom Reader sauber verworfen.
  */
 export const LeadSchema = z
   .object({
@@ -58,6 +77,7 @@ export const LeadSchema = z
       .default({}),
     status: LeadStatusSchema.default("new"),
     notes: z.string().max(4000).default(""),
+    consent: LeadConsentSchema,
     createdAt: IsoDateSchema,
     updatedAt: IsoDateSchema,
   })

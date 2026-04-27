@@ -1,23 +1,44 @@
 # Deployment – LocalPilot AI
 
-Aktuelles Setup: **GitHub Pages** für Live-Vorschauen (kostenlos, statisch).
-Mittelfristig (sobald API-Routen / Supabase einziehen) zusätzlich **Vercel**
-für die Voll-SSR-Variante.
+LocalPilot AI deployt auf **zwei Pipelines parallel**:
 
-## GitHub Pages – Schnellstart
+| Pipeline      | Was                                                        | URL-Pattern                                |
+| ------------- | ---------------------------------------------------------- | ------------------------------------------ |
+| **GitHub Pages** | Statische Routen (Marketing, Public-Site, Demo, Themes)  | `https://beko2210.github.io/LocalPilot-AI/` |
+| **Vercel**    | SSR + alle `/api/*`-Routen (Auth, AI-Generate, Health)     | `https://localpilot-ai.vercel.app` (Beispiel) |
 
-Einmaliger Schritt im Repo (UI):
+GitHub Pages bleibt der schnelle, kostenlose Showcase. Vercel kommt
+für alles, was einen Server braucht: Login-Cookies, KI-Live-Calls,
+Cost-Tracking, Rate-Limits.
 
-1. **Settings → Pages**
-2. **Source** → "GitHub Actions" auswählen.
-3. Speichern.
+Welche Pipeline triggert wann?
+
+- **Pages**: Workflow `.github/workflows/deploy.yml` läuft auf jedem
+  Push auf `main` und `claude/**`.
+- **Vercel**: integriert via Vercel-GitHub-App (oder Vercel-CLI).
+  Auto-Deploy auf `main` (Production) + Preview-URLs für andere
+  Branches.
+
+Beide Pipelines bauen aus **demselben** Repo mit **demselben** Code —
+nur das Build-Kommando unterscheidet sich. Pages setzt
+`STATIC_EXPORT=true`, Vercel nicht. Siehe `next.config.mjs` für die
+konditionale Logik.
+
+---
+
+## Teil A — GitHub Pages (statisch, kostenlos)
+
+### Setup (einmalig)
+
+1. **Settings → Pages** im GitHub-Repo
+2. **Source** → "GitHub Actions"
+3. Speichern
 
 Danach passiert alles automatisch:
 
-- Pusht jemand auf `main` oder eine `claude/**`-Branch, läuft das Workflow
-  `.github/workflows/deploy.yml`.
-- Es baut die App mit `STATIC_EXPORT=true` und `NEXT_PUBLIC_BASE_PATH=/LocalPilot-AI`.
-- Das Ergebnis wird als GitHub-Pages-Artefakt hochgeladen und veröffentlicht.
+- Push auf `main` oder `claude/**` triggert `.github/workflows/deploy.yml`.
+- Build mit `STATIC_EXPORT=true` und `NEXT_PUBLIC_BASE_PATH=/LocalPilot-AI`.
+- Ergebnis als GitHub-Pages-Artefakt veröffentlicht.
 
 URL nach erfolgreichem Deploy:
 
@@ -25,137 +46,244 @@ URL nach erfolgreichem Deploy:
 https://beko2210.github.io/LocalPilot-AI/
 ```
 
-(Username klein – GitHub-Pages-URLs sind case-insensitive.)
+Status & Logs: **Actions**-Tab im Repo.
 
-Status & Logs: **Actions**-Tab im Repo. Jeder Run zeigt am Ende die
-Deploy-URL.
+### Wie das technisch funktioniert
 
-## Wie das technisch funktioniert
-
-### 1. Konditioneller Static-Export in `next.config.mjs`
+**Konditioneller Static-Export** in `next.config.mjs`:
 
 ```js
 const useStaticExport = process.env.STATIC_EXPORT === "true";
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  pageExtensions: useStaticExport
+    ? ["tsx", "jsx"]            // schließt route.ts (API) aus
+    : ["tsx", "ts", "jsx", "js"],
   ...(useStaticExport && {
     output: "export",
     trailingSlash: true,
     images: { unoptimized: true },
-    basePath: basePath || undefined,
-    assetPrefix: basePath ? `${basePath}/` : undefined,
+    basePath: process.env.NEXT_PUBLIC_BASE_PATH,
+    assetPrefix: `${process.env.NEXT_PUBLIC_BASE_PATH}/`,
   }),
 };
 ```
 
-Vorteil: `npm run dev` und `npm run build` laufen lokal **ohne** statischen
-Export, weiterhin mit voller Server-Component-Unterstützung. Erst mit
-`STATIC_EXPORT=true` schaltet Next.js auf einen reinen Static-Export um.
+Vorteil: dasselbe Code-Repo läuft auf beiden Pipelines. Pages baut
+ohne API-Routen, Vercel mit.
 
-Lokal testbar mit:
+**Nojekyll-Trick**: GitHub Pages ignoriert per Default Verzeichnisse,
+die mit `_` beginnen. Next.js schreibt seine Assets nach `_next/`.
+`touch out/.nojekyll` im Workflow deaktiviert die Regel.
+
+### Lokal testen
 
 ```bash
 npm run build:static     # baut nach out/
-npx serve out            # lokal anschauen, falls "serve" installiert ist
+npx serve out            # lokal anschauen
 ```
 
-### 2. Workflow `.github/workflows/deploy.yml`
+### Einschränkungen
 
-- Trigger: Push auf `main` oder `claude/**`, plus manuelles
-  `workflow_dispatch` über die GitHub-UI.
-- Build-Steps:
-  1. `actions/checkout@v4`
-  2. `actions/setup-node@v4` (Node 22, npm-Cache)
-  3. `actions/configure-pages@v5` mit `static_site_generator: next`
-  4. `npm ci`
-  5. `npm run build` mit `STATIC_EXPORT=true` und
-     `NEXT_PUBLIC_BASE_PATH=/${{ github.event.repository.name }}`
-  6. `touch out/.nojekyll` – sonst ignoriert GitHub Pages das `_next`-Verzeichnis
-  7. `actions/upload-pages-artifact@v3`
-- Deploy-Step: `actions/deploy-pages@v4`
-- Concurrency-Group `pages` – kein paralleles Doppel-Deploy.
+- **Keine API-Routen**: `app/api/...` ist im Static-Export
+  ausgeschlossen (`pageExtensions`-Filter). Sichtbar an „API-Route
+  nicht verfügbar"-Hinweis im Playground.
+- **Keine Server Actions**.
+- **Bilder ohne Optimization** (`images.unoptimized: true`).
+- **Dynamic Routes** wie `/site/[slug]` müssen alle Slugs zur Build-
+  Zeit kennen (`generateStaticParams()`).
 
-### 3. Nojekyll-Trick
+Wer Live-Provider, Cookie-Auth, Cost-Tracking testen will, nutzt die
+Vercel-Pipeline (Teil B).
 
-GitHub Pages ignoriert per Default Verzeichnisse, die mit `_` beginnen.
-Next.js schreibt seine Assets aber nach `_next/`. Die leere Datei
-`out/.nojekyll` deaktiviert diese Regel.
+---
+
+## Teil B — Vercel (SSR, API-Routen)
+
+### Setup (einmalig)
+
+```bash
+# 1. Vercel-CLI installieren (einmal pro Maschine)
+npm install -g vercel
+
+# 2. Repo verbinden (im Repo-Root, einmal pro Repo)
+vercel link
+# → wählt das Vercel-Team / Projekt
+
+# 3. ENV-Variablen setzen (Production)
+vercel env add LP_AI_API_KEY production
+vercel env add LP_AI_PASSWORD production
+vercel env add LP_AI_SESSION_SECRET production
+vercel env add LP_AI_DAILY_CAP_USD production    # z. B. 5.00
+
+# Optional, je nach gewünschten Live-Providern:
+vercel env add OPENAI_API_KEY production
+vercel env add ANTHROPIC_API_KEY production
+vercel env add GEMINI_API_KEY production
+
+# Optional, ab Code-Session 35 — Datenbank-Health-Check:
+vercel env add SUPABASE_URL production
+vercel env add SUPABASE_ANON_KEY production
+
+# Pflicht vor Produktiv-Schaltung (ab Code-Session 36) —
+# Plattform-Impressum + Datenschutz:
+vercel env add LP_OWNER_NAME production
+vercel env add LP_OWNER_STREET production
+vercel env add LP_OWNER_POSTAL_CODE production
+vercel env add LP_OWNER_CITY production
+vercel env add LP_OWNER_EMAIL production
+# Optional:
+vercel env add LP_OWNER_PHONE production
+vercel env add LP_OWNER_TAX_ID production
+
+# 4. Production-Deploy
+vercel --prod
+```
+
+Die Vorlage aller benötigten Variablen steht in
+[`.env.production.example`](../.env.production.example) — niemals
+echte Werte dort einchecken.
+
+**Empfohlene Werte:**
+- `LP_AI_SESSION_SECRET`: 32-Byte-Random-Base64,
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+  ```
+- `LP_AI_PASSWORD`: separat von `LP_AI_API_KEY`. Leakt der Bearer-
+  Token, ist das Login-Passwort dadurch nicht kompromittiert.
+- `LP_AI_DAILY_CAP_USD`: konservativ starten (z. B. `1.00`), nach
+  Erfahrung erhöhen.
+
+### Region
+
+Default ist `fra1` (Frankfurt) — für DACH-Märkte optimal. Steht
+explizit in [`vercel.json`](../vercel.json):
+
+```json
+{
+  "framework": "nextjs",
+  "regions": ["fra1"]
+}
+```
+
+Wer Multi-Region braucht (Pro-Plan), kann mehrere Regionen
+eintragen — siehe Vercel-Docs.
+
+### Auto-Deploy via Vercel-GitHub-App
+
+Vercel installiert nach `vercel link` automatisch eine GitHub-App im
+Repo. Ab dann:
+
+- Push auf `main` → Production-Deploy
+- Push auf jede andere Branch → Preview-Deploy mit eigener URL
+
+Kein zusätzlicher GitHub-Action-Workflow nötig.
+
+### Lokal testen wie auf Vercel
+
+```bash
+# .env.local mit allen Werten füllen (siehe .env.production.example)
+npm run dev
+# Login auf http://localhost:3000/dashboard/<slug>/ai
+# → AuthCard zeigt Login-Form
+# → Passwort eingeben → Cookie gesetzt → Live-Provider freigeschaltet
+```
+
+### Smoke-Test nach Deploy
+
+```bash
+# 1. Health-Endpoint mit Bearer-Token
+curl -H "Authorization: Bearer $LP_AI_API_KEY" \
+  https://<dein-vercel-projekt>.vercel.app/api/ai/health
+
+# 2. Login → Cookie → Me
+curl -c /tmp/cookies.txt -X POST \
+  -H "content-type: application/json" \
+  -d '{"password":"'$LP_AI_PASSWORD'"}' \
+  https://<dein-vercel-projekt>.vercel.app/api/auth/login
+
+curl -b /tmp/cookies.txt \
+  https://<dein-vercel-projekt>.vercel.app/api/auth/me
+# erwartet: {"authenticated":true,"principal":"admin","via":"cookie"}
+```
+
+### Roll-back
+
+Vercel hält jeden Deploy als unveränderbares Snapshot. Im Dashboard
+unter **Deployments** auf einen älteren Snapshot klicken, dann
+**Promote to Production**. Kein Re-Build nötig, < 30 Sekunden Schwenk.
+
+---
+
+## Beide Pipelines parallel — wann ist was sichtbar?
+
+| Stand                                           | Was Pages zeigt           | Was Vercel zeigt              |
+| ----------------------------------------------- | ------------------------- | ----------------------------- |
+| **Public-Site** (`/site/<slug>`)                | ✅ live                    | ✅ live (gleicher Code)        |
+| **Marketing-Funnel** (`/`, `/pricing`, `/demo`) | ✅                         | ✅                             |
+| **Dashboard-UI** (`/dashboard/<slug>/...`)      | ✅ aber Mock-only          | ✅ + Login + Live-Provider     |
+| **Datenschutz / Impressum** (`/site/<slug>/...`) | ✅                        | ✅                             |
+| **API-Routen** (`/api/auth/*`, `/api/ai/*`)     | ❌ 404 (Static-Build)      | ✅ Serverless Functions        |
+| **Lead-Form**                                   | ✅ + localStorage          | ✅ + localStorage              |
+
+**Faustregel**: was nur Lesen erfordert, läuft auf Pages. Was Server-
+Logik braucht, läuft auf Vercel.
+
+---
 
 ## Branch-Strategie
 
-- `main` → produktive GitHub-Pages-Site
-- `claude/**` → Live-Preview (überschreibt die Production-Pages, weil
-  GitHub Pages nur eine aktive Site pro Repo unterstützt)
+- `main` → Production auf beiden Pipelines.
+- `claude/**` → Pages-Preview (überschreibt Production-Pages, da
+  GitHub Pages nur eine Site pro Repo hat) **und** Vercel-Preview
+  (eigene URL pro Branch, Production-Site bleibt unverändert).
 
-Ergebnis: Während wir auf einer `claude/**`-Branch arbeiten, zeigt die
-Pages-URL den jeweils aktuellen Stand dieser Branch. Sobald gemerged wird
-und `main` als nächste pusht, übernimmt `main` die Anzeige.
+Vercel-Preview-URLs haben das Format
+`https://<projekt>-<hash>-<team>.vercel.app` und sind ideal für
+PR-Reviews.
 
-Wer parallel zwei Stände sehen will (Production + Preview), nutzt später
-Vercel-Previews statt GitHub Pages für Branches.
-
-## Einschränkungen von GitHub Pages
-
-GitHub Pages ist **rein statisch**. Daraus folgt:
-
-- **Keine API-Routen** – `app/api/...` ist mit `output: "export"` nicht
-  unterstützt. Bis Session 12/13 nicht relevant.
-- **Keine Server Actions** – betrifft uns derzeit nicht.
-- **Bilder ohne Optimization** – mit `images: { unoptimized: true }` werden
-  Bilder unverändert ausgeliefert. Für Marketing reicht das.
-- **`/site/[slug]` Dynamic Routes** funktionieren nur, wenn alle Slugs zur
-  Build-Zeit über `generateStaticParams()` erzeugt werden. Sobald die
-  Mock-Daten aus Session 6 stehen, generieren wir die Slugs zur Build-Zeit.
-
-Sobald wir echte Backend-Funktionen brauchen (Lead-Speichern in DB,
-Live-AI-Calls, Auth), kommt **Vercel** dazu. GitHub Pages bleibt als
-schneller, kostenloser Showcase erhalten.
-
-## Vercel (geplant ab Session 19)
-
-Wenn Supabase und API-Routen einziehen:
-
-1. Repo bei [vercel.com/new](https://vercel.com/new) verbinden.
-2. ENV-Variablen aus `.env.example` setzen (`SUPABASE_*`, optional
-   `OPENAI_API_KEY` etc.).
-3. **Kein** `STATIC_EXPORT=true` setzen – Vercel soll die App mit voller
-   SSR-Unterstützung bauen.
-4. Vercel deployt automatisch bei jedem Push, mit Preview-URLs pro
-   Branch/PR.
-
-Beide Targets laufen aus demselben Code – die Workflow- und ENV-Variable
-`STATIC_EXPORT` ist die einzige Weiche.
-
-## Smoke-Tests nach jedem Deploy
-
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://beko2210.github.io/LocalPilot-AI/
-# erwartet: 200
-```
-
-Auf der Seite sichtbar prüfen:
-
-- Hero rendert mit "Moderne Websites und KI-Automation für lokale Betriebe."
-- Pricing-Karten mit 49 €, 99 €, 199 €
-- Mobile Ansicht (DevTools 375 px) sieht aufgeräumt aus.
+---
 
 ## Häufige Stolperfallen
 
-**404 auf Assets nach Deploy.** Meist fehlt der `basePath`. Im Workflow ist
-`NEXT_PUBLIC_BASE_PATH=/${{ github.event.repository.name }}` gesetzt – wenn
-das Repo umbenannt wird, passt sich das automatisch an.
+**Pages: 404 auf Assets nach Deploy.** Fehlender `basePath`. Im
+Workflow ist `NEXT_PUBLIC_BASE_PATH=/${{ github.event.repository.name }}`
+gesetzt — passt sich automatisch bei Repo-Rename an.
 
-**`/_next/...` 404.** `.nojekyll` fehlt. Der Step `touch out/.nojekyll` im
-Workflow verhindert das.
+**Pages: `/_next/...` 404.** `.nojekyll` fehlt. Workflow-Step
+`touch out/.nojekyll` muss da sein.
 
-**Hash-Links springen, externe Links zerlegt.** `next/link` rechnet den
-basePath automatisch ein. Plain-HTML `<a href="/dashboard">` (ohne
-`next/link`) bekommt **kein** Präfix – immer `next/link` verwenden, sobald
-es interne Routen sind.
+**Vercel: Login funktioniert nicht (401 trotz richtigem Passwort).**
+`LP_AI_PASSWORD` fehlt in der Vercel-ENV. Mit `vercel env ls`
+prüfen.
 
-**Lokaler Static-Build crasht.** Erst `rm -rf .next out` ausführen, dann
-`npm run build:static`. Manchmal bleibt ein Mischzustand zurück, wenn
-vorher ein normaler `npm run build` lief.
+**Vercel: 503 Service Not Configured.** Weder `LP_AI_API_KEY`
+noch `LP_AI_SESSION_SECRET` gesetzt. Mindestens einen davon setzen.
+
+**Vercel: Cookie kommt im Browser nicht an.** Browser-Konsole prüfen:
+in Production muss `Secure` gesetzt sein, Domain muss HTTPS sein.
+Wenn man eine Custom-Domain via HTTP testet, schlägt das fehl.
+
+**Lokaler Static-Build crasht.** Erst `rm -rf .next out` ausführen,
+dann `npm run build:static`. Manchmal bleibt ein Mischzustand zurück,
+wenn vorher ein normaler `npm run build` lief.
+
+**Vercel: Build sucht nach API-Routen, findet aber `route.ts` nicht.**
+Die Static-Export-`pageExtensions`-Filterung greift nur, wenn
+`STATIC_EXPORT=true` gesetzt ist. Auf Vercel ist das nicht der Fall —
+Routen sollten gefunden werden. Wenn doch nicht: prüfen, ob Vercel
+versehentlich die ENV gesetzt hat (Settings → Environment Variables).
+
+**Health-Endpunkt: `database.status = "offline"` trotz gesetzter
+Supabase-ENV.** Die Werte werden gelesen, aber der Endpoint antwortet
+nicht innerhalb von 2 Sekunden. Häufigste Ursache: Supabase-Projekt
+ist im Free-Tier nach 7 Tagen Inaktivität pausiert. Im Supabase-
+Dashboard auf **Restore project** klicken, dann erneut prüfen.
+
+**Plattform-Impressum zeigt „Anbieter noch nicht konfiguriert"
+trotz Production-Deploy.** Die `LP_OWNER_*`-ENVs sind nicht oder
+unvollständig gesetzt. Pflichtfelder sind NAME, STREET, POSTAL_CODE,
+CITY, EMAIL — fehlt eines, bleibt der Demo-Mode aktiv. Mit
+`vercel env ls` prüfen, dann redeploy. Setting in
+[`.env.production.example`](../.env.production.example).

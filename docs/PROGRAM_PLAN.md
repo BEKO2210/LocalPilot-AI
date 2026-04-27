@@ -81,7 +81,7 @@ mit Variablen.
 Bewertungs-Anfragen versenden und Social-Posts vorbereiten.
 
 ### Meilenstein 4 — Backend & Daten
-**Status:** ⏳ geplant
+**Status:** 🔄 in Arbeit (ab Code-Session 35).
 
 Supabase-Schema, Auth (Magic Link, optional OAuth), Repository-Layer
 ersetzt die localStorage-Mocks transparent, Storage für Logos und Bilder,
@@ -89,6 +89,18 @@ Multi-Tenant-Isolation, Backups.
 
 **Erfolgskriterium:** App läuft mit echter DB, mehrere Nutzer:innen
 sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
+
+**Session-Cluster (rollend):**
+- 35: Supabase-Client-Skeleton + Database-Health-Check (read-only) ✅
+- 36: Plattform-Impressum + Datenschutz aus `LP_OWNER_*`-ENV ✅
+  (Stammdaten leak-sicher per Konstruktion, Demo-Mode-Hinweis)
+- 37+: Schema-Entwurf (`businesses`, `services`, `leads`,
+  `consents`), erste Read-Pfade hinter Feature-Flag, Repository-
+  Layer abstrahiert localStorage + Supabase einheitlich.
+- 38+: Magic-Link-Auth via `@supabase/ssr`, Multi-Tenant-Bucket
+  pro Betrieb, Session-Bindung an `business_id`.
+- 40+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
+  durchziehen, Backup-Policy.
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant
@@ -215,13 +227,29 @@ aktiven Session.
   hat es bewusst weggelassen, weil ohne Volumen kein Effekt.
   Folge-Session: Cache-Layer mit TTL-Tracking, getrennte Cost-
   Bucket pro Branche/Variant.
-- **AI-API-Route mit Auth + Live-Provider-Aufruf aus Browser**
-  (aus Code-Session 27): Der Playground ist aktuell auf Mock
-  beschränkt, weil ein Live-API-Key im Bundle fahrlässig wäre.
-  Folge-Session: `/api/ai/generate` als Edge-Function mit Auth
-  (Cookie/JWT), Provider-Auswahl-Dropdown im Playground (Mock /
-  OpenAI / Anthropic / Gemini). Vorbedingung für Cost-Tracking
-  und Rate-Limiting (Track B-Items).
+- ~~**AI-API-Route mit Auth + Live-Provider-Aufruf aus Browser**~~
+  (Code-Session 28 ✅ + Cookie/JWT-Auth Session 33 ✅ + Vercel-
+  Deploy-Pipeline Session 34 ✅).
+  Verbleibende Folge-Items:
+  - Edge-Runtime-Migration (statt Node) für niedrige Latenz +
+    Streaming-Support. Aktuell `runtime: "nodejs"` für die HMAC-
+    Auth via `node:crypto`. Für Edge umstellen auf
+    `Web Crypto SubtleCrypto.HMAC`.
+  - **Custom-Domain auf Vercel** (Code-Session 34 lieferte das
+    Default-Subdomain). DNS-Records am eigenen Provider setzen,
+    Vercel-Dashboard verbindet automatisch.
+  - **Vercel-Logs → Sentry / Logflare**-Adapter, sobald wir echte
+    Nutzer haben (Track C Observability).
+  - **Multi-Tenant-Auth mit echten Usern** (Track G, ab Backend-
+    Meilenstein 4): aktuell ein einzelnes geteiltes Passwort pro
+    Server. Sobald Supabase steht: User-Accounts mit Email/Magic-
+    Link, Tenant-Bucket pro Betrieb, Session-Bindung an `business_id`.
+  - **CSRF-Schutz** für die Cookie-Auth: Origin-Header-Check oder
+    Double-Submit-Token. Aktuell schützt SameSite=Lax die meisten
+    Cross-Site-Forgeries; eine zweite Verteidigungslinie ist trotzdem
+    sinnvoll, sobald wir cross-domain-Endpunkte haben.
+  - **Edge-Compatible-JWT**: aktuell Node-`crypto`. Für Edge-
+    Runtime auf `Web Crypto SubtleCrypto.HMAC` umstellen.
 - **USP-Editor pro Betrieb** (aus Code-Session 27): Die
   Kontext-Box zeigt aktuell „USPs: (noch nicht hinterlegt)".
   Schema und Repository-Layer fehlen — kommt zusammen mit dem
@@ -229,12 +257,44 @@ aktiven Session.
   `business.json` als Mock-Daten ergänzen reicht für die Demos.
 
 ### Track B · Security & Compliance
-- DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen
-  KI-Output, bevor er in einen Public-Site-Block geschrieben wird.
+- ~~DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen
+  KI-Output~~ (Code-Session 31 ✅, Plain-Text-Variante).
+  Folge-Items:
+  - **Markdown-/HTML-Render-Pfad scharf machen**: sobald ein Bereich
+    KI-Output als HTML rendert (Markdown-Renderer in Reviews,
+    Reicher-Text-Editor, etc.), `isomorphic-dompurify` einziehen
+    und den `sanitizeAIOutputAsHtml`-Stub durch echte Whitelist
+    ersetzen (Tags: `b/strong/em/i/p/br/ul/ol/li`).
+  - **Property-based Test-Suite**: aktuell 29 manuell kuratierte
+    Injection-Vektoren. Sinnvoll: ein Generator-Test (z. B. mit
+    `fast-check`), der zufällige Mix-Strings produziert und
+    invariant prüft („nach Sanitize gibt es kein `<script>`").
+  - **CSP-Header** (Track B): zusätzliche Schicht, falls der
+    Sanitizer mal versagt — Strict-CSP via Nonce bei der
+    SSR-Auslieferung.
 - npm-audit-Lauf in CI, plus monatlicher Auto-Bump-Pass mit
   `npm outdated` + Smoketest.
 - DSGVO-Hinweis-Block für die Bewertungs-Anfrage-Versendung
   (Einwilligung, Speicherdauer, Widerruf).
+- ~~**DSGVO-Lead-Einwilligung**~~ (Code-Session 32 ✅, Lead-Form
+  hat aktive Pflicht-Checkbox + Versions-Stempel + Speicherdauer-
+  Hinweis + Verlinkung auf `/datenschutz` und `/impressum`).
+  Folge-Items:
+  - **Settings-Editor mit Legal-Sektion** (Meilenstein 4): USt-IdNr.,
+    Aufsichtsbehörde, Berufshaftpflicht, individueller
+    Datenschutzbeauftragter pro Betrieb.
+  - **Datenschutzerklärung-Editor** im Dashboard, damit der
+    Auftraggeber den Stub-Text durch eigene anwaltlich geprüfte
+    Texte ersetzen kann (mit automatischem Versions-Bump bei
+    inhaltlicher Änderung).
+  - **Auftragsverarbeitungsvertrag-Vorlage** für den Reseller-Fall
+    (LocalPilot AI vs. der lokale Betrieb als Verantwortlicher).
+  - **Lead-Retention-Cron**: alte Leads über
+    `LEAD_RETENTION_MONTHS` automatisch löschen (sobald Backend
+    steht — aktuell nur localStorage, also User-kontrolliert).
+  - **Widerrufs-Handler-Endpoint** (`/api/lead/withdraw`): Anfragender
+    sendet E-Mail-Verifikations-Token, Lead wird sofort entfernt +
+    Audit-Eintrag.
 - Rate-Limit auf der KI-Layer (Mock + zukünftig echte Provider) mit
   zentraler Konfiguration und transparenter Fehlermeldung im UI.
 - Content-Security-Policy + Subresource-Integrity Header für den
@@ -243,9 +303,18 @@ aktiven Session.
   Key direkt aus `process.env` gelesen. Sobald API-Routes existieren,
   ergänzen wir einen serverseitigen Wrapper, der den Key nie in
   Logs auftauchen lässt (Redaction in Sentry-Integration).
-- **Cost-Cap pro Betrieb**: pro Tag/Monat ein Hard-Limit, das vor dem
-  OpenAI-Call geprüft wird. Bei Überschreitung wirft die KI-Schicht
-  `AIProviderError("rate_limited")` mit eigenem Hinweistext.
+- ~~**Cost-Cap pro Betrieb**~~ (Code-Session 29 ✅, Default-Bucket).
+  Folge-Items:
+  - Bucket-Key per Betrieb-Slug (`business:<slug>`) statt
+    `default` — sobald Auth + Multi-Tenant steht.
+  - Persistenter Store (Redis/Upstash) statt In-Memory, sobald
+    multi-instance deployed.
+  - Monthly-Cap zusätzlich zum Daily-Cap.
+  - Cost-Audit-Log pro Betrieb (für Auftraggeber-Reports und
+    Pricing-Validierung der Pakete).
+  - Echtes Provider-Usage statt Heuristik (4 Zeichen ≈ 1 Token).
+    Aktuell unterschätzen wir 5–15 % — fein für Indikation, zu
+    grob für Abrechnung.
 
 ### Track C · Observability & Qualität
 - Strukturierte Telemetrie der Mock-Provider-Aufrufe (Welche Methode,
@@ -257,6 +326,41 @@ aktiven Session.
   „Smoketest-via-tsx"-Ansatz, sobald die Test-Tiefe wächst.
 - Visual-Regression-Tests (Playwright) für die kritischen Public-Site-
   Sektionen.
+- **Health-Snapshot-Endpoint** (aus Code-Session 30): aktuell
+  Auth-gated und nur über die Dashboard-UI sichtbar. Folge-Items:
+  - Public-Status-Page (`/status`) mit subset-Snapshot ohne
+    sensitive Felder, geeignet für Status-Pages-Ähnliche Anzeige.
+  - Status-History (letzte 7 Tage Budget-Verbrauch) für
+    Auftraggeber-Reports.
+  - Slack-/Email-Alert wenn `percentUsed > 80 %` an einem Tag.
+- **Database-Health erweitern** (aus Code-Session 35): aktuell
+  pingt der Health-Check nur die REST-Root-URL. Folge-Items:
+  - Lightweight `select count(*) from businesses limit 0`
+    sobald das Schema steht — testet auch PostgREST + RLS, nicht
+    nur TCP-Reachability.
+  - Cache-Layer mit 30-Sekunden-TTL (Server-Cache), damit ein
+    aggressiver Refresh-Klick nicht jedes Mal 1–2 s blockt.
+  - **Auto-Pause-Detection**: Free-Tier-Projekte schlafen nach
+    7 d Inaktivität. Health-Check sollte diesen Spezialfall
+    erkennen (HTTP 404 + spezifischer Body) und im UI „Projekt
+    pausiert — auf Restore klicken" anzeigen.
+- **Stale-`comingInSession`-Audit** (aus Light-Pass Session 35):
+  Bronze-User sehen `comingInSession={11}` (Services) bzw.
+  `={12}` (Leads), obwohl die Features längst gebaut sind — die
+  echte Logik ist „Bronze-Lock", nicht „kommt später". Audit:
+  zwei separate Komponenten — `<FeatureLockedSection>` für
+  Tier-Locks, `<ComingSoonSection>` nur für tatsächlich offene
+  Features.
+- **Impressum-Editor im Dashboard** (aus Code-Session 36):
+  aktuell kommen die Owner-Daten ausschließlich aus
+  `LP_OWNER_*`-ENV — gut für Privacy, aber unbequem für
+  Reseller-Szenarien (jeder Mandant müsste seine eigene
+  Vercel-Instanz haben). Mit Multi-Tenant-Backend (Meilenstein 4):
+  Owner-Daten optional per Betrieb in der DB überschreibbar,
+  ENV bleibt als Default für die Plattform-Marketing-Seite.
+- **Marketing-Footer-Verifikation**: aktuell zeigt die Public-Site
+  einen `#kontakt`-Anchor ohne echte Sektion. Hinweis aus
+  Code-Session 36: entweder Sektion bauen oder Anchor entfernen.
 
 ### Track D · DX & Refactor
 - Gemeinsamen `clamp`/`polish`/`substituteCity`-Helper in

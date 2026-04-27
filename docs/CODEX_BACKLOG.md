@@ -206,6 +206,24 @@ build:static; alle internen Links funktionieren (manuelle Stichprobe).
 
 ---
 
+### #11 — `[needs-review]` `industry-presets.test.ts` schlägt seit unbekannter Session fehl
+
+**Pfad:** `src/tests/industry-presets.test.ts`
+
+**Symptom:** Der Test versucht `getPresetOrFallback("definitely_not_a_real_key" as IndustryKey)` aufzurufen und erwartet, dass die Funktion stillschweigend den Fallback-Preset liefert. Tatsächlich wirft die Funktion (oder eine inneren Schema-Parse), weil `IndustryKeySchema` den unbekannten Wert nicht durchlässt.
+
+**Beobachtung von Code-Session 32:** der Fehler war bereits in Commit `86d10f1` (Session 31) vorhanden, **unabhängig** von der Consent-Arbeit. Wahrscheinlich seit einer schema-strikteren Zod-Version oder einem früheren Refactor liegen geblieben.
+
+**Wahrscheinliche Fixe** (Codex bitte erst recherchieren, dann genau einen umsetzen):
+- (a) `getPresetOrFallback`: `safeParse` statt `parse` verwenden, bei Fehler Fallback zurückgeben.
+- (b) Test-Eintrag aktualisieren: ein gültiger key, dessen Preset bewusst entfernt wurde, statt eines komplett ungültigen.
+
+**Boundary:** Codex darf den Test-Eintrag aktualisieren oder `getPresetOrFallback` mit minimalem Diff fixen. Wenn der Fix die `getPresetOrFallback`-Signatur oder das Default-Verhalten ändert: stoppen und in `[needs-review]` belassen.
+
+**Verifikation:** `npx tsx src/tests/industry-presets.test.ts` läuft grün.
+
+---
+
 ### #10 — `[pre-approved]` Deutsche Anführungszeichen in JSX-Prop-Strings escapen
 
 **Suchpfad:** `src/app/**/*.tsx`, `src/components/**/*.tsx`
@@ -256,6 +274,52 @@ typischer Junior-Sweep, der zukünftige Build-Fails verhindert.
 
 **Verifikation:** Markdown rendert ohne Warnungen, internes Linking
 korrekt.
+
+---
+
+### #12 — `[needs-review]` Bronze-Lock-UX vs. Coming-Soon-Drift
+
+**Pfade:**
+- `src/app/dashboard/[slug]/services/page.tsx:43`
+- `src/app/dashboard/[slug]/leads/page.tsx:43`
+
+**Beobachtung (aus Light-Pass Code-Session 35):** Bronze-User
+sehen `<ComingSoonSection comingInSession={11}>` (bzw. `={12}`),
+obwohl die Features längst gebaut sind — die echte Logik ist
+„Bronze-Lock", nicht „kommt später". Das verwirrt nicht-technische
+Endnutzer:innen, weil im Marketing das Paket-Modell „ab Silber
+freigeschaltet" verspricht, der UI-Text aber „Folgt in Session 11"
+sagt.
+
+**Empfehlung:** Zwei separate Komponenten — `<FeatureLockedSection>`
+für Tier-Locks (Upgrade-CTA + Tier-Badge), `<ComingSoonSection>`
+nur für tatsächlich offene Features (Roadmap-Hinweis, kein
+Upgrade-Pfad).
+
+**Boundary:** Größere Architektur-Änderung, deshalb
+**`[needs-review]`** — Claude muss die Komponenten-Aufteilung
+selbst machen, Codex kann das nicht im 20-KB-Cap.
+
+---
+
+### #13 — `[pre-approved]` `database`-Block in `ai-health.test.ts` mit-asserten
+
+**Pfad:** `src/tests/ai-health.test.ts`
+
+**Aufgabe:** Der bestehende `ai-health.test.ts` testet
+`getHealthSnapshot` (Provider + Budget). Mit Code-Session 35 kommt
+der `database`-Block dazu — über die Route. Codex darf
+**zusätzlich** ein paar Asserts ergänzen, die prüfen, dass die
+HealthCard-Typen `HealthSnapshot & { database: DatabaseHealth }`
+strukturell stimmen (z. B. ein synthetisches Response-Objekt
+zusammenbauen und JSON-Roundtrip mit `JSON.parse(JSON.stringify(...))`
+prüfen).
+
+**Boundary:** Kein neuer Test-File, nur dem bestehenden 5–10
+Asserts hinzufügen. `getHealthSnapshot` selbst nicht ändern.
+
+**Verifikation:** typecheck, lint, build:static, alle Smoketests
+weiterhin grün.
 
 ---
 

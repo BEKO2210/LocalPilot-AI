@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Container } from "@/components/ui/container";
 
 export function SiteFooter() {
@@ -9,9 +10,15 @@ export function SiteFooter() {
           &copy; {year} LocalPilot AI – Universelles Website- und KI-System für lokale Betriebe.
         </p>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <a className="hover:text-ink-900" href="#impressum">Impressum</a>
-          <a className="hover:text-ink-900" href="#datenschutz">Datenschutz</a>
-          <a className="hover:text-ink-900" href="#kontakt">Kontakt</a>
+          <Link className="hover:text-ink-900" href="/impressum">
+            Impressum
+          </Link>
+          <Link className="hover:text-ink-900" href="/datenschutz">
+            Datenschutz
+          </Link>
+          <a className="hover:text-ink-900" href="#kontakt">
+            Kontakt
+          </a>
         </div>
       </Container>
     </footer>

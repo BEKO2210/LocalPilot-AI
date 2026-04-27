@@ -6,13 +6,321 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant (Meilenstein 2 – KI-Schicht)
-- **Code-Session 28: AI-API-Route mit Auth + Live-Provider im UI** —
-  `/api/ai/generate` als Edge-Function, Provider-Auswahl-Dropdown
-  im Playground (Mock / OpenAI / Anthropic / Gemini). Vorbedingung
-  für Cost-Tracking und Rate-Limiting.
-- Code-Sessions 29+: Cost-Tracking + Rate-Limit-UI,
-  DOMPurify-Sanitizer auf übernommene KI-Outputs.
+### Geplant — Backend-Sprint
+- **Code-Session 37: Erstes Supabase-Schema** (`businesses`-Tabelle
+  als read-only Spiegel der Mocks + Repository-Layer mit
+  feature-flag-Switch localStorage ↔ Supabase). Health-Endpunkt
+  testet ab dann echte Tabellen-Calls statt nur REST-Root-Ping.
+- Code-Sessions 38+: Multi-Tenant-Auth mit echten User-Accounts
+  (Magic-Link via `@supabase/ssr`), Storage-Bucket für Logos,
+  Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
+  Settings-Editor mit Legal-Sektion, Impressum-Editor pro Betrieb
+  (für Reseller-Szenarien).
+
+## [0.16.10] – Code-Session 36 – 2026-04-27
+
+Plattform-Impressum + Datenschutz auf ENV umgestellt — Stammdaten
+des Auftraggebers landen leak-sicher per Konstruktion nicht im Repo.
+
+- ✚ `src/core/legal.ts::getOwnerInfo(env)` — Pflichtfelder
+  (NAME, STREET, POSTAL_CODE, CITY, EMAIL) → `configured=true`,
+  sonst Demo-Owner-Fallback. Trimmt Whitespace, optionale Felder
+  fehlen sauber als Key (nicht als `undefined`).
+- ✚ `src/app/impressum/page.tsx` — Plattform-Impressum nach § 5 DDG
+  + § 18 MStV. Static-prerendered (170 B). Sichtbarer Demo-Notice
+  solange ENV unvollständig.
+- ✚ `src/app/datenschutz/page.tsx` — Plattform-Datenschutz mit
+  7 Sektionen, verlinkt `/impressum` und nennt Vercel als
+  Hosting-Auftragsverarbeiter.
+- 🔄 `src/components/layout/site-footer.tsx` — `<a href="#...">`
+  raus, echte `<Link>` rein.
+- 🔄 `.env.production.example` — `LP_OWNER_*`-Block (5 Pflicht +
+  3 Optional + Default-Country).
+- 🔄 `docs/DEPLOYMENT.md` — Vercel-ENV-Schritte + neuer
+  Stolperfall-Eintrag.
+- ✚ `src/tests/owner-info.test.ts` (~25 Asserts):
+  Demo-Mode-Logik, Pflichtfeld-Vollständigkeit, Whitespace-Trim,
+  Country-Override, Privacy-Smoketest (Probe leakt nicht in Demo).
+
+22/23 Smoketests grün. Neue Routes static-prerendered (Pages-
+kompatibel). Bundle: shared 102 KB unverändert.
+
+🛣️ Roadmap: 2 neue Plan-Items (Impressum-Editor pro Betrieb für
+Reseller, Footer-`#kontakt`-Verifikation).
+
+**Hinweis**: persönliche Stammdaten gehen nur in Vercel-ENV
+(oder `.env.local`, ist in `.gitignore`) — niemals in den Code.
+
+## [0.16.9] – Code-Session 35 – 2026-04-27
+
+Backend-Auftakt. Erste ENV-gegate Supabase-Anbindung — ohne Crash,
+falls keine Credentials gesetzt sind.
+
+- ✚ `src/core/database/client.ts` — `getSupabaseClient(env)` liefert
+  `null` ohne ENV. Cache + Reset-Helper. App läuft weiter im
+  Mock-Modus, falls Supabase nicht konfiguriert ist.
+- ✚ `src/core/database/health.ts` — `checkDatabaseHealth(env, opts)`
+  pingt `/rest/v1/` mit `apikey`-Header und AbortController-Timeout
+  (2 s). Drei Status: `ok` (< 1.5 s), `degraded` (slow / 5xx /
+  Netz-Fehler), `offline` (kein ENV / Timeout).
+- 🔄 `/api/ai/health` liefert jetzt `database`-Block parallel zum
+  bestehenden Snapshot (Promise.all).
+- 🔄 `<HealthCard>` zeigt einen `<DatabaseBadge>` mit Latenz-Anzeige
+  und Fallback-Text „Datenbank noch nicht konfiguriert".
+- 🔄 `.env.production.example` + `docs/DEPLOYMENT.md` um
+  `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
+  ergänzt; neuer Stolperfall-Eintrag „Free-Tier-Auto-Pause".
+- ⬆️ Dependency: `@supabase/supabase-js@^2`.
+- ✚ `src/tests/database-health.test.ts` (~30 Asserts):
+  ENV-Reader-Trim, Status-Mapping (ok/degraded/offline),
+  Privacy-Smoketest (Key + URL nicht im Dump), Header/URL-Capture.
+- 🛣️ Roadmap: Meilenstein 4 (Backend & Daten) von „⏳ geplant"
+  auf „🔄 in Arbeit", Session-Cluster 35–40 skizziert. 3 neue
+  Plan-Items (Health-Erweiterung, Stale-comingInSession-Audit,
+  Owner-Daten-ENV).
+- 🔁 state-refresh-light (Session 35 ist 5er-Multiple): 22/23
+  Smoketests grün, Stale-Stub-Befunde dokumentiert.
+
+21/22 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Bundle: shared 102 KB unverändert.
+
+**Hinweis**: persönliche Stammdaten des Auftraggebers werden NIE
+ins Repo committet — Code-Session 36 stellt das Impressum auf ENV
+um.
+
+## [0.16.8] – Code-Session 34 – 2026-04-27
+
+Vercel-SSR-Deploy-Pipeline als zweite Pipeline neben GitHub Pages.
+**Infrastructure-as-Code + Doku** — die finale `vercel link`-Session
+muss der Auftraggeber selbst einmal ausführen (Anleitung in
+`docs/DEPLOYMENT.md`).
+
+- ✚ `vercel.json` — `framework: "nextjs"`, `regions: ["fra1"]`
+  (Frankfurt für DACH), `buildCommand: "npm run build"` (KEIN
+  Static-Export!), `outputDirectory: ".next"`, Cache-Control-Header
+  für `/api/:path*`.
+- ✚ `.env.production.example` — komplette Vorlage aller benötigten
+  ENV-Variablen mit Beschreibung. Generator-Hinweis für
+  `LP_AI_SESSION_SECRET`. Niemals echte Secrets einchecken.
+- 🔄 `docs/DEPLOYMENT.md` komplett restrukturiert: Teil A Pages
+  (bestehend), Teil B Vercel (neu), „Was sieht man wo"-Vergleichs-
+  Tabelle, curl-basierte Smoke-Tests, Roll-back-Anleitung,
+  Stolperfallen-Sektion auf 7 Einträge erweitert.
+- 🔄 `README.md` — Live-Preview-Sektion auf Dual-Pipeline aktualisiert.
+- ✚ `src/tests/deployment-config.test.ts` (~25 Asserts):
+  vercel.json-Validität, ENV-Vorlage-Vollständigkeit + Secret-Hygiene,
+  Workflow-Trigger-Branches, package.json-Skript-Konsistenz,
+  pageExtensions-Filter in next.config.mjs.
+- 🛣️ Roadmap: 1 großes Item abgehakt, 3 Folge-Items
+  (Edge-Runtime-Migration, Custom-Domain, Logs-Adapter
+  zu Sentry/Logflare).
+
+20/20 Smoketests grün (industry-presets pre-existing red, Codex #11).
+Bundle: shared 102 KB unverändert.
+
+**Manuelle Setup-Schritte für den Auftraggeber** (einmalig):
+1. `npm i -g vercel` → `vercel link`
+2. `vercel env add LP_AI_API_KEY production` (+ PASSWORD,
+   SESSION_SECRET, optional Provider-Keys)
+3. `vercel --prod`
+Danach Auto-Deploy auf Push.
+
+## [0.16.7] – Code-Session 33 – 2026-04-27
+
+## [0.16.7] – Code-Session 33 – 2026-04-27
+
+Cookie/JWT-Auth statt Bearer-Token-Stub. UI-Login statt manuelles
+Token-Pasten.
+
+- ✚ `src/core/ai/auth/session.ts` — HMAC-SHA256 sign/verify via
+  Node `crypto`, kein externes Lib. Strict-Header-Compare gegen
+  `alg=none`-Bypass. `crypto.timingSafeEqual` statt String-Compare.
+- ✚ `src/core/ai/auth/check.ts` — `checkAuth(req, env)` versucht
+  Cookie zuerst, Bearer als Fallback. `getAuthConfig` zentralisiert
+  ENV-Defaults (`LP_AI_PASSWORD` → `LP_AI_API_KEY`,
+  `LP_AI_SESSION_SECRET` → `LP_AI_API_KEY`).
+- ✚ `/api/auth/login` — POST, Passwort-Validierung, HttpOnly-Cookie
+  mit 7d TTL, `SameSite=Lax`, `Secure` in Production.
+- ✚ `/api/auth/logout` — POST, idempotent, Cookie löschen.
+- ✚ `/api/auth/me` — GET, gibt `{ authenticated, principal, via }`
+  zurück. Keine sensiblen Daten.
+- 🔄 `/api/ai/generate` + `/api/ai/health` — alter Inline-Auth-Stub
+  raus, geteilter `checkAuth` rein.
+- ✚ `<AuthCard>` — Login-Form im Playground, Status-Polling via
+  `/api/auth/me`. Saubere Fallbacks für Static-Build und nicht-
+  konfigurierte ENV.
+- 🔄 Playground — `credentials: "same-origin"` für Live-Calls,
+  Cookie-Session greift automatisch ohne manuelles Token.
+- ✚ `src/tests/auth-session.test.ts` (35 Asserts: Token-Format,
+  Verify mit korrektem/falschem Secret, Tampered-Signature,
+  alg=none-Bypass-Versuch, expired Token, Garbage-Inputs, Cookie-
+  und Bearer-Pfad in checkAuth, leere ENV → 503).
+- 🛣️ Roadmap +4 Folge-Items: Edge-Runtime-Migration, Vercel-SSR-
+  Deploy, Multi-Tenant-Auth, CSRF-Schutz.
+
+5 API-Routen jetzt im SSR-Build sichtbar:
+`/api/ai/generate`, `/api/ai/health`, `/api/auth/{login,logout,me}`.
+**19/19 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+## [0.16.6] – Code-Session 32 – 2026-04-27
+
+## [0.16.6] – Code-Session 32 – 2026-04-27
+
+DSGVO-Lead-Einwilligungs-Block. **Letzte Vorbedingung für ersten
+zahlenden Betrieb live ist damit erfüllt** (Schema, Form, Datenschutz,
+Impressum, Audit-Trail).
+
+- ✚ `src/core/legal.ts` — `PRIVACY_POLICY_VERSION` (`v1-2026-04`),
+  `LEAD_RETENTION_MONTHS` (12), `buildConsent()`-Helper.
+- 🔄 `LeadSchema` — `consent: { givenAt, policyVersion }` ist
+  Pflichtfeld. Audit-Trail nach DSGVO Art. 7 Abs. 1.
+- 🔄 `mock-leads.ts` — `lead()`-Factory backfilled `consent` auf
+  `createdAt` für alle 25 Demo-Leads.
+- 🔄 `leads-overrides.ts` — Storage-Version v1 → v2.
+- 🔄 `PublicLeadForm` — aktives Opt-In (kein pre-checked!),
+  separate Fehlerzeile, Submit-Button gesperrt ohne Häkchen,
+  Speicherdauer-Hinweis, Link auf Datenschutzerklärung + Impressum.
+- ✚ `/site/[slug]/datenschutz` — 7 Standard-Sektionen
+  (Verantwortlicher, Daten, Zweck/Rechtsgrundlage, Speicherdauer,
+  Empfänger, Betroffenenrechte, Cookies/Storage).
+- ✚ `/site/[slug]/impressum` — Anbieter, Kontakt, Verantwortliche,
+  Haftungsausschluss, ODR-Verweis. MVP-Hinweis auf fehlende USt-IdNr.
+- ✚ `src/tests/lead-consent.test.ts` (60 Asserts: Schema, Helper,
+  alle 25 Demo-Leads × 2).
+- 🔄 `leads-system.test.ts` + `schema-validation.test.ts` — Probe-
+  Lead bekommt consent-Feld.
+- 🛣️ Roadmap +5 Folge-Items: Settings-Editor mit Legal-Sektion,
+  Datenschutzerklärung-Editor (Versions-Bump), AVV-Vorlage,
+  Lead-Retention-Cron, Widerrufs-Handler-Endpoint.
+- 🧹 Codex-Backlog +1 (#11): `industry-presets.test.ts` ist seit
+  vor Session 32 rot — pre-existing, unabhängig von Consent-Arbeit.
+
+Bundle: shared 102 KB unverändert; 2 neue Public-SSG-Routen
+`/site/[slug]/datenschutz` und `/site/[slug]/impressum`.
+
+## [0.16.5] – Code-Session 31 – 2026-04-27
+
+## [0.16.5] – Code-Session 31 – 2026-04-27
+
+KI-Output-Sanitizer (Track B Security). Defense-in-Depth gegen
+Prompt-Injection-XSS. CVE-2026-25802 als Real-World-Anlass.
+
+- ✚ `src/core/ai/sanitize.ts` — `sanitizeText` (Entity-Decode +
+  iterativer Tag-Strip + Control-Char-Removal), `sanitizeAIOutput<T>`
+  (rekursiv über Strings/Arrays/Objects, Numbers/Booleans/null
+  bleiben), `sanitizeAIOutputAsHtml`-Stub (wirft, bis HTML-Whitelist-
+  Modus mit `isomorphic-dompurify` kommt).
+- 🔄 `/api/ai/generate`: Output **vor** Cost-Estimation und Response
+  durch Sanitizer.
+- 🔄 `ai-playground.tsx`: Mock-Direktaufruf-Pfad sanitiziert
+  ebenfalls (Defense-in-Depth, falls Mock-Skripte später durch
+  echte KI-Fixtures ersetzt werden).
+- ✚ `src/tests/ai-sanitize.test.ts` (29 Asserts): Standard-Vektoren
+  (`<script>`, `<img onerror>`, `javascript:`-Link), Entity-Bypasses
+  (`&lt;`, dezimal, hex), Nested-Tag-Bypass, legitime Sonderzeichen
+  (`<` mit Space, `&`, Anführungszeichen, Umlaute, Emojis) bleiben,
+  Control-Chars raus, Rekursion über Strukturen.
+- 🛣️ Roadmap: 1 Item abgehakt, 3 Folge-Items in Track B
+  (HTML-Whitelist-Pfad, Property-based Test-Suite mit `fast-check`,
+  Strict-CSP-Header via Nonce).
+- **Designentscheidung dokumentiert**: bewusst kein DOMPurify (yet) —
+  ~120 KB Server-Bundle für jsdom lohnt sich erst mit HTML-Render-
+  Pfad. Stub-Funktion verhindert versehentliches Durchreichen
+  unsicheren HTMLs.
+
+Bundle: shared 102 KB unverändert.
+
+## [0.16.4] – Code-Session 30 – 2026-04-27
+
+## [0.16.4] – Code-Session 30 – 2026-04-27
+
+Rate-Limit-UI + Provider-Health-Indicator. Erste Cadence-getriggerte
+State-Refresh-Light parallel im selben Commit (N=30, N % 5 === 0).
+
+- ✚ `src/core/ai/health.ts` — `getHealthSnapshot(env)` als pure
+  Funktion. Privacy-by-Design: Key-Werte tauchen nirgends im
+  Snapshot auf, nur `keyPresent: boolean`.
+- ✚ `src/app/api/ai/health/route.ts` — GET-Endpunkt mit gleicher
+  Bearer-Auth wie POST `/api/ai/generate`.
+- ✚ `src/components/dashboard/ai-playground/health-card.tsx` —
+  Client-Side-Fetch beim Mount + Refresh-Button. Zeigt pro Provider
+  Check/Warning + aktuelles Modell + Tagesbudget-Status mit
+  UTC-Reset-Zeit. Fallback bei 404 (Static-Build) ohne Crash.
+- ✚ `src/tests/ai-health.test.ts` (18 Asserts).
+- 🔄 `/api/ai/generate` 429-Antwort mit 2026-Standard-Headers
+  (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`,
+  `Retry-After`) plus `resetAtUtc` im Cost-Block.
+- 🔄 Playground: getrenntes UI für 429 — `<RateLimitCard>` mit
+  Live-Countdown bis Reset (sekündliches Update via `setInterval`)
+  und „Auf Mock wechseln"-CTA.
+- 🛣️ Roadmap +3 Folge-Items in Track C: Public-Status-Page,
+  Status-History 7-Tage, Slack-/Email-Alert bei > 80 % Budget.
+
+**State-Refresh-Light (N=30)**:
+- Alle 8 Smoketests grün (Mock ~380, Resolver 22, OpenAI 14,
+  Anthropic 14, Gemini 12, Themes, Cost 24, **Health 18**).
+- 3 Stub-Audit-Treffer geprüft, alle intentional (Bronze-Gating
+  bei services/leads + echtes Future bei settings).
+- Codex-Backlog: 9 pre-approved, 1 blocked, 0 done.
+
+Bundle: shared 102 KB unverändert.
+
+## [0.16.3] – Code-Session 29 – 2026-04-27
+
+## [0.16.3] – Code-Session 29 – 2026-04-27
+
+Cost-Tracking-Pipeline + Daily-Budget-Cap für die API-Route.
+
+- ✚ `src/core/ai/cost/pricing.ts` — 2026-aktuelle Pricing-Tabelle
+  pro Provider×Model, Token-Heuristik (4 Zeichen ≈ 1 Token),
+  `estimateCost` + `formatCostUsd`.
+- ✚ `src/core/ai/cost/budget.ts` — In-Memory-Bucket-Tracker mit
+  UTC-Tageswechsel-Reset, `LP_AI_DAILY_CAP_USD` ENV (Default $1.00),
+  `previewBudget` (Pre-Flight) + `chargeBudget` (Post-Call).
+- 🔄 `/api/ai/generate` — Pre-Flight-Cap-Check vor Provider-Call
+  (429 wenn Budget gerissen würde); Cost-Block in der Antwort
+  inkl. Token-Counts und Tagesbudget-Status.
+- 🔄 Playground — `<CostBar>` in `result-panel.tsx` zeigt Tokens,
+  USD-Schätzung und Tagesbudget-Progress nach jedem API-Call.
+  Mock-Direktaufruf hat keine Cost (= immer $0).
+- ✚ `src/tests/ai-cost.test.ts` (24 Asserts: Token-Heuristik,
+  Pricing-Lookup mit Default-Fallback, Budget-Tracking,
+  Bucket-Isolation).
+- 🛣️ Roadmap +5 Folge-Items: Bucket-Key per Betrieb, Persistenter
+  Store, Monthly-Cap, Cost-Audit-Log, echte Provider-Usage statt
+  Heuristik (5–15 % Underestimate).
+
+Bundle: shared 102 KB unverändert, /ai-Route +0.5 KB für CostBar.
+
+## [0.16.2] – Code-Session 28 – 2026-04-27
+
+## [0.16.2] – Code-Session 28 – 2026-04-27
+
+AI-API-Route + Provider-Dropdown. Erste API-Route der App.
+
+- ✚ `src/app/api/ai/generate/route.ts` — POST-Dispatcher für alle 7
+  Methoden, Bearer-Auth-Stub via `LP_AI_API_KEY` ENV,
+  Zod-Discriminated-Union-Validation, `AIProviderError → HTTP`-Mapping.
+- 🔄 `next.config.mjs` — `pageExtensions: ["tsx","jsx"]` im Static-
+  Export-Build, schließt `route.ts` aus. SSR-Build behält alle.
+- 🔄 `ai-playground/method-configs.ts` — `apiName` + `buildInput`
+  pro Methode (sieben Helper-Funktionen extrahiert).
+- 🔄 `ai-playground/ai-playground.tsx` — Provider-Dropdown-Card +
+  Token-Input (localStorage `lp:ai-api-token:v1`); `handleGenerate`
+  dispatcht Mock direkt, Live-Provider via `fetch /api/ai/generate`
+  mit klarer 404-Message im Static-Build-Pfad.
+- 🛣️ Roadmap +5 Items (statt 1): Cookie/JWT-Auth, Edge-Runtime,
+  Cost-Tracking, Rate-Limit, Vercel-SSR-Deploy.
+- ✚ `.claude/skills/` — 10 Project-Level-Skills scaffolded
+  (rube-mcp, superpowers, document-suite, theme-factory,
+  algorithmic-art, slack-gif-creator, webapp-testing, mcp-builder,
+  brand-guidelines, systematic-debugging). Werden vom Harness in
+  Folgesessions automatisch geladen.
+
+Bundle: shared 102 KB unverändert, /ai-Route 164 KB (+1 KB).
+
+## [0.16.1] – Code-Session 27 – 2026-04-27
 
 ## [0.16.1] – Code-Session 27 – 2026-04-27
 
