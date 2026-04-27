@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg: 255 255 255;
+    --color-fg: 15 19 32;
+    --color-muted: 103 115 138;
+    --color-border: 213 218 226;
+    --color-brand: 31 71 214;
+    --color-brand-fg: 255 255 255;
+  }
+
+  * {
+    border-color: rgb(var(--color-border));
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: rgb(var(--color-bg));
+    color: rgb(var(--color-fg));
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: rgb(var(--color-brand) / 0.18);
+  }
+}
+
+@layer components {
+  .lp-container {
+    @apply container mx-auto;
+  }
+
+  .lp-section {
+    @apply py-16 sm:py-20 lg:py-28;
+  }
+
+  .lp-eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1 text-xs font-medium uppercase tracking-wide text-ink-600;
+  }
+
+  .lp-card {
+    @apply rounded-2xl border border-ink-200 bg-white p-6 shadow-soft transition-shadow hover:shadow-md;
+  }
+}
