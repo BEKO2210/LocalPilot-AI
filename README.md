@@ -23,8 +23,8 @@ Autowerkstatt bis zur Reinigungsfirma – und ist im Kern bewusst branchenneutra
 - Bronze/Silber/Gold-Pakete als echte Produktlogik (Feature-Locks im UI)
 - Branchen-Presets (Friseur, Werkstatt, Reinigung, Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop, …)
 
-Aktueller Stand: **Session 2** – Datenmodelle und Zod-Validierung.
-Weitere Funktionen folgen in den Sessions 3–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
+Aktueller Stand: **Session 5** – 10 Themes mit CSS-Variablen-Resolver und Live-Galerie unter `/themes`.
+Weitere Funktionen folgen in den Sessions 6–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
 
 ---
 
@@ -59,13 +59,14 @@ Der Dev-Server läuft anschließend unter [http://localhost:3000](http://localho
 
 ### Wichtige Skripte
 
-| Befehl              | Zweck                                              |
-| ------------------- | -------------------------------------------------- |
-| `npm run dev`       | Lokaler Dev-Server (Hot Reload).                   |
-| `npm run build`     | Production-Build.                                  |
-| `npm run start`     | Production-Build starten.                          |
-| `npm run lint`      | ESLint (Next.js + TypeScript Regeln).              |
-| `npm run typecheck` | TypeScript-Typenprüfung ohne Emit.                 |
+| Befehl                | Zweck                                                          |
+| --------------------- | -------------------------------------------------------------- |
+| `npm run dev`         | Lokaler Dev-Server (Hot Reload).                               |
+| `npm run build`       | Production-Build (mit SSR, für Vercel-Deploys).                |
+| `npm run build:static`| Static-Export-Build nach `out/` (für GitHub Pages).            |
+| `npm run start`       | Production-Build starten.                                      |
+| `npm run lint`        | ESLint (Next.js + TypeScript Regeln).                          |
+| `npm run typecheck`   | TypeScript-Typenprüfung ohne Emit.                             |
 
 ### Ohne API-Key starten
 
@@ -98,9 +99,9 @@ src/
     forms/, pricing/, industry/, ai/, leads/, reviews/, social/, theme/  → folgen
   core/
     validation/        Zod-Schemas (Session 2 ✅) – Single Source of Truth
-    pricing/           PricingTier-Konfiguration (Session 3+)
-    industries/        Branchen-Presets (Session 4+)
-    themes/            Theme-Registry (Session 5+)
+    pricing/           PricingTier-Konfiguration + Helper (Session 3 ✅)
+    industries/        13 Branchen-Presets + Registry (Session 4 ✅)
+    themes/            10 Themes + Resolver + Registry (Session 5 ✅)
     ai/                Provider-Implementierungen, Prompts (Session 13+)
     leads/, reviews/, social/, utils/  → folgen
   data/
@@ -145,21 +146,51 @@ sie ab Session 3 als `PricingTier`-Konfiguration mit Feature-Limits eingebaut.
 
 \* Platin ist optional und wird später ergänzt.
 
-Details folgen in `docs/PRICING.md` (Session 3).
+Details: [`docs/PRICING.md`](./docs/PRICING.md).
+
+Programmatischer Zugriff auf das Pricing-System:
+
+```ts
+import { hasFeature, isFeatureLocked, getTierLimits, formatPrice } from "@/core/pricing";
+
+hasFeature(business.packageTier, "ai_website_text");        // boolean
+isFeatureLocked(business.packageTier, "ai_campaign_generator"); // boolean
+getTierLimits(business.packageTier).maxServices;             // number
+formatPrice(499);                                            // "499 €"
+```
+
+Im UI wickeln `<PricingGrid>`, `<FeatureLock>` und `<UpgradeHint>` aus
+`@/components/pricing` die Marketing- und Dashboard-Darstellung ab.
 
 ---
+
+## Live-Preview / Deployment
+
+Bei jedem Push auf `main` oder `claude/**` deployt der Workflow
+`.github/workflows/deploy.yml` die Seite automatisch nach **GitHub Pages**:
+
+```
+https://beko2210.github.io/LocalPilot-AI/
+```
+
+Einmaliger Setup-Schritt im GitHub-Repo: **Settings → Pages → Source → GitHub Actions**.
+Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
 
 ## Dokumentation
 
 - [`Claude.md`](./Claude.md) – Master-Briefing (Single Source of Truth)
 - [`docs/PRODUCT_STRATEGY.md`](./docs/PRODUCT_STRATEGY.md) – Vision, Zielgruppen, Pakete, Akzeptanz
 - [`docs/TECHNICAL_NOTES.md`](./docs/TECHNICAL_NOTES.md) – Architektur, Konventionen, Stack
+- [`docs/PRICING.md`](./docs/PRICING.md) – Pricing-System, Feature-Locks, Helper-API
+- [`docs/INDUSTRY_PRESETS.md`](./docs/INDUSTRY_PRESETS.md) – Branchen-Presets, Registry, Compliance
+- [`docs/THEMES.md`](./docs/THEMES.md) – Theme-System, CSS-Variablen, Tailwind-Integration
+- [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) – GitHub Pages und Vercel
 - [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) – Was wurde in welcher Session gebaut?
 - [`CHANGELOG.md`](./CHANGELOG.md) – Versionshistorie
 
 ---
 
-## Status (nach Session 2)
+## Status (nach Session 3)
 
 - ✅ Projekt läuft mit `npm run dev` lokal
 - ✅ Marketing-Startseite mit Hero, Problem, Lösung, Branchen, Pakete, Vorteile, FAQ, Kontakt-CTA
@@ -169,5 +200,15 @@ Details folgen in `docs/PRICING.md` (Session 3).
   PricingTier, AI) als Zod-Schemas + per `z.infer` abgeleitete TS-Typen
 - ✅ Zentrales `common.ts` mit allen branchenneutralen String-Literal-Keys
 - ✅ Schema-Smoketest in `src/tests/schema-validation.test.ts` (verhindert Drift)
-- ⏳ Pricing-Logik, Branchen-Presets, Themes, Mock-Daten, Public Sites, Dashboard,
-  KI-System – folgen in Sessions 3 bis 22
+- ✅ **Pricing-System** Bronze/Silber/Gold als Code-Konfiguration mit
+  Feature-Locks (`<FeatureLock>`, `<UpgradeHint>`) und Helpers
+  (`hasFeature`, `requiredTierFor`, `isLimitExceeded`, `formatPrice`)
+- ✅ Marketing-Pricing-Sektion ist jetzt config-driven
+- ✅ **13 Branchen-Presets** + Registry (`getPreset`, `getPresetOrFallback`,
+  `listPresetKeys`, `listMissingPresetKeys`) + Fallback-Preset
+- ✅ **10 Themes** mit CSS-Variablen-Resolver, `<ThemeProvider>` (server-component-tauglich)
+  und Live-Galerie unter `/themes`
+- ✅ **GitHub-Pages-Deployment** über Workflow `.github/workflows/deploy.yml`
+  mit konditionellem Static-Export
+- ⏳ Mock-Daten, Public Sites, Dashboard, KI-System –
+  folgen in Sessions 6 bis 22

@@ -4,12 +4,41 @@
 
 @layer base {
   :root {
+    /* Globale Marketing-Tokens (LocalPilot AI selbst) */
     --color-bg: 255 255 255;
     --color-fg: 15 19 32;
     --color-muted: 103 115 138;
     --color-border: 213 218 226;
     --color-brand: 31 71 214;
     --color-brand-fg: 255 255 255;
+
+    /* Default-Theme (clean_light) – wird genutzt, wenn kein ThemeProvider
+       vorhanden ist. Die Werte stammen 1:1 aus
+       src/core/themes/themes/clean-light.ts. So funktionieren auch
+       allgemeine Seiten konsistent mit den Theme-Klassen aus Tailwind. */
+    --theme-primary: 31 71 214;
+    --theme-primary-fg: 255 255 255;
+    --theme-secondary: 15 19 32;
+    --theme-secondary-fg: 255 255 255;
+    --theme-accent: 53 99 240;
+    --theme-background: 255 255 255;
+    --theme-foreground: 15 19 32;
+    --theme-muted: 246 247 249;
+    --theme-muted-fg: 103 115 138;
+    --theme-border: 213 218 226;
+
+    --theme-font-heading: Inter, ui-sans-serif, system-ui;
+    --theme-font-body: Inter, ui-sans-serif, system-ui;
+    --theme-font-base-size: 16px;
+    --theme-weight-heading: 600;
+    --theme-weight-body: 400;
+    --theme-letter-spacing: -0.01em;
+
+    --theme-radius: 1rem;
+    --theme-button-radius: 0.875rem;
+    --theme-card-radius: 1rem;
+    --theme-shadow: 0 1px 2px 0 rgb(15 19 32 / 0.04), 0 8px 24px -12px rgb(15 19 32 / 0.10);
+    --theme-section-padding: 4.5rem;
   }
 
   * {
@@ -53,5 +82,22 @@
 
   .lp-card {
     @apply rounded-2xl border border-ink-200 bg-white p-6 shadow-soft transition-shadow hover:shadow-md;
+  }
+
+  /* Theme-aware Bausteine. Werden von der Public Site (Session 7) genutzt –
+     auf Marketing- und Dashboard-Seiten greifen sie auf das Default-Theme
+     im :root zurück, sodass nichts kaputtgeht. */
+  .lp-theme-surface {
+    background-color: rgb(var(--theme-background));
+    color: rgb(var(--theme-foreground));
+    font-family: var(--theme-font-body);
+    font-size: var(--theme-font-base-size);
+    font-weight: var(--theme-weight-body);
+  }
+
+  .lp-theme-heading {
+    font-family: var(--theme-font-heading);
+    font-weight: var(--theme-weight-heading);
+    letter-spacing: var(--theme-letter-spacing);
   }
 }

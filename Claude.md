@@ -214,6 +214,7 @@ Verwende:
 - Recharts optional für spätere Statistiken
 - AI Provider Interface für OpenAI, Anthropic, Gemini und Mock
 - Vercel Deployment vorbereitet
+- GitHub Pages als Live-Preview (siehe Abschnitt "DEPLOYMENT")
 - .env.example
 - README.md
 - CHANGELOG.md
@@ -222,6 +223,7 @@ Verwende:
 - PRICING.md
 - INDUSTRY_PRESETS.md
 - RUN_LOG.md
+- DEPLOYMENT.md
 
 Wichtig:
 Falls ein bestehendes Projekt vorhanden ist, prüfe zuerst die Struktur.
@@ -2171,7 +2173,46 @@ Nicht tun:
 
 -------------------------------------------------------------------------------
 
-# 28. ERSTE AUFGABE
+# 28. DEPLOYMENT
+
+Live-Preview während der Entwicklung läuft auf **GitHub Pages**.
+
+URL nach Push:
+https://beko2210.github.io/LocalPilot-AI/
+
+Zuständig dafür ist `.github/workflows/deploy.yml`. Trigger:
+- Push auf `main` oder `claude/**`
+- Manuell über `workflow_dispatch`
+
+Die App wird mit `STATIC_EXPORT=true` gebaut, der Repo-Name ist `basePath`,
+`out/.nojekyll` deaktiviert die Jekyll-Verarbeitung der `_next/`-Assets.
+
+Lokal testbar:
+```
+npm run build:static     # baut nach out/
+```
+
+Einmaliger Setup-Schritt im GitHub-Repo (UI):
+Settings → Pages → Source → "GitHub Actions"
+
+Wichtig:
+- `output: "export"` ist konditioniert auf STATIC_EXPORT.
+  Ohne diese Variable laufen `npm run dev` und `npm run build` weiterhin
+  mit voller SSR-Unterstützung – API-Routen, Server Components etc. bleiben
+  möglich.
+- API-Routen, Server Actions und ISR funktionieren auf GitHub Pages NICHT.
+  Sobald solche Funktionen kommen, übernimmt Vercel die Production-Auslieferung
+  (siehe `docs/DEPLOYMENT.md`). GitHub Pages bleibt als Showcase erhalten.
+- `next/link` immer für interne Links verwenden, damit der basePath
+  automatisch eingerechnet wird. Plain `<a href="/...">` bricht auf Pages.
+- Bei Branchen wie `claude/**` überschreibt jede neue Push-Welle die
+  Pages-URL – das ist gewollt für Preview, nicht für stabile Production.
+
+Vollständige Beschreibung: `docs/DEPLOYMENT.md`.
+
+-------------------------------------------------------------------------------
+
+# 29. ERSTE AUFGABE
 
 Beginne jetzt mit SESSION 1.
 

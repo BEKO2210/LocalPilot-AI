@@ -42,6 +42,21 @@ const config: Config = {
           900: "#1f2530",
           950: "#0f1320",
         },
+        // Theme-Tokens: lesen CSS-Custom-Properties, die der ThemeProvider
+        // pro Business setzt. So funktionieren Public-Site-Komponenten ohne
+        // Hardcoding und ohne Client-Context.
+        theme: {
+          primary: "rgb(var(--theme-primary) / <alpha-value>)",
+          "primary-fg": "rgb(var(--theme-primary-fg) / <alpha-value>)",
+          secondary: "rgb(var(--theme-secondary) / <alpha-value>)",
+          "secondary-fg": "rgb(var(--theme-secondary-fg) / <alpha-value>)",
+          accent: "rgb(var(--theme-accent) / <alpha-value>)",
+          background: "rgb(var(--theme-background) / <alpha-value>)",
+          foreground: "rgb(var(--theme-foreground) / <alpha-value>)",
+          muted: "rgb(var(--theme-muted) / <alpha-value>)",
+          "muted-fg": "rgb(var(--theme-muted-fg) / <alpha-value>)",
+          border: "rgb(var(--theme-border) / <alpha-value>)",
+        },
       },
       fontFamily: {
         sans: [
@@ -55,14 +70,20 @@ const config: Config = {
           "Arial",
           "sans-serif",
         ],
-      },
-      boxShadow: {
-        soft: "0 1px 2px 0 rgb(15 19 32 / 0.04), 0 8px 24px -12px rgb(15 19 32 / 0.10)",
-        ring: "0 0 0 1px rgb(15 19 32 / 0.08)",
+        "theme-heading": ["var(--theme-font-heading)"],
+        "theme-body": ["var(--theme-font-body)"],
       },
       borderRadius: {
         xl: "0.875rem",
         "2xl": "1.125rem",
+        theme: "var(--theme-radius)",
+        "theme-button": "var(--theme-button-radius)",
+        "theme-card": "var(--theme-card-radius)",
+      },
+      boxShadow: {
+        soft: "0 1px 2px 0 rgb(15 19 32 / 0.04), 0 8px 24px -12px rgb(15 19 32 / 0.10)",
+        ring: "0 0 0 1px rgb(15 19 32 / 0.08)",
+        theme: "var(--theme-shadow)",
       },
     },
   },

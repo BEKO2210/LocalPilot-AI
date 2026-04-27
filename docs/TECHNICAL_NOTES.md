@@ -121,20 +121,132 @@ Konvention für Neuanlagen:
 3. Schlanken Re-Export in `types/<domain>.ts`.
 4. Smoketest-Beispiel in `tests/schema-validation.test.ts` ergänzen.
 
-## Stand nach Session 2
+## Pricing-System (ab Session 3)
+
+- **`src/core/pricing/pricing-tiers.ts`** definiert `BRONZE_TIER`,
+  `SILBER_TIER`, `GOLD_TIER` als typsichere Datensätze. Vererbung Bronze ⊂
+  Silber ⊂ Gold ist explizit modelliert (`SILBER_FEATURES =
+  [...BRONZE_FEATURES, ...SILBER_ONLY_FEATURES]`).
+- Jeder Datensatz wird beim Module-Load durch `PricingTierSchema.parse(...)`
+  geprüft. Falsche FeatureKeys, fehlende Limits oder ungültige Preise
+  brechen sofort den Build – Fail-Fast.
+- **`feature-helpers.ts`** liefert reine Funktionen (`hasFeature`,
+  `isFeatureLocked`, `requiredTierFor`, `getTierLimits`, `isLimitExceeded`,
+  `compareTiers`, `isAtLeastTier`, `nextHigherTier`, `formatPrice`,
+  `formatLimit`). Keine Seiteneffekte → Server- und Client-Components-tauglich.
+- **`feature-labels.ts`** erzwingt über `Record<FeatureKey, FeatureLabel>`,
+  dass jede Capability ein deutsches Klartext-Label hat. Ein neuer
+  `FeatureKey` ohne Label scheitert sofort am Typecheck.
+- **`<PricingGrid>`, `<PricingCard>`, `<FeatureLock>`, `<UpgradeHint>`** in
+  `src/components/pricing/` – generisch, sowohl in Marketing als auch im
+  späteren Dashboard nutzbar.
+- Konvention: Marketingtexte je Stufe gehören in `marketingHighlights`
+  (string-Array), die technische Capability-Liste bleibt in `features`
+  (`FeatureKey[]`). Damit driften Verkaufstext und Logik nicht.
+
+Konvention für ein neues Feature:
+
+1. Schlüssel in `FEATURE_KEYS` (`src/types/common.ts`) ergänzen.
+2. Klartext-Label in `FEATURE_LABELS` (`src/core/pricing/feature-labels.ts`).
+3. Capability einer Stufe in `pricing-tiers.ts` zuordnen.
+4. Optional: Test-Assertion in `src/tests/pricing-helpers.test.ts`.
+
+## Branchen-Presets (ab Session 4)
+
+- **`src/core/industries/presets/<key>.ts`** – pro Branche genau eine Datei
+  mit dem konkreten `IndustryPreset`-Datensatz, validiert beim
+  Module-Load via `IndustryPresetSchema.parse(...)`.
+- **`preset-helpers.ts`** liefert wiederverwendbare Lead-Felder, CTAs und
+  Compliance-Hinweise. Branchen-spezifische Felder leben direkt im Preset.
+- **`fallback-preset.ts`** spiegelt einen branchenneutralen Datensatz auf
+  einen beliebigen `IndustryKey` – verhindert leere Seiten bei unbekannter
+  Branche.
+- **`registry.ts`** ist die einzige öffentliche API: `getPreset`,
+  `getPresetOrFallback`, `getAllPresets`, `listPresetKeys`,
+  `listMissingPresetKeys`, `hasPreset`, `getPresetsForTheme`,
+  `UnknownIndustryError`. Beim Module-Load wird zusätzlich geprüft, dass
+  jeder Map-Key zum `preset.key` passt – verhindert vertauschte Imports.
+- **`src/tests/industry-presets.test.ts`** verifiziert: ≥10 Presets,
+  Schema-Validierung, Lead-Pflichtfelder, Bewertungs-Platzhalter,
+  Compliance-Hinweise für medizin-/pflegenahe Branchen.
+
+Konvention für ein neues Preset:
+
+1. `INDUSTRY_KEYS` in `src/types/common.ts` ggf. erweitern.
+2. Preset-Datei unter `src/core/industries/presets/` erstellen.
+3. In `PRESET_REGISTRY` (`registry.ts`) eintragen.
+4. Smoketest und `docs/INDUSTRY_PRESETS.md` aktualisieren.
+
+## Deployment (ab Session 3.1 / 4)
+
+- `next.config.mjs` schaltet `output: "export"`, `trailingSlash`, `basePath`
+  und `assetPrefix` konditioniert über `STATIC_EXPORT=true` ein.
+  `npm run dev` und `npm run build` ohne diese Variable bleiben voll
+  SSR-fähig – API-Routen, Server Actions etc. bleiben für Vercel möglich.
+- `.github/workflows/deploy.yml` triggert auf `main` und `claude/**`,
+  setzt `NEXT_PUBLIC_BASE_PATH=/<repo-name>`, schreibt eine `.nojekyll`
+  und deployt mit `actions/deploy-pages@v4`.
+- `npm run build:static` für lokale Verifikation.
+
+## Theme-System (ab Session 5)
+
+- **`src/core/themes/themes/<key>.ts`** – ein Datensatz pro Theme,
+  Zod-validiert beim Module-Load. 10 Themes ausgeliefert
+  (`clean_light` als Default).
+- **`theme-resolver.ts`** wandelt Themes in CSS-Variablen für inline
+  `style`. Hex → RGB-Triplet (`"31 71 214"`) für Tailwind-`<alpha-value>`-
+  Syntax.
+- **`registry.ts`**: `THEME_REGISTRY`, `DEFAULT_THEME`, `getTheme`,
+  `getThemeOrFallback`, `getAllThemes`, `getThemesForIndustry`,
+  `UnknownThemeError`. Konsistenz-Check beim Laden.
+- **`<ThemeProvider>`** ist Server-Component-tauglich – kein Context, kein
+  useEffect, kein Client-JS. Pattern (Stand 2026): inline `style` mit
+  Custom Properties, kaskadiert auf alle Kinder.
+- **Tailwind-Integration**: `theme.*`-Color-Set, `borderRadius.theme*`,
+  `boxShadow.theme`, `fontFamily.theme-heading|body`. Alle nutzen die
+  CSS-Vars und sind opazitäts-tauglich (`bg-theme-primary/50`).
+- **`globals.css`** setzt Default-Theme im `:root`, sodass Seiten ohne
+  expliziten Provider die Theme-Klassen trotzdem nutzen können (fallen auf
+  `clean_light`-Werte zurück).
+- **Static-Export-Kompatibilität** ist gewahrt – `/themes` rendert
+  serverseitig, kein Client-JS für die Galerie nötig.
+- **Smoketest** in `src/tests/themes.test.ts`.
+
+Konvention für ein neues Theme:
+
+1. `THEME_KEYS` in `src/types/common.ts` ergänzen.
+2. Theme-Datei in `src/core/themes/themes/` anlegen, Zod-Validierung läuft
+   automatisch beim Import.
+3. In `THEME_REGISTRY` (`registry.ts`) eintragen.
+4. Smoketest und `docs/THEMES.md` aktualisieren.
+
+## Stand nach Session 5
 
 - App Router läuft, `/` rendert Marketing-Landingpage.
-- Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber.
-- Tailwind & Brand-Tokens stehen.
-- **Datenmodelle vollständig**: Business, Service, Lead, Review, FAQ,
-  IndustryPreset, Theme, PricingTier, plus alle 7 AI-Eingaben/-Ausgaben.
-- **Zod-Validierung** überall vorhanden, inkl. Geschäftsregeln (z. B. Lead
-  braucht Telefon ODER E-Mail; OpeningSlot `open < close`; Slug-Format).
-- Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`.
+- `/themes` rendert die Theme-Galerie statisch.
+- Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber
+  (Static und SSR).
+- Tailwind & Brand-Tokens stehen, Theme-Tokens als CSS-Variablen verfügbar.
+- Datenmodelle vollständig, Pricing-System produktiv.
+- **13 Branchen-Presets** registriert und validiert.
+- **10 Themes** registriert, mit Resolver, Provider und Live-Galerie.
+- **GitHub-Pages-Deployment** automatisiert; lokal über `build:static`.
+- `<LinkButton>` ist basePath-aware (interne Pfade via `next/link`).
+- Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
+  `npm run build:static`.
 
 ## Offene technische Punkte
 
-- AI-Provider-Adapter & ENV-Resolver (Session 13). Interface steht.
+- Mock-Inhalte für Demo-Betriebe (Session 6).
+- Public Site Generator unter `/site/[slug]` (Session 7) – wird
+  `generateStaticParams` aus den Mock-Daten nutzen, damit Static Export
+  weiter funktioniert.
+- Dashboard (Session 9+) – sobald Interaktivität nötig, prüfen ob als
+  Client-SPA innerhalb des Static Exports ausreichend.
+- AI-Provider-Adapter (Session 13). Interface steht.
 - Repository-Layer / Mock vs. Supabase (Session 19).
-- Vitest-Setup (offen, zu klären spätestens in Session 20).
+- Vitest-Setup (Session 20). Bis dahin tragen `tsc --noEmit` plus die
+  `src/tests/*-helpers.test.ts`-Smoketests die Sicherheit.
 - Image-Hosting/-Optimierung (Session 7+).
+- Sobald API-Routen oder Server Actions kommen: Vercel als
+  Production-Target ergänzen, GitHub Pages bleibt als Showcase.

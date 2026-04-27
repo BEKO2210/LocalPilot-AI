@@ -7,8 +7,170 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 3: Pricing-System (Bronze/Silber/Gold) als Code-Konfiguration mit Feature-Locks.
-- Session 4+: Branchen-Presets, Themes, Mock-Daten, Public Site Generator, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+- Session 6+: Mock-Daten, Public Site Generator, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.5.0] – Session 5 – 2026-04-27
+
+### Added
+- 10 Theme-Datensätze unter `src/core/themes/themes/`:
+  `clean_light` (Default), `premium_dark`, `warm_local`, `medical_clean`,
+  `beauty_luxury`, `automotive_strong`, `craftsman_solid`, `creative_studio`,
+  `fitness_energy`, `education_calm`. Jedes Theme bringt 10 Farb-Tokens,
+  Typografie, Radius, Schatten, Section-/Button-/Card-Stil und eine
+  Liste passender Branchen mit. Jedes Theme wird beim Module-Load via
+  `ThemeSchema.parse(...)` validiert.
+- `src/core/themes/theme-resolver.ts`: `themeToCssVars(theme)` wandelt
+  einen Theme-Datensatz in ein `Record<\`--theme-...\`, string>` für
+  inline `style`. `hexToRgbTriplet()` konvertiert `#1f47d6` → `"31 71 214"`,
+  passend zur Tailwind-`<alpha-value>`-Syntax.
+- `src/core/themes/registry.ts` mit `THEME_REGISTRY`, `DEFAULT_THEME`
+  (clean_light), `getTheme`, `getThemeOrFallback`, `getAllThemes`,
+  `listThemeKeys`, `getThemesForIndustry`, `UnknownThemeError`,
+  Konsistenz-Check beim Module-Load (Map-Key === theme.key).
+- `src/core/themes/index.ts` Barrel.
+- `<ThemeProvider>` (`src/components/theme/theme-provider.tsx`):
+  Server-Component-tauglicher Wrapper, der die CSS-Variablen per inline
+  `style` setzt und optional `bg-theme-background`/`text-theme-foreground`
+  via `lp-theme-surface`-Klasse anwendet. Kein React Context, kein
+  useEffect, kein Client-JS – kompatibel mit Static Export.
+- `<ThemePreviewCard>` für die Galerie (Hero-Mini mit Buttons, Service-Card).
+- Statische Galerie-Seite **`/themes`** rendert alle 10 Themes als Vorschau
+  – serverseitig, ohne Client-JS, statisch exportierbar.
+- Tailwind-Integration: `theme.*`-Color-Set (primary, primary-fg, secondary,
+  secondary-fg, accent, background, foreground, muted, muted-fg, border)
+  via `rgb(var(--theme-...) / <alpha-value>)`. `borderRadius.theme`,
+  `borderRadius.theme-button`, `borderRadius.theme-card`, `boxShadow.theme`,
+  `fontFamily.theme-heading`, `fontFamily.theme-body`.
+- `src/app/globals.css` setzt Default-Theme-Variablen im `:root`, sodass
+  Seiten ohne expliziten ThemeProvider trotzdem theme-Klassen nutzen können.
+- Smoketest `src/tests/themes.test.ts` mit ~25 Assertions
+  (Mindestabdeckung, Hex-Validierung, RGB-Konvertierung, Lookup-Verhalten,
+  Branchenempfehlungen).
+- `docs/THEMES.md`: Galerie-Übersicht, Architektur, Code-Beispiele,
+  Erweiterungsanleitung.
+
+### Changed
+- `<LinkButton>` (`src/components/ui/button.tsx`) ist jetzt basePath-aware:
+  Bei internen absoluten Pfaden (`/themes`, `/#kontakt`) wird automatisch
+  `next/link` verwendet, sonst weiterhin nativer `<a>`. Damit funktionieren
+  Header-Buttons von jeder Seite aus auf GitHub Pages korrekt.
+- `<SiteHeader>` enthält jetzt einen Nav-Link auf `/themes`.
+- `tailwind.config.ts` und `globals.css` mit Theme-Tokens erweitert
+  (Marketing-Optik bleibt unberührt – `brand-*` und `ink-*` bleiben).
+
+## [0.4.0] – Session 4 – 2026-04-27
+
+### Added
+- 13 Branchen-Presets unter `src/core/industries/presets/` mit kompletten,
+  validierten Datensätzen: Friseur, Barbershop, Autowerkstatt,
+  Reinigungsfirma, Kosmetikstudio, Nagelstudio, Handwerker, Elektriker,
+  Malerbetrieb, Fahrschule, Restaurant, Fotograf, Personal Trainer.
+- `src/core/industries/preset-helpers.ts`: wiederverwendbare Lead-Felder
+  (`NAME_FIELD`, `PHONE_FIELD`, `EMAIL_FIELD`, `MESSAGE_FIELD`,
+  `PREFERRED_DATE_FIELD`), Standard-CTAs (`CTA_APPOINTMENT_PRIMARY`,
+  `CTA_CALL`, `CTA_WHATSAPP`, `CTA_QUOTE`, `CTA_CALLBACK`) und
+  Compliance-Bausteine (`COMPLIANCE_NO_MEDICAL_PROMISE`,
+  `COMPLIANCE_NO_LEGAL_ADVICE`, `COMPLIANCE_NO_FINANCE_GUARANTEE`,
+  `COMPLIANCE_NO_AGE_RESTRICTED_PROMISE`).
+- `src/core/industries/fallback-preset.ts` mit
+  `getFallbackPreset(originalKey)` – branchenneutrales Universal-Preset, das
+  den ursprünglich angefragten `key` spiegelt.
+- `src/core/industries/registry.ts` mit:
+  - `PRESET_REGISTRY`-Lookup-Map.
+  - `getPreset`, `getPresetOrFallback`, `getAllPresets`, `listPresetKeys`,
+    `listMissingPresetKeys`, `hasPreset`, `getPresetsForTheme`.
+  - `UnknownIndustryError` für sprechende Fehler.
+  - Konsistenz-Check beim Module-Load (Map-Key === preset.key).
+- `src/core/industries/index.ts` Barrel.
+- `src/tests/industry-presets.test.ts` mit umfangreichem Smoketest:
+  Mindestabdeckung ≥ 10, Schema-Validierung, Pflichtfelder im Lead-Formular
+  (`name`, `phone`), Platzhalter in Bewertungs-Vorlagen
+  (`{{customerName}}`, `{{reviewLink}}`), Compliance-Hinweise für medizin-
+  /pflegenahe Branchen (Kosmetik, Nail, Trainer).
+- `docs/INDUSTRY_PRESETS.md` mit Übersichtstabelle, Zugriffs-API,
+  Validierungs-Regeln, Konvention zur 30-Min-Branchenergänzung und
+  Beziehung zu späteren Sessions.
+
+### Notes
+- `getPresetOrFallback()` ist die Standardvariante für Public Site und
+  Dashboard – nie wieder weiße Seite, falls eine Branche noch nicht
+  modelliert ist.
+- Lücken in `INDUSTRY_KEYS` (`tutoring`, `local_shop`, `dog_grooming`,
+  `wellness_practice`, `real_estate_broker`, `garden_landscaping`) sind
+  bewusst noch nicht modelliert – `listMissingPresetKeys()` macht sie zur
+  Laufzeit sichtbar.
+- Der Core bleibt branchenneutral: Public Site, Dashboard und KI-System
+  greifen ausschließlich über das Preset auf branchenspezifische Inhalte zu.
+
+## [0.3.1] – Hotfix – 2026-04-27
+
+### Added
+- `.github/workflows/deploy.yml`: GitHub Pages Deployment via Actions.
+  Trigger auf `main` und `claude/**`, baut mit `STATIC_EXPORT=true`,
+  `NEXT_PUBLIC_BASE_PATH=/<repo-name>` und einem `.nojekyll`-File für
+  `_next/`-Assets.
+- `npm run build:static`: lokaler Static-Export-Build (`STATIC_EXPORT=true`).
+- `docs/DEPLOYMENT.md`: vollständige Anleitung für GitHub Pages und
+  geplanter Vercel-Pfad.
+- `Claude.md` Abschnitt 28 "DEPLOYMENT" als persistenter Eintrag im
+  Master-Briefing.
+
+### Changed
+- `next.config.mjs` schaltet `output: "export"`, `trailingSlash`, `basePath`
+  und `assetPrefix` konditioniert auf `STATIC_EXPORT=true`. Lokaler
+  `npm run dev` und normaler `npm run build` bleiben damit voll
+  SSR-fähig.
+
+## [0.3.0] – Session 3 – 2026-04-27
+
+### Added
+- `src/core/pricing/pricing-tiers.ts` mit konkreten `BRONZE_TIER`,
+  `SILBER_TIER`, `GOLD_TIER`-Datensätzen. Jeder Datensatz wird beim
+  Module-Load via `PricingTierSchema.parse(...)` validiert – Tippfehler in
+  Features oder Limits brechen sofort den Build.
+- Vererbungslogik Bronze ⊂ Silber ⊂ Gold (Silber erbt alle Bronze-Features,
+  Gold erbt alle Silber-Features).
+- Konkrete Feature-Limits pro Stufe (`maxServices`, `maxLandingPages`,
+  `maxLanguages`, `maxLocations`, `maxThemes`, `maxAiGenerationsPerMonth`,
+  `maxLeads`); `TIER_UNLIMITED` für unbegrenzte Limits.
+- `src/core/pricing/feature-labels.ts` – deutsches Klartext-Label und
+  Beschreibung pro `FeatureKey`. Erzwungen vollständig über
+  `Record<FeatureKey, FeatureLabel>` (Compile-Zeit-Check).
+- `src/core/pricing/feature-helpers.ts` – reine Funktionen:
+  `getTier`, `tryGetTier`, `getAllTiers`, `hasFeature`, `isFeatureLocked`,
+  `requiredTierFor`, `getTierLimits`, `isLimitExceeded`, `compareTiers`,
+  `isAtLeastTier`, `nextHigherTier`, `formatPrice`, `formatLimit`.
+  Plus `UnknownTierError` für sprechende Fehler bei unbekannten Stufen.
+- `src/core/pricing/index.ts` Barrel.
+- Pricing-Komponenten unter `src/components/pricing/`:
+  - `<PricingCard>` mit `currentTier`-Markierung ("Aktuelles Paket"-Badge),
+    "Beliebt"-Badge für hervorgehobene Stufen, lokalisierte Preise via
+    `Intl.NumberFormat`.
+  - `<PricingGrid>` – rendert konfigurationsgesteuert alle aktiven Stufen.
+  - `<FeatureLock>` – sperrt Bereiche paketabhängig
+    (`variant="overlay"`/`"replace"`).
+  - `<UpgradeHint>` – kompakter Inline-Hinweis "Verfügbar ab Silber/Gold".
+- `marketingHighlights`-Feld in `PricingTierSchema` ergänzt – getrennt von
+  technischem `features`-Array, damit Marketing-Bullets unabhängig vom
+  internen Capability-Modell formuliert werden können.
+- `src/tests/pricing-helpers.test.ts` – Smoketest mit ~40 Assertions
+  (Vererbung, Lookup, Limits, Reihenfolge, Formatierung, Konsistenz von
+  `FEATURE_LABELS`).
+- `docs/PRICING.md` – vollständige Pricing-Dokumentation für Entwickler:innen
+  und Vertrieb.
+
+### Changed
+- `src/components/marketing/pricing-teaser.tsx` rendert jetzt aus der
+  Code-Konfiguration (`<PricingGrid>`) statt aus hartcodierten Karten.
+  Marketing-Sektion bleibt visuell identisch, ist aber an die zentrale
+  Pricing-Konfiguration gebunden.
+- README, RUN_LOG, TECHNICAL_NOTES aktualisiert.
+
+### Notes
+- Platin-Stufe ist bewusst noch nicht modelliert; `getTier("platin")` wirft
+  `UnknownTierError`. Die Marketing-Fußnote weist auf "Platin auf Anfrage"
+  hin. Volle Modellierung folgt nach Session 22.
+- Die Helfer sind seiteneffektfrei und in Server-/Client-Komponenten nutzbar.
 
 ## [0.2.0] – Session 2 – 2026-04-27
 

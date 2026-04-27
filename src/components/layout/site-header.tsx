@@ -3,11 +3,11 @@ import { Container } from "@/components/ui/container";
 import { LinkButton } from "@/components/ui/button";
 
 const NAV = [
-  { href: "#problem", label: "Problem" },
-  { href: "#loesung", label: "Lösung" },
-  { href: "#branchen", label: "Branchen" },
-  { href: "#pakete", label: "Pakete" },
-  { href: "#faq", label: "FAQ" },
+  { href: "/#loesung", label: "Lösung" },
+  { href: "/#branchen", label: "Branchen" },
+  { href: "/#pakete", label: "Pakete" },
+  { href: "/themes", label: "Designs" },
+  { href: "/#faq", label: "FAQ" },
 ];
 
 export function SiteHeader() {
@@ -28,16 +28,16 @@ export function SiteHeader() {
         </Link>
         <nav className="hidden items-center gap-7 text-sm text-ink-700 md:flex">
           {NAV.map((item) => (
-            <a key={item.href} href={item.href} className="hover:text-ink-900">
+            <Link key={item.href} href={item.href} className="hover:text-ink-900">
               {item.label}
-            </a>
+            </Link>
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <LinkButton href="#kontakt" variant="outline" size="sm" className="hidden sm:inline-flex">
+          <LinkButton href="/#kontakt" variant="outline" size="sm" className="hidden sm:inline-flex">
             Beratung anfragen
           </LinkButton>
-          <LinkButton href="#pakete" size="sm">
+          <LinkButton href="/#pakete" size="sm">
             Pakete ansehen
           </LinkButton>
         </div>
