@@ -9,6 +9,38 @@ Du bist Claude Code.
 
 Du sollst ein professionelles, kommerziell verwertbares digitales Produkt bauen.
 
+# 0. PROGRAMM-PHILOSOPHIE (verbindlich, gilt vor allem anderen)
+
+LocalPilot AI ist KEIN Projekt mit Endpunkt. Es ist ein **dauerhaftes
+Programm** mit rollenden Meilensteinen.
+
+Konkret:
+
+1. **Sessions sind klein und atomar.** 30–60 Min. pro Session, 30–80 KB
+   Diff, 4–10 geänderte Dateien. Jede Session ist einzeln lauffähig und
+   deploybar. Größere Vorhaben werden in mehrere Code-Sessions zerlegt.
+2. **Pro Session ein Recherche-Step.** Vor jeder Implementierung mind.
+   eine WebSearch nach aktuellen Patterns / neuen Versionen / Sicherheits-
+   Hinweisen. Die Quellen werden im RUN_LOG-Eintrag mit Markdown-Links
+   zitiert.
+3. **Sessions 1–22 in diesem Briefing sind ein Inhaltsverzeichnis,
+   kein Zeitplan.** Code-Session-Nummern dürfen frei über 22 hinaus
+   wachsen. Was hier als „Session N" steht, wird im RUN_LOG als
+   „erfüllt durch Code-Sessions N–M" verbucht.
+4. **Es gibt kein „Projekt fertig".** Nach Meilenstein 6 läuft das
+   Programm in Quartals-Schleifen weiter (neue AI-Modelle, neue
+   Web-Plattform-Features, neue Branchen).
+5. **Maintenance, Polish, Security, A11y, Performance und Doku sind
+   gleichberechtigt zu Features.** Eine Polish-Session zählt voll.
+6. **Detailliertes Protokoll** für jede Session steht in
+   `docs/SESSION_PROTOCOL.md`, die rollenden Meilensteine in
+   `docs/PROGRAM_PLAN.md`. Beide sind verbindlich.
+
+Diese Philosophie hat Vorrang vor jeder Detail-Anweisung weiter unten,
+wenn es Konflikte gibt.
+
+-------------------------------------------------------------------------------
+
 Das Produkt heißt:
 
 LocalPilot AI
@@ -1439,11 +1471,18 @@ Vermeide:
 
 -------------------------------------------------------------------------------
 
-# 22. SESSION-PLAN MIT MINDESTENS 12 RUNS
+# 22. SESSION-PLAN (jetzt: Inhaltsverzeichnis, kein Zeitplan)
 
-Arbeite in mindestens 12 sauberen Sessions.
+> **Wichtig:** Mit der Programm-Philosophie aus Abschnitt 0 ist die
+> nachfolgende „Session N"-Aufzählung kein 1:1-Zeitplan mehr, sondern
+> ein **Inhaltsverzeichnis** der Funktionsblöcke. Die tatsächlichen
+> Code-Sessions können kleiner sein und über die Nummer 22 hinausgehen.
+>
+> Beispiel: „Session 13 – AI Provider Interface und Mock AI" wird in
+> ~10 kleinere Code-Sessions zerlegt, dokumentiert in `docs/RUN_LOG.md`
+> und nachvollzogen über `docs/PROGRAM_PLAN.md`.
 
-Jede Session muss am Ende ausgeben:
+Jede Code-Session muss am Ende ausgeben:
 
 1. Was wurde umgesetzt?
 2. Welche Dateien wurden geändert?

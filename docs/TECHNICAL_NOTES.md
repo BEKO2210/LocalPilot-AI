@@ -356,21 +356,45 @@ Konvention für eine neue Sektion:
   `src/lib/mock-store/services-overrides.ts` – versionierter
   localStorage-Key, defensive Schema-Validierung, SSR-sicher.
 
-## Stand nach Session 11
+## Lead-System (ab Session 12)
+
+- **Public-Site-Form** (`<PublicLeadForm>`) ist `"use client"`,
+  rendert Felder dynamisch aus `preset.leadFormFields`. Validierung
+  manuell (Pflichtfelder, E-Mail-Format, Telefon-Mindestlänge,
+  Geschäftsregel „Telefon ODER E-Mail"). Submit baut ein
+  schema-valides `Lead`-Objekt und ruft `appendLead`.
+- **Dashboard `<LeadsView>`** ist Client-Component mit lokalem State
+  für Filter, Suche und Selektion. Toolbar + Liste + Detail-Pane in
+  einem Component, damit der Bundle klein bleibt (~16 KB).
+- **`leads-overrides.ts`** persistiert Anfragen in localStorage
+  (`lp:leads-override:v1:<slug>`). `getEffectiveLeads(slug, fallback)`
+  mergt Demo-Mocks mit persistierten Einträgen, sortiert absteigend.
+  `updateStoredLead` greift nur auf Browser-Leads – Demo-IDs werden
+  bewusst nicht überschrieben (Mock-Stand bleibt reproduzierbar).
+- **Antwort-Vorlagen** (`reply-templates.ts`) sind branchen-neutral
+  mit `{{name}}`/`{{betrieb}}`-Platzhaltern. KI-spezifische Vorlagen
+  folgen über `core/ai` (Sessions 13–15).
+- **Bronze-Gating**: Public-Site-Formular ist überall aktiv. Dashboard
+  ist nur für Silber/Gold mit `lead_management` freigeschaltet;
+  Bronze sieht weiter `<ComingSoonSection>`.
+
+## Stand nach Session 12
 
 - App Router läuft, `/`, `/pricing`, `/themes`, `/demo` rendern statisch.
   Plus `/site/<6 slugs>`, `/dashboard` (Picker) und alle Dashboard-
-  Sektionen pro Slug. **Drei produktive Editor-/Übersicht-Pages**:
-  Übersicht, `business`, `services`. Bundle der Services-Page:
-  ~5 KB First-Load JS plus geteilter RHF-Chunk.
+  Sektionen pro Slug. **Vier produktive Editor-/Übersicht-Pages**:
+  Übersicht, `business`, `services`, `leads`. Bundle der Leads-Page:
+  ~16 KB First-Load JS; Public Site mit aktivem Formular: ~5,7 KB.
 - Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber.
 - Tailwind & Brand-Tokens stehen, Theme-Tokens als CSS-Variablen verfügbar.
 - Datenmodelle vollständig, Pricing-System produktiv.
 - 13 Branchen-Presets, 10 Themes registriert und validiert.
 - 6 Demo-Betriebe vollständig validiert; jeder hat Public Site +
-  Dashboard + zwei Editoren mit individuellem Theme.
+  Dashboard + drei produktive Editor-/View-Pages mit individuellem
+  Theme.
 - React-Hook-Form + Zod-Resolver + `useFieldArray` als Pattern für
-  kommende Editoren etabliert.
+  Form-Editoren etabliert; Lead-System nutzt manuellen Local-State, weil
+  die Public-Site-Form schlank bleiben soll.
 - GitHub-Pages-Deployment automatisiert; lokal über `build:static`.
 - `<LinkButton>` ist basePath-aware (interne Pfade via `next/link`).
 - Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
@@ -378,7 +402,7 @@ Konvention für eine neue Sektion:
 
 ## Offene technische Punkte
 
-- Restliche Dashboard-Sub-Routen ausbauen (`leads` Session 12, `ai`
+- Restliche Dashboard-Sub-Routen ausbauen (`ai`
   Sessions 13–15, `reviews` Session 16, `social` Session 17,
   `settings` Session 18).
 - Lead-System (Session 12) – ersetzt die Formular-Vorschau in

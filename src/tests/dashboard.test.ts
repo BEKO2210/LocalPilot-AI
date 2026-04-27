@@ -36,13 +36,14 @@ const withoutSession = DASHBOARD_NAV.filter(
   (n) => typeof n.comingInSession !== "number",
 );
 assert(
-  withoutSession.length >= 3,
-  `≥ 3 produktive Sektionen, aktuell ${withoutSession.length}`,
+  withoutSession.length >= 4,
+  `≥ 4 produktive Sektionen, aktuell ${withoutSession.length}`,
 );
 const productiveKeys = new Set(withoutSession.map((n) => n.key));
 assert(productiveKeys.has("overview"), "'overview' ist produktiv");
 assert(productiveKeys.has("business"), "'business' ist seit Session 10 produktiv");
 assert(productiveKeys.has("services"), "'services' ist seit Session 11 produktiv");
+assert(productiveKeys.has("leads"), "'leads' ist seit Session 12 produktiv");
 
 // Jede Stub-Sektion verweist auf eine plausible Session-Nummer (>= 10).
 for (const item of DASHBOARD_NAV) {

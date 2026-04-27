@@ -6,8 +6,156 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant
-- Session 12+: Lead-System, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+### Geplant (Meilenstein 2 – KI-Schicht)
+- Code-Session 14: Mock-Provider mit `generateWebsiteCopy`-Beispieltext.
+- Code-Sessions 15–17: Mock für Service-Beschreibung, FAQ, Antworten.
+- Code-Sessions 18–20: Mock für Social-Posts, Bewertungs-Anfragen, Angebote.
+- Code-Sessions 21–22: OpenAI-Provider scharf (mit Caching).
+- Code-Sessions 23–24: Anthropic-Provider scharf.
+- Code-Session 25: Cost-Tracking + Rate-Limit-UI.
+
+## [0.13.1] – Code-Session 13 – 2026-04-27
+
+### Added
+- **AI-Provider-Scaffold** (klein nach neuem Protokoll):
+  - `src/core/ai/providers/_stub.ts` – `buildStubProvider(key, message)`-
+    Helper, baut einen `AIProvider`, dessen 7 Methoden alle
+    `AIProviderError("provider_unavailable")` werfen.
+  - `mock-provider.ts`, `openai-provider.ts`, `anthropic-provider.ts`,
+    `gemini-provider.ts` – jeweils eine Stub-Instanz mit eigener
+    Fehlermeldung („Folgt in Code-Session 14+/21+/23+/später").
+  - `src/core/ai/ai-client.ts` mit `getAIProvider(opts?)`-Resolver:
+    liest `AI_PROVIDER`, prüft den jeweils nötigen API-Key
+    (`OPENAI_API_KEY`/`ANTHROPIC_API_KEY`/`GEMINI_API_KEY`), fällt
+    defensiv auf `mock` zurück bei jedem Problem (kein Wert, ungültiger
+    Wert, leerer Key). Wirft niemals.
+  - `describeActiveProvider(opts?)` für Diagnose-Anzeigen
+    (welcher Provider würde geladen, mit welchem Grund?).
+  - `AI_PROVIDERS`-Lookup-Map exportiert für Tests/Debug.
+  - Barrel `src/core/ai/index.ts`.
+- Smoketest `src/tests/ai-provider-resolver.test.ts` (~22 Assertions):
+  Default → mock, explizit mock, ungültig → mock, jeder Provider ohne
+  API-Key → mock, jeder Provider mit Key → korrekt, leerer Key zählt
+  als „kein Key", `providerKey`-Argument hat Vorrang vor ENV,
+  `AIProviderError` korrekt konstruierbar, `describeActiveProvider`
+  gibt sprechende Diagnose-Strings zurück.
+
+### Notes
+- **Bewusst NICHT in dieser Session**: konkrete Mock-Texte,
+  echte API-Calls, Dashboard-UI, Caching, Cost-Tracking. Folgen
+  inkrementell in Code-Sessions 14+ je ein Mini-Schritt.
+- Diff-Größe ~30 KB, 7 neue Dateien, keine Source-Datei der UI
+  geändert. Bundle bleibt unverändert (~13 prerenderte Routen,
+  AI-Modul ist tree-shaken solange noch keine UI es importiert).
+- Keine neuen Dependencies. SDKs (`openai`, `@anthropic-ai/sdk`,
+  `@google/generative-ai`) ziehen wir erst dann ein, wenn die
+  jeweiligen Provider scharf gemacht werden.
+
+Folge-Meilensteine (Engagement, Backend, Production-Readiness,
+Vertikalisierung, Innovation Loop) sind in `docs/PROGRAM_PLAN.md`
+beschrieben — dieses Programm hat **keinen Endpunkt**.
+
+## [0.13.0] – Methodik-Wechsel (vor Code-Session 13) – 2026-04-27
+
+### Changed
+- **Programm-Modell auf rollende Meilensteine umgestellt.**
+  Ursprüngliche „22 Sessions, dann fertig"-Sicht ist ersetzt durch ein
+  dauerhaftes Programm mit kleineren atomaren Code-Sessions, jeder mit
+  Recherche-Step, Tests und Deploy.
+- **`Claude.md`** – neuer Abschnitt 0 „PROGRAMM-PHILOSOPHIE" als
+  verbindliche Vorgabe vor allen anderen Anweisungen. Abschnitt 22
+  („Session-Plan") ist jetzt explizit als Inhaltsverzeichnis (nicht
+  Zeitplan) markiert.
+- **README.md** – Aktueller-Stand-Block reframt von „Session N von 22"
+  auf „Meilenstein N (rollend)" plus Link zu `PROGRAM_PLAN.md` /
+  `SESSION_PROTOCOL.md`.
+
+### Added
+- **`docs/PROGRAM_PLAN.md`** – 7 Meilensteine (Foundation ✅,
+  KI-Schicht 🔄, Engagement, Backend, Production, Vertikalisierung,
+  Innovation Loop ♾️). Jeder Meilenstein mit eigenem Erfolgskriterium,
+  ohne fixe Session-Anzahl.
+- **`docs/SESSION_PROTOCOL.md`** – verbindlicher Ablauf jeder
+  Code-Session: Größenbegrenzung (30–80 KB Diff), Recherche-Step
+  (WebSearch + Quellen im RUN_LOG), Verifikation (typecheck/lint/build/
+  smoke), Doku, Commit. 6 gleichberechtigte Session-Typen (Feature,
+  Refactor, Polish, A11y, Performance, Security, DX, Doku, Research).
+
+### Notes
+- Recherche-Quellen, die diesen Wechsel motiviert haben, im RUN_LOG-
+  Eintrag „Methodik-Wechsel" mit Markdown-Links zitiert.
+- Kein Code-Diff im Produkt selbst – die Änderung ist organisatorisch.
+  Build/Typecheck/Lint bleiben grün, weil keine Source-Datei berührt
+  wurde.
+
+## [0.12.0] – Session 12 – 2026-04-27
+
+## [0.12.0] – Session 12 – 2026-04-27
+
+### Added
+- **Public-Site-Anfrageformular** ist jetzt **interaktiv**
+  (`<PublicLeadForm>`). Felder kommen aus `preset.leadFormFields` der
+  jeweiligen Branche, manuelle Validierung deckt Pflichtfelder, E-Mail-
+  Format, Telefon-Mindestlänge und die Geschäftsregel „Telefon ODER
+  E-Mail" ab. Eingehende Leads werden via `appendLead` in den Browser-
+  Storage geschrieben; nach erfolgreichem Submit zeigt das Formular einen
+  Bestätigungs-Block mit „Weitere Anfrage senden"-Button.
+- **Dashboard `/dashboard/[slug]/leads`** zeigt jetzt `<LeadsView>` mit:
+  - Status-Filter-Pills (Alle, Neu, Kontaktiert, Qualifiziert, Gewonnen,
+    Verloren, Archiviert) inkl. Live-Counter pro Status,
+  - Volltextsuche über Name, Telefon, E-Mail, Nachricht,
+  - Listen-/Detail-Layout (Listen-Click öffnet Detail-Pane in der
+    Sidebar bzw. unter der Liste auf Mobile),
+  - Direktkontakt-Buttons (`tel:`, `wa.me`, `mailto:`), Status-Pill-
+    Buttons (Wechsel mit einem Klick), Notizen-Textarea mit
+    Speichern/Verwerfen,
+  - 3 Antwort-Vorlagen (kurz, freundlich, Detail) mit Copy-to-Clipboard
+    und Live-Vorschau bereits aufgelöster Platzhalter (`{{name}}`,
+    `{{betrieb}}`),
+  - „Lokale Anfragen leeren"-Button (entfernt nur Browser-Einträge,
+    Demo-Leads bleiben).
+- **Mock-Store** `src/lib/mock-store/leads-overrides.ts` mit
+  `appendLead`, `updateStoredLead`, `getStoredLeads`, `hasStoredLeads`,
+  `clearStoredLeads`, `getEffectiveLeads(slug, fallback)` (mergt
+  Demo-Mock + Browser-Storage, sortiert nach `createdAt` absteigend),
+  `countByStatus(leads)` und `generateLeadId(slug)`.
+- `<LeadDetail>`-Component mit Inline-Notizen-Editor und
+  Antwort-Vorlagen.
+- `reply-templates.ts` mit 3 branchen-neutralen Vorlagen + `fillTemplate`-
+  Helper.
+- Sidebar zeigt `Anfragen` jetzt als produktive Sektion (kein
+  „Vorschau"-Badge mehr für Silber/Gold).
+- Smoketest `src/tests/leads-system.test.ts` (~15 Assertions): alle
+  Demo-Leads valide, Pflicht-Lead-Felder im Preset, Mock-Store SSR-
+  sicher, `countByStatus` exhaustive, Vorlagen-Platzhalter-Substitution.
+- `docs/LEAD_SYSTEM.md` mit Architektur, Datenfluss, Persistierungs-API,
+  Compliance-Notes und Paket-Gating-Tabelle.
+
+### Changed
+- **`<PublicContact>`** ersetzt das deaktivierte Vorschau-Formular durch
+  `<PublicLeadForm>`. Die Direktkontakt-Karte links bleibt unverändert.
+- **`/dashboard/[slug]/leads`-Page** rendert für Bronze weiterhin
+  `<ComingSoonSection>` (kein `lead_management`); Silber/Gold sehen
+  `<LeadsView>`.
+- **`src/components/dashboard/nav-config.ts`** – `leads`-Eintrag ohne
+  `comingInSession`.
+- **`src/tests/dashboard.test.ts`** – akzeptiert jetzt ≥ 4 produktive
+  Sektionen.
+- **`src/lib/mock-store/index.ts`** re-exportiert `leads-overrides`.
+
+### Notes
+- Bundle-Größe: Public-Site-Bundle wächst auf ~5,7 KB First-Load JS
+  (vorher 161 B, weil die Lead-Form jetzt client-seitig ist).
+  Dashboard-Leads-Bundle: 16,4 KB First-Load JS.
+- Persistierung läuft client-only; eine Anfrage, die in Browser A
+  abgeschickt wurde, ist in Browser B nicht sichtbar. Echte Sync folgt
+  in Session 19 (Supabase). Für Demo und Vertrieb reicht das aktuelle
+  Modell.
+- Branchenneutralität gewahrt: keine `if`-Verzweigungen je Branche, alle
+  Felder kommen aus dem Preset, alle Vorlagen aus generischen
+  `{{name}}`/`{{betrieb}}`-Platzhaltern.
+- **Compliance**: Demo-Hinweis unterhalb der Felder, keine sensiblen
+  Pflichtfelder (kein Geburtstag, keine Adresse, keine Kontonummer).
 
 ## [0.11.0] – Session 11 – 2026-04-27
 

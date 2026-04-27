@@ -23,8 +23,16 @@ Autowerkstatt bis zur Reinigungsfirma – und ist im Kern bewusst branchenneutra
 - Bronze/Silber/Gold-Pakete als echte Produktlogik (Feature-Locks im UI)
 - Branchen-Presets (Friseur, Werkstatt, Reinigung, Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop, …)
 
-Aktueller Stand: **Session 11** – Services-Editor mit `useFieldArray`, Sortierung, Paket-Limit-Indikator, „Aus Preset übernehmen"-Import, Inline-Bestätigung beim Entfernen und localStorage-Mock-Store unter `/dashboard/[slug]/services`.
-Weitere Funktionen folgen in den Sessions 12–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
+**Aktueller Stand: Meilenstein 1 (Foundation) ✅ stabil – Code-Sessions 1–12 abgeschlossen.**
+
+Lead-System mit dynamischem Public-Site-Formular und Dashboard-Verwaltung
+ist live. Ab Code-Session 13 startet **Meilenstein 2 (KI-Schicht)** in
+kleineren atomaren Sessions.
+
+LocalPilot AI ist als **dauerhaftes Programm** mit rollenden Meilensteinen
+aufgesetzt – nicht als endlicher Sprint mit fixem Schluss. Details:
+[`docs/PROGRAM_PLAN.md`](./docs/PROGRAM_PLAN.md) und das Session-Protokoll
+in [`docs/SESSION_PROTOCOL.md`](./docs/SESSION_PROTOCOL.md).
 
 ---
 
@@ -194,6 +202,9 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - [`docs/DASHBOARD.md`](./docs/DASHBOARD.md) – Dashboard-Routen, Sidebar/Mobile-Nav, Sub-Page-Vorschau
 - [`docs/BUSINESS_EDITOR.md`](./docs/BUSINESS_EDITOR.md) – Business-Editor, RHF + Zod, Mock-Store, Live-Preview
 - [`docs/SERVICES_EDITOR.md`](./docs/SERVICES_EDITOR.md) – Services-Editor, useFieldArray, Sortierung, Paket-Limits
+- [`docs/LEAD_SYSTEM.md`](./docs/LEAD_SYSTEM.md) – Lead-System (Public-Site-Form, Dashboard, Mock-Store)
+- [`docs/PROGRAM_PLAN.md`](./docs/PROGRAM_PLAN.md) – Rolling Milestones, kein Endpunkt
+- [`docs/SESSION_PROTOCOL.md`](./docs/SESSION_PROTOCOL.md) – Verbindlicher Ablauf jeder Code-Session
 - [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) – GitHub Pages und Vercel
 - [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) – Was wurde in welcher Session gebaut?
 - [`CHANGELOG.md`](./CHANGELOG.md) – Versionshistorie
@@ -233,6 +244,10 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - ✅ **Services-Editor** unter `/dashboard/[slug]/services` mit
   `useFieldArray`, Sortier-Pfeilen, Paket-Limit-Indikator,
   „Aus Preset übernehmen", Inline-Bestätigung beim Entfernen
+- ✅ **Lead-System**: Public-Site-Formular mit dynamischen Feldern aus
+  dem Preset (Validierung, Erfolgs-Zustand, localStorage-Persistierung),
+  Dashboard `/dashboard/[slug]/leads` mit Filter / Suche / Detail-Pane /
+  Status-Wechsel / Notizen / 3 Antwort-Vorlagen mit Copy
 - ✅ **GitHub-Pages-Deployment** über Workflow `.github/workflows/deploy.yml`
   mit konditionellem Static-Export
-- ⏳ Lead-System, KI – folgen in Sessions 12 bis 22
+- ⏳ KI-Provider, Bewertungs-Booster, Social-Generator, Settings, Supabase – folgen in Sessions 13 bis 22

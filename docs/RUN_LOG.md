@@ -1407,15 +1407,385 @@ Manuell im Browser:
 
 ### 6. Was ist der nächste empfohlene Run?
 
-**Session 12 – Lead-System.**
+**Session 12 – Lead-System.** (s. u.)
 
-Drei Bauteile parallel:
-1. **Public Site**: Anfrageformular auf `/site/[slug]` aktivieren –
-   Felder kommen aus `preset.leadFormFields`, Submission via Server
-   Action (oder client-only Mock-Store, falls Static-Export beibehalten
-   wird).
-2. **Dashboard `/leads`**: Liste eingegangener Anfragen mit Filter
-   (Status, Quelle), Detail-Drawer, Status-Wechsel, Notizen,
-   Antwort-Vorlagen mit Copy-to-Clipboard.
-3. **Mock-Store** `leads-overrides.ts` analog zu Sessions 10/11, plus
-   `appendLead(slug, lead)`-Helper für die Public-Site-Submission.
+---
+
+## Session 12 – Lead-System
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+Drei Bauteile gleichzeitig:
+
+**Public Site – `<PublicLeadForm>`**
+- Ersetzt das deaktivierte Vorschau-Formular aus Session 7.
+- Client Component, Felder dynamisch aus `preset.leadFormFields` der
+  jeweiligen Branche.
+- Manuelle Validierung: Pflichtfelder, E-Mail-Format, Telefon-
+  Mindestlänge plus Geschäftsregel „Telefon ODER E-Mail".
+- Submit konstruiert ein `Lead`-Objekt, parst es mit
+  `LeadSchema.safeParse` und schreibt es per `appendLead(slug, lead)`
+  in den Browser-Storage.
+- Erfolgs-Zustand mit „Weitere Anfrage senden"-Button. Fehler-Hinweise
+  inline + Fallback-Banner bei Persistierungsproblemen.
+- Standard-Felder werden auf das Lead-Modell gemappt; alle weiteren
+  Keys aus dem Preset (z. B. `vehicleModel`, `objectType`,
+  `drivingClass`) landen in `extraFields`.
+
+**Dashboard – `<LeadsView>`**
+- Toolbar mit Status-Filter-Pills (Alle, Neu, Kontaktiert, Qualifiziert,
+  Gewonnen, Verloren, Archiviert) inkl. Live-Counter pro Status.
+- Volltextsuche über Name, Telefon, E-Mail, Nachricht.
+- Listen-/Detail-Layout: Click in der Liste öffnet einen Detail-Pane in
+  der Sidebar (Desktop) bzw. unterhalb der Liste (Mobile).
+- Detail-Pane:
+  - Direktkontakt-Buttons (`tel:`, `wa.me`, `mailto:`).
+  - Status-Pill-Buttons in den 6 Status-Farben (Wechsel mit einem
+    Klick, Persistierung über `updateStoredLead`).
+  - Anzeige der Original-Nachricht und der branchen-spezifischen
+    Zusatzfelder (`extraFields`).
+  - Notizen-Textarea mit „Speichern" / „Verwerfen" für Drafts.
+  - 3 branchen-neutrale Antwort-Vorlagen (kurz, freundlich, Detail) mit
+    Copy-to-Clipboard und Live-Vorschau bereits aufgelöster Platzhalter
+    (`{{name}}`, `{{betrieb}}`).
+- „Lokale Anfragen leeren"-Button entfernt nur Browser-Einträge,
+  Demo-Leads bleiben erhalten.
+
+**Mock-Store – `leads-overrides.ts`**
+- API: `appendLead`, `updateStoredLead`, `getStoredLeads`,
+  `hasStoredLeads`, `clearStoredLeads`, `getEffectiveLeads`,
+  `countByStatus`, `generateLeadId`.
+- Versionierter localStorage-Schlüssel `lp:leads-override:v1:<slug>`,
+  defensive Schema-Validierung beim Lesen UND Schreiben.
+- `getEffectiveLeads(slug, fallback)` mergt Demo-Mock-Leads mit
+  persistierten Einträgen, sortiert nach `createdAt` absteigend.
+- SSR-sicher: ohne `window` liefert er konsistent leere Listen / no-op.
+
+**Drumherum**
+- Sidebar-Eintrag „Anfragen" ist jetzt produktiv (kein
+  „Vorschau"-Badge mehr für Silber/Gold).
+- Bronze (kein `lead_management`) bleibt auf `<ComingSoonSection>`,
+  zeigt aber zusätzlich, wie viele Demo-Anfragen anliegen.
+- Smoketest `src/tests/leads-system.test.ts` (~15 Assertions).
+- `docs/LEAD_SYSTEM.md` mit Architektur, Datenfluss, Persistierungs-
+  API, Compliance-Notes und Paket-Gating-Tabelle.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (6 Dateien):
+- `src/lib/mock-store/leads-overrides.ts`
+- `src/components/public-site/public-lead-form.tsx`
+- `src/components/dashboard/leads-view/leads-view.tsx`
+- `src/components/dashboard/leads-view/reply-templates.ts`
+- `src/components/dashboard/leads-view/index.ts`
+- `src/tests/leads-system.test.ts`
+- `docs/LEAD_SYSTEM.md`
+
+Geändert:
+- `src/components/public-site/public-contact.tsx` (Vorschau-Form
+  → echtes `<PublicLeadForm>`)
+- `src/components/public-site/index.ts` (Re-Export)
+- `src/app/dashboard/[slug]/leads/page.tsx` (Stub → `<LeadsView>` mit
+  Bronze-Gate)
+- `src/components/dashboard/nav-config.ts` (`leads` produktiv)
+- `src/lib/mock-store/index.ts` (re-exportiert leads-overrides)
+- `src/tests/dashboard.test.ts` (≥ 4 produktive Sektionen erwartet)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck        # tsc --noEmit + Smoketests
+npm run lint             # 0 warnings/errors
+npm run build:static     # Static Export
+npm run dev              # http://localhost:3000
+```
+
+Manuell:
+1. `/site/beauty-atelier#kontakt` öffnen → Anfrageformular ausfüllen,
+   absenden → Erfolgs-Zustand erscheint.
+2. `/dashboard/beauty-atelier/leads` öffnen → die eben gesendete
+   Anfrage steht oben in der Liste (über den Demo-Anfragen).
+3. Anfrage anklicken → Detail-Pane mit Direktkontakt, Status,
+   Notizen, Antwort-Vorlagen.
+4. Status auf „Kontaktiert" wechseln → Pill färbt sich amber.
+5. Notiz tippen → „Speichern" → State persistiert.
+6. „Kurze Bestätigung" kopieren → Clipboard enthält den fertigen Text
+   mit Name + Betrieb.
+7. `/dashboard/meisterbau-schneider/leads` (Bronze) → Coming-Soon-
+   Block plus Hinweis „X Demo-Anfragen liegen an".
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                          | Status                                                                |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| Leads können erstellt werden       | ✅ `<PublicLeadForm>` schreibt via `appendLead`                       |
+| Leads erscheinen im Dashboard      | ✅ `<LeadsView>` mergt Browser-Leads mit Demo-Mocks (`getEffectiveLeads`) |
+| Statusänderung funktioniert        | ✅ Pill-Buttons mit `updateStoredLead`                                |
+| Formular ist branchenspezifisch    | ✅ Felder aus `preset.leadFormFields`                                 |
+| Keine sensiblen unnötigen Daten    | ✅ kein Geburtstag, keine Adresse, keine Kontonummer                   |
+| Dynamisches Kontaktformular        | ✅ alle Field-Typen aus `LeadFormFieldType` werden gerendert          |
+| Lead speichern                     | ✅ localStorage + `LeadSchema.parse` defensive                         |
+| Lead-Dashboard                     | ✅ Filter, Suche, Detail-Pane                                         |
+| Notizen                            | ✅ Textarea mit Speichern/Verwerfen                                   |
+| Detailansicht                      | ✅ `<LeadDetail>` als Sidebar/Below-List                              |
+| Antwort kopieren                   | ✅ 3 Vorlagen, Copy mit „Kopiert"-Bestätigung                         |
+| Filter / Suche                     | ✅                                                                     |
+
+### 5. Was ist offen?
+
+- **Sessions 13–15** – KI-Assistent kann Antworten je Anfrage
+  generieren (Branche + USPs + Lead-Daten als Kontext).
+- **Session 16** – Bewertungs-Booster: nutzt `email`/`phone` aus
+  `won`-Leads, um nach erfolgtem Termin eine Vorlage zu schicken.
+- **Session 18** – Settings: Lead-Routing, Webhook-URL, Auto-Reply.
+- **Session 19** – Repository-Layer: ersetzt `leads-overrides` durch
+  Supabase + Realtime; Public Site triggert eine Server Action,
+  Dashboard streamt neue Leads.
+- Optional: CSV-Export für Übergabe an externes CRM.
+- Optional: Filter nach Quelle (Website, Telefon, WhatsApp, …).
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Methodik-Wechsel zuerst** (s. u.). Erst danach Code-Session 13
+(AI-Provider-Scaffold), bewusst klein zugeschnitten.
+
+---
+
+## Methodik-Wechsel — vor Code-Session 13
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+Das Programm-Modell wurde fundamental umgestellt: vom „22 Sessions, dann
+fertig"-Sprint zu einem **dauerhaften Programm mit rollenden Meilensteinen**.
+
+- **`Claude.md`** hat einen neuen Abschnitt 0 „PROGRAMM-PHILOSOPHIE", der
+  vor allem anderen gilt:
+  - Sessions sind klein und atomar (30–60 Min., 30–80 KB Diff).
+  - Pro Session ein Recherche-Step (WebSearch + Quellen-Zitierung).
+  - Sessions 1–22 sind Inhaltsverzeichnis, kein Zeitplan; Code-Session-
+    Nummern dürfen frei wachsen.
+  - Es gibt kein „Projekt fertig" – Meilenstein 7 läuft permanent.
+  - Maintenance/Polish/Security/A11y/Performance/Doku gleichberechtigt
+    zu Features.
+- **`Claude.md`** Abschnitt 22 („Session-Plan") explizit als
+  Inhaltsverzeichnis markiert, nicht mehr als Zeitplan.
+- **`docs/PROGRAM_PLAN.md`** definiert 7 rollende Meilensteine
+  (Foundation ✅, KI-Schicht 🔄, Engagement, Backend, Production,
+  Vertikalisierung, Innovation Loop ♾️). Jeder mit eigenem
+  Erfolgskriterium, ohne fixe Session-Anzahl.
+- **`docs/SESSION_PROTOCOL.md`** ist der verbindliche Ablauf jeder
+  Code-Session: Größenbegrenzung, Recherche-Step, Verifikation
+  (typecheck/lint/build/smoke), Doku, Commit. 9 gleichberechtigte
+  Session-Typen (Feature, Refactor, Polish, A11y, Performance, Security,
+  DX, Doku, Research-Only).
+- **README.md** reframt von „Aktueller Stand: Session 12 von 22" auf
+  „Meilenstein 1 (Foundation) ✅ stabil, ab Code-Session 13 startet
+  Meilenstein 2 (KI-Schicht) in kleineren atomaren Sessions".
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu:
+- `docs/PROGRAM_PLAN.md`
+- `docs/SESSION_PROTOCOL.md`
+
+Geändert:
+- `Claude.md` (neuer Abschnitt 0, Hinweis in Abschnitt 22)
+- `README.md` (Aktueller-Stand-Block, Doku-Liste)
+- `CHANGELOG.md` (Versions-Block 0.13.0 + neuer Geplant-Block)
+- `docs/RUN_LOG.md` (dieser Eintrag)
+
+Kein Source-Diff – die Änderung ist organisatorisch.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck     # MUSS grün bleiben (kein Source-Code geändert)
+npm run lint          # MUSS grün bleiben
+npm run build:static  # MUSS grün bleiben
+```
+
+Manuell:
+- `Claude.md`, `docs/PROGRAM_PLAN.md`, `docs/SESSION_PROTOCOL.md` und
+  `README.md` lesen und auf Konsistenz prüfen.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                     | Status |
+| --------------------------------------------- | ------ |
+| Programm hat keinen festen Endpunkt           | ✅      |
+| Pro Session ein Recherche-Step ist verbindlich | ✅      |
+| Sessions sind kleiner zugeschnitten (Limits dokumentiert) | ✅ |
+| Meilensteine sind benannt und priorisiert     | ✅      |
+| `Claude.md` bleibt inhaltlicher Anker         | ✅      |
+| Build/Typecheck/Lint bleiben grün             | ✅ (kein Source-Diff) |
+
+### 5. Was ist offen?
+
+- Erste Session nach neuem Protokoll = **Code-Session 13**
+  (AI-Provider-Scaffold). Sehr klein zugeschnitten:
+  - Nur das `src/core/ai/`-Verzeichnis-Skelett + Re-Export-Barrel.
+  - Eine Stub-Datei pro Provider (mock/openai/anthropic/gemini),
+    jede wirft `AIProviderError("provider_unavailable")`.
+  - Provider-Resolver `getAIProvider()` mit ENV-Gate
+    (`AI_PROVIDER` + automatic Fallback auf `mock`).
+  - Smoketest in `src/tests/ai-provider-resolver.test.ts`.
+  - Keine echten API-Calls, kein Dashboard-UI in dieser Session.
+- Code-Sessions 14+ befüllen Mock-Provider mit hochwertigen
+  Beispieltexten, jeweils EINE Methode pro Session.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 13 – AI-Provider-Scaffold (klein).**
+
+Ein einziges atomares Deliverable:
+1. WebSearch zu „Anthropic SDK 2026 + AI provider abstraction
+   patterns" für aktuelle Best-Practices.
+2. `src/core/ai/`-Modul mit Provider-Stubs anlegen (alle Methoden
+   werfen `AIProviderError("provider_unavailable")`).
+3. `getAIProvider()`-Resolver mit ENV-Gate.
+4. Smoketest, der den Resolver + Fallback auf `mock` prüft.
+5. CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT in dieser Session:
+- Mock-Provider-Implementierung (kommt in Code-Session 14).
+- Dashboard-UI für AI (kommt nach Code-Session 17).
+- Echte API-Calls (kommen in Code-Sessions 21–24).
+
+### Quellen (Methodik-Recherche)
+
+- [Innovecs – SaaS Development Process: The Updated Guide for 2026](https://innovecs.com/blog/saas-development-process/)
+- [Riseup Labs – Software Development Methodologies: Complete 2026 Guide](https://riseuplabs.com/software-development-methodologies/)
+- [Basecamp – Shape Up: Stop Running in Circles and Ship Work that Matters](https://basecamp.com/shapeup)
+- [ProductPlan – Shape Up Method Glossary](https://www.productplan.com/glossary/shape-up-method)
+- [Curious Lab – What is Basecamp's Shape Up method?](https://www.curiouslab.io/blog/what-is-basecamps-shape-up-method-a-complete-overview)
+
+---
+
+## Code-Session 13 – AI-Provider-Scaffold
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar)
+Meilenstein: 2 (KI-Schicht)
+
+### 1. Was wurde umgesetzt?
+
+Erste Session nach dem neuen Protokoll. Bewusst klein gehalten.
+
+- `src/core/ai/providers/_stub.ts` – `buildStubProvider(key, message)`-
+  Helper, baut einen typisierten `AIProvider`, dessen 7 Methoden alle
+  `AIProviderError("provider_unavailable")` werfen. So kann jeder
+  einzelne Provider später Methode für Methode scharf gemacht werden,
+  ohne dass die Resolver-Logik angepasst werden muss.
+- 4 Provider-Stub-Module (`mock`, `openai`, `anthropic`, `gemini`),
+  jeweils einzeilig: nur der Aufruf von `buildStubProvider` mit eigener
+  Fehlermeldung (welche Code-Session den jeweiligen Provider scharf
+  macht).
+- `src/core/ai/ai-client.ts` mit:
+  - `getAIProvider(opts?)` – liest `AI_PROVIDER` aus der ENV (oder
+    aus dem optionalen `opts.env` für Tests/API-Routes), wählt den
+    passenden Provider, prüft den jeweils nötigen API-Key
+    (`OPENAI_API_KEY`/`ANTHROPIC_API_KEY`/`GEMINI_API_KEY`), fällt
+    defensiv auf `mock` zurück bei jedem Problem (kein Wert,
+    ungültiger Wert, leerer Key). Wirft niemals.
+  - `describeActiveProvider(opts?)` für spätere Diagnose-Karten:
+    welcher Provider würde zurückkommen und warum (`explicit`,
+    `fallback_unset`, `fallback_invalid`, `fallback_no_key`).
+  - `AI_PROVIDERS`-Lookup-Map (read-only) für Tests/Debug.
+- `src/core/ai/index.ts` – Barrel.
+- `src/tests/ai-provider-resolver.test.ts` mit 22 Assertions, die alle
+  Resolver-Pfade abdecken.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (8 Dateien):
+- `src/core/ai/ai-client.ts`
+- `src/core/ai/index.ts`
+- `src/core/ai/providers/_stub.ts`
+- `src/core/ai/providers/{mock,openai,anthropic,gemini}-provider.ts`
+- `src/tests/ai-provider-resolver.test.ts`
+
+Geändert:
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Entfernt: `.gitkeep` in `src/core/ai/providers` und `src/core/ai/prompts`.
+
+Diff-Größe ~30 KB. Liegt klar im Session-Limit (30–80 KB).
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck      # tsc --noEmit – Smoketest läuft mit
+npm run lint           # 0 warnings/errors
+npm run build:static   # Static-Export bleibt grün
+```
+
+Programmatisch:
+
+```ts
+import { getAIProvider, describeActiveProvider } from "@/core/ai";
+
+getAIProvider().key;                              // "mock" (ohne ENV)
+getAIProvider({ providerKey: "openai" }).key;     // "mock" (ohne API-Key)
+describeActiveProvider({ env: { AI_PROVIDER: "anthropic" } });
+// → { requested: "anthropic", active: "mock", reason: "fallback_no_key" }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                              | Status |
+| ------------------------------------------------------ | ------ |
+| `src/core/ai/`-Verzeichnis-Skelett + Re-Export-Barrel  | ✅      |
+| 4 Provider-Stubs, alle werfen `provider_unavailable`   | ✅      |
+| `getAIProvider()`-Resolver mit ENV-Gate                | ✅      |
+| Defensiver Fallback auf `mock` bei jedem Problem       | ✅      |
+| Smoketest deckt alle Resolver-Pfade ab (22 Assertions) | ✅      |
+| Build/Typecheck/Lint grün                              | ✅      |
+| Session-Größe im Limit (30–80 KB)                      | ✅ (~30 KB) |
+
+### 5. Was ist offen?
+
+- **Code-Session 14**: Mock-Provider mit `generateWebsiteCopy`-
+  Implementation. Branchenneutrale, hochwertige Beispieltexte mit
+  `{{city}}`-Platzhalter-Substitution, abgeleitet aus dem
+  `IndustryPreset`. Nur diese eine Methode – die anderen 6 bleiben
+  Stubs.
+- **Code-Sessions 15–17**: je eine weitere Mock-Methode
+  (`improveServiceDescription`, `generateFaqs`, `generateCustomerReply`).
+- **Später**: API-Route `/api/ai/generate` (sobald wir SSR-fähig sind),
+  Dashboard-Karte unter `/dashboard/[slug]/ai`, echte Provider mit
+  Caching, Cost-Tracking.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 14 – Mock-Provider: `generateWebsiteCopy`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 Patterns für branchenneutrale Beispiel-Website-
+   Texte" + Best-Practices für Mock-AI.
+2. `mock-provider.ts`: `generateWebsiteCopy` ersetzt den Stub durch
+   eine deterministische, branchenneutrale Implementation, die aus
+   dem `AIBusinessContext` (Industry-Key, City, Tonalität, USPs)
+   ein `WebsiteCopyOutput` zusammenbaut. Unterschiedliche `variant`-
+   Werte liefern unterschiedliche Texte.
+3. Smoketest: `mockProvider.generateWebsiteCopy({ context, variant })`
+   für jeweils 2 Branchen × 2 Varianten testet, dass Title/Subtitle/
+   AboutText nicht leer und nicht generisch sind.
+4. CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere 6 Methoden, UI, echte Provider.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [DEV Community – Multi-Provider AI App: OpenAI + Anthropic + Google in One SDK](https://dev.to/neurolink/multi-provider-ai-app-openai-anthropic-google-in-one-sdk-40n6)
+- [DEV Community – Building AI Agent With Multiple AI Model Providers Using an LLM Gateway](https://dev.to/crosspostr/building-ai-agent-with-multiple-ai-model-providers-using-an-llm-gateway-openai-anthropic-gemini-fl2)
+- [AISIX AI Gateway – Provider Abstraction](https://docs.api7.ai/aisix/core-concepts/provider-abstraction)
+- [pydantic-ai – Model Architecture and Provider System](https://deepwiki.com/pydantic/pydantic-ai/4.1-model-architecture-and-provider-system)
