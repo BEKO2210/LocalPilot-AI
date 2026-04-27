@@ -236,8 +236,21 @@ aktiven Session.
   `business.json` als Mock-Daten ergänzen reicht für die Demos.
 
 ### Track B · Security & Compliance
-- DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen
-  KI-Output, bevor er in einen Public-Site-Block geschrieben wird.
+- ~~DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen
+  KI-Output~~ (Code-Session 31 ✅, Plain-Text-Variante).
+  Folge-Items:
+  - **Markdown-/HTML-Render-Pfad scharf machen**: sobald ein Bereich
+    KI-Output als HTML rendert (Markdown-Renderer in Reviews,
+    Reicher-Text-Editor, etc.), `isomorphic-dompurify` einziehen
+    und den `sanitizeAIOutputAsHtml`-Stub durch echte Whitelist
+    ersetzen (Tags: `b/strong/em/i/p/br/ul/ol/li`).
+  - **Property-based Test-Suite**: aktuell 29 manuell kuratierte
+    Injection-Vektoren. Sinnvoll: ein Generator-Test (z. B. mit
+    `fast-check`), der zufällige Mix-Strings produziert und
+    invariant prüft („nach Sanitize gibt es kein `<script>`").
+  - **CSP-Header** (Track B): zusätzliche Schicht, falls der
+    Sanitizer mal versagt — Strict-CSP via Nonce bei der
+    SSR-Auslieferung.
 - npm-audit-Lauf in CI, plus monatlicher Auto-Bump-Pass mit
   `npm outdated` + Smoketest.
 - DSGVO-Hinweis-Block für die Bewertungs-Anfrage-Versendung

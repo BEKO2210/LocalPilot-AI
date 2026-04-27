@@ -6,13 +6,46 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant (Meilenstein 2 – KI-Schicht / Track B Security)
-- **Code-Session 31: DOMPurify-Sanitizer** für übernommene KI-Outputs.
-  Bevor ein Mock-/Live-Text in den Public-Site-Block wandert,
-  sanitizen — Schutz gegen XSS aus generierten Inhalten.
-- Code-Sessions 32+: echte Cookie/JWT-Auth, Edge-Runtime-Migration
-  der API-Routen, Vercel-SSR-Deploy (Vorbedingung für Live-Provider
-  im Browser), Status-History.
+### Geplant (Meilenstein 2 + DSGVO)
+- **Code-Session 32: DSGVO-Lead-Einwilligungs-Block** im Public-Site-
+  Lead-Form (Pflicht-Checkbox „Datenschutz gelesen", Verlinkung auf
+  `/datenschutz`-Stub, Speicherdauer-Hinweis beim Submit).
+  Vorbedingung für ersten echten Betrieb live.
+- Code-Sessions 33+: echte Cookie/JWT-Auth, Edge-Runtime-Migration,
+  Vercel-SSR-Deploy, Status-History, HTML-Sanitize-Whitelist mit
+  isomorphic-dompurify (sobald Markdown-Rendering kommt).
+
+## [0.16.5] – Code-Session 31 – 2026-04-27
+
+KI-Output-Sanitizer (Track B Security). Defense-in-Depth gegen
+Prompt-Injection-XSS. CVE-2026-25802 als Real-World-Anlass.
+
+- ✚ `src/core/ai/sanitize.ts` — `sanitizeText` (Entity-Decode +
+  iterativer Tag-Strip + Control-Char-Removal), `sanitizeAIOutput<T>`
+  (rekursiv über Strings/Arrays/Objects, Numbers/Booleans/null
+  bleiben), `sanitizeAIOutputAsHtml`-Stub (wirft, bis HTML-Whitelist-
+  Modus mit `isomorphic-dompurify` kommt).
+- 🔄 `/api/ai/generate`: Output **vor** Cost-Estimation und Response
+  durch Sanitizer.
+- 🔄 `ai-playground.tsx`: Mock-Direktaufruf-Pfad sanitiziert
+  ebenfalls (Defense-in-Depth, falls Mock-Skripte später durch
+  echte KI-Fixtures ersetzt werden).
+- ✚ `src/tests/ai-sanitize.test.ts` (29 Asserts): Standard-Vektoren
+  (`<script>`, `<img onerror>`, `javascript:`-Link), Entity-Bypasses
+  (`&lt;`, dezimal, hex), Nested-Tag-Bypass, legitime Sonderzeichen
+  (`<` mit Space, `&`, Anführungszeichen, Umlaute, Emojis) bleiben,
+  Control-Chars raus, Rekursion über Strukturen.
+- 🛣️ Roadmap: 1 Item abgehakt, 3 Folge-Items in Track B
+  (HTML-Whitelist-Pfad, Property-based Test-Suite mit `fast-check`,
+  Strict-CSP-Header via Nonce).
+- **Designentscheidung dokumentiert**: bewusst kein DOMPurify (yet) —
+  ~120 KB Server-Bundle für jsdom lohnt sich erst mit HTML-Render-
+  Pfad. Stub-Funktion verhindert versehentliches Durchreichen
+  unsicheren HTMLs.
+
+Bundle: shared 102 KB unverändert.
+
+## [0.16.4] – Code-Session 30 – 2026-04-27
 
 ## [0.16.4] – Code-Session 30 – 2026-04-27
 

@@ -88,6 +88,16 @@
 - [Next.js – API Routes in Static Export Warning](https://nextjs.org/docs/messages/api-routes-static-export) (28).
 - [Next.js – Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers) (28).
 
+## Track D · Security & Sanitization
+
+### Sanitization & Prompt-Injection (Code-Session 31)
+- [DOMPurify (cure53)](https://github.com/cure53/DOMPurify) — XSS-Sanitizer für HTML/SVG/MathML mit Whitelist-Modus (31).
+- [isomorphic-dompurify](https://github.com/kkomelin/isomorphic-dompurify) — Server+Client-Wrapper über DOMPurify, Vorbedingung für HTML-Render-Pfad (31).
+- [CVE-2026-25802 – Prompt Injection to Stored XSS](https://cvereports.com/reports/CVE-2026-25802) — Real-World-Beleg, dass LLM-Output unsanitiert in `dangerouslySetInnerHTML` reicht (31).
+- [Focused.io – LLM Output Sanitization (OWASP LLM05)](https://focused.io/lab/improper-ai-output-handling---owasp-llm05) — OWASP-LLM-Top-10-Kontext (31).
+- [PkgPulse – sanitize-html vs DOMPurify vs xss 2026](https://www.pkgpulse.com/guides/sanitize-html-vs-dompurify-vs-xss-xss-prevention-2026) — Library-Vergleich (31).
+- [Medium / Piotr Korowicki – Dynamic HTML Injection in Next.js](https://medium.com/@piotrkorowicki/dynamic-html-injection-and-sanitization-in-next-js-applications-3e336caa2e6f) (31).
+
 ---
 
 > **Hinweis**: Wenn ein Eintrag in mehreren Sessions verwendet wird,

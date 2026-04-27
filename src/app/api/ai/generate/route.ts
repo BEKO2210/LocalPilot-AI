@@ -36,6 +36,7 @@ import { getAIProvider } from "@/core/ai";
 import { AIProviderError } from "@/types/ai";
 import { estimateCost, formatCostUsd } from "@/core/ai/cost/pricing";
 import { chargeBudget, previewBudget } from "@/core/ai/cost/budget";
+import { sanitizeAIOutput } from "@/core/ai/sanitize";
 
 /** Liefert das Default-Modell pro Provider — wie in den `_client.ts`-Dateien. */
 function modelForProvider(provider: string): string {
@@ -236,8 +237,15 @@ export async function POST(req: Request): Promise<Response> {
         break;
     }
 
-    // 4. Cost-Schätzung über Input + Output, Bucket aktualisieren.
-    const outputText = JSON.stringify(output);
+    // 4. Sanitize: KI-Output kann Prompt-Injection-Artefakte enthalten
+    //    (Provider-seitige Halluzinationen mit `<script>`, Event-Handlers,
+    //    HTML-Entities). Wir strippen das, bevor wir es an den Client geben —
+    //    Defense-in-Depth gegen XSS, falls der Output später in einem
+    //    HTML-Kontext (CMS, Mail, Markdown-Renderer) landet.
+    //    Cost-Schätzung läuft auf dem **sanitized**-Output, damit der
+    //    angezeigte Token-Count zum tatsächlich ausgelieferten Text passt.
+    const sanitized = sanitizeAIOutput(output);
+    const outputText = JSON.stringify(sanitized);
     const cost = estimateCost(provider.key, model, inputText, outputText);
     const charged = chargeBudget(cost.costUsd);
 
@@ -245,7 +253,7 @@ export async function POST(req: Request): Promise<Response> {
       ok: true,
       provider: provider.key,
       method,
-      output,
+      output: sanitized,
       cost: {
         provider: cost.provider,
         model: cost.model,

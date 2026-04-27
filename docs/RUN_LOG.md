@@ -4556,3 +4556,65 @@ Rate-Limit-UX-Suchlauf (UptimeSignal, GetKnit, NousResearch-Issue).
 **Nächste Session**: Code-Session 31 — DOMPurify-Sanitizer für
 übernommene KI-Outputs (Track B Security: bevor ein Mock/Live-
 Text in den Public-Site-Block wandert, sanitizen).
+
+---
+
+## Code-Session 31 – KI-Output-Sanitizer (Track B Security)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Defense-in-Depth gegen Prompt-Injection-XSS. Jeder
+KI-Output (Mock direkt im Browser, Live über die API-Route)
+durchläuft `sanitizeAIOutput` bevor er ans UI geht. Strippt
+HTML-Tags, dekodiert Entities zuerst (klassischer Filter-Bypass
+wird so erwischt), entfernt Control-Chars, behält legitime
+Sonderzeichen (`<` im Fließtext, Umlaute, Emojis, Anführungszeichen,
+Zeilenumbrüche). Echtes Risiko ist real: CVE-2026-25802 zeigt
+Prompt-Injection → Stored XSS in einem LLM-Gateway.
+
+**Designentscheidung — bewusst kein DOMPurify (yet)**:
+`isomorphic-dompurify` zieht `jsdom` (~120 KB) ins Server-Bundle.
+Lohnt sich, sobald wir einen **HTML-Whitelist-Modus** brauchen
+(Markdown-Renderer, Reicher-Text-Editor). Bis dahin reicht ein
+zero-dep Plain-Text-Stripper. Stub `sanitizeAIOutputAsHtml` wirft
+explizit, damit niemand versehentlich unsicheres HTML durchlässt.
+
+**Dateien**:
+- ✚ `src/core/ai/sanitize.ts` (≈ 130 Zeilen): `sanitizeText` mit
+  Entity-Decode + iterativem Tag-Strip + Control-Char-Removal,
+  `sanitizeAIOutput<T>` rekursiv über Strings/Arrays/Objects (Numbers/
+  Booleans/null bleiben), `sanitizeAIOutputAsHtml`-Stub für Track-B-
+  Folgesession.
+- 🔄 `/api/ai/generate`: Output **vor** Cost-Estimation und Response
+  durch `sanitizeAIOutput`. Cost-Token-Count basiert dann auf dem
+  ausgelieferten (sanitized) Text — konsistent.
+- 🔄 `ai-playground.tsx`: auch der Mock-Direktaufruf-Pfad sanitiziert.
+  Defense-in-Depth, falls Mock-Skripte später durch echte KI-Fixtures
+  ersetzt werden.
+- ✚ `src/tests/ai-sanitize.test.ts` (29 Asserts): Plain-Text bleibt,
+  Script/IMG/A-Tags raus, Entity-Bypasses (`&lt;`, dezimal `&#60;`,
+  hex `&#x3C;`) erwischt, Nested-Tag-Bypass (`<<script>script>...`)
+  durch Iterativ-Strip neutralisiert, Sonderzeichen wie `<` mit
+  Space, `&`, Anführungszeichen, Umlaute, Emojis, Zeilenumbrüche
+  bleiben, Control-Chars gestrippt (außer `\t\n\r`), rekursive
+  Anwendung auf Output-Strukturen, Stub wirft.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅, alle 9 Smoketests ✅ (Mock ~380, Resolver 22, OpenAI 14,
+Anthropic 14, Gemini 12, Themes inkl. Hex, Cost 24, Health 18,
+**Sanitize 29 NEU**).
+
+**Roadmap**: 1 Item abgehakt (DOMPurify-Sanitizer Plain-Text), 3
+Folge-Items in Track B: HTML-Whitelist-Pfad mit `isomorphic-dompurify`,
+Property-based Test-Suite mit `fast-check`, Strict-CSP-Header via
+Nonce bei SSR-Auslieferung.
+
+**Quellen**: `RESEARCH_INDEX.md` Track B (Security) — neu:
+- [DOMPurify (cure53)](https://github.com/cure53/DOMPurify)
+- [isomorphic-dompurify](https://github.com/kkomelin/isomorphic-dompurify)
+- [CVE-2026-25802 — Prompt Injection to Stored XSS](https://cvereports.com/reports/CVE-2026-25802)
+- [Focused.io — LLM Output Sanitization (OWASP LLM05)](https://focused.io/lab/improper-ai-output-handling---owasp-llm05)
+
+**Nächste Session**: Code-Session 32 — DSGVO-Lead-Einwilligungs-
+Block im Public-Site-Lead-Form (Pflicht-Checkbox „Datenschutz
+gelesen", Verlinkung auf `/datenschutz`, Speicherdauer-Hinweis
+beim Submit). Vorbedingung für ersten echten Betrieb live.

@@ -5,6 +5,7 @@ import { AlertCircle, Ban, Clock, Loader2, Server, Sparkles, Wand2 } from "lucid
 import { AIProviderError } from "@/types/ai";
 import type { AIProviderKey } from "@/types/common";
 import type { Business } from "@/types/business";
+import { sanitizeAIOutput } from "@/core/ai/sanitize";
 import { DashboardCard } from "../dashboard-card";
 import { HealthCard } from "./health-card";
 import { ResultPanel } from "./result-panel";
@@ -125,7 +126,12 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
       try {
         if (providerKey === "mock") {
           const out = await config.call(business, formValues);
-          setResult(out);
+          // Defense-in-Depth: auch der lokale Mock-Aufruf läuft durch
+          // den Sanitizer. Mock liefert deterministische Texte, die
+          // aktuell sauber sind — aber wenn sich das Mock-Skript
+          // einmal ändert oder wir Fixtures aus echten KI-Calls
+          // einspielen, bleibt der Pfad konsistent.
+          setResult({ ...out, output: sanitizeAIOutput(out.output) } as typeof out);
           return;
         }
         // Live-Provider via API-Route. Nur in SSR-Deploy verfügbar;
