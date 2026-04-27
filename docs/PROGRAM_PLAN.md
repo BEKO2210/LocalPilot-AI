@@ -171,6 +171,17 @@ aktiven Session.
   ob OpenAI-`gpt-4o-mini`, `gpt-4o` oder `o1-mini` benutzt wird.
   Default bleibt `gpt-4o-mini` (günstig + schnell, strukturiert
   zuverlässig).
+- **Prompt-Bibliothek extrahieren** (aus Code-Session 22):
+  System-Prompts liegen aktuell als Konstanten in `website-copy.ts`
+  und `service-description.ts`. Bei 7 scharfen Methoden × 3 Providern
+  (OpenAI, Anthropic, Gemini) entstehen 21 Strings. Sie wandern in
+  `src/core/ai/prompts/<method>.ts` mit Provider-neutralen
+  Helfer-Buildern.
+- **Saatzeilen-Übergabe Mock → Live** (aus Code-Session 22):
+  `improveServiceDescription` poliert eine bestehende Beschreibung.
+  Wenn der Auftraggeber zwischen Mock und Live wechselt, soll der
+  vom Mock vorbereitete Text als `currentDescription` an den
+  Live-Provider durchgereicht werden — als „polish me"-Pipeline.
 
 ### Track B · Security & Compliance
 - DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen

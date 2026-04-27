@@ -1,15 +1,16 @@
 import type { AIProvider } from "@/types/ai";
 import { buildStubProvider } from "./_stub";
 import { openaiGenerateWebsiteCopy } from "./openai/website-copy";
+import { openaiImproveServiceDescription } from "./openai/service-description";
 
 /**
  * OpenAI-Provider — wird Schritt für Schritt mit Live-Implementationen
  * gefüllt. Methoden, die noch nicht scharf sind, fallen auf den Stub
  * zurück und werfen `AIProviderError("provider_unavailable")`.
  *
- * Status (Code-Session 21 — erste Live-Methode):
+ * Status (Code-Session 22 — zweite Live-Methode):
  *   ✓ generateWebsiteCopy        (Chat-Completions mit Structured Outputs)
- *   · improveServiceDescription   – folgt
+ *   ✓ improveServiceDescription  (Chat-Completions mit Structured Outputs)
  *   · generateFaqs                – folgt
  *   · generateCustomerReply       – folgt
  *   · generateReviewRequest       – folgt
@@ -29,4 +30,5 @@ const stub = buildStubProvider(
 export const openaiProvider: AIProvider = {
   ...stub,
   generateWebsiteCopy: openaiGenerateWebsiteCopy,
+  improveServiceDescription: openaiImproveServiceDescription,
 };

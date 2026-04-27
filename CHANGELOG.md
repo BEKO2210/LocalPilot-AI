@@ -7,19 +7,61 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht, Live-Provider-Phase)
-- Code-Session 22: OpenAI-Provider, zweite Live-Methode
-  (`improveServiceDescription`).
-- Code-Sessions 23–24: Anthropic-Provider scharf
-  (`generateWebsiteCopy` + 1 weitere Methode).
+- Code-Session 23: Anthropic-Provider scharf, erste Live-Methode
+  (`generateWebsiteCopy`).
+- Code-Session 24: Anthropic-Provider, zweite Live-Methode.
 - Code-Sessions 25–26: Gemini-Provider + Cost-Tracking + Rate-Limit-UI.
 - Code-Session 27+: AI-API-Route hinter Auth, Dashboard-UI je
   Capability, DOMPurify-Sanitizer auf übernommene KI-Outputs.
 
 ### Self-Extending Backlog
-Code-Session 21 hat 4 neue Items in `docs/PROGRAM_PLAN.md` ergänzt
-(Track A: Prompt-Caching-Telemetrie, Modell-Switch-UI;
-Track B: API-Key-Hygiene-Audit, Cost-Cap pro Betrieb;
-Track D: Live-/Mock-Parität sichern).
+Code-Session 22 hat 2 neue Items in `docs/PROGRAM_PLAN.md` ergänzt
+(Track A: Prompt-Bibliothek extrahieren — Provider-neutral;
+Saatzeilen-Übergabe Mock → Live als „polish me"-Pipeline).
+
+## [0.15.1] – Code-Session 22 – 2026-04-27
+
+### Added
+- **OpenAI-Provider zweite Live-Methode**: `improveServiceDescription`
+  ist jetzt scharf. Gleiches Muster wie Code-Session 21:
+  - `src/core/ai/providers/openai/service-description.ts` (neu)
+    nutzt den gemeinsamen Client-Builder aus `_client.ts` mit
+    Structured Outputs via
+    `zodResponseFormat(ServiceDescriptionOutputSchema, "service_description")`.
+  - **System-Prompt** (~1.500 Token, cache-tauglich) mit Role-
+    Prompting, expliziten Längen-Regeln pro `targetLength`
+    (short/medium/long), USP-Würdigung und Fallback-Verhalten
+    bei sinnlosem Input.
+  - **Saatzeilen-Strategie**: bestehende `currentDescription` wird
+    als Saat an das Modell übergeben mit der expliziten Anweisung
+    „polieren, nicht komplett neu schreiben". Damit bleibt die
+    Stimme des Betriebs erhalten.
+  - **`prompt_cache_key`** = `lp:service-desc:${industryKey}:${targetLength}`
+    bündelt Calls über alle Betriebe einer Branche mit gleicher
+    Längen-Stufe (90 % Token-Rabatt nach OpenAI-Recherche).
+  - **Doppelte Validierung** durch `ServiceDescriptionOutputSchema.parse`
+    nach SDK-`parsed`-Output.
+- `src/core/ai/providers/openai-provider.ts` komponiert jetzt zwei
+  Live-Methoden + Stub für die übrigen 5.
+- Smoketest `src/tests/ai-openai-provider.test.ts` erweitert
+  (~14 Strukturelle Assertions, +2 Stub-Asserts entfernt):
+  - `improveServiceDescription` ohne Key → `no_api_key`.
+  - `improveServiceDescription` mit zu kurzem `serviceTitle` →
+    `invalid_input`.
+  - Stub-Assert für `improveServiceDescription` entfernt — die
+    Methode ist jetzt scharf.
+  - Live-Mode-Block ergänzt einen zweiten Live-Call gegen
+    `improveServiceDescription` mit `targetLength=long`.
+
+### Notes
+- **Recherche** (Session-Protokoll): Quellen zu Role-Prompting für
+  Service-Pages, 2026-Local-SEO-Empfehlungen (250 Wörter,
+  Service + Service-Area + Why-Choose-Us) und Prompt-Template-
+  Strukturen im RUN_LOG-Eintrag „Code-Session 22".
+- **Kein UI-Diff**, keine neuen Dependencies — der Helper aus
+  Code-Session 21 trägt sauber durch. Bundle bleibt 102 KB.
+- Diff ~12 KB Code, ~2 KB Test, ~3 KB Doku. 1 neue Datei, 3
+  geänderte. Alle Verifikationen grün.
 
 ## [0.15.0] – Code-Session 21 – 2026-04-27
 

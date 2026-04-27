@@ -3438,3 +3438,191 @@ nur eine scharfe Methode.
 - [OpenAI – Error codes (Guides)](https://developers.openai.com/api/docs/guides/error-codes)
 - [OpenAI Help Center – How can I solve 429 errors?](https://help.openai.com/en/articles/5955604-how-can-i-solve-429-too-many-requests-errors)
 - [Portkey – OpenAI's Prompt Caching: A Deep Dive](https://portkey.ai/blog/openais-prompt-caching-a-deep-dive/)
+
+---
+
+## Code-Session 22 – OpenAI scharf (`improveServiceDescription`)
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein)
+Meilenstein: 2 (KI-Schicht — Live-Provider-Phase)
+
+### 1. Was wurde umgesetzt?
+
+Zweite scharfe OpenAI-Methode. Das Muster aus Code-Session 21 trägt:
+gemeinsamer `_client.ts`-Helper, isolierte Methoden-Datei, Stub-
+Compose-Pattern, strukturelle + Live-Smoketest-Modi.
+
+- `src/core/ai/providers/openai/service-description.ts` (neu)
+  implementiert `openaiImproveServiceDescription(input)`:
+  - Eingabevalidierung über `ServiceDescriptionInputSchema.safeParse`
+    **vor** der Key-Prüfung (kein Cost bei invalidem Input).
+  - **System-Prompt** mit klarem Aufbau:
+    - Role-Prompting (deutscher Texter für lokale Dienstleister).
+    - Stilrichtlinien (keine Superlative, konkrete Vorteile).
+    - Aufbau-Regeln pro `targetLength`:
+      - `short` → 1 Absatz (Saat + optional Preis/Dauer).
+      - `medium` → 2 Absätze (Inhalt + Ablauf in 3 Schritten).
+      - `long` → 3 Absätze (Inhalt + Ablauf + USP-Trust-Block).
+    - Wenn `currentDescription` mitkommt: polieren, nicht komplett
+      neu schreiben.
+    - Fallback-Verhalten bei sinnlosem Input.
+  - **User-Prompt** baut Branchen-Kontext, Service-Titel,
+    `targetLength`-Hinweis und optional die bestehende
+    Beschreibung.
+  - **Structured Outputs** über
+    `zodResponseFormat(ServiceDescriptionOutputSchema,
+    "service_description")`.
+  - **`prompt_cache_key`** = `lp:service-desc:${industryKey}:${targetLength}`
+    — bündelt Calls über alle Betriebe einer Branche mit gleicher
+    Längenstufe (System-Prompt ist statisch identisch, User-Prompt
+    variiert nur bei den Variablen).
+  - **Doppelte Validierung** durch `.parse(message.parsed)` als
+    Sicherheitsnetz (gleiche Pipeline wie Mock-Provider).
+  - Fehlerpfade über den gemeinsamen `mapOpenAIError`-Helper.
+- `src/core/ai/providers/openai-provider.ts` komponiert jetzt zwei
+  Live-Methoden:
+  ```ts
+  export const openaiProvider: AIProvider = {
+    ...stub,
+    generateWebsiteCopy: openaiGenerateWebsiteCopy,
+    improveServiceDescription: openaiImproveServiceDescription,
+  };
+  ```
+  Status-Header von 21 → 22.
+- `src/tests/ai-openai-provider.test.ts` ergänzt:
+  - 1c: zwei `no_api_key`-Asserts (vorher nur 1).
+  - 1d: zwei `invalid_input`-Asserts (vorher nur 1) — der
+    `serviceTitle="X"` testet die Schema-Untergrenze (min 2).
+  - 1f: Stub-Assert für `improveServiceDescription` entfernt
+    (nicht mehr Stub).
+  - Live-Block: zweiter Call mit `targetLength=long` gegen
+    `improveServiceDescription`, polished die mitgegebene
+    `currentDescription` „Wäsche, Schnitt, Föhn-Finish — Termine
+    auch samstags möglich.".
+  - `__AI_OPENAI_PROVIDER_SMOKETEST__.structuralAssertions` von
+    12 → 14.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (1 Datei):
+- `src/core/ai/providers/openai/service-description.ts`
+
+Geändert:
+- `src/core/ai/providers/openai-provider.ts`
+- `src/tests/ai-openai-provider.test.ts`
+- `docs/PROGRAM_PLAN.md` (Roadmap-Selbstaktualisierung, +2 Items)
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~17 KB. Klar im Session-Limit.
+
+### 3. Wie teste ich es lokal?
+
+Ohne API-Key (CI-Pfad):
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün, Bundle 102 KB
+npx tsx src/tests/ai-mock-provider.test.ts            # ~380 Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 22 Asserts ok
+npx tsx src/tests/ai-openai-provider.test.ts          # 14 Asserts ok
+```
+
+Mit API-Key (Live-Smoketest opt-in):
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export LP_TEST_OPENAI_LIVE=1
+npx tsx src/tests/ai-openai-provider.test.ts
+# → "✓ Live-OpenAI-Call (generateWebsiteCopy) erfolgreich."
+# → "✓ Live-OpenAI-Call (improveServiceDescription) erfolgreich."
+```
+
+Programmatisch:
+
+```ts
+import { getAIProvider } from "@/core/ai";
+const provider = getAIProvider();
+await provider.improveServiceDescription({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich", "modern"],
+    uniqueSellingPoints: ["Termine auch samstags", "Faire Festpreise"],
+  },
+  serviceTitle: "Damenhaarschnitt mit Tiefenpflege",
+  currentDescription:
+    "Wäsche, Schnitt, Föhn-Finish — Termine auch samstags möglich.",
+  targetLength: "long",
+});
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                         | Status |
+| ----------------------------------------------------------------- | ------ |
+| `improveServiceDescription` ruft echte OpenAI-API mit Strict-JSON | ✅      |
+| Defensiver `no_api_key`-Vor-Check vor Netzwerk-Call               | ✅      |
+| Caching: statischer Prefix + `prompt_cache_key` pro Branche+Länge | ✅      |
+| `currentDescription` wird als Saat poliert (nicht überschrieben)  | ✅      |
+| Längen-Logik nach `targetLength` im System-Prompt expliziert      | ✅      |
+| Doppelte Validierung über `ServiceDescriptionOutputSchema`        | ✅      |
+| Übrige 5 OpenAI-Methoden bleiben Stub (`provider_unavailable`)    | ✅      |
+| Strukturelle Smoketest (14 Asserts) ohne Netzwerk grün            | ✅      |
+| Live-Smoketest deckt beide scharfe Methoden ab                    | ✅      |
+| Bundle bleibt 102 KB (Tree-Shaking funktioniert)                  | ✅      |
+| Build/Typecheck/Lint grün                                         | ✅      |
+| Recherche-Step + Quellen zitiert                                  | ✅      |
+| Roadmap-Selbstaktualisierung: 2 neue Items                        | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 23**: Anthropic-Provider scharf, erste Live-Methode
+  (`generateWebsiteCopy`). Eigener `_client.ts`-Helper für
+  Anthropic-SDK (kein 1:1-Übertrag möglich, Anthropic hat eigene
+  Tool-Use- und Caching-Mechanismen).
+- **Codex**: 9 Backlog-Tasks warten weiterhin (alle aus Session 20).
+- **Self-Extending Backlog** (2 neue Items aus dieser Session):
+  Prompt-Bibliothek extrahieren, Saatzeilen-Übergabe Mock → Live.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 23 — Anthropic-Provider scharf (`generateWebsiteCopy`).**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „Anthropic SDK 2026 structured outputs prompt
+   caching tool use claude opus sonnet haiku".
+2. Dependency `@anthropic-ai/sdk` hinzufügen (Peer-Dep-Check
+   vorher!).
+3. `src/core/ai/providers/anthropic/_client.ts` neu, analog zum
+   OpenAI-Helper. Anthropic hat eigene Caching-Mechanik
+   (`cache_control: { type: "ephemeral" }` in Message-Inhalten),
+   die System-Prompt-Caching-Pattern muss daran angepasst werden.
+4. `src/core/ai/providers/anthropic/website-copy.ts` neu — gleiches
+   Output-Schema, eigene SDK-Aufruf-Logik. Kein
+   `zodResponseFormat`-Helper bei Anthropic; stattdessen Tool-Use
+   mit Schema-Definition oder Prompt-mit-JSON-Format-Anweisung +
+   manuelles Parsing + `WebsiteCopyOutputSchema.parse`.
+5. `anthropic-provider.ts` Stub → komponiert.
+6. `ai-anthropic-provider.test.ts` neu, gleiche zwei Modi
+   (strukturell + live opt-in via `LP_TEST_ANTHROPIC_LIVE=1`).
+7. PROGRAM_PLAN.md +1 Item, CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere Methoden, UI, API-Route — pro Session
+nur eine scharfe Methode.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [Latitude – Template Syntax Basics for LLM Prompts](https://latitude.so/blog/template-syntax-basics-for-llm-prompts)
+- [Karen Boyd, PhD – Simple prompt templates for better LLM results](https://drkarenboyd.com/blog/simple-prompt-templates-for-better-llm-results-today)
+- [GeeksforGeeks – Prompt Templates](https://www.geeksforgeeks.org/artificial-intelligence/prompt-templates/)
+- [LangChain – Prompt template format guide](https://docs.langchain.com/langsmith/prompt-template-format)
+- [SAP Learning – Managing Prompts with the Prompt Registry](https://learning.sap.com/courses/solve-your-business-problems-using-prompts-and-llms-in-sap-generative-ai-hub/managing-prompts-with-the-prompt-registry-and-templates)
+- [Klixresults – Local SEO for Tradespeople: The 2026 Complete Guide](https://www.klixresults.co.uk/post/local-seo-for-tradespeople)
+- [Authority Specialist – 2026 German Auto Repair SEO Statistics](https://authorityspecialist.com/industry/automotive/german-auto-repair/seo-statistics)
+- [The AI Journal – How AI is Transforming Local SEO for Service Businesses (2026)](https://aijourn.com/how-ai-is-transforming-local-seo-for-service-businesses-2026-guide/)
