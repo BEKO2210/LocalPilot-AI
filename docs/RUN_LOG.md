@@ -5253,3 +5253,78 @@ nichts. Public-Read-Policies aus 0001–0004 bleiben aktiv.
 Magic-Link-Login**. Server- und Browser-Clients, `/api/auth/magic-
 link`-Route, `/api/auth/callback`-Route. Login-UI folgt in 43.
 
+---
+
+## Code-Session 42 – @supabase/ssr-Setup + Magic-Link-Routes
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Auth-Infrastruktur steht. Server-Client (Cookie-basiert,
+`auth.getUser()` statt `getSession()` — letzteres wäre spoof-bar),
+Browser-Client als Singleton, Middleware mit Session-Refresh,
+zwei API-Routen (Magic-Link + Callback). Open-Redirect-Schutz
+auf beiden Routen via SAFE_PATH-Regex. Kein User-Enumeration-Leak
+(Magic-Link antwortet immer mit derselben 200-Message). Login-UI
+folgt in Session 43 — bewusst atomar gesplittet.
+
+**Dateien**:
+- ⬆️ `package.json` — `@supabase/ssr@^0.10`.
+- 🔄 `src/core/database/client.ts` — `pickFirst`-Helper liest
+  `NEXT_PUBLIC_SUPABASE_*` mit Fallback auf `SUPABASE_*`. Whitespace-
+  only zählt als leer und fällt durch.
+- ✚ `src/core/database/supabase-server.ts` — `createServerSupabaseClient`
+  mit Next.js `cookies()`-Handler, try/catch um `setAll` (Server
+  Components dürfen nicht setzen), `getCurrentUser` via
+  `auth.getUser()`.
+- ✚ `src/core/database/supabase-browser.ts` — Singleton-
+  Browser-Client, liest nur `NEXT_PUBLIC_*`.
+- ✚ `middleware.ts` (Repo-Root) — Session-Refresh auf jedem
+  Request, No-Op falls ENV unvollständig. Matcher schließt
+  Static-Assets aus.
+- ✚ `src/app/api/auth/magic-link/route.ts` — POST `{email,
+  redirectTo?}` → `signInWithOtp` mit `emailRedirectTo` auf
+  Callback-URL inkl. `next`-Param. Email-Regex + SAFE_PATH-Regex.
+  Antwortet immer mit derselben Erfolgs-Message
+  (User-Enumeration-Schutz). 503 wenn ENV nicht konfiguriert.
+- ✚ `src/app/api/auth/callback/route.ts` — GET `?code=...&next=...`
+  → `exchangeCodeForSession`. Open-Redirect-Schutz via
+  SAFE_PATH-Regex. Bei Fehler redirect auf `/login?error=...`.
+- 🔄 `.env.production.example` — `NEXT_PUBLIC_SUPABASE_*` als
+  kanonische Variante, `SUPABASE_*` als Legacy-Fallback,
+  `SUPABASE_SERVICE_ROLE_KEY` für Onboarding-Pfade.
+- 🔄 `docs/DEPLOYMENT.md` — Vercel-ENV-Block aktualisiert.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — neue „SSR-Auth-Stack"-Sektion
+  mit Routes-Übersicht.
+- ✚ `src/tests/auth-magic-link.test.ts` (~25 Asserts):
+  ENV-Fallback-Kette mit NEXT_PUBLIC_-Vorrang, Whitespace-only
+  fällt durch, EMAIL_RE-Edge-Cases, SAFE_PATH-Regex (Open-Redirect-
+  Vektoren wie `//evil.com`, `https://evil.com`, Query-Strings,
+  URL-Encoded-Slashes alle abgelehnt).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **25/26 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). 7 API-Routen sichtbar (`/api/auth/{login,logout,me,
+magic-link,callback}`, `/api/ai/{generate,health}`). Bundle:
+shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (SSR-Auth-Infrastruktur), Session 43
+fokussiert auf UI-Wiring.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — @supabase/ssr +
+Next.js 15 Magic-Link.
+
+**Manueller Schritt für den Auftraggeber** (sobald Magic-Link
+scharf genutzt werden soll):
+1. Supabase-Dashboard → Auth → URL Configuration: `Site URL` auf
+   die Vercel-Production-URL setzen, plus Vercel-Preview-URL als
+   `Additional Redirect URL` hinzufügen.
+2. Auth → Email Templates → Magic Link Template prüfen (Sprache,
+   Branding).
+3. `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   in Vercel-ENV setzen.
+4. Migrationen 0001–0007 müssen bereits gelaufen sein.
+
+**Nächste Session**: Code-Session 43 — **Login-UI +
+Dashboard-Auth-Wiring**. `/login`-Page mit Magic-Link-Form,
+`/dashboard`-Routen auf `getCurrentUser()` umstellen, Logout-
+Button, Session-State-UI.
+

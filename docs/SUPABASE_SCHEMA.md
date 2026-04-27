@@ -288,8 +288,33 @@ leads"` aus 0005 wird durch eine Owner-scoped Policy ersetzt.
 hat keine Owner, also keinen Insert-Berechtigten. Der Onboarding-Pfad
 nutzt einen `service_role`-Client, der RLS umgeht (Code-Session 42+).
 
-## Roadmap
+## SSR-Auth-Stack (Code-Session 42)
 
-- **Session 42** — `@supabase/ssr`-Setup (server + browser Clients), Magic-Link-Login + Callback-Route. Auth-Infrastruktur ohne UI-Polish.
-- **Session 43** — Login-UI + Dashboard-Auth-Wiring (Login-Page, geschützte Dashboard-Routen).
+`@supabase/ssr` füllt die Auth-Cookies. Drei Berührungspunkte:
+
+- **Server**: `createServerSupabaseClient()` in
+  [`src/core/database/supabase-server.ts`](../src/core/database/supabase-server.ts).
+  Wird in Server Components und Route Handlers benutzt.
+  `getCurrentUser()` validiert via `auth.getUser()` (nicht
+  `getSession()` — letzteres wäre spoof-bar).
+- **Browser**: `getBrowserSupabaseClient()` in
+  [`src/core/database/supabase-browser.ts`](../src/core/database/supabase-browser.ts).
+  Singleton, liest `NEXT_PUBLIC_SUPABASE_*`.
+- **Middleware**: [`middleware.ts`](../middleware.ts) refresht den
+  Token vor jedem Request. Wenn die ENV nicht konfiguriert ist, ist
+  die Middleware ein No-Op — die Plattform läuft im Mock-Modus weiter.
+
+### Routes
+
+- **`POST /api/auth/magic-link`** — Body `{ email, redirectTo? }`.
+  Sendet Magic-Link via `signInWithOtp`. `redirectTo` wird gegen
+  `^/[a-zA-Z0-9_\-/]*$` validiert (Open-Redirect-Schutz). Antwortet
+  immer mit der gleichen 200-Message — kein User-Enumeration-Leak.
+- **`GET /api/auth/callback?code=...&next=...`** — Tausch via
+  `exchangeCodeForSession`, dann redirect auf `next` (gleiche
+  Path-Validierung). Bei Fehler redirect auf `/login?error=...`.
+
+### Roadmap
+
+- **Session 43** — Login-UI + Dashboard-Auth-Wiring (Login-Page mit Magic-Link-Form, geschützte Dashboard-Routen via `getCurrentUser()`).
 - **0008+** — Storage-Buckets für Logos und Hero-Bilder, Backup-Policy.

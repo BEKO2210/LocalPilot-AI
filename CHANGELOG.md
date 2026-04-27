@@ -7,16 +7,51 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant — Auth-Sprint
-- **Code-Session 42: `@supabase/ssr`-Setup + Magic-Link-Login**
-  (Server-/Browser-Clients, Magic-Link-Route, Callback-Route).
-  Auth-Infrastruktur ohne UI-Polish.
-- **Code-Session 43: Login-UI + Dashboard-Auth-Wiring** (Login-Page,
-  geschützte Dashboard-Routen).
+- **Code-Session 43: Login-UI + Dashboard-Auth-Wiring** (Login-Page
+  mit Magic-Link-Form, geschützte Dashboard-Routen via
+  `getCurrentUser()`).
 - Code-Sessions 44+: Public-Lead-Form auf LeadRepository umstellen,
   Storage-Bucket für Logos, Edge-Runtime-Migration, CSRF-Schutz,
   HTML-Sanitize-Whitelist, Settings-Editor mit Legal-Sektion,
   Impressum-Editor pro Betrieb (für Reseller), Seed-Skript für
   Demo-Daten, Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+
+## [0.16.16] – Code-Session 42 – 2026-04-27
+
+SSR-Auth-Infrastruktur. Server- und Browser-Clients mit
+`@supabase/ssr`, Middleware-Session-Refresh, Magic-Link- und
+Callback-Routen. Open-Redirect-Schutz und User-Enumeration-Schutz.
+UI folgt in 43.
+
+- ⬆️ `@supabase/ssr@^0.10` als dependency.
+- 🔄 `src/core/database/client.ts` — `pickFirst`-Helper, ENV-
+  Fallback-Kette `NEXT_PUBLIC_SUPABASE_*` → `SUPABASE_*`.
+- ✚ `src/core/database/supabase-server.ts` —
+  `createServerSupabaseClient` mit Next.js `cookies()`-Handler,
+  `getCurrentUser` via `auth.getUser()` (nicht spoof-bar).
+- ✚ `src/core/database/supabase-browser.ts` — Singleton-Browser-
+  Client.
+- ✚ `middleware.ts` — Session-Refresh, No-Op ohne ENV.
+- ✚ `/api/auth/magic-link` — POST signInWithOtp mit
+  Open-Redirect-Schutz via SAFE_PATH-Regex und gleichformatige
+  Erfolgs-Antwort (kein User-Enumeration-Leak).
+- ✚ `/api/auth/callback` — GET exchangeCodeForSession, redirect
+  auf validierten `next`-Pfad.
+- 🔄 `.env.production.example` — `NEXT_PUBLIC_SUPABASE_*` ist die
+  kanonische Variante.
+- 🔄 `docs/DEPLOYMENT.md` — Vercel-ENV-Block aktualisiert.
+- 🔄 `docs/SUPABASE_SCHEMA.md` — „SSR-Auth-Stack"-Sektion.
+- ✚ `src/tests/auth-magic-link.test.ts` (~25 Asserts): ENV-Fallback-
+  Kette, Whitespace-only fällt durch, EMAIL_RE, SAFE_PATH-Regex
+  gegen Open-Redirect-Vektoren.
+
+25/26 Smoketests grün. 7 API-Routen sichtbar im SSR-Build.
+Bundle: shared 102 KB unverändert.
+
+**Manueller Schritt** (sobald Magic-Link scharf): Supabase-Dashboard
+→ Auth → URL Configuration mit Vercel-URLs füllen, Email-Template
+prüfen, `NEXT_PUBLIC_SUPABASE_*` in Vercel-ENV. Migrationen
+0001–0007 müssen vorher gelaufen sein.
 
 ## [0.16.15] – Code-Session 41 – 2026-04-27
 

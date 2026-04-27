@@ -111,8 +111,9 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   RLS-Policies an 5 Tabellen (Migration 0007) ✅ DB-Teil; SSR-
   Auth-Infrastruktur wandert auf 42, UI auf 43 (atomar).
 - 42: `@supabase/ssr`-Setup (server + browser Clients), Magic-Link-
-  Login + Callback-Route. Auth-Infrastruktur ohne UI-Polish.
-- 43: Login-UI + Dashboard-Auth-Wiring.
+  Route + Callback-Route, Middleware mit Session-Refresh ✅
+- 43: Login-UI + Dashboard-Auth-Wiring (Login-Page mit Magic-Link-
+  Form, geschützte Dashboard-Routen via `getCurrentUser()`).
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 

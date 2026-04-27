@@ -90,6 +90,13 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### @supabase/ssr + Next.js 15 Magic-Link (Code-Session 42)
+- [Supabase Docs – Creating a Supabase client for SSR](https://supabase.com/docs/guides/auth/server-side/creating-a-client) — `createServerClient` + `createBrowserClient`-Pattern (42).
+- [Supabase Docs – Setting up Server-Side Auth for Next.js](https://supabase.com/docs/guides/auth/server-side/nextjs) — Cookie-Handler, `getUser()` statt `getSession()` (42).
+- [Supabase Docs – Server-Side Auth Advanced Guide](https://supabase.com/docs/guides/auth/server-side/advanced-guide) — PKCE-Flow, Token-Refresh in Middleware (42).
+- [Akos Komuves – Magic-Link Sign-In with Next.js + Supabase](https://akoskm.com/how-to-build-a-simple-magic-link-sign-in-with-nextjs-supabase-and-sendgrid/) — `signInWithOtp` + Callback-Pattern (42).
+- [Ryan Katayi – Server-Side Auth Setup](https://www.ryankatayi.com/blog/server-side-auth-in-next-js-with-supabase-my-setup) — Production-Setup-Beispiel (42).
+
 ### Supabase Multi-Tenant-Owner + Helper-Functions (Code-Session 41)
 - [Supabase Docs – RLS auth.uid() & auth.jwt()](https://supabase.com/docs/guides/database/postgres/row-level-security) — Built-in JWT-Helper (41).
 - [Supabase Docs – AI Prompt: Database RLS Policies](https://supabase.com/docs/guides/getting-started/ai-prompts/database-rls-policies) — Idiomatische Policy-Vorlagen (41).

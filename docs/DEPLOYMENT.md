@@ -122,9 +122,11 @@ vercel env add OPENAI_API_KEY production
 vercel env add ANTHROPIC_API_KEY production
 vercel env add GEMINI_API_KEY production
 
-# Optional, ab Code-Session 35 — Datenbank-Health-Check:
-vercel env add SUPABASE_URL production
-vercel env add SUPABASE_ANON_KEY production
+# Optional, ab Code-Session 35/42 — Datenbank + Magic-Link-Auth:
+vercel env add NEXT_PUBLIC_SUPABASE_URL production
+vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
+# Optional ab Code-Session 41 — Onboarding-Pfade (RLS-bypass):
+vercel env add SUPABASE_SERVICE_ROLE_KEY production
 
 # Pflicht vor Produktiv-Schaltung (ab Code-Session 36) —
 # Plattform-Impressum + Datenschutz:
