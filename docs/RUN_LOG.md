@@ -5572,3 +5572,75 @@ sieht den Betrieb → Klick → Dashboard. Vor dem Dashboard-
 Multi-Tenant-Wiring, weil das eine eigene große Session ist;
 Account-Page ist ein kleiner, abgeschlossener Schritt.
 
+---
+
+## Code-Session 46 – Account-Page zeigt eigene Betriebe
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: End-to-End-Schleife für einen eingeloggten User
+geschlossen. `/account` lädt nach Auth die Betriebe des Users
+via `business_owners ⨝ businesses`-Embed (RLS-gefiltert),
+zeigt sie als Cards mit Rolle/Tier/Publish-Badge und CTAs auf
+Dashboard + Public-Site. Empty-State führt prominent zu
+`/onboarding`. Pure Mapping-Schicht ausgelagert (testbar) mit
+Defense-in-Depth gegen die supabase-js-v2-FK-Embed-Type-Inferenz
+(SDK liefert konservativ als Array, PostgREST liefert
+many-to-one als Single-Object — Mapper normalisiert).
+
+**Dateien**:
+- ✚ `src/lib/account-businesses.ts` — `BusinessMembership`-Typ,
+  `mapMembershipRow` (`unwrapEmbed`-Helper für Array-vs-Object),
+  `fetchBusinessesForUser(client, userId)`, `sortMemberships`
+  (Owner zuerst, dann alphabetisch nach Name auf de-Locale),
+  deutsche `roleLabel`/`tierLabel`-Helper.
+- ✚ `src/tests/account-businesses.test.ts` (~33 Asserts):
+  voll-valide Row, alle Defekt-Pfade (kein Embed, leeres Array,
+  unbekannte Rolle, leere Pflicht-Felder), Array-Embed (für
+  supabase-js-v2-Verhalten), Single-Object-Embed, leeres Array,
+  alle 3 Rollen, Sort-Order (Owner→Editor→Viewer + alphabetisch),
+  Sort-Stabilität + No-Mutation, alle 4 Tier-Labels, alle 3
+  Role-Labels, Output-Key-Whitelist (kein Leak von zusätzlichen
+  Feldern).
+- 🔄 `src/app/account/page.tsx` — neuer `BusinessesState`
+  (`idle`/`loading`/`ready`/`error`), zweiter `useEffect`
+  startet Fetch sobald User-State auf `authed` springt.
+  `<BusinessCard>`-Subkomponente mit Rolle-Badge (Icon + Farbe
+  pro Rolle), Tier-Badge, Publish-Badge (nur sichtbar wenn
+  `isPublished=false`). Empty-State-Card mit Sparkles-Icon
+  und Onboarding-CTA.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **29/30 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). `/account` weiterhin ○ static-prerendered, Bundle
+66 kB (war 64 kB — +2 kB für Mapping/Icons). Shared 102 KB
+unverändert.
+
+**Roadmap**: 1 Item abgehakt (Account-Page mit Betrieben). 4
+neue Folge-Items: Slug-Live-Check vor Submit, Onboarding-Wizard
+mehrstufig, Dashboard-Read aus Supabase, Multi-Member-Verwaltung,
+Default-Redirect bei genau einem Betrieb.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase-js v2
+FK-Embed Type-Inferenz.
+
+**Manueller Test** (mit Auth + Service-Role + ENVs):
+1. Login → `/onboarding` → Betrieb anlegen → Auto-Redirect
+   nach 1.2s zu `/account`.
+2. `/account` zeigt jetzt den neu angelegten Betrieb als Card
+   mit „Inhaber:in"-Badge.
+3. Klick auf „Public-Site" → öffnet `/site/<slug>` (zeigt aber
+   noch leere Daten, weil services/reviews/faqs noch nicht aus
+   DB gelesen werden — ist eigene Session 47+).
+4. Klick auf „Dashboard öffnen" → öffnet `/dashboard/<slug>`
+   (zeigt aktuell die Mock-Variante mit der gleichen Slug-Logik;
+   Read aus DB folgt in Session 47).
+5. Logout → zurück nach `/login`.
+
+**Nächste Session**: Code-Session 47 = **Dashboard-Read aus
+Supabase**. Sobald der `BusinessRepository`-Resolver auf
+`supabase` steht, liest auch `/dashboard/[slug]/...` und
+`/site/[slug]/...` aus der DB statt Mock — RLS aus 0007 trägt
+die Owner-Sichtbarkeit. Damit kann ein User seinen echten
+Betrieb sehen, nicht nur einen Demo-Mock. Vor Storage und Member-
+Verwaltung, weil Read der direkte Folge-Schritt aus 46 ist.
+

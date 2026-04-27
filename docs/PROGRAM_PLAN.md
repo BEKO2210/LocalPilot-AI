@@ -128,6 +128,15 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Liste, 23505 → 409 mit klarer „Slug vergeben"-Meldung.
   Kompensation: bei Owner-Insert-Fehler wird der businesses-Insert
   rückgängig gemacht.
+- 46: Account-Page zeigt eigene Betriebe ✅. `/account` listet
+  jetzt nach erfolgreichem Login die Betriebe des Users via
+  `business_owners ⨝ businesses`-Embed. Pure Mapping-Schicht
+  `src/lib/account-businesses.ts` (~33 Asserts) normalisiert
+  defensiv beide PostgREST-Embed-Formen (Single-Object und
+  Array, weil supabase-js v2 konservativ als Array typisiert).
+  Cards mit Rolle/Tier/Publish-Badges, Empty-State CTA auf
+  `/onboarding`. Damit ist die End-to-End-Schleife geschlossen:
+  Login → Onboarding → Account → Dashboard.
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 
@@ -397,12 +406,9 @@ aktiven Session.
   - **Retry-Queue für `local-fallback`**: aktuell bleibt der Lead
     im localStorage liegen. Optional: ein leichter Retry-Worker,
     der bei nächster Online-Phase erneut versucht zu posten.
-- ~~**Onboarding-Flow** (Code-Session 45 ✅).~~
+- ~~**Onboarding-Flow** (Code-Session 45 ✅).~~ + ~~**Account-Page
+  mit eigenen Betrieben**~~ (Code-Session 46 ✅).
   Folge-Items:
-  - **Account-Page mit eigenen Betrieben**: `/account` zeigt aktuell
-    nur User-ID + E-Mail. Sobald `business_owners`-Reads laufen,
-    listet `/account` die eigenen Betriebe + Link auf Dashboard.
-    Wenn Liste leer → Redirect / Hinweis auf `/onboarding`.
   - **Slug-Live-Check**: ein optionaler `HEAD`/`exists`-Check auf
     `/site/<slug>` bevor der Submit losgeht — fängt vergebene Slugs
     schon im Form ab. Heute löst Postgres-Unique das, aber erst
@@ -410,6 +416,17 @@ aktiven Session.
   - **Onboarding-Wizard mehrstufig**: Adresse + Kontakt + Logo
     optional als Schritt 2 nach dem Initial-Insert. Aktuell ist
     `address` mit Platzhaltern gefüllt.
+  - **Dashboard-Read aus Supabase** (für Owner): aktuell zeigt
+    `/dashboard/[slug]/...` die Mock-Daten — auch wenn der User
+    in Supabase angelegt ist. Ziel: Dashboard liest via
+    `BusinessRepository.findBySlug` aus dem konfigurierten
+    Repository-Pfad (mock oder supabase), Owner-RLS aus 0007 trägt
+    die Auth-Schicht.
+  - **Multi-Member-Verwaltung**: `business_owners`-CRUD-UI für
+    den Owner (Editor/Viewer einladen, Rollen ändern, entfernen).
+  - **Default-Sicht-bei-genau-einem-Betrieb**: wenn User nur einen
+    Betrieb hat, automatisch nach Login auf
+    `/dashboard/<slug>` redirecten statt `/account`.
 - **Dependency-Sweep-Session** (aus Deep-Pass nach Session 40):
   viele Major-Bumps stehen an: `next 15→16`, `react 19.0→19.2`,
   `tailwindcss 3→4`, `typescript 5.7→6`, `zod 3→4`, `eslint 9→10`,

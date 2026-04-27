@@ -379,7 +379,32 @@ Der Service-Client-File hat `import "server-only"` als statischen
 Schutz — Next.js bricht den Build, wenn ein Client Component das
 importiert.
 
+### Account-Page-Read (Code-Session 46)
+
+`/account` lädt nach erfolgreichem `auth.getUser()` die Liste der
+Betriebe des aktuellen Users via PostgREST-Embed:
+
+```ts
+.from("business_owners")
+.select("role, businesses(id, slug, name, industry_key, package_tier, tagline, is_published)")
+.eq("user_id", userId);
+```
+
+RLS auf `business_owners` filtert bereits via Policy auf
+`user_id = auth.uid()`. Der explizite `.eq("user_id", userId)` ist
+redundant zur RLS, macht den Intent aber im Code sichtbar — und
+schützt davor, dass jemand das Repo versehentlich mit dem
+Service-Role-Client aufruft (der RLS bypassed).
+
+Pure-Mapping-Schicht: `src/lib/account-businesses.ts`
+mit `mapMembershipRow`, das defensiv beide Embed-Formen normalisiert:
+
+- PostgREST many-to-one: liefert ein Single-Object oder `null`.
+- supabase-js v2: typisiert konservativ als Array.
+
+`unwrapEmbed` greift in beiden Fällen das erste Objekt heraus.
+
 ### Roadmap
 
-- **Session 46+** — Account-Page zeigt eigene Betriebe (Read-Pfad über `business_owners`), Onboarding-Wizard mehrstufig (Adresse, Logo), Dashboard-Read aus Supabase.
+- **Session 47+** — Dashboard-Read aus Supabase (Public-Site und Dashboard-UI lesen aus DB statt Mock, sobald `LP_DATA_SOURCE=supabase`), Onboarding-Wizard mehrstufig, Member-Verwaltung.
 - **0008+** — Storage-Buckets für Logos und Hero-Bilder, Backup-Policy.

@@ -7,17 +7,54 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 46: Account-Page zeigt eigene Betriebe**
-  (Read-Pfad über `business_owners` ⨝ `businesses`,
-  „Meine Betriebe"-Liste auf `/account`). Schließt die
-  End-to-End-Schleife: Login → Onboarding → Account → Dashboard.
-- Code-Sessions 47+: Dashboard-Read aus Supabase, Retry-Queue für
-  Lead-`local-fallback`, Storage-Bucket für Logos,
-  Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
-  Settings-Editor mit Legal-Sektion, Impressum-Editor pro Betrieb,
-  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test,
-  Onboarding-Wizard mehrstufig (Adresse + Logo),
-  **Dependency-Sweep** (17 Major-Bumps).
+- **Code-Session 47: Dashboard-Read aus Supabase** — sobald
+  `LP_DATA_SOURCE=supabase` aktiv ist, lesen `/dashboard/[slug]/...`
+  und `/site/[slug]/...` aus DB statt Mock. RLS aus 0007 trägt die
+  Owner-Sichtbarkeit. Schließt die nächste Lücke nach 46: User
+  sieht seinen **echten** Betrieb, nicht nur einen Demo-Mock.
+- Code-Sessions 48+: Slug-Live-Check, Onboarding-Wizard mehrstufig
+  (Adresse + Logo), Multi-Member-Verwaltung, Default-Redirect bei
+  einem Betrieb, Retry-Queue für Lead-`local-fallback`, Storage-
+  Bucket für Logos, Edge-Runtime-Migration, CSRF-Schutz,
+  HTML-Sanitize-Whitelist, Settings-Editor mit Legal-Sektion,
+  Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
+  Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+
+## [0.16.20] – Code-Session 46 – 2026-04-27
+
+End-to-End-Schleife geschlossen. `/account` zeigt jetzt nach
+Login die Betriebe des Users — als Cards mit Rolle/Tier/Publish-
+Badge und Direkt-Links zu Dashboard + Public-Site.
+
+- ✚ `src/lib/account-businesses.ts` — pure Mapping-Schicht.
+  `BusinessMembership`-Typ, `mapMembershipRow` mit `unwrapEmbed`-
+  Helper (defensiv beide PostgREST-Embed-Formen — Single-Object
+  und Array, weil supabase-js v2 konservativ als Array typisiert).
+  `fetchBusinessesForUser(client, userId)`, `sortMemberships`
+  (Owner zuerst, dann alphabetisch nach Name).
+- ✚ `src/tests/account-businesses.test.ts` (~33 Asserts):
+  alle Defekt-Pfade, Array-vs-Object-Embed-Normalisierung,
+  3 Rollen, Sort-Order, Sort-Stabilität + No-Mutation, deutsche
+  Labels, Output-Key-Whitelist.
+- 🔄 `src/app/account/page.tsx` — neuer `BusinessesState`
+  (`idle`/`loading`/`ready`/`error`), zweiter `useEffect`
+  triggert Fetch sobald User authed.  `<BusinessCard>` mit
+  Icon-Farb-Mapping pro Rolle, Empty-State mit prominentem
+  Onboarding-CTA.
+
+29/30 Smoketests grün (industry-presets pre-existing red, Codex
+#11). `/account` weiter ○ static-prerendered, Bundle 66 kB
+(+2 kB für Mapping/Icons). Shared 102 KB unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Account-Page-Betriebe). 4 neu (Slug-Live-
+Check, Onboarding-Wizard mehrstufig, Dashboard-Read aus DB,
+Multi-Member, Default-Redirect bei einem Betrieb).
+
+**Manueller Test** (mit Auth + Service-Role + ENVs):
+Login → /onboarding → Betrieb anlegen → Auto-Redirect zu
+/account zeigt jetzt den neuen Betrieb als Card mit
+„Inhaber:in"-Badge. Public-Site- und Dashboard-Links
+funktionieren (Read aus DB folgt in 47).
 
 ## [0.16.19] – Code-Session 45 – 2026-04-27
 

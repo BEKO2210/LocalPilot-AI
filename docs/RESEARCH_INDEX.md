@@ -90,6 +90,12 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Supabase-js v2 FK-Embed Type-Inferenz (Code-Session 46)
+- [Supabase Docs – Querying Joins and Nested tables](https://supabase.com/docs/guides/database/joins-and-nesting) — `!inner`-Modifier, Single-vs-Array-Verhalten je FK-Richtung (46).
+- [Supabase JS API – select](https://supabase.com/docs/reference/javascript/select) — Embed-Syntax, conservative Array-Typing-Default (46).
+- [Supabase Discussion #6550 – Inner join from public table](https://github.com/orgs/supabase/discussions/6550) — many-to-one liefert single object, SDK typisiert konservativ als Array (46).
+- [Supabase Troubleshooting – RLS Performance and Best Practices](https://supabase.com/docs/guides/troubleshooting/rls-performance-and-best-practices-Z5Jjwv) — Index-Empfehlungen für `auth.uid() = user_id`-Policies (46).
+
 ### Service-Role + Onboarding-Pattern (Code-Session 45)
 - [Supabase Discussion #30739 – Using Service Role with Supabase in Next.js Backend](https://github.com/orgs/supabase/discussions/30739) — Server-only, persistSession off, Sicherheitsbetrachtung (45).
 - [Adrian Murage – How to Use the Supabase Service Role Secret Key in Next.js Routes](https://adrianmurage.com/posts/supabase-service-role-secret-key/) — `server-only`-Import-Pattern (45).
