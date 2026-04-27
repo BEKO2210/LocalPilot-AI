@@ -247,3 +247,124 @@ Helfer für Feature-Locks, optional eine `<FeatureLock>`-Komponente unter
 `src/components/pricing/`, und `docs/PRICING.md`. Anschließend kann die
 Marketing-Landingpage die Pricing-Karten aus der Code-Konfiguration ableiten
 (statt sie wie heute hartzucodieren).
+
+---
+
+## Session 3 – Pricing-System Bronze/Silber/Gold
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- Konkrete `BRONZE_TIER`, `SILBER_TIER`, `GOLD_TIER`-Datensätze in
+  `src/core/pricing/pricing-tiers.ts` mit Vererbung Bronze ⊂ Silber ⊂ Gold,
+  Feature-Limits und Marketing-Highlights.
+- Validierung beim Module-Load via `PricingTierSchema.parse(...)`: Tippfehler
+  in FeatureKeys oder Limits brechen sofort den Build.
+- `marketingHighlights`-Feld im Schema ergänzt – getrennt vom technischen
+  `features`-Array, damit Werbung und Logik nicht driften.
+- `feature-labels.ts`: deutsches Klartext-Label und Beschreibung pro
+  `FeatureKey`, vollständig erzwungen über `Record<FeatureKey, FeatureLabel>`.
+- `feature-helpers.ts`: reine Funktionen `getTier`, `tryGetTier`,
+  `getAllTiers`, `hasFeature`, `isFeatureLocked`, `requiredTierFor`,
+  `getTierLimits`, `isLimitExceeded`, `compareTiers`, `isAtLeastTier`,
+  `nextHigherTier`, `formatPrice`, `formatLimit`. Plus `UnknownTierError`.
+- Pricing-Komponenten `<PricingCard>`, `<PricingGrid>`, `<FeatureLock>`,
+  `<UpgradeHint>` in `src/components/pricing/`. Generisch, sowohl in
+  Marketing als auch im späteren Dashboard nutzbar.
+- Marketing-Landingpage rendert Pricing-Karten jetzt aus der
+  Code-Konfiguration via `<PricingGrid>` – keine hartcodierten Karten mehr.
+- Smoketest `src/tests/pricing-helpers.test.ts` mit ~40 Assertions
+  (Vererbung, Lookup, Limits, Reihenfolge, Formatierung, Konsistenz von
+  `FEATURE_LABELS`).
+- `docs/PRICING.md` mit vollständiger Dokumentation.
+- README, CHANGELOG, TECHNICAL_NOTES aktualisiert.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu:
+- `src/core/pricing/pricing-tiers.ts`
+- `src/core/pricing/feature-labels.ts`
+- `src/core/pricing/feature-helpers.ts`
+- `src/core/pricing/index.ts`
+- `src/components/pricing/pricing-card.tsx`
+- `src/components/pricing/pricing-grid.tsx`
+- `src/components/pricing/feature-lock.tsx`
+- `src/components/pricing/upgrade-hint.tsx`
+- `src/components/pricing/index.ts`
+- `src/tests/pricing-helpers.test.ts`
+- `docs/PRICING.md`
+
+Geändert:
+- `src/core/validation/pricing.schema.ts` (`marketingHighlights` ergänzt)
+- `src/components/marketing/pricing-teaser.tsx` (config-driven)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`, `docs/RUN_LOG.md`
+
+Entfernt: `.gitkeep` in `src/core/pricing` und `src/components/pricing`.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm install                # nichts neues, falls schon nach Session 2 installiert
+npm run typecheck          # implizit: pricing-helpers.test.ts wird typgecheckt
+npm run lint               # 0 warnings/errors
+npm run build              # SSR validiert die Tier-Configs gegen Zod
+npm run dev                # http://localhost:3000 – Pricing-Sektion live
+```
+
+Gezielter Smoketest auf der Marketing-Seite:
+
+```bash
+curl -s http://localhost:3000/ | grep -oE '[0-9]{2,4}[^<>]{0,5}€' | sort -u
+# erwartet: 49 €, 99 €, 199 €, 499 €, 999 €
+```
+
+Helper im Code:
+
+```ts
+import { hasFeature, requiredTierFor, formatPrice } from "@/core/pricing";
+hasFeature("bronze", "ai_website_text");        // false
+requiredTierFor("ai_campaign_generator");       // "gold"
+formatPrice(499);                                // "499 €"
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+- ✅ **Bronze/Silber/Gold existieren als Code-Konfiguration** –
+  `BRONZE_TIER`, `SILBER_TIER`, `GOLD_TIER` in `pricing-tiers.ts`,
+  Zod-validiert.
+- ✅ **Features können paketabhängig gesperrt werden** –
+  `<FeatureLock>` und `<UpgradeHint>` mit `overlay`/`replace`-Varianten,
+  Helper `hasFeature`, `isFeatureLocked`, `requiredTierFor`.
+- ✅ **Pricing ist auf Marketingseite darstellbar** – `<PricingGrid>` ist
+  in `src/components/marketing/pricing-teaser.tsx` integriert. Live unter
+  `http://localhost:3000/#pakete` mit Preisen 49/99/199 € und 499/999/1999 €.
+- ✅ **Pricing ist im Dashboard nutzbar** – `<PricingGrid>` akzeptiert
+  `currentTier` und markiert die aktive Stufe als "Aktuelles Paket".
+  Helfer `nextHigherTier`/`isAtLeastTier`/`isLimitExceeded` stehen für die
+  Dashboard-Integration in Session 9 bereit.
+
+### 5. Was ist offen?
+
+- **Session 4** – mindestens 10 IndustryPresets als konkrete Daten in
+  `src/core/industries/`.
+- **Session 5** – Theme-Registry als konkrete Daten + Theme-Resolver.
+- **Session 6** – Mock-Inhalte für Demo-Betriebe.
+- **Session 9** – Dashboard-Grundgerüst, das `<PricingGrid currentTier=...>`
+  einsetzt.
+- **Session 18** – Feature-Lock-System weiter ausbauen
+  (Vergleichsmatrix, gesperrte Buttons, Upgrade-CTA in der Hauptnavigation).
+- Platin-Konfiguration fehlt absichtlich – wird modelliert, sobald
+  Automationen, CRM und WhatsApp-Integration konzipiert sind (nach Session 22).
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 4 – Branchen-Preset-System.**
+
+Mindestens 10 (besser 15–20) `IndustryPreset`-Datensätze in
+`src/core/industries/` als typsichere, Zod-validierte Konfigurationen.
+Plus Preset-Registry, Validierungsfunktion, Fallback-Preset und
+`docs/INDUSTRY_PRESETS.md`. Das Schema steht bereits seit Session 2 –
+es fehlen die konkreten Inhalte für Friseur, Werkstatt, Reinigung,
+Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop und
+weitere.

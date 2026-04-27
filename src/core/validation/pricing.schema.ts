@@ -33,6 +33,13 @@ export const PricingTierSchema = z.object({
   currency: SupportedCurrencySchema.default(DEFAULT_CURRENCY),
   description: z.string().min(2).max(400),
   features: z.array(FeatureKeySchema).default([]),
+  /**
+   * Menschlich lesbare Aufzählung für Marketing-/Dashboard-Karten.
+   * Bewusst getrennt von `features` (technische Capabilities), damit
+   * Texte branchenneutral und werbestark formuliert werden können,
+   * ohne die Logik zu kompromittieren.
+   */
+  marketingHighlights: z.array(z.string().min(2).max(160)).max(20).default([]),
   limits: TierLimitsSchema,
   recommendedFor: z.array(z.string().min(2).max(120)).default([]),
   ctaLabel: z.string().min(2).max(40),

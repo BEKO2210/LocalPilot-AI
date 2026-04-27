@@ -23,8 +23,8 @@ Autowerkstatt bis zur Reinigungsfirma – und ist im Kern bewusst branchenneutra
 - Bronze/Silber/Gold-Pakete als echte Produktlogik (Feature-Locks im UI)
 - Branchen-Presets (Friseur, Werkstatt, Reinigung, Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop, …)
 
-Aktueller Stand: **Session 2** – Datenmodelle und Zod-Validierung.
-Weitere Funktionen folgen in den Sessions 3–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
+Aktueller Stand: **Session 3** – Pricing-System Bronze/Silber/Gold als Code-Konfiguration mit Feature-Locks.
+Weitere Funktionen folgen in den Sessions 4–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
 
 ---
 
@@ -98,7 +98,7 @@ src/
     forms/, pricing/, industry/, ai/, leads/, reviews/, social/, theme/  → folgen
   core/
     validation/        Zod-Schemas (Session 2 ✅) – Single Source of Truth
-    pricing/           PricingTier-Konfiguration (Session 3+)
+    pricing/           PricingTier-Konfiguration + Helper (Session 3 ✅)
     industries/        Branchen-Presets (Session 4+)
     themes/            Theme-Registry (Session 5+)
     ai/                Provider-Implementierungen, Prompts (Session 13+)
@@ -145,7 +145,21 @@ sie ab Session 3 als `PricingTier`-Konfiguration mit Feature-Limits eingebaut.
 
 \* Platin ist optional und wird später ergänzt.
 
-Details folgen in `docs/PRICING.md` (Session 3).
+Details: [`docs/PRICING.md`](./docs/PRICING.md).
+
+Programmatischer Zugriff auf das Pricing-System:
+
+```ts
+import { hasFeature, isFeatureLocked, getTierLimits, formatPrice } from "@/core/pricing";
+
+hasFeature(business.packageTier, "ai_website_text");        // boolean
+isFeatureLocked(business.packageTier, "ai_campaign_generator"); // boolean
+getTierLimits(business.packageTier).maxServices;             // number
+formatPrice(499);                                            // "499 €"
+```
+
+Im UI wickeln `<PricingGrid>`, `<FeatureLock>` und `<UpgradeHint>` aus
+`@/components/pricing` die Marketing- und Dashboard-Darstellung ab.
 
 ---
 
@@ -159,7 +173,7 @@ Details folgen in `docs/PRICING.md` (Session 3).
 
 ---
 
-## Status (nach Session 2)
+## Status (nach Session 3)
 
 - ✅ Projekt läuft mit `npm run dev` lokal
 - ✅ Marketing-Startseite mit Hero, Problem, Lösung, Branchen, Pakete, Vorteile, FAQ, Kontakt-CTA
@@ -169,5 +183,9 @@ Details folgen in `docs/PRICING.md` (Session 3).
   PricingTier, AI) als Zod-Schemas + per `z.infer` abgeleitete TS-Typen
 - ✅ Zentrales `common.ts` mit allen branchenneutralen String-Literal-Keys
 - ✅ Schema-Smoketest in `src/tests/schema-validation.test.ts` (verhindert Drift)
-- ⏳ Pricing-Logik, Branchen-Presets, Themes, Mock-Daten, Public Sites, Dashboard,
-  KI-System – folgen in Sessions 3 bis 22
+- ✅ **Pricing-System** Bronze/Silber/Gold als Code-Konfiguration mit
+  Feature-Locks (`<FeatureLock>`, `<UpgradeHint>`) und Helpers
+  (`hasFeature`, `requiredTierFor`, `isLimitExceeded`, `formatPrice`)
+- ✅ Marketing-Pricing-Sektion ist jetzt config-driven
+- ⏳ Branchen-Presets, Themes, Mock-Daten, Public Sites, Dashboard,
+  KI-System – folgen in Sessions 4 bis 22

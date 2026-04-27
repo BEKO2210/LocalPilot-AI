@@ -121,20 +121,55 @@ Konvention für Neuanlagen:
 3. Schlanken Re-Export in `types/<domain>.ts`.
 4. Smoketest-Beispiel in `tests/schema-validation.test.ts` ergänzen.
 
-## Stand nach Session 2
+## Pricing-System (ab Session 3)
 
-- App Router läuft, `/` rendert Marketing-Landingpage.
+- **`src/core/pricing/pricing-tiers.ts`** definiert `BRONZE_TIER`,
+  `SILBER_TIER`, `GOLD_TIER` als typsichere Datensätze. Vererbung Bronze ⊂
+  Silber ⊂ Gold ist explizit modelliert (`SILBER_FEATURES =
+  [...BRONZE_FEATURES, ...SILBER_ONLY_FEATURES]`).
+- Jeder Datensatz wird beim Module-Load durch `PricingTierSchema.parse(...)`
+  geprüft. Falsche FeatureKeys, fehlende Limits oder ungültige Preise
+  brechen sofort den Build – Fail-Fast.
+- **`feature-helpers.ts`** liefert reine Funktionen (`hasFeature`,
+  `isFeatureLocked`, `requiredTierFor`, `getTierLimits`, `isLimitExceeded`,
+  `compareTiers`, `isAtLeastTier`, `nextHigherTier`, `formatPrice`,
+  `formatLimit`). Keine Seiteneffekte → Server- und Client-Components-tauglich.
+- **`feature-labels.ts`** erzwingt über `Record<FeatureKey, FeatureLabel>`,
+  dass jede Capability ein deutsches Klartext-Label hat. Ein neuer
+  `FeatureKey` ohne Label scheitert sofort am Typecheck.
+- **`<PricingGrid>`, `<PricingCard>`, `<FeatureLock>`, `<UpgradeHint>`** in
+  `src/components/pricing/` – generisch, sowohl in Marketing als auch im
+  späteren Dashboard nutzbar.
+- Konvention: Marketingtexte je Stufe gehören in `marketingHighlights`
+  (string-Array), die technische Capability-Liste bleibt in `features`
+  (`FeatureKey[]`). Damit driften Verkaufstext und Logik nicht.
+
+Konvention für ein neues Feature:
+
+1. Schlüssel in `FEATURE_KEYS` (`src/types/common.ts`) ergänzen.
+2. Klartext-Label in `FEATURE_LABELS` (`src/core/pricing/feature-labels.ts`).
+3. Capability einer Stufe in `pricing-tiers.ts` zuordnen.
+4. Optional: Test-Assertion in `src/tests/pricing-helpers.test.ts`.
+
+## Stand nach Session 3
+
+- App Router läuft, `/` rendert Marketing-Landingpage – Pricing-Karten
+  kommen aus der Code-Konfiguration.
 - Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber.
 - Tailwind & Brand-Tokens stehen.
-- **Datenmodelle vollständig**: Business, Service, Lead, Review, FAQ,
-  IndustryPreset, Theme, PricingTier, plus alle 7 AI-Eingaben/-Ausgaben.
-- **Zod-Validierung** überall vorhanden, inkl. Geschäftsregeln (z. B. Lead
-  braucht Telefon ODER E-Mail; OpeningSlot `open < close`; Slug-Format).
-- Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`.
+- **Datenmodelle vollständig** (Session 2).
+- **Pricing-System produktiv**: konkrete Bronze/Silber/Gold-Konfiguration,
+  Feature-Locks, Upgrade-Hinweise, deutsche Klartext-Labels.
+- Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
+  `npm run dev` (Smoketest auf `/`).
 
 ## Offene technische Punkte
 
 - AI-Provider-Adapter & ENV-Resolver (Session 13). Interface steht.
+- Branchen-Presets als konkrete Daten (Session 4).
+- Theme-Registry als konkrete Daten + Resolver (Session 5).
 - Repository-Layer / Mock vs. Supabase (Session 19).
-- Vitest-Setup (offen, zu klären spätestens in Session 20).
+- Vitest-Setup (offen, zu klären spätestens in Session 20). Bis dahin
+  tragen `tsc --noEmit` plus die `src/tests/*-helpers.test.ts`-Smoketests
+  die Sicherheit.
 - Image-Hosting/-Optimierung (Session 7+).

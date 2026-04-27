@@ -7,8 +7,58 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 3: Pricing-System (Bronze/Silber/Gold) als Code-Konfiguration mit Feature-Locks.
 - Session 4+: Branchen-Presets, Themes, Mock-Daten, Public Site Generator, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.3.0] – Session 3 – 2026-04-27
+
+### Added
+- `src/core/pricing/pricing-tiers.ts` mit konkreten `BRONZE_TIER`,
+  `SILBER_TIER`, `GOLD_TIER`-Datensätzen. Jeder Datensatz wird beim
+  Module-Load via `PricingTierSchema.parse(...)` validiert – Tippfehler in
+  Features oder Limits brechen sofort den Build.
+- Vererbungslogik Bronze ⊂ Silber ⊂ Gold (Silber erbt alle Bronze-Features,
+  Gold erbt alle Silber-Features).
+- Konkrete Feature-Limits pro Stufe (`maxServices`, `maxLandingPages`,
+  `maxLanguages`, `maxLocations`, `maxThemes`, `maxAiGenerationsPerMonth`,
+  `maxLeads`); `TIER_UNLIMITED` für unbegrenzte Limits.
+- `src/core/pricing/feature-labels.ts` – deutsches Klartext-Label und
+  Beschreibung pro `FeatureKey`. Erzwungen vollständig über
+  `Record<FeatureKey, FeatureLabel>` (Compile-Zeit-Check).
+- `src/core/pricing/feature-helpers.ts` – reine Funktionen:
+  `getTier`, `tryGetTier`, `getAllTiers`, `hasFeature`, `isFeatureLocked`,
+  `requiredTierFor`, `getTierLimits`, `isLimitExceeded`, `compareTiers`,
+  `isAtLeastTier`, `nextHigherTier`, `formatPrice`, `formatLimit`.
+  Plus `UnknownTierError` für sprechende Fehler bei unbekannten Stufen.
+- `src/core/pricing/index.ts` Barrel.
+- Pricing-Komponenten unter `src/components/pricing/`:
+  - `<PricingCard>` mit `currentTier`-Markierung ("Aktuelles Paket"-Badge),
+    "Beliebt"-Badge für hervorgehobene Stufen, lokalisierte Preise via
+    `Intl.NumberFormat`.
+  - `<PricingGrid>` – rendert konfigurationsgesteuert alle aktiven Stufen.
+  - `<FeatureLock>` – sperrt Bereiche paketabhängig
+    (`variant="overlay"`/`"replace"`).
+  - `<UpgradeHint>` – kompakter Inline-Hinweis "Verfügbar ab Silber/Gold".
+- `marketingHighlights`-Feld in `PricingTierSchema` ergänzt – getrennt von
+  technischem `features`-Array, damit Marketing-Bullets unabhängig vom
+  internen Capability-Modell formuliert werden können.
+- `src/tests/pricing-helpers.test.ts` – Smoketest mit ~40 Assertions
+  (Vererbung, Lookup, Limits, Reihenfolge, Formatierung, Konsistenz von
+  `FEATURE_LABELS`).
+- `docs/PRICING.md` – vollständige Pricing-Dokumentation für Entwickler:innen
+  und Vertrieb.
+
+### Changed
+- `src/components/marketing/pricing-teaser.tsx` rendert jetzt aus der
+  Code-Konfiguration (`<PricingGrid>`) statt aus hartcodierten Karten.
+  Marketing-Sektion bleibt visuell identisch, ist aber an die zentrale
+  Pricing-Konfiguration gebunden.
+- README, RUN_LOG, TECHNICAL_NOTES aktualisiert.
+
+### Notes
+- Platin-Stufe ist bewusst noch nicht modelliert; `getTier("platin")` wirft
+  `UnknownTierError`. Die Marketing-Fußnote weist auf "Platin auf Anfrage"
+  hin. Volle Modellierung folgt nach Session 22.
+- Die Helfer sind seiteneffektfrei und in Server-/Client-Komponenten nutzbar.
 
 ## [0.2.0] – Session 2 – 2026-04-27
 
