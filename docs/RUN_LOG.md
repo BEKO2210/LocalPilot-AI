@@ -6108,3 +6108,81 @@ aber als ChatGPT-Spielwiese, nicht als zielgerichteter
 Bewertungs-Booster. Vor Social-UI, weil Reviews den höchsten ROI
 haben (mehr Google-Sterne = mehr Vertrauen = mehr Anfragen).
 
+---
+
+## Code-Session 53 – Reviews-UI scharf (Bewertungs-Booster)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: `/dashboard/[slug]/reviews` ist nicht mehr ComingSoon-
+Stub, sondern zielgerichtetes UI für Bewertungs-Anfragen:
+
+1. Owner wählt Channel (WhatsApp / SMS / E-Mail / Persönlich)
+   und Tonalität (Kurz / Freundlich / Follow-Up).
+2. Trägt optional Kundenname + Empfänger ein (Default kommt aus
+   den Betriebs-Kontaktdaten).
+3. Klick auf „Vorlagen generieren" → Mock-Provider liefert 1–3
+   Varianten in der gewünschten Channel × Tone-Kombination.
+4. Pro Variante: Copy-to-Clipboard + Direkt-Send-Button
+   (`wa.me`, `sms:`, `mailto:`). Persönliches Gespräch hat keinen
+   Direkt-Send — nur Copy-Button.
+
+**Bewusste Architektur-Entscheidung**: Mock-Provider direkt im
+Browser. Live-Provider (OpenAI/Anthropic/Gemini) bleiben dem
+AIPlayground vorbehalten (der hat schon Auth-Bearer-Pfad). Damit
+funktioniert Reviews-UI sofort ohne ENV-Setup, auch in der
+Static-Pages-Vorschau. Live-Variante kann in einer späteren
+Session ergänzt werden.
+
+**Dateien**:
+- ✚ `src/lib/review-request-template.ts` — pure Helper:
+  `substitutePlaceholders` (Whitespace-tolerant, mehrfach-Replace,
+  klare Defaults statt leere Strings),
+  `cleanPhoneForChannel` (strippt Spaces/Bindestriche/Plus/00,
+  validiert ≥4 Ziffern),
+  `buildChannelSendUrl` für 4 Kanäle (mailto / sms / wa.me / null
+  für in_person), `channelLabel` + `toneLabel` deutsch.
+- ✚ `src/tests/review-request-template.test.ts` (~46 Asserts):
+  alle Substitutions-Pfade (Whitespace, Mehrfach, tolerant),
+  Phone-Cleaning für DE-Lokal-/International-Formate, alle 4
+  Channel-URL-Builder, fehlende Empfänger-Pfade, Subject-
+  Encoding, End-to-End-Test substitute → buildChannelSendUrl.
+- ✚ `src/components/dashboard/reviews/reviews-request-panel.tsx`
+  — Client Component. ChannelTabs + ToneTabs als sub-components
+  mit ARIA-Rollen. Auto-Recipient-Default aus Business-Kontakt
+  je Channel. Pro Variante eigener Copy-Status (kurz „Kopiert").
+- 🔄 `src/app/dashboard/[slug]/reviews/page.tsx` — Stub durch
+  Panel ersetzt. Bleibt static-prerenderable (Page selber ist
+  Server Component, Panel ist Client).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **34/35 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Reviews-Page bleibt ●-SSG-prerendered. Bundle:
+shared 102 KB unverändert; `/dashboard/[slug]/reviews` 4 kB
+page-specific (vorher Stub → jetzt scharfes Panel).
+
+**Roadmap**: 1 Item abgehakt (Reviews-UI). 1 neues Folge-Item:
+Live-Provider-Variante für Reviews-Panel (analog zu AIPlayground
+mit Auth-Bearer + `/api/ai/generate`).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Review-Request-Best-
+Practices (Timing, Tonalität, Channel-Performance: WhatsApp 98 %
+Open-Rate, SMS 34 % Antwortrate vs. 4,2 % E-Mail).
+
+**Manueller Test**:
+- Login → Dashboard → „Bewertungen"-Tab.
+- Channel + Tonalität wählen, Kunden-Name eintragen → „Vorlagen
+  generieren". Mock liefert 1–3 Varianten mit gefülltem
+  Platzhaltern.
+- „Per WhatsApp senden" öffnet `wa.me/<nummer>?text=…` —
+  funktioniert mobile/desktop.
+- Public-Site-Owner ohne `googleReviewUrl` sieht den
+  „Bewertungs-Link fehlt"-Hinweis prominent.
+
+**Nächste Session**: Code-Session 54 = **Social-Media-UI scharf**.
+Begründung: nach 53 ist der Reviews-Pfad live. Der zweite
+Engagement-Hebel ist Social-Media-Posts — aktuell auch noch
+Status-Stub. Backend (Mock-Provider, alle 8 Goals × 5
+Plattformen) seit Session 19 fertig. UI-Pattern ist symmetrisch
+zu Reviews: Plattform + Goal + Tonalität → KI generiert Post →
+Copy / Direkt-Posten-Link (Buffer/Hootsuite kommt später).
+

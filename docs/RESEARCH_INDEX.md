@@ -90,6 +90,13 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Review-Request-Best-Practices (Code-Session 53)
+- [Apptoto – SMS Review Requests: 18 Templates That Get Results](https://www.apptoto.com/best-practices/sms-review-requests) — SMS 34 % Antwortrate vs. 4,2 % E-Mail (53).
+- [Embed My Reviews – How to Get More Google Reviews](https://www.embedmyreviews.com/resources/how-to-get-more-google-reviews/) — Timing-Faustregeln (innerhalb 24 h, mid-morning/early-evening) (53).
+- [Birdeye – Google review templates](https://birdeye.com/blog/google-review-template/) — Tonalitäts-Best-Practice + Direkt-Link-Pflicht (53).
+- [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
+- [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
+
 ### Slug-Wechsel + Publish-Toggle (Code-Session 52)
 - [Supabase Docs – Use Supabase with Next.js](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs) — Standard-Update-Pattern via `.update().eq()` (52).
 - [Supabase Docs – Use Supabase Auth with Next.js](https://supabase.com/docs/guides/auth/quickstarts/nextjs) — Authenticated-Client mit Cookie-Session in Route-Handler (52).
