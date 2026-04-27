@@ -2775,3 +2775,218 @@ Bewusst NICHT: andere 1 Methode (Offer-Campaign), UI, echte Provider.
 - [Ampli5 Pulse – How to Ask for Google Reviews — Scripts & Templates](https://www.ampli5pulse.com/ask-for-reviews.html)
 - [Birdeye – Google Review Template for Feedback Requests](https://birdeye.com/blog/google-review-template/)
 - [Relvio – Google review request templates (ready to copy and use)](https://www.relvio.io/en/blog/google-review-request-templates)
+
+---
+
+## Code-Session 19 – Mock-Provider: `generateSocialPost`
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar)
+Meilenstein: 2 (KI-Schicht)
+
+### 1. Was wurde umgesetzt?
+
+Sechste von sieben Mock-Methoden ist scharf. Nur noch
+`generateOfferCampaign` (Code-Session 20) bleibt Stub und schließt
+dann die Mock-Phase ab.
+
+- `src/core/ai/providers/mock/social-post.ts` (neu) implementiert
+  `mockGenerateSocialPost(input): Promise<SocialPostOutput>`:
+  - Validierung des Inputs via `SocialPostInputSchema.safeParse`
+    → bei Fehler `AIProviderError("invalid_input", …)`.
+  - **Saatzeile** über `findPresetPrompt`: nimmt einen Prompt aus
+    `preset.socialPostPrompts`, der zum `goal` passt (Plattform-
+    Match bevorzugt). Trifft, wird `ideaShort` als Inhalt
+    weiterverwendet. Trifft nicht, kommt `goalSeed(goal, topic)`
+    mit goal-spezifischen deutschen Default-Phrasen (alle 8 Goals
+    `more_appointments`/`promote_offer`/`new_service`/
+    `collect_review`/`seasonal`/`before_after`/`trust_building`/
+    `team_intro`).
+  - **Plattform-Stilhinweise** (`platformFlavor`):
+    - LinkedIn: „kurzer fachlicher Einblick".
+    - Google-Business: „klar und sachlich, Eckdaten zusammengefasst".
+    - Facebook: „Blick hinter die Kulissen, ohne Marketing-Floskeln".
+    - Instagram: „Moment aus dem Alltag, visuell unterstützt".
+    - WhatsApp-Status: „Kurzes Update für Stammkund:innen".
+    Stadt wird eingewoben, wenn vorhanden.
+  - **Hashtag-Pattern** nach 2026-Recherche:
+    - Instagram: 5
+    - LinkedIn: 4
+    - Facebook: 2
+    - Google-Business / WhatsApp-Status: 0
+    Pool: hyperlokal (`#Bremen`, `#LokalBremen`) + Branche
+    (`#Friseur`) + Betrieb (`#SalonSophia`) + erstes Topic-Wort +
+    Community (`#KleineBetriebe`, `#Empfehlung`, `#Lokal`).
+    `tagify` macht NFKD-bereinigte Slugs, Pool wird dedupliziert,
+    dann auf den Plattform-Zielwert geslicet.
+    `includeHashtags=false` → leeres Array.
+  - **CTA** (`ctaFor(goal)`): goal-spezifisch, knapp, deutsch
+    („Jetzt Termin sichern.", „Aktion mitnehmen — solange
+    verfügbar.", „Mehr erfahren und ausprobieren.", „Kurz Bewertung
+    schreiben — danke!", „Jetzt mitmachen.", „Selbst erleben —
+    Termin sichern.", „Ohne Druck Kontakt aufnehmen.", „Vorbeikommen
+    und kennenlernen."). Schema-Limit 160 Zeichen.
+  - **`shortPost`** ≤ 280: `${seed} ${cta}` mit `clamp` als
+    Sicherheitsnetz.
+  - **`longPost`** ≤ 2000, gestaffelt:
+    - `short`: Saat + CTA (2 Absätze).
+    - `medium`: Saat + Plattform-Flavor + CTA (3 Absätze).
+    - `long`: Saat + Plattform-Flavor + USP-Trust-Block (Bullets
+      aus `context.uniqueSellingPoints`, max. 3) + CTA (4 Absätze).
+  - **`imageIdea`**: aus
+    `preset.imageGuidance.recommendedSubjects[0]` + Topic +
+    Stilhinweis „Natürliches Licht, kein Stockfoto-Stil".
+  - Output gegen `SocialPostOutputSchema.parse(…)` validiert.
+- `src/core/ai/providers/mock-provider.ts` komponiert die sechste
+  Methode dazu; Status-Header 18 → 19.
+- `src/tests/ai-mock-provider.test.ts` um Block 11a–11k erweitert
+  (~220 zusätzliche Assertions, ~350 gesamt):
+  - 11a: 5 Plattformen × 8 Goals (40 Kombinationen) → Output-Shape
+    passt (alle Felder im Schema-Limit, Tag-Längen geprüft).
+  - 11b: plattform-spezifische Hashtag-Anzahlen
+    (Instagram 3–5, Facebook 1–2, GBP 0, LinkedIn 3–5,
+    WhatsApp-Status 0).
+  - 11c: `includeHashtags=false` → leere Tags.
+  - 11d: `#Bremen` + `#Friseur` im Instagram-Pool, Tags eindeutig.
+  - 11e: goal-abhängiger CTA (`promote_offer` enthält „Aktion",
+    `collect_review` enthält „Bewertung").
+  - 11f: `long.longPost > medium.longPost > short.longPost`
+    (monotones Wachstum mit `length`).
+  - 11g: USP („Termine auch samstags") erscheint im long-Trust-Block.
+  - 11h: Preset-Match für (`trust_building`, instagram) aus dem
+    Friseur-Preset wird genutzt → „Team" steht im shortPost.
+  - 11i: `imageIdea` referenziert das Topic.
+  - 11j: Determinismus.
+  - 11k: zu kurzes `topic` (1 Zeichen) → `invalid_input`.
+- Block 12 zählt nur noch 1 Stub-Methode (`generateOfferCampaign`).
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (1 Datei):
+- `src/core/ai/providers/mock/social-post.ts`
+
+Geändert:
+- `src/core/ai/providers/mock-provider.ts`
+- `src/tests/ai-mock-provider.test.ts`
+- `docs/PROGRAM_PLAN.md` (Roadmap-Selbstaktualisierung, +4 Items)
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~30 KB. Im Session-Limit (30–80 KB).
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → ~350 Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.generateSocialPost({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich", "modern"],
+    uniqueSellingPoints: ["Termine auch samstags", "Faire Festpreise"],
+  },
+  platform: "instagram",
+  goal: "promote_offer",
+  topic: "Frühlings-Aktion: 20% auf Pflegebehandlung",
+  length: "long",
+  includeHashtags: true,
+});
+// → { shortPost: "Aktion: Frühlings-Aktion … Aktion mitnehmen — solange …",
+//     longPost:  "Aktion: …\n\nEin Moment aus dem Alltag aus Bremen …\n\n
+//                 Was uns ausmacht:\n· Termine auch samstags\n· Faire …\n\n
+//                 Aktion mitnehmen — solange verfügbar.",
+//     hashtags:  ["#Friseur", "#Bremen", "#LokalBremen", "#SalonSophia",
+//                 "#Frühlings"],
+//     imageIdea: "Nahaufnahme passend zu „Frühlings-Aktion …" — Frisur-
+//                 Detail (Schnittlinie, Farbe). Natürliches Licht …",
+//     cta:       "Aktion mitnehmen — solange verfügbar." }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit. Eine
+Dashboard-Karte „Social-Post generieren" kommt in einer späteren
+Session, wenn alle Mock-Methoden scharf sind.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                          | Status |
+| ------------------------------------------------------------------ | ------ |
+| `generateSocialPost` deterministisch, branchenneutral              | ✅      |
+| 5 Plattformen × 8 Goals × 3 Lengths erzeugen sinnvolle Outputs     | ✅      |
+| Preset-Match wird vor Default-Saat genutzt                         | ✅      |
+| Plattform-spezifische Hashtag-Anzahl nach 2026-Pattern             | ✅      |
+| Hyperlokal + Branche + Betrieb-Hashtags im Pool                    | ✅      |
+| `includeHashtags=false` → leeres Array                             | ✅      |
+| Goal-spezifischer deutscher CTA                                    | ✅      |
+| `longPost` skaliert monoton mit `length`                           | ✅      |
+| USPs im long-Trust-Block                                           | ✅      |
+| Defensive Input-Validierung → `invalid_input`                      | ✅      |
+| Output gegen `SocialPostOutputSchema` validiert                    | ✅      |
+| Letzte Stub-Methode (`generateOfferCampaign`) noch                 | ✅      |
+|   `provider_unavailable`                                           |        |
+| Smoketest +220 Assertions (~350 gesamt)                            | ✅      |
+| Build/Typecheck/Lint grün                                          | ✅      |
+| Session-Größe im Limit                                             | ✅ (~30 KB) |
+| Recherche-Step durchgeführt + Quellen zitiert                      | ✅      |
+| Roadmap-Selbstaktualisierung: 4 neue Items in PROGRAM_PLAN          | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 20**: `generateOfferCampaign`-Mock — schließt die
+  Mock-Phase ab. Output: `headline`, `subline`, `bodyText`, `cta`.
+  Saat aus `offerTitle`/`details`, Trust-Block aus USPs, Validitäts-
+  hinweis aus `validUntil`, branchen-spezifische Headline-Tonalität.
+- **Self-Extending Backlog** (4 Items aus dieser Session in
+  `docs/PROGRAM_PLAN.md` ergänzt): Social-Forwarding, Visual-
+  Companion, `clamp`/`tagify`-Konsolidierung, dedizierte
+  `socialPostPrompts` für alle 8 Goals pro Branche.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 20 – Mock-Provider: `generateOfferCampaign`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 limited-time offer campaign copy local
+   service business German Festpreis Aktionspreis".
+2. `src/core/ai/providers/mock/offer-campaign.ts` neu, analog zu den
+   bisherigen Mock-Methoden: nutzt `offerTitle` und `details` als
+   Saat, baut `headline` (zugespitzt), `subline` (Nutzen + Stadt),
+   `bodyText` (Mehr-Absatz, USP-Trust-Block, optional „Gültig bis
+   …" wenn `validUntil` mitkommt), `cta` (zeitlich orientiert).
+3. `mock-provider.ts` um die siebte Methode erweitern
+   (Status-Header 19 → 20). **Mock-Phase abgeschlossen** —
+   `buildStubProvider` wird beim Mock dann nur noch als
+   Notnagel-Default mitgeführt.
+4. `src/tests/ai-mock-provider.test.ts` um Offer-Campaign-Block
+   ergänzt (mit/ohne `validUntil`, USPs im Body, Determinismus,
+   `invalid_input`). Block 12 (verbleibende Stubs) entfällt.
+5. PROGRAM_PLAN.md um neuen Punkt erweitern (Roadmap-Self-Step),
+   CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: UI, echte Provider — der Mock ist dann komplett.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [TrueFuture Media – How to Beat Your Competitors With Social Media in 2026](https://www.truefuturemedia.com/articles/beat-competitors-social-media-2026)
+- [Born Social – Best Hashtags for Instagram Growth in 2026](https://www.bornsocial.co/post/best-hashtags-for-business-growth)
+- [Borala Agency – Hashtag Strategies for 2026: Dos, Don'ts, and Proven Tips](https://www.boralagency.com/hashtags-strategies/)
+- [SocialRails – Best LinkedIn Hashtags in 2026: 150+ Top Hashtags by Industry](https://socialrails.com/blog/best-hashtags-for-linkedin)
+- [Hashtag Tools – Small Business Instagram Hashtags 2026](https://hashtagtools.io/blog/small-business-instagram-hashtags-growth-strategy-2026)
+- [SkedSocial – How to Use Hashtags on Instagram in 2026](https://skedsocial.com/blog/how-to-use-hashtags-on-instagram-in-2026-hashtag-tips-to-up-your-insta-game)
+- [Planable – Hashtag Strategy for 2026: A Guide for Any Social Media Platform](https://planable.io/blog/hashtag-strategy/)
+- [First Ascent Design – Are Hashtags Still Relevant in 2026?](https://firstascentdesign.com/hashtag-strategy-2026/)
+- [PostWaffle – 50 Social Media Post Examples That Actually Drive Sales (2026)](https://www.postwaffle.com/blog/social-media-posts-examples)
+- [Plann by Linktree – Social Media Marketing for Hairdressers](https://www.plannthat.com/hairdresser-social-media-marketing/)

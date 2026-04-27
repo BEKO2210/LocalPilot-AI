@@ -143,6 +143,14 @@ aktiven Session.
   damit später Cost-Tracking + Audit-Log möglich werden.
 - View-Transitions-API für Dashboard-Tab-Wechsel — verbessert die
   „App-Feel"-Wahrnehmung auf dem Handy spürbar.
+- **Social-Media-Forwarding** (aus Code-Session 19): Buffer-/Hootsuite-
+  oder Meta-Graph-API-Anbindung, sodass `generateSocialPost` direkt
+  als Entwurf in der Plattform landet. Plattform-spezifische Hashtag-
+  Limits (Code-Session 19 hat sie deterministisch verankert) bleiben
+  auch im Vorschau-Schritt sichtbar.
+- **Visual-Companion**: Vorschlag für ein passendes Stockfoto-Pendant
+  oder Canva-Template-Slot zu jedem `imageIdea`, damit der Workflow
+  vom Text bis zum gepostbaren Asset durchgängig ist.
 
 ### Track B · Security & Compliance
 - DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen
@@ -171,12 +179,18 @@ aktiven Session.
 - Gemeinsamen `clamp`/`polish`/`substituteCity`-Helper in
   `src/core/ai/providers/mock/_helpers.ts` extrahieren — derzeit
   duplizieren website-copy / service-description / customer-reply
-  / review-request diese Funktionen leicht abweichend.
+  / review-request / social-post diese Funktionen leicht abweichend.
+  Mit Code-Session 19 sind es **fünf** Duplikate von `clamp` —
+  nächste DX-Session sollte das einsammeln.
 - `topicToQA` aus `faqs.ts` und `detectTopic` aus `customer-reply.ts`
   teilen sich eine ähnliche Stamm-Erkennung — ein gemeinsames
   `topic-detection.ts`-Modul vermeidet zukünftige Drift.
-- Smoketest-Datei wird zu groß (>700 Zeilen) — Aufteilung pro Methode
-  parallel zur Aufteilung der Implementierung.
+- Smoketest-Datei ist mit Code-Session 19 auf >900 Zeilen / ~350
+  Assertions gewachsen — Aufteilung pro Methode parallel zur
+  Aufteilung der Implementierung wird dringender.
+- `tagify`-Helper aus `social-post.ts` ist verwandt mit
+  `normalizeQuestion` aus `faqs.ts` (NFKD + Diakritik-Strip). Ein
+  gemeinsames `slugify.ts` würde beides bedienen.
 
 ### Track E · Vertikalisierung
 - Branchen-Presets von 13 auf mindestens 20 erweitern; Kandidaten:
@@ -185,6 +199,9 @@ aktiven Session.
 - Pro Branche: dedizierte `reviewRequestTemplates` (sms ergänzen, ist
   bei einigen Presets noch nicht abgedeckt — Code-Session 18 musste
   daher synthetisieren).
+- Pro Branche: dedizierte `socialPostPrompts` für **alle 8 Goals**
+  (Code-Session 19 hat aufgedeckt, dass kein Preset alle Goals
+  abdeckt — Synthese springt häufiger ein, als sie sollte).
 
 ### Track F · Doku & Onboarding
 - Architektur-Diagramm (Mermaid) für den AI-Adapter — wie greifen

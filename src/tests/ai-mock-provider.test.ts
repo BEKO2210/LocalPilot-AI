@@ -836,19 +836,248 @@ async function run(): Promise<void> {
   );
 
   // -----------------------------------------------------------------------
-  // 11. Übrige 2 Methoden müssen weiterhin provider_unavailable werfen.
+  // 11. generateSocialPost (Code-Session 19)
   // -----------------------------------------------------------------------
-  const placeholderContext = baseContextHairdresser;
-  await expectUnavailable("generateSocialPost", () =>
-    mockProvider.generateSocialPost({
-      context: placeholderContext,
+  // 11a. 5 Plattformen × 8 Goals → vollständige Outputs, alle Felder
+  //      im Schema-Limit.
+  // -----------------------------------------------------------------------
+
+  const PLATFORMS = [
+    "instagram",
+    "facebook",
+    "google_business",
+    "linkedin",
+    "whatsapp_status",
+  ] as const;
+  const GOALS = [
+    "more_appointments",
+    "promote_offer",
+    "new_service",
+    "collect_review",
+    "seasonal",
+    "before_after",
+    "trust_building",
+    "team_intro",
+  ] as const;
+  const POST_LENGTHS = ["short", "medium", "long"] as const;
+
+  for (const platform of PLATFORMS) {
+    for (const goal of GOALS) {
+      const out = await mockProvider.generateSocialPost({
+        context: baseContextHairdresser,
+        platform,
+        goal,
+        topic: "Damenhaarschnitt mit Tiefenpflege",
+        length: "medium",
+        includeHashtags: true,
+      });
+      assert(
+        out.shortPost.length >= 2 && out.shortPost.length <= 280,
+        `${platform}/${goal}: shortPost im Limit`,
+      );
+      assert(
+        out.longPost.length >= 2 && out.longPost.length <= 2000,
+        `${platform}/${goal}: longPost im Limit`,
+      );
+      assert(
+        out.cta.length >= 2 && out.cta.length <= 160,
+        `${platform}/${goal}: cta im Limit`,
+      );
+      assert(
+        out.imageIdea.length >= 2 && out.imageIdea.length <= 280,
+        `${platform}/${goal}: imageIdea im Limit`,
+      );
+      assert(
+        out.hashtags.length <= 20,
+        `${platform}/${goal}: ≤ 20 Hashtags`,
+      );
+      for (const tag of out.hashtags) {
+        assert(
+          tag.length >= 2 && tag.length <= 40,
+          `${platform}/${goal}: jeder Tag im Limit`,
+        );
+      }
+    }
+  }
+
+  // 11b. Hashtag-Anzahl ist plattform-abhängig nach 2026-Pattern.
+  const hashtagSamples = await Promise.all(
+    PLATFORMS.map((platform) =>
+      mockProvider.generateSocialPost({
+        context: baseContextHairdresser,
+        platform,
+        goal: "more_appointments",
+        topic: "Damenhaarschnitt",
+        length: "medium",
+        includeHashtags: true,
+      }),
+    ),
+  );
+  const igTags = hashtagSamples[0]!.hashtags;
+  const fbTags = hashtagSamples[1]!.hashtags;
+  const gbTags = hashtagSamples[2]!.hashtags;
+  const liTags = hashtagSamples[3]!.hashtags;
+  const waTags = hashtagSamples[4]!.hashtags;
+  assert(
+    igTags.length >= 3 && igTags.length <= 5,
+    "instagram: 3–5 Hashtags",
+  );
+  assert(
+    fbTags.length >= 1 && fbTags.length <= 2,
+    "facebook: 1–2 Hashtags",
+  );
+  assert(gbTags.length === 0, "google_business: 0 Hashtags");
+  assert(
+    liTags.length >= 3 && liTags.length <= 5,
+    "linkedin: 3–5 Hashtags",
+  );
+  assert(waTags.length === 0, "whatsapp_status: 0 Hashtags");
+
+  // 11c. includeHashtags: false → leere Hashtags auf jeder Plattform.
+  const noTags = await mockProvider.generateSocialPost({
+    context: baseContextHairdresser,
+    platform: "instagram",
+    goal: "more_appointments",
+    topic: "Damenhaarschnitt",
+    length: "medium",
+    includeHashtags: false,
+  });
+  assert(
+    noTags.hashtags.length === 0,
+    "includeHashtags=false → leere Hashtags",
+  );
+
+  // 11d. Hashtags enthalten city und industryLabel (Hyperlokal +
+  //      Branche, 2026-Pattern).
+  assert(
+    igTags.some((t) => t === "#Bremen") &&
+      igTags.some((t) => t === "#Friseur"),
+    "instagram-Hashtags enthalten city + industry",
+  );
+  // Kein Tag zweimal vorhanden.
+  assert(
+    new Set(igTags.map((t) => t.toLowerCase())).size === igTags.length,
+    "instagram-Hashtags eindeutig",
+  );
+
+  // 11e. CTA ist goal-abhängig.
+  const ctaPromote = await mockProvider.generateSocialPost({
+    context: baseContextHairdresser,
+    platform: "instagram",
+    goal: "promote_offer",
+    topic: "Frühlingsaktion",
+    length: "short",
+    includeHashtags: true,
+  });
+  assert(
+    ctaPromote.cta.includes("Aktion"),
+    "promote_offer-CTA enthält 'Aktion'",
+  );
+  const ctaReview = await mockProvider.generateSocialPost({
+    context: baseContextHairdresser,
+    platform: "instagram",
+    goal: "collect_review",
+    topic: "Bewertung",
+    length: "short",
+    includeHashtags: false,
+  });
+  assert(
+    ctaReview.cta.toLowerCase().includes("bewertung"),
+    "collect_review-CTA enthält 'Bewertung'",
+  );
+
+  // 11f. longPost wächst mit length: long > medium > short.
+  const lengthSamples = await Promise.all(
+    POST_LENGTHS.map((length) =>
+      mockProvider.generateSocialPost({
+        context: baseContextHairdresser,
+        platform: "instagram",
+        goal: "more_appointments",
+        topic: "Damenhaarschnitt",
+        length,
+        includeHashtags: false,
+      }),
+    ),
+  );
+  const lShort = lengthSamples[0]!.longPost.length;
+  const lMedium = lengthSamples[1]!.longPost.length;
+  const lLong = lengthSamples[2]!.longPost.length;
+  assert(lLong > lMedium, "long.longPost > medium.longPost");
+  assert(lMedium > lShort, "medium.longPost > short.longPost");
+
+  // 11g. USPs erscheinen im long-Post (Trust-Block).
+  assert(
+    lengthSamples[2]!.longPost.includes("Termine auch samstags"),
+    "USP erscheint im long-longPost",
+  );
+
+  // 11h. Preset-Match wird genutzt: Friseur-Preset hat einen
+  //      'trust_building'-Prompt mit ideaShort 'Team kurz vorstellen
+  //      mit einem Foto aus dem Salon-Alltag.'
+  const trustOut = await mockProvider.generateSocialPost({
+    context: baseContextHairdresser,
+    platform: "instagram",
+    goal: "trust_building",
+    topic: "Unser Team",
+    length: "short",
+    includeHashtags: false,
+  });
+  assert(
+    trustOut.shortPost.toLowerCase().includes("team"),
+    "Preset-Match (trust_building): ideaShort als Saat genutzt",
+  );
+
+  // 11i. ImageIdea bezieht sich auf Topic.
+  assert(
+    trustOut.imageIdea.includes("Unser Team"),
+    "imageIdea referenziert Topic",
+  );
+
+  // 11j. Determinismus.
+  const sd1 = await mockProvider.generateSocialPost({
+    context: baseContextAutoWorkshop,
+    platform: "facebook",
+    goal: "seasonal",
+    topic: "Reifenwechsel-Saison",
+    length: "medium",
+    includeHashtags: true,
+  });
+  const sd2 = await mockProvider.generateSocialPost({
+    context: baseContextAutoWorkshop,
+    platform: "facebook",
+    goal: "seasonal",
+    topic: "Reifenwechsel-Saison",
+    length: "medium",
+    includeHashtags: true,
+  });
+  assert(
+    JSON.stringify(sd1) === JSON.stringify(sd2),
+    "generateSocialPost deterministisch",
+  );
+
+  // 11k. Defensive: zu kurzes topic → invalid_input.
+  let spCaught: unknown = null;
+  try {
+    await mockProvider.generateSocialPost({
+      context: baseContextHairdresser,
       platform: "instagram",
       goal: "more_appointments",
-      topic: "Neueröffnung",
+      topic: "X",
       length: "medium",
       includeHashtags: true,
-    }),
+    });
+  } catch (err) {
+    spCaught = err;
+  }
+  assert(
+    spCaught instanceof AIProviderError && spCaught.code === "invalid_input",
+    "topic zu kurz → invalid_input",
   );
+
+  // -----------------------------------------------------------------------
+  // 12. Übrige 1 Methode muss weiterhin provider_unavailable werfen.
+  // -----------------------------------------------------------------------
+  const placeholderContext = baseContextHairdresser;
   await expectUnavailable("generateOfferCampaign", () =>
     mockProvider.generateOfferCampaign({
       context: placeholderContext,
@@ -857,7 +1086,7 @@ async function run(): Promise<void> {
     }),
   );
 
-  // 12. Provider-Key
+  // 13. Provider-Key
   assert(mockProvider.key === "mock", "mockProvider.key === 'mock'");
 }
 
@@ -871,5 +1100,7 @@ export const __AI_MOCK_PROVIDER_SMOKETEST__ = {
   replyTones: 3,
   reviewChannels: 4,
   reviewTones: 3,
-  totalAssertions: 130,
+  socialPlatforms: 5,
+  socialGoals: 8,
+  totalAssertions: 350,
 };

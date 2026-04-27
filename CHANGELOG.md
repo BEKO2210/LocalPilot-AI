@@ -7,7 +7,6 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht)
-- Code-Session 19: Mock für `generateSocialPost`.
 - Code-Session 20: Mock für `generateOfferCampaign` (schließt Mock-Phase ab).
 - Code-Sessions 21–22: OpenAI-Provider scharf (mit Caching).
 - Code-Sessions 23–24: Anthropic-Provider scharf.
@@ -15,10 +14,84 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Self-Extending Backlog
 Ab Code-Session 18 erweitert jede Session `docs/PROGRAM_PLAN.md` um
-mindestens einen neuen Punkt aus Recherche, Implementierung oder
-Beobachtung. Tracks A–F (Innovation, Security, Observability, DX,
-Vertikalisierung, Doku) wachsen mit. Neue Punkte aus Code-Session 18
-sind dort eingetragen.
+mindestens einen neuen Punkt. Code-Session 19 hat 4 Punkte ergänzt:
+Track A (Social-Media-Forwarding über Buffer/Meta-Graph, Visual-
+Companion für `imageIdea`), Track D (5× duplizierter `clamp`,
+verwandter `tagify`/`normalizeQuestion`-Helper), Track E (dedizierte
+`socialPostPrompts` für alle 8 Goals pro Branche).
+
+## [0.13.7] – Code-Session 19 – 2026-04-27
+
+### Added
+- **Mock-Provider `generateSocialPost` ist scharf** (sechste von
+  sieben Mock-Methoden — atomarer Schritt unter dem
+  Session-Protokoll):
+  - `src/core/ai/providers/mock/social-post.ts` — deterministische
+    Implementierung. Erzeugt für jede Plattform/Goal/Length-Kombi
+    einen vollständigen `SocialPostOutput`.
+  - **Saatzeile**: Preset-Match in `preset.socialPostPrompts` auf
+    `goal` (Plattform-Match bevorzugt). `ideaShort` wird als
+    Inhalts-Saat genutzt; ohne Match greift ein goal-spezifisches
+    Default-Pattern (`more_appointments`, `promote_offer`,
+    `new_service`, `collect_review`, `seasonal`, `before_after`,
+    `trust_building`, `team_intro`).
+  - **Plattform-Stilhinweise** (`platformFlavor`):
+    LinkedIn formal-fachlich, Google-Business sachlich-Eckdaten,
+    Facebook hinter-den-Kulissen, Instagram visuell-Moment,
+    WhatsApp-Status Stammkund:innen-Update.
+  - **Hashtag-Pattern nach Plattform** (2026-Recherche):
+    Instagram 5, LinkedIn 4, Facebook 2, Google-Business 0,
+    WhatsApp-Status 0. Pool: hyperlokal (`#Bremen`,
+    `#LokalBremen`) + Branche (`#Friseur`) + Betrieb
+    (`#SalonSophia`) + Topic-Wort + Community
+    (`#KleineBetriebe`, `#Empfehlung`, `#Lokal`). `tagify`
+    macht NFKD-bereinigte Slugs. `includeHashtags=false` →
+    leeres Array.
+  - **CTA**: goal-spezifisch, deutsch, knapp, ohne Superlative
+    (≤ 160 Zeichen).
+  - **`shortPost`** ≤ 280 Zeichen (Saatzeile + CTA).
+  - **`longPost`** je nach `length`:
+    - `short`: Saat + CTA (~2 Absätze).
+    - `medium`: Saat + Plattform-Flavor + CTA (~3 Absätze).
+    - `long`: Saat + Plattform-Flavor + USP-Trust-Block (Bullets
+      aus `context.uniqueSellingPoints`, max. 3) + CTA (~4
+      Absätze).
+  - **`imageIdea`**: aus `preset.imageGuidance.recommendedSubjects`
+    + Topic, mit Stilhinweis „Natürliches Licht, kein Stockfoto-
+    Stil".
+  - Output gegen `SocialPostOutputSchema` validiert; `clamp` als
+    Sicherheitsnetz.
+- `mock-provider.ts` komponiert die sechste Methode dazu
+  (`{ ...stub, generateWebsiteCopy, improveServiceDescription,
+  generateFaqs, generateCustomerReply, generateReviewRequest,
+  generateSocialPost }`). Nur noch `generateOfferCampaign`
+  bleibt Stub.
+- Smoketest `src/tests/ai-mock-provider.test.ts` um Block 11a–11k
+  erweitert (~220 zusätzliche Assertions, ~350 gesamt):
+  5 Plattformen × 8 Goals = 40 Kombinationen mit je 6 Längen-Checks,
+  plattform-spezifische Hashtag-Anzahlen (3–5 / 1–2 / 0 / 3–5 / 0),
+  `includeHashtags=false`, hyperlokales+industry-Hashtag-Pattern,
+  Tag-Eindeutigkeit, goal-abhängiger CTA, `longPost` wächst
+  monoton mit `length`, USPs im long-Trust-Block, Preset-Match
+  (`trust_building` → „Team"), `imageIdea` referenziert Topic,
+  Determinismus, zu kurzes Topic → `invalid_input`. Block 12
+  zählt nur noch 1 Stub-Methode.
+
+### Changed (Roadmap-Selbstaktualisierung)
+- `docs/PROGRAM_PLAN.md` um 4 neue Punkte erweitert (Tracks A, D, E):
+  - Track A: Social-Media-Forwarding (Buffer/Hootsuite/Meta-Graph),
+    Visual-Companion für `imageIdea`.
+  - Track D: `clamp` nun 5× dupliziert, `tagify`/`normalizeQuestion`
+    teilen NFKD-Logik, Smoketest auf >900 Zeilen.
+  - Track E: dedizierte `socialPostPrompts` für alle 8 Goals pro
+    Branche (Synthese springt aktuell zu oft ein).
+
+### Notes
+- **Recherche** (Session-Protokoll): Quellen zu 2026-Hashtag-Patterns
+  (Instagram 3–5, Facebook 1–2, LinkedIn 3–5, GBP keine, hyperlokal
+  + Branche + Community) im RUN_LOG-Eintrag „Code-Session 19".
+- Diff ~30 KB. 1 neue Datei Code, 4 geänderte. Alle Verifikationen
+  grün (`typecheck`, `lint`, `build:static`, beide Smoketests).
 
 ## [0.13.6] – Code-Session 18 – 2026-04-27
 

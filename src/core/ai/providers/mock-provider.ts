@@ -5,6 +5,7 @@ import { mockImproveServiceDescription } from "./mock/service-description";
 import { mockGenerateFaqs } from "./mock/faqs";
 import { mockGenerateCustomerReply } from "./mock/customer-reply";
 import { mockGenerateReviewRequest } from "./mock/review-request";
+import { mockGenerateSocialPost } from "./mock/social-post";
 
 /**
  * Mock-Provider — wird Schritt für Schritt mit hochwertigen
@@ -12,13 +13,13 @@ import { mockGenerateReviewRequest } from "./mock/review-request";
  * sind, fallen auf den Stub zurück und werfen
  * AIProviderError("provider_unavailable").
  *
- * Status (Code-Session 18):
+ * Status (Code-Session 19):
  *   ✓ generateWebsiteCopy
  *   ✓ improveServiceDescription
  *   ✓ generateFaqs
  *   ✓ generateCustomerReply
  *   ✓ generateReviewRequest
- *   · generateSocialPost          – folgt
+ *   ✓ generateSocialPost
  *   · generateOfferCampaign       – folgt
  */
 const stub = buildStubProvider(
@@ -33,4 +34,5 @@ export const mockProvider: AIProvider = {
   generateFaqs: mockGenerateFaqs,
   generateCustomerReply: mockGenerateCustomerReply,
   generateReviewRequest: mockGenerateReviewRequest,
+  generateSocialPost: mockGenerateSocialPost,
 };
