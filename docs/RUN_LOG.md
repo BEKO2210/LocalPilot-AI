@@ -5786,3 +5786,63 @@ die Leads-Seite ein durchgängiger End-to-End-Pfad. Vor
 Onboarding-Wizard und Storage, weil Lead-Read der direkte
 Folge-Schritt aus 48 ist.
 
+---
+
+## Code-Session 49 – Lead-Read aus Repository
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Refactor
+
+**Was**: Vor Sessionstart ehrliche Status-Einschätzung an den
+Auftraggeber: ~70% auf dem Weg zum „erstes Betrieb-fertiges
+Produkt". Letzter Mock-Direktzugriff in der Pages-Schicht
+geräumt — `leadsByBusiness` floh aus zwei Dashboard-Pages auf
+das `LeadRepository`. Damit ist die Lese-Seite konsistent: alle
+Pages gehen über Repository-Resolver mit Mock/Supabase-Switch.
+
+**Dateien**:
+- 🔄 `src/core/database/repositories/lead.ts` — Interface um
+  `listForBusiness(businessId)` erweitert. Mock-Impl bekommt
+  optionalen `seed`-Konstruktor-Parameter (für Bestand aus
+  `leadsByBusiness`). Supabase-Impl mit
+  `.eq("business_id", id).order("created_at", desc)`.
+  Sort-Stabilität-Hinweis im Modulkommentar. Neuer
+  `rowToLead`-Mapper + `LEAD_COLUMNS`-Konstante.
+- 🔄 `src/core/database/repositories/index.ts` — Resolver
+  initialisiert den Mock-Pfad jetzt mit
+  `createMockLeadRepository(leadsByBusiness)` — sodass die
+  Dashboard-Liste auch ohne Supabase die Demo-Anfragen sieht.
+- 🔄 `src/tests/lead-repository.test.ts` (~30 → ~38 Asserts):
+  neuer Block für `listForBusiness` (Reihenfolge, Filter pro
+  business_id, Seed-Konstruktor, create erweitert geseedeten
+  Bucket). Mini-Pause zwischen Creates für stabile
+  Timestamp-Reihenfolge — sonst Race im Sort.
+- 🔄 `src/app/dashboard/[slug]/leads/page.tsx` — `leadsByBusiness`
+  Mock-Direktzugriff raus, `getLeadRepository().listForBusiness`
+  rein.
+- 🔄 `src/app/dashboard/[slug]/page.tsx` — analog für die
+  Übersicht (LeadsSummaryCard + RecentLeadsList).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **30/31 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Alle 6 Mock-Slugs werden weiterhin als ●-SSG-Pfade
+prerendered. Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Lead-Read). Pages-Schicht ist jetzt
+**vollständig** Repository-only — keine Mock-Direktzugriffe mehr
+aus `src/data` in Routen unter `src/app/`. Verbleibende Mock-
+Direktzugriffe nur noch in Komponenten, die im Edit-State noch
+keinen DB-Schreibpfad haben (BusinessEditForm, ServicesEditForm).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Lead-Listing +
+Pagination-Patterns.
+
+**Nächste Session**: Code-Session 50 = **Schreibpfad in DB für
+BusinessEditForm**. Begründung: das Dashboard zeigt jetzt echte
+DB-Daten (Read), aber `BusinessEditForm` und `ServicesEditForm`
+schreiben weiterhin nur in einen Mock-State. Damit kann ein User
+seinen Slug, Namen, Tagline, Description, Theme und Farben **noch
+nicht persistent** ändern — der nächste essentielle Schritt für
+„echter Kunde betreibt das produktiv". Storage (Logo + Hero-Bild)
+folgt danach in Session 51, weil das eigene Storage-Bucket-Auth
+braucht. Vor Reviews/Social-UI, weil Edit-Pfade die Pflicht-
+Funktionalität sind, Reviews/Social nice-to-have.
+

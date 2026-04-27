@@ -3,11 +3,11 @@ import {
   DashboardShell,
 } from "@/components/dashboard";
 import { LeadsView } from "@/components/dashboard/leads-view";
-import { leadsByBusiness } from "@/data";
 import {
   listSlugParams,
   loadBusinessOrNotFound,
 } from "@/lib/page-business";
+import { getLeadRepository } from "@/core/database/repositories";
 import { hasFeature } from "@/core/pricing";
 
 type Params = { slug: string };
@@ -29,7 +29,7 @@ export default async function DashboardLeadsPage({ params }: PageProps) {
   // Bronze: kein lead_management → ComingSoon mit Hinweis. Demo-Anfragen
   // bleiben sichtbar, nur die volle Verwaltung ist gesperrt.
   const canManage = hasFeature(business.packageTier, "lead_management");
-  const initialLeads = leadsByBusiness[business.id] ?? [];
+  const initialLeads = await getLeadRepository().listForBusiness(business.id);
 
   if (!canManage) {
     return (

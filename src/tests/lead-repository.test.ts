@@ -113,9 +113,55 @@ async function main() {
   assert(mock.source === "mock", "Mock-Repo source-Tag");
 
   const a = await mock.create(minimalInput);
+  // Mini-Pause sicherstellt, dass `b.createdAt > a.createdAt`. Ohne
+  // Pause können beide auf dieselbe Millisekunde fallen → instabile
+  // Sort-Reihenfolge im listForBusiness-Test.
+  await new Promise((r) => setTimeout(r, 5));
   const b = await mock.create({ ...minimalInput, name: "Bert", phone: "+49 1234 9999" });
   assert(a.id !== b.id, "verschiedene IDs für verschiedene Leads");
   assert(a.businessId === b.businessId, "selber Business");
+  assert(
+    a.createdAt < b.createdAt,
+    "Pause hat Timestamp-Reihenfolge garantiert",
+  );
+
+  // ---------------------------------------------------------------------
+  // 2b. listForBusiness: Reihenfolge (neuste zuerst), korrekter Filter
+  // ---------------------------------------------------------------------
+  const listed = await mock.listForBusiness(VALID_BUSINESS_ID);
+  assert(listed.length === 2, "zwei Leads für den Business im Bucket");
+  // Neuste zuerst — `b` wurde nach `a` erstellt, sollte vorne stehen.
+  assert(listed[0]!.id === b.id, "neuster Lead steht vorne");
+  assert(listed[1]!.id === a.id, "ältester hinten");
+
+  const otherBusiness = await mock.listForBusiness(
+    "99999999-9999-9999-9999-999999999999",
+  );
+  assert(otherBusiness.length === 0, "fremder business_id → leeres Array");
+
+  // ---------------------------------------------------------------------
+  // 2c. Seed-Konstruktor: vorhandene Leads stehen sofort zur Verfügung
+  // ---------------------------------------------------------------------
+  const seededRepo = createMockLeadRepository({
+    [VALID_BUSINESS_ID]: [a, b],
+  });
+  const seedList = await seededRepo.listForBusiness(VALID_BUSINESS_ID);
+  assert(seedList.length === 2, "Seed bringt zwei Leads mit");
+  // Reihenfolge auch hier: neuste zuerst
+  assert(seedList[0]!.id === b.id, "Seed-Listing sortiert");
+
+  // Seed-Bucket ist nicht der gleiche wie der nicht-geseedete Default
+  // — Schreiben in den geseedeten Repo erweitert nur dessen Bucket.
+  // Pause sicherstellt, dass c-Timestamp nach b liegt
+  await new Promise((r) => setTimeout(r, 5));
+  const c = await seededRepo.create({
+    ...minimalInput,
+    name: "Carmen",
+    email: "c@example.com",
+  });
+  const afterCreate = await seededRepo.listForBusiness(VALID_BUSINESS_ID);
+  assert(afterCreate.length === 3, "create erweitert den geseedeten Bucket");
+  assert(afterCreate[0]!.id === c.id, "Carmen ist neuste");
 
   // Mock-Validation-Pfad: Fehler propagiert wie buildLeadFromInput
   let mockErr: unknown = null;
@@ -173,7 +219,7 @@ async function main() {
   assert(!dump.includes("anja@example.com"), "kein Lead-Email-Leak ins Error-Dump");
   assert(!dump.includes(PRIVACY_POLICY_VERSION), "kein Policy-Version-Leak");
 
-  console.log("lead-repository smoketest ✅ (~30 Asserts)");
+  console.log("lead-repository smoketest ✅ (~38 Asserts)");
 }
 
 void main().catch((err) => {

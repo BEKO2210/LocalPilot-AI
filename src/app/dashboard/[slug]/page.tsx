@@ -7,12 +7,14 @@ import {
   QuickActionsCard,
   RecentLeadsList,
 } from "@/components/dashboard";
-import { leadsByBusiness } from "@/data";
 import {
   listSlugParams,
   loadBusinessOrNotFound,
 } from "@/lib/page-business";
-import { getBusinessRepository } from "@/core/database/repositories";
+import {
+  getBusinessRepository,
+  getLeadRepository,
+} from "@/core/database/repositories";
 import { getPresetOrFallback } from "@/core/industries";
 
 type Params = { slug: string };
@@ -43,7 +45,7 @@ export default async function DashboardOverviewPage({ params }: PageProps) {
   const { slug } = await params;
   const business = await loadBusinessOrNotFound(slug);
 
-  const leads = leadsByBusiness[business.id] ?? [];
+  const leads = await getLeadRepository().listForBusiness(business.id);
   const preset = getPresetOrFallback(business.industryKey);
 
   return (

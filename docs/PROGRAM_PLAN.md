@@ -154,6 +154,14 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   DB-Roundtrip pro Render-Pass. End-to-End-Schleife
   vollständig: Login → Onboarding → Account → echte
   Public-Site UND echtes Dashboard.
+- 49: Lead-Read aus Repository ✅.
+  `LeadRepository.listForBusiness(businessId)` ergänzt (mock
+  in-memory + supabase mit `.order("created_at", desc)`).
+  Mock-Resolver seedet jetzt aus `leadsByBusiness`, sodass
+  Demo-Anfragen weiter sichtbar sind. Beide Dashboard-Pages
+  (`page.tsx` Übersicht + `leads/page.tsx`) lesen jetzt aus
+  dem Repo. Letzter Mock-Direktzugriff der Pages-Schicht ist
+  damit erledigt.
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 

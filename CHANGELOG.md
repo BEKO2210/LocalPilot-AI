@@ -7,19 +7,55 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 49: Lead-Read aus Repository**
-  — `LeadRepository.listForBusiness(businessId)` ergänzen +
-  Dashboard-Hauptseite und Lead-Liste vom Mock-Direktzugriff
-  (`leadsByBusiness`) auf den Repo-Pfad ziehen. Letzter offener
-  Mock-Direktzugriff in der Pages-Schicht.
-- Code-Sessions 50+: Slug-Live-Check, Onboarding-Wizard
-  mehrstufig (Adresse + Logo), Multi-Member-Verwaltung,
-  Default-Redirect bei einem Betrieb, Retry-Queue für Lead-
-  `local-fallback`, Storage-Bucket für Logos, Edge-Runtime-
-  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-
-  Editor mit Legal-Sektion, Impressum-Editor pro Betrieb,
-  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test,
+- **Code-Session 50: Schreibpfad in DB für BusinessEditForm**
+  — der `BusinessEditForm` schreibt aktuell nur in einen
+  Mock-State. Owner muss seine Stammdaten (Slug, Name, Tagline,
+  Description, Theme, Farben) persistent ändern können. Server-
+  Action mit Service-Role oder authenticated-Update.
+- Code-Sessions 51+: Schreibpfad ServicesEditForm, Storage-Bucket
+  für Logos + Hero-Bilder (Avatar-Upload-UI), Slug-Live-Check
+  vor Submit, Onboarding-Wizard mehrstufig (Adresse + Logo),
+  Multi-Member-Verwaltung, Default-Redirect bei einem Betrieb,
+  Retry-Queue für Lead-`local-fallback`, Edge-Runtime-Migration,
+  CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-Editor mit
+  Legal-Sektion, Impressum-Editor pro Betrieb, Seed-Skript für
+  Demo-Daten, Schema↔Migration-Drift-Test,
   **Dependency-Sweep**.
+
+## [0.16.23] – Code-Session 49 – 2026-04-27
+
+Lead-Read auf Repository-Pfad. Pages-Schicht ist jetzt
+**vollständig** Repository-only — keine Mock-Direktzugriffe mehr
+aus `src/data` in Routen unter `src/app/`.
+
+- 🔄 `src/core/database/repositories/lead.ts`: Interface um
+  `listForBusiness(businessId)` erweitert. Mock-Impl mit
+  optionalem `seed`-Konstruktor (für Bestand aus
+  `leadsByBusiness`). Supabase-Impl mit
+  `.eq("business_id", id).order("created_at", desc)`.
+  Neuer `rowToLead`-Mapper + `LEAD_COLUMNS`-Konstante.
+- 🔄 `src/core/database/repositories/index.ts`: Resolver seedet
+  Mock-Pfad jetzt mit `leadsByBusiness` — Dashboard-Liste sieht
+  Demo-Anfragen auch ohne Supabase.
+- 🔄 `src/tests/lead-repository.test.ts` (~30 → ~38 Asserts):
+  neuer Block für `listForBusiness` (Reihenfolge, Filter,
+  Seed-Konstruktor). Mini-Pause zwischen Creates für stabile
+  Timestamp-Reihenfolge.
+- 🔄 `src/app/dashboard/[slug]/page.tsx` +
+  `src/app/dashboard/[slug]/leads/page.tsx`:
+  `leadsByBusiness`-Mock-Direktzugriff raus, `getLeadRepository
+  ().listForBusiness` rein.
+
+30/31 Smoketests grün (industry-presets pre-existing red,
+Codex #11). Alle 6 Mock-Slugs werden weiterhin als ●-SSG-Pfade
+prerendered. Bundle 102 KB shared unverändert.
+
+**Status-Einschätzung an Auftraggeber vor Sessionstart**:
+~70% Richtung „erstes Betrieb-fertiges Produkt". Foundation+KI
++Auth+Read-Pfad sind solide; was fehlt: Schreibpfad in DB für
+Business/Services, Storage für Logos/Hero-Bilder, Settings-
+Editor (Slug/Publish/Branding-Farben), scharfe Reviews/Social-
+UI, Custom-Domain + Sentry + Lighthouse-CI.
 
 ## [0.16.22] – Code-Session 48 – 2026-04-27
 

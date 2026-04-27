@@ -90,6 +90,12 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Lead-Listing + Pagination-Patterns (Code-Session 49)
+- [Supabase Docs – JavaScript: Order the results](https://supabase.com/docs/reference/javascript/order) — `order()`-Pflicht für stabile Pagination (49).
+- [Supabase Docs – JavaScript API: select](https://supabase.com/docs/reference/javascript/select) — `count: 'estimated'` vs. `'exact'` Trade-off (49).
+- [MakerKit – Pagination with React.js and Supabase](https://makerkit.dev/blog/tutorials/pagination-supabase-react) — Range-basiertes Pattern (49).
+- [Supabase Discussion #1223 – Pagination Diskussion](https://github.com/orgs/supabase/discussions/1223) — Praktiker-Workarounds + Cursor-vs-Offset (49).
+
 ### Layout/Page-Dedup mit React.cache (Code-Session 48)
 - [Next.js – Getting Started: Fetching Data](https://nextjs.org/docs/app/getting-started/fetching-data) — Default-no-Cache in 15+, Memoization-Patterns (48).
 - [DEV – Reducing Network Overhead with Layout Deduplication](https://dev.to/mericcintosun/reducing-network-overhead-with-layout-deduplication-in-the-nextjs-app-router-m7b) — Praxis-Beispiel für Layout↔Page-Dedup (48).

@@ -14,6 +14,7 @@
  */
 
 import { mockBusinesses } from "@/data/mock-businesses";
+import { leadsByBusiness } from "@/data";
 import { getSupabaseClient } from "@/core/database/client";
 import {
   createMockBusinessRepository,
@@ -109,7 +110,12 @@ export function getLeadRepository(
       );
     }
   }
-  cachedLeadRepo = createMockLeadRepository();
+  // Mock-Pfad: mit den vorhandenen Demo-Anfragen seeden, damit das
+  // Dashboard im Static-/Mock-Modus die Demo-Leads pro Betrieb sieht.
+  // Lead-Submissions zur Laufzeit (Public-Form) werden zusätzlich in
+  // den Bucket geschrieben — innerhalb desselben Prozesses sichtbar,
+  // bei Server-Restart aber wieder weg (Mock-Modus per Definition).
+  cachedLeadRepo = createMockLeadRepository(leadsByBusiness);
   cachedLeadSource = "mock";
   return cachedLeadRepo;
 }

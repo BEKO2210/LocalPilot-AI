@@ -329,6 +329,23 @@ nutzt einen `service_role`-Client, der RLS umgeht (Code-Session 42+).
   Tenant-Wiring-Session, sobald „Mein Account" inhaltlich mehr
   zeigt als nur die User-ID.
 
+### Lead-Read-Pfad (Code-Session 49)
+
+`LeadRepository.listForBusiness(businessId)` ergänzt den Schreibe-
+Pfad aus Session 40. Drei Beobachtungen:
+
+1. **Mock-Pfad** seedet beim Boot mit `leadsByBusiness` aus
+   `src/data` — sodass Dashboard-Liste auch im Static-Build die
+   Demo-Anfragen pro Betrieb zeigt.
+2. **Supabase-Pfad** filtert via `eq("business_id", id)` +
+   RLS (`has_business_access` aus Migration 0007). Sortierung
+   `order("created_at", { ascending: false })`.
+3. **Sort-Stabilität**: bei mehreren Leads mit gleichem
+   `created_at` (z. B. Bulk-Import) ist die Reihenfolge
+   undefined. Pagination werden wir mit `range()` und einem
+   stabilen `order` über zwei Spalten ergänzen, sobald die
+   Liste produktiv groß wird.
+
 ### Public-Lead-Form-Pfad (Code-Session 44)
 
 `POST /api/leads` ist scharf. Form schreibt parallel:
