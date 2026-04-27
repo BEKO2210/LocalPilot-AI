@@ -34,6 +34,23 @@ import {
 import { AI_PROVIDER_KEYS } from "@/types/common";
 import { getAIProvider } from "@/core/ai";
 import { AIProviderError } from "@/types/ai";
+import { estimateCost, formatCostUsd } from "@/core/ai/cost/pricing";
+import { chargeBudget, previewBudget } from "@/core/ai/cost/budget";
+
+/** Liefert das Default-Modell pro Provider — wie in den `_client.ts`-Dateien. */
+function modelForProvider(provider: string): string {
+  switch (provider) {
+    case "openai":
+      return process.env["OPENAI_MODEL"]?.trim() || "gpt-4o-mini";
+    case "anthropic":
+      return process.env["ANTHROPIC_MODEL"]?.trim() || "claude-sonnet-4-5";
+    case "gemini":
+      return process.env["GEMINI_MODEL"]?.trim() || "gemini-2.0-flash";
+    case "mock":
+    default:
+      return "default";
+  }
+}
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -140,6 +157,30 @@ export async function POST(req: Request): Promise<Response> {
   // 3. Provider auflösen + dispatchen
   const { method, providerKey, input } = parsed.data;
   const provider = getAIProvider(providerKey ? { providerKey } : undefined);
+  const model = modelForProvider(provider.key);
+
+  // 3a. Pre-Flight-Budget-Check: schätze Input-Kosten und prüfe,
+  //     ob der Bucket den Aufruf überhaupt erlauben würde. Output-
+  //     Kosten kommen erst nach dem Call hinzu, aber Input allein
+  //     ist eine sinnvolle obere Schranke für „würde das Limit
+  //     reißen?".
+  const inputText = JSON.stringify(input);
+  const inputOnlyEstimate = estimateCost(provider.key, model, inputText, "");
+  const preview = previewBudget(inputOnlyEstimate.costUsd);
+  if (preview.exceeded) {
+    return NextResponse.json(
+      {
+        error: "rate_limited",
+        message: `Tages-Budget erschöpft (Bucket "${preview.bucket}"): ${formatCostUsd(preview.spentUsd)} von ${formatCostUsd(preview.capUsd)}.`,
+        cost: {
+          capUsd: preview.capUsd,
+          spentUsd: preview.spentUsd,
+          remainingUsd: preview.remainingUsd,
+        },
+      },
+      { status: 429 },
+    );
+  }
 
   try {
     let output: unknown;
@@ -166,11 +207,30 @@ export async function POST(req: Request): Promise<Response> {
         output = await provider.generateOfferCampaign(input);
         break;
     }
+
+    // 4. Cost-Schätzung über Input + Output, Bucket aktualisieren.
+    const outputText = JSON.stringify(output);
+    const cost = estimateCost(provider.key, model, inputText, outputText);
+    const charged = chargeBudget(cost.costUsd);
+
     return NextResponse.json({
       ok: true,
       provider: provider.key,
       method,
       output,
+      cost: {
+        provider: cost.provider,
+        model: cost.model,
+        inputTokensEst: cost.inputTokensEst,
+        outputTokensEst: cost.outputTokensEst,
+        costUsd: cost.costUsd,
+        costFormatted: formatCostUsd(cost.costUsd),
+        budget: {
+          spentUsd: charged.spentUsd,
+          capUsd: charged.capUsd,
+          remainingUsd: charged.remainingUsd,
+        },
+      },
     });
   } catch (err) {
     if (err instanceof AIProviderError) {

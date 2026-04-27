@@ -250,9 +250,18 @@ aktiven Session.
   Key direkt aus `process.env` gelesen. Sobald API-Routes existieren,
   ergänzen wir einen serverseitigen Wrapper, der den Key nie in
   Logs auftauchen lässt (Redaction in Sentry-Integration).
-- **Cost-Cap pro Betrieb**: pro Tag/Monat ein Hard-Limit, das vor dem
-  OpenAI-Call geprüft wird. Bei Überschreitung wirft die KI-Schicht
-  `AIProviderError("rate_limited")` mit eigenem Hinweistext.
+- ~~**Cost-Cap pro Betrieb**~~ (Code-Session 29 ✅, Default-Bucket).
+  Folge-Items:
+  - Bucket-Key per Betrieb-Slug (`business:<slug>`) statt
+    `default` — sobald Auth + Multi-Tenant steht.
+  - Persistenter Store (Redis/Upstash) statt In-Memory, sobald
+    multi-instance deployed.
+  - Monthly-Cap zusätzlich zum Daily-Cap.
+  - Cost-Audit-Log pro Betrieb (für Auftraggeber-Reports und
+    Pricing-Validierung der Pakete).
+  - Echtes Provider-Usage statt Heuristik (4 Zeichen ≈ 1 Token).
+    Aktuell unterschätzen wir 5–15 % — fein für Indikation, zu
+    grob für Abrechnung.
 
 ### Track C · Observability & Qualität
 - Strukturierte Telemetrie der Mock-Provider-Aufrufe (Welche Methode,

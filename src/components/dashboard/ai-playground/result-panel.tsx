@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Sparkles } from "lucide-react";
+import { Check, Coins, Copy, Sparkles } from "lucide-react";
 import { DashboardCard } from "../dashboard-card";
 import type { GenerationResult } from "./types";
 
@@ -14,16 +14,60 @@ interface ResultPanelProps {
  * Jeder Block bekommt einen Copy-Button; einige Methoden zeigen
  * Listen (FAQs, Review-Variants), andere zusammengesetzte Texte
  * (Hashtags, Image-Idee).
+ *
+ * Wenn ein API-Aufruf hinter dem Ergebnis steckt, wird zusätzlich
+ * eine Cost-Zeile angezeigt (Tokens + USD + Tagesbudget).
  */
 export function ResultPanel({ result }: ResultPanelProps) {
   return (
     <DashboardCard
       title="Ergebnis"
-      description="Aus dem Mock-Provider, deterministisch."
+      description={
+        result.cost
+          ? `${result.cost.provider} / ${result.cost.model} — Kosten und Budget unten.`
+          : "Aus dem Mock-Provider, deterministisch (kostenlos)."
+      }
       action={<Sparkles className="h-4 w-4 text-emerald-600" aria-hidden />}
     >
-      {renderBody(result)}
+      <div className="space-y-3">
+        {renderBody(result)}
+        {result.cost ? <CostBar cost={result.cost} /> : null}
+      </div>
     </DashboardCard>
+  );
+}
+
+function CostBar({
+  cost,
+}: {
+  cost: NonNullable<GenerationResult["cost"]>;
+}) {
+  const pct = cost.budget.capUsd > 0
+    ? Math.min(100, (cost.budget.spentUsd / cost.budget.capUsd) * 100)
+    : 0;
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+      <div className="flex flex-wrap items-center gap-2 font-medium">
+        <Coins className="h-3.5 w-3.5" aria-hidden />
+        Geschätzte Kosten: <strong>{cost.costFormatted}</strong>
+        <span className="text-amber-700">
+          ({cost.inputTokensEst}+{cost.outputTokensEst} Tokens, ≈ 4 Zeichen/Token)
+        </span>
+      </div>
+      <div className="mt-2">
+        <div className="h-1.5 overflow-hidden rounded-full bg-amber-200">
+          <div
+            className="h-full bg-amber-600"
+            style={{ width: `${pct}%` }}
+            aria-label={`${pct.toFixed(0)} % Tagesbudget verbraucht`}
+          />
+        </div>
+        <p className="mt-1 text-amber-700">
+          Tagesbudget: ${cost.budget.spentUsd.toFixed(4)} von ${cost.budget.capUsd.toFixed(2)} verbraucht
+          ({pct.toFixed(0)} %).
+        </p>
+      </div>
+    </div>
   );
 }
 

@@ -28,17 +28,38 @@ export type PlaygroundMethodId =
   | "offer-campaign";
 
 /**
+ * Optionale Cost-Info, die nur bei API-Route-Aufrufen verfügbar ist.
+ * Mock-Direktaufrufe im Browser haben kein Cost (= immer 0 USD).
+ */
+export interface PlaygroundCostInfo {
+  readonly provider: string;
+  readonly model: string;
+  readonly inputTokensEst: number;
+  readonly outputTokensEst: number;
+  readonly costUsd: number;
+  readonly costFormatted: string;
+  readonly budget: {
+    readonly spentUsd: number;
+    readonly capUsd: number;
+    readonly remainingUsd: number;
+  };
+}
+
+/**
  * Discriminated Union der 7 Output-Typen — erlaubt typsicheres
  * Rendering im `<ResultPanel>` über `switch (result.method)`.
+ *
+ * `cost` ist optional: bei direktem Mock-Aufruf im Browser nicht
+ * vorhanden, bei API-Route-Aufruf gefüllt.
  */
 export type GenerationResult =
-  | { method: "website-copy"; output: WebsiteCopyOutput }
-  | { method: "service-description"; output: ServiceDescriptionOutput }
-  | { method: "faqs"; output: FaqGenerationOutput }
-  | { method: "customer-reply"; output: CustomerReplyOutput }
-  | { method: "review-request"; output: ReviewRequestOutput }
-  | { method: "social-post"; output: SocialPostOutput }
-  | { method: "offer-campaign"; output: OfferCampaignOutput };
+  | { method: "website-copy"; output: WebsiteCopyOutput; cost?: PlaygroundCostInfo }
+  | { method: "service-description"; output: ServiceDescriptionOutput; cost?: PlaygroundCostInfo }
+  | { method: "faqs"; output: FaqGenerationOutput; cost?: PlaygroundCostInfo }
+  | { method: "customer-reply"; output: CustomerReplyOutput; cost?: PlaygroundCostInfo }
+  | { method: "review-request"; output: ReviewRequestOutput; cost?: PlaygroundCostInfo }
+  | { method: "social-post"; output: SocialPostOutput; cost?: PlaygroundCostInfo }
+  | { method: "offer-campaign"; output: OfferCampaignOutput; cost?: PlaygroundCostInfo };
 
 /**
  * Beschreibt ein einzelnes Form-Feld in einer Methoden-Config.

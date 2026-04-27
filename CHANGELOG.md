@@ -7,13 +7,38 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht)
-- **Code-Session 29: Cost-Tracking-Pipeline** auf Server-Side
-  (Token-Counts in Cost-Bucket, Per-Betrieb-Cap). Vorbedingung:
-  Vercel-SSR-Deploy.
-- Code-Session 30: Rate-Limit-UI im Playground.
+- **Code-Session 30: Rate-Limit-UI im Playground** + Provider-Health-
+  Indicator (zeigen, ob `LP_AI_API_KEY` + Provider-Keys gesetzt sind).
 - Code-Sessions 31+: DOMPurify-Sanitizer für übernommene KI-Outputs,
-  echte Cookie-/JWT-Auth statt Bearer-Token-Stub, Edge-Runtime-
-  Migration der API-Route.
+  echte Cookie/JWT-Auth, Edge-Runtime-Migration, Vercel-SSR-Deploy
+  (Vorbedingung für Live-Provider im Browser).
+
+## [0.16.3] – Code-Session 29 – 2026-04-27
+
+Cost-Tracking-Pipeline + Daily-Budget-Cap für die API-Route.
+
+- ✚ `src/core/ai/cost/pricing.ts` — 2026-aktuelle Pricing-Tabelle
+  pro Provider×Model, Token-Heuristik (4 Zeichen ≈ 1 Token),
+  `estimateCost` + `formatCostUsd`.
+- ✚ `src/core/ai/cost/budget.ts` — In-Memory-Bucket-Tracker mit
+  UTC-Tageswechsel-Reset, `LP_AI_DAILY_CAP_USD` ENV (Default $1.00),
+  `previewBudget` (Pre-Flight) + `chargeBudget` (Post-Call).
+- 🔄 `/api/ai/generate` — Pre-Flight-Cap-Check vor Provider-Call
+  (429 wenn Budget gerissen würde); Cost-Block in der Antwort
+  inkl. Token-Counts und Tagesbudget-Status.
+- 🔄 Playground — `<CostBar>` in `result-panel.tsx` zeigt Tokens,
+  USD-Schätzung und Tagesbudget-Progress nach jedem API-Call.
+  Mock-Direktaufruf hat keine Cost (= immer $0).
+- ✚ `src/tests/ai-cost.test.ts` (24 Asserts: Token-Heuristik,
+  Pricing-Lookup mit Default-Fallback, Budget-Tracking,
+  Bucket-Isolation).
+- 🛣️ Roadmap +5 Folge-Items: Bucket-Key per Betrieb, Persistenter
+  Store, Monthly-Cap, Cost-Audit-Log, echte Provider-Usage statt
+  Heuristik (5–15 % Underestimate).
+
+Bundle: shared 102 KB unverändert, /ai-Route +0.5 KB für CostBar.
+
+## [0.16.2] – Code-Session 28 – 2026-04-27
 
 ## [0.16.2] – Code-Session 28 – 2026-04-27
 

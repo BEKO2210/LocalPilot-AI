@@ -4449,3 +4449,50 @@ Vercel-SSR-Deploy).
 **Nächste Session**: Code-Session 29 — Cost-Tracking-Pipeline auf
 Server-Side (Token-Counts in Cost-Bucket loggen, Per-Betrieb-Cap).
 Vorbedingung: Vercel-SSR-Deploy als zweite Deploy-Pipeline.
+
+---
+
+## Code-Session 29 – Cost-Tracking-Pipeline + Daily-Budget-Cap
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Server-side Cost-Estimation + Daily-Budget-Cap für die
+KI-API-Route. Token-Heuristik (4 Zeichen ≈ 1 Token), 2026-aktuelle
+Pricing-Tabelle (Mock $0, gpt-4o-mini $0.15/$0.60, claude-sonnet-4-5
+$3/$15, gemini-2.0-flash $0.10/$0.40 per Mio Tokens). In-Memory-
+Bucket-Tracker mit Tageswechsel-Reset + Pre-Flight-Cap-Check
+(429 wenn überschritten). Playground zeigt Cost-Bar mit
+Tagesbudget-Anteil pro API-Call.
+
+**Dateien**:
+- ✚ `src/core/ai/cost/pricing.ts` (Pricing-Tabelle pro Provider×Model,
+  `estimateTokens`, `estimateCost`, `formatCostUsd`)
+- ✚ `src/core/ai/cost/budget.ts` (In-Memory-Bucket-Map mit
+  UTC-Tag-Schlüssel, `previewBudget`, `chargeBudget`,
+  `getDailyCapUsd` aus `LP_AI_DAILY_CAP_USD` ENV mit Fallback $1.00)
+- 🔄 `src/app/api/ai/generate/route.ts` (Pre-Flight-Cap-Check vor
+  Provider-Call → 429 mit Cost-Block; nach Call: Output-Cost
+  berechnen, Bucket buchen, Cost-Block in Antwort)
+- 🔄 `src/components/dashboard/ai-playground/types.ts`
+  (`PlaygroundCostInfo`-Interface, optional auf jedem
+  `GenerationResult`)
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx`
+  (Cost aus API-Response übernehmen)
+- 🔄 `src/components/dashboard/ai-playground/result-panel.tsx`
+  (`<CostBar>`-Komponente mit Token-Counts, USD-Estimate und
+  Tagesbudget-Progress)
+- ✚ `src/tests/ai-cost.test.ts` (24 Asserts: Token-Heuristik,
+  Pricing-Tabelle, Budget-Tracking, Bucket-Isolation)
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅, alle 7 Smoketests ✅ (Mock ~380, Resolver 22, OpenAI 14,
+Anthropic 14, Gemini 12, Themes inkl. Hex, **Cost 24 NEU**).
+
+**Roadmap**: 1 Item abgehakt (Cost-Cap pro Betrieb), ersetzt durch
+5 Folge-Items (Bucket-Key per Betrieb, Persistenter Store, Monthly-
+Cap, Cost-Audit-Log, echte Provider-Usage statt Heuristik).
+
+**Quellen**: `RESEARCH_INDEX.md` Track A (AI-Provider-Token-Pricing).
+
+**Nächste Session**: Code-Session 30 — Rate-Limit-UI im Playground
+(`429`-Antwort sichtbar als „Limit erreicht — wann reset?"-Karte)
+und Provider-Health-Indicator.

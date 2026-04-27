@@ -12,6 +12,14 @@
 
 ## Track A · AI-Provider & Strukturierte Outputs
 
+### Token-Pricing (Code-Session 29)
+- [LLM API Pricing 2026: OpenAI vs Anthropic vs Gemini Live Comparison](https://www.cloudidr.com/llm-pricing) — aktueller Preisvergleich (29).
+- [IntuitionLabs – AI API Pricing Comparison 2026](https://intuitionlabs.ai/articles/ai-api-pricing-comparison-grok-gemini-openai-claude) (29).
+- [Price Per Token – LLM API Pricing 2026](https://pricepertoken.com/) (29).
+- [TLDL – LLM API Pricing 2026 GPT-5/Claude 4/Gemini 2.5](https://www.tldl.io/resources/llm-api-pricing-2026) (29).
+- [AI Cost Check – Gemini API Pricing 2026](https://aicostcheck.com/blog/google-gemini-pricing-guide-2026) (29).
+- [Metacto – Claude API Pricing 2026 Full Breakdown](https://www.metacto.com/blogs/anthropic-api-pricing-a-full-breakdown-of-costs-and-integration) (29).
+
 ### OpenAI (Code-Session 21–22)
 - [OpenAI – Structured model outputs (Guides)](https://developers.openai.com/api/docs/guides/structured-outputs) — `zodResponseFormat`-Pattern, strict JSON-Schema (Code-Session 21).
 - [OpenAI – Introducing Structured Outputs in the API](https://openai.com/index/introducing-structured-outputs-in-the-api/) — Hintergrund, Konzept (21).

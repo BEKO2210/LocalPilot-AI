@@ -157,7 +157,10 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
           );
           return;
         }
-        const json = (await res.json()) as { output: unknown };
+        const json = (await res.json()) as {
+          output: unknown;
+          cost?: import("./types").PlaygroundCostInfo;
+        };
         // Output kommt aus der gleichen Pipeline (Mock oder Live mit
         // gleichem Schema), wir können ihn als das jeweilige Output-Type
         // typisieren. Validierung passierte server-seitig.
@@ -165,6 +168,7 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
           method: config.id,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           output: json.output as any,
+          ...(json.cost ? { cost: json.cost } : {}),
         } as GenerationResult);
       } catch (err) {
         if (err instanceof AIProviderError) {
