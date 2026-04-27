@@ -115,6 +115,12 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
 - 43: Login-UI + Account-Page (Magic-Link-Form mit aria-live-
   Status, Browser-Client-Auth-Check) ✅. Geschützte Dashboard-
   Routen folgen, sobald Multi-Tenant-Daten da sind.
+- 44: Public-Lead-Form auf `LeadRepository` umgestellt ✅.
+  `POST /api/leads` mit dual-write (localStorage als Sicherheitsnetz),
+  server-toleranter Submit (404 → silent local-only, 4xx/5xx →
+  visible local-fallback-Hinweis), 4-stufiges `SubmitResult`-Mapping
+  in `src/lib/lead-submit.ts`. Static-Pages-Build bleibt
+  unverändert via `pageExtensions`-Filter.
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 
@@ -375,13 +381,15 @@ aktiven Session.
   englische Werte, Zod-Enum hat aber deutsche). Sinnvoll: ein
   Test, der das TS-Enum gegen die SQL-CHECK-Constraint matcht
   (z. B. SQL parsen oder beide aus einer Quelle generieren).
-- **Public-Lead-Form auf LeadRepository umstellen** (aus
-  Code-Session 40): Form schreibt aktuell direkt in
-  `localStorage` über `appendLead`. Mit dem neuen Repository
-  könnte sie wahlweise auch in Supabase persistieren — als
-  Server-Action oder API-Route, mit Feature-Flag-Switch. Hinweis:
-  bei Mock-Mode bleibt `localStorage` der Default, weil das
-  Dashboard die Leads dort liest.
+- ~~**Public-Lead-Form auf LeadRepository umstellen**~~
+  (Code-Session 44 ✅, dual-write mit Server-Toleranz).
+  Folge-Items:
+  - **Dashboard-Lead-Read auf Supabase** (in Multi-Tenant-Session):
+    sobald die Dashboard-Liste aus `business_owners` × `leads`
+    speist, kann der dual-write-Pfad einseitig werden (nur Server).
+  - **Retry-Queue für `local-fallback`**: aktuell bleibt der Lead
+    im localStorage liegen. Optional: ein leichter Retry-Worker,
+    der bei nächster Online-Phase erneut versucht zu posten.
 - **Dependency-Sweep-Session** (aus Deep-Pass nach Session 40):
   viele Major-Bumps stehen an: `next 15→16`, `react 19.0→19.2`,
   `tailwindcss 3→4`, `typescript 5.7→6`, `zod 3→4`, `eslint 9→10`,

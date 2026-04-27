@@ -6,17 +6,58 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant — frei wählbar
-- **Public-Lead-Form auf LeadRepository umstellen** (verbindet
-  Session 40 mit der UI; Form schreibt optional nach Supabase).
-- **Onboarding-Flow** (initialer business_owner-Insert per Service-
-  Role nach erstem Login).
-- **Dependency-Sweep** (17 Major-Bumps angesammelt: next 16,
-  zod 4, tailwind 4, ts 6, eslint 10, …).
-- Storage-Bucket für Logos, Edge-Runtime-Migration, CSRF-Schutz,
-  HTML-Sanitize-Whitelist, Settings-Editor mit Legal-Sektion,
-  Impressum-Editor pro Betrieb (für Reseller), Seed-Skript für
-  Demo-Daten, Schema↔Migration-Drift-Test.
+### Geplant
+- **Code-Session 45: Onboarding-Flow** (post-Login-Pfad: ersten
+  Betrieb + initialen `business_owners`-Eintrag via service-role
+  anlegen, sodass ein neu eingeloggter User direkt ein eigenes
+  Dashboard sieht).
+- Code-Sessions 46+: Dashboard-Read aus Supabase, Retry-Queue für
+  Lead-`local-fallback`, Storage-Bucket für Logos,
+  Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
+  Settings-Editor mit Legal-Sektion, Impressum-Editor pro Betrieb,
+  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test,
+  **Dependency-Sweep** (17 Major-Bumps).
+
+## [0.16.18] – Code-Session 44 – 2026-04-27
+
+Public-Lead-Form schreibt parallel nach localStorage und nach
+Supabase (via `POST /api/leads`). Server-tolerant: jeder
+Server-Fehler endet als „Anfrage gesendet" mit dezentem Hinweis,
+solange localStorage als Sicherheitsnetz klappt.
+
+- ✚ `src/app/api/leads/route.ts` — POST mit Light-Validation +
+  `LeadRepository.create`. Mappt `LeadRepositoryError.kind` auf
+  HTTP-Status (validation→400, rls→403, constraint→422,
+  network→502, sonst 500).
+- ✚ `src/lib/lead-submit.ts` — pure Helper. `submitLead` schreibt
+  zuerst sync localStorage, dann fetch. 4-stufiges
+  `SubmitResult`-Mapping (`server` / `local-only` /
+  `local-fallback` / `fail`). `userHintForResult` für
+  User-sichtbare Texte.
+- ✚ `src/tests/lead-submit.test.ts` (~30 Asserts): alle 4
+  Result-Pfade plus Edge-Cases (200 ohne Body, 403 RLS, fetch
+  wirft, skipServer-Flag, server-OK + local-fail, Body-Capture).
+- 🔄 `src/components/public-site/public-lead-form.tsx`:
+  `buildSubmissions` baut zwei Repräsentationen (localBackup +
+  serverInput), `handleSubmit` ist async und ruft `submitLead`,
+  neuer `submitNotice`-State zeigt den `local-fallback`-Hinweis
+  im Erfolgs-Block.
+
+27/28 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Static-Build hat `/api/leads` korrekt nicht
+(`pageExtensions`-Filter greift), SSR-Build hat 8 API-Routen.
+Bundle: 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Lead-Form-Wiring), 2 neu (Dashboard-Read-
+auf-Supabase, Retry-Queue für local-fallback).
+
+**Manueller Test**:
+- Static-Vorschau: identisches Verhalten wie bisher (Form schreibt
+  nur localStorage, kein Hinweis nötig).
+- Vercel + `LP_DATA_SOURCE=supabase`: Lead landet sowohl in der
+  Supabase-Tabelle als auch im localStorage.
+- Vercel mit Supabase down: Erfolg + dezenter Hinweis-Banner,
+  Lead bleibt im localStorage als Sicherheitsnetz.
 
 ## [0.16.17] – Code-Session 43 – 2026-04-27
 

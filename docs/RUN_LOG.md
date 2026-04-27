@@ -5401,3 +5401,82 @@ Auf der Static-Pages-Vorschau ohne API-Routen:
 3. **Onboarding-Flow** (initialer business_owner-Insert per
    Service-Role nach erstem Login).
 
+---
+
+## Code-Session 44 – Public-Lead-Form auf LeadRepository (dual-write)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Schließt den Kreis aus Session 40. Das Public-Form
+schreibt jetzt parallel nach localStorage (sync, Sicherheitsnetz)
+**und** an `POST /api/leads`. Der Server-Pfad nutzt das schon
+gebaute `LeadRepository` und respektiert die anon-INSERT-RLS aus
+Migration 0005.
+
+Server-tolerant: jeder Server-Fehler (404 in der Static-Pages-
+Vorschau, 4xx/5xx auf Vercel) endet trotzdem als „Anfrage
+gesendet" für den User. Bei echtem `local-fallback` (Server warf,
+localStorage hat geklappt) erscheint dezent ein Hinweis-Banner.
+Bei `local-only` (Static-Pages, API gibt's nicht) bleibt es
+silent — das ist der erwartete Demo-Zustand.
+
+**Dateien**:
+- ✚ `src/app/api/leads/route.ts` — POST. Body wird leicht
+  vorvalidiert (Pflicht-Top-Level-Felder), dann an
+  `getLeadRepository().create()` durchgereicht. Mappt
+  `LeadRepositoryError.kind` auf HTTP-Status (validation→400,
+  rls→403, constraint→422, network→502, sonst 500).
+- ✚ `src/lib/lead-submit.ts` — pure Helper. `submitLead` schreibt
+  zuerst sync localStorage, dann fetch. 4-stufiges
+  `SubmitResult`-Mapping (server / local-only / local-fallback /
+  fail). `userHintForResult` liefert User-sichtbaren Text oder
+  `null` für die Fälle, in denen nichts kommuniziert werden muss.
+- ✚ `src/tests/lead-submit.test.ts` (~30 Asserts): alle 4
+  Result-Pfade, dazu die Edge-Cases:
+  - 200 ohne JSON-Body → server mit leadId="(unbekannt)"
+  - 403 RLS → local-fallback, RLS-Message bleibt sichtbar
+  - fetch wirft → local-fallback (offline-Pfad)
+  - skipServer-Flag (Tests / explizites Opt-Out)
+  - localBackup-Flag bei server-OK + local-fail
+  - Body-Capture: ServerSubmitInput-Shape kommt unverändert beim
+    Server an
+- 🔄 `src/components/public-site/public-lead-form.tsx` —
+  `buildLead` aufgespalten in `buildSubmissions` (zwei
+  Repräsentationen: localBackup mit client-side ID +
+  serverInput-Shape für die API). `handleSubmit` wird async,
+  ruft `submitLead`. Neuer State `submitNotice` zeigt im
+  Erfolgs-Block den `local-fallback`-Hinweis. `handleReset`
+  räumt auch die Notice ab.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **27/28 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). 8 API-Routen sichtbar im SSR-Build (`/api/leads` neu).
+Static-Build hat `/api/leads` korrekt nicht — `pageExtensions`-
+Filter greift. Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Lead-Form-Wiring), 2 neue
+Folge-Items: Dashboard-Lead-Read auf Supabase (in
+Multi-Tenant-Session), Retry-Queue für `local-fallback`.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Form-Submit +
+Offline-Fallback.
+
+**Manueller Test**:
+- Static-Pages-Vorschau: Form submitten → success-Block ohne
+  Notice. Gleiche UX wie vorher.
+- Vercel + `LP_DATA_SOURCE=supabase`: Form submitten → Lead
+  landet in der Supabase-Tabelle (sichtbar im SQL-Editor),
+  parallel im localStorage (Demo-Dashboard zeigt ihn).
+- Vercel mit Supabase down: success-Block + dezenter Hinweis
+  „Wir haben Ihre Anfrage gespeichert, Versand läuft …" —
+  localStorage hat den Lead.
+
+**Nächste Session**: ich nehme **Code-Session 45 = Onboarding-
+Flow**. Begründung: jetzt, wo Auth-Stack (42/43) und Lead-Pfad
+(44) stehen, ist der nächste fehlende Baustein zum nutzbaren
+Produkt der „post-Login-Pfad", der einem neu eingeloggten User
+seinen ersten Betrieb anlegt (initialer `business_owners`-Insert
+via service-role + erste `businesses`-Zeile). Ohne diesen Schritt
+sieht ein eingeloggter User aktuell nichts Eigenes. Vor
+Dependency-Sweep, weil der Sweep eine reine Wartungs-Session ist
+und kein User-Wert generiert — Onboarding schon.
+

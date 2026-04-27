@@ -90,6 +90,12 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Form-Submit + Offline-Fallback (Code-Session 44)
+- [Next.js Discussion #82498 – Building an Offline-First Next.js 15 App](https://github.com/vercel/next.js/discussions/82498) — Pattern-Diskussion, Service-Worker vs. localStorage-Backup (44).
+- [Next.js Components – Form](https://nextjs.org/docs/app/api-reference/components/form) — Progressive-Enhancement-Form (44).
+- [Next.js Discussion #73329 – Offline Fallback Handler](https://github.com/vercel/next.js/discussions/73329) — Custom-Service-Worker-Strategien (44).
+- [Next.js Discussion #60292 – Server Actions + Form Reset](https://github.com/vercel/next.js/discussions/60292) — Reset-Pattern bei Server-Action-Submits (44).
+
 ### Magic-Link UX + a11y (Code-Session 43)
 - [Scalekit – Magic Link login in Next.js 15](https://www.scalekit.com/blog/passwordless-authentication-next-js) — Status-Feedback-Patterns (43).
 - [Next.js – Architecture: Accessibility](https://nextjs.org/docs/architecture/accessibility) — `aria-live`, `aria-atomic` Empfehlungen (43).

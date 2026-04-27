@@ -329,7 +329,29 @@ nutzt einen `service_role`-Client, der RLS umgeht (Code-Session 42+).
   Tenant-Wiring-Session, sobald „Mein Account" inhaltlich mehr
   zeigt als nur die User-ID.
 
+### Public-Lead-Form-Pfad (Code-Session 44)
+
+`POST /api/leads` ist scharf. Form schreibt parallel:
+
+1. **localStorage** (sofort, sync) — sorgt dafür, dass das Demo-
+   Dashboard weiterhin Daten zeigt, bis dessen Read-Pfad ebenfalls
+   auf Supabase migriert ist.
+2. **Server** via `getLeadRepository().create(input)` — landet in
+   Supabase, wenn `LP_DATA_SOURCE=supabase` UND ENV gesetzt sind.
+
+Der Submit ist „server-tolerant": jeder Server-Fehler (404, 4xx,
+5xx, Timeout) endet trotzdem in einem User-sichtbaren „Anfrage
+gesendet". Bei `local-fallback` (Server warf, localStorage hat
+funktioniert) erscheint zusätzlich ein dezenter Hinweis-Banner:
+„Wir haben Ihre Anfrage gespeichert, der Versand an den Betrieb
+läuft, sobald wir wieder online sind.".
+
+Static-Pages-Build: `/api/leads` wird durch
+`pageExtensions: ["tsx","jsx"]` ausgeschlossen, fetch liefert 404,
+Form fällt **silent** auf den localStorage-Pfad zurück (kein
+Hinweis nötig — das ist der erwartete Demo-Zustand).
+
 ### Roadmap
 
-- **Session 43** — Login-UI + Dashboard-Auth-Wiring (Login-Page mit Magic-Link-Form, geschützte Dashboard-Routen via `getCurrentUser()`).
+- **Session 45+** — Onboarding-Flow (post-Login: businesses-Tabelle leer? → kleine `<OnboardingForm>` legt ersten Betrieb + business_owners-Eintrag via service-role an).
 - **0008+** — Storage-Buckets für Logos und Hero-Bilder, Backup-Policy.

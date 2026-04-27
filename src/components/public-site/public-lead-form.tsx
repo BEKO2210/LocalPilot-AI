@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CheckCircle2, AlertTriangle, Send } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Send, Info } from "lucide-react";
 import { LeadSchema } from "@/core/validation/lead.schema";
 import { LEAD_RETENTION_MONTHS, buildConsent } from "@/core/legal";
 import { appendLead, generateLeadId } from "@/lib/mock-store/leads-overrides";
+import {
+  submitLead,
+  userHintForResult,
+  type ServerSubmitInput,
+  type SubmitResult,
+} from "@/lib/lead-submit";
 import type { Business } from "@/types/business";
 import type { LeadFormField } from "@/types/lead";
 
@@ -141,6 +147,7 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitNotice, setSubmitNotice] = useState<string | null>(null);
 
   function setValue(key: string, next: string) {
     setValues((prev) => ({ ...prev, [key]: next }));
@@ -190,7 +197,17 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
     return next;
   }
 
-  function buildLead() {
+  /**
+   * Baut zwei Repräsentationen desselben Submits:
+   *   - `localBackup`: vollständiger Lead mit client-side ID + ISO-
+   *     Stempeln, der direkt in `appendLead` (localStorage) wandert.
+   *     Sorgt dafür, dass das Demo-Dashboard weiterhin Daten zeigt,
+   *     bis der Dashboard-Pfad ebenfalls auf Supabase umgezogen ist.
+   *   - `serverInput`: schmaleres Shape, das die `/api/leads`-Route
+   *     erwartet (`NewLeadInput`). Server vergibt eigene ID +
+   *     Zeitstempel, damit sie der DB-Wahrheit entsprechen.
+   */
+  function buildSubmissions() {
     const standard: Record<string, string | undefined> = {};
     const extra: Record<string, string | number | boolean> = {};
     for (const [k, v] of Object.entries(values)) {
@@ -201,7 +218,9 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
     }
     const nowDate = new Date();
     const now = nowDate.toISOString();
-    return {
+    const consent = buildConsent(nowDate);
+
+    const localBackup = {
       id: generateLeadId(business.slug),
       businessId: business.id,
       source: "website_form" as const,
@@ -215,15 +234,35 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
       extraFields: extra,
       status: "new" as const,
       notes: "",
-      consent: buildConsent(nowDate),
+      consent,
       createdAt: now,
       updatedAt: now,
     };
+
+    const serverInput: ServerSubmitInput = {
+      businessId: business.id,
+      source: "website_form",
+      name: standard.name ?? "",
+      ...(standard.phone ? { phone: standard.phone } : {}),
+      ...(standard.email ? { email: standard.email } : {}),
+      ...(standard.message ? { message: standard.message } : {}),
+      ...(standard.preferredDate
+        ? { preferredDate: standard.preferredDate }
+        : {}),
+      ...(standard.preferredTime
+        ? { preferredTime: standard.preferredTime }
+        : {}),
+      extraFields: extra,
+      consent,
+    };
+
+    return { localBackup, serverInput };
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitError(null);
+    setSubmitNotice(null);
     setConsentError(null);
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -239,21 +278,34 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
 
     setSubmitting(true);
     try {
-      const lead = buildLead();
-      const result = LeadSchema.safeParse(lead);
-      if (!result.success) {
+      const { localBackup, serverInput } = buildSubmissions();
+      const validation = LeadSchema.safeParse(localBackup);
+      if (!validation.success) {
         setSubmitError(
           "Ihre Anfrage konnte nicht verarbeitet werden. Bitte prüfen Sie die Felder.",
         );
         return;
       }
-      const ok = appendLead(business.slug, result.data);
-      if (!ok) {
+
+      const result: SubmitResult = await submitLead(
+        serverInput,
+        validation.data,
+        { appendLocal: (lead) => appendLead(business.slug, lead) },
+      );
+
+      if (result.kind === "fail") {
         setSubmitError(
-          "Speichern derzeit nicht möglich. Bitte direkt anrufen oder per E-Mail schreiben.",
+          userHintForResult(result) ??
+            "Speichern derzeit nicht möglich. Bitte direkt anrufen oder per E-Mail schreiben.",
         );
         return;
       }
+
+      // Erfolg (server / local-only / local-fallback). User-Hinweis
+      // nur bei `local-fallback` sichtbar — bei „server" und
+      // „local-only" (Static-Build) gibt es nichts zu kommunizieren.
+      const hint = userHintForResult(result);
+      if (hint) setSubmitNotice(hint);
       setSuccess(true);
     } finally {
       setSubmitting(false);
@@ -269,6 +321,7 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
     setConsentError(null);
     setSuccess(false);
     setSubmitError(null);
+    setSubmitNotice(null);
   }
 
   if (success) {
@@ -299,6 +352,20 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
           Wir melden uns innerhalb eines Werktags. Falls dringend, ist die
           Telefonnummer links der schnellste Weg.
         </p>
+        {submitNotice ? (
+          <p
+            className="mt-3 flex items-start gap-2 rounded-theme-button border p-2.5 text-xs"
+            style={{
+              borderColor: "rgb(var(--theme-border))",
+              backgroundColor: "rgb(var(--theme-muted))",
+              color: "rgb(var(--theme-muted-fg))",
+            }}
+            role="status"
+          >
+            <Info className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden />
+            {submitNotice}
+          </p>
+        ) : null}
         <button
           type="button"
           onClick={handleReset}
