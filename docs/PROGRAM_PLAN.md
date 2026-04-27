@@ -182,6 +182,20 @@ aktiven Session.
   Wenn der Auftraggeber zwischen Mock und Live wechselt, soll der
   vom Mock vorbereitete Text als `currentDescription` an den
   Live-Provider durchgereicht werden — als „polish me"-Pipeline.
+- **Provider-Parity-Suite** (aus Code-Session 24): jetzt, wo zwei
+  Live-Provider existieren (OpenAI + Anthropic), lohnt eine
+  optionale Parity-Suite, die den **gleichen Input** an beide
+  Provider schickt und prüft, dass beide Outputs das gleiche
+  Schema einhalten und nicht auseinanderdriften (Tonalität,
+  Längen, Stadt-Bezug). Skip-by-default; nur mit beiden Keys
+  + Opt-in-Flag aktiv.
+- **Tool-Use-Generator aus Zod** (aus Code-Session 24): Anthropic
+  braucht JSON Schema (kein Zod-Helper). Aktuell schreiben wir das
+  von Hand (siehe `anthropic/website-copy.ts`). Ab 7 Methoden ×
+  jede Variant-Kombination wird das mühsam. Ein
+  `zodToToolInputSchema(WebsiteCopyOutputSchema)`-Helper
+  (oder via `zod-to-json-schema`-Lib) würde die Wartung
+  drastisch vereinfachen.
 
 ### Track B · Security & Compliance
 - DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen

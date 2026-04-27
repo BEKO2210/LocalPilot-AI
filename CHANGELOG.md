@@ -7,17 +7,118 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht, Live-Provider-Phase)
-- Code-Session 23: Anthropic-Provider scharf, erste Live-Methode
-  (`generateWebsiteCopy`).
-- Code-Session 24: Anthropic-Provider, zweite Live-Methode.
-- Code-Sessions 25–26: Gemini-Provider + Cost-Tracking + Rate-Limit-UI.
-- Code-Session 27+: AI-API-Route hinter Auth, Dashboard-UI je
-  Capability, DOMPurify-Sanitizer auf übernommene KI-Outputs.
+- Code-Session 25: Anthropic-Provider, zweite Live-Methode
+  (`improveServiceDescription`).
+- Code-Sessions 26–27: Gemini-Provider scharf.
+- Code-Sessions 28+: Cost-Tracking + Rate-Limit-UI, AI-API-Route
+  hinter Auth, Dashboard-UI je Capability, DOMPurify-Sanitizer.
 
 ### Self-Extending Backlog
-Code-Session 22 hat 2 neue Items in `docs/PROGRAM_PLAN.md` ergänzt
-(Track A: Prompt-Bibliothek extrahieren — Provider-neutral;
-Saatzeilen-Übergabe Mock → Live als „polish me"-Pipeline).
+Code-Session 24 hat 2 neue Items in `docs/PROGRAM_PLAN.md` ergänzt
+(Track C: Provider-Parity-Suite — gleicher Input gegen beide
+Live-Provider; Track D: `zodToToolInputSchema`-Helper für
+Anthropic-Tool-Use).
+
+## [0.15.3] – Code-Session 24 – 2026-04-27
+
+### Added
+- **Anthropic-Provider erste Live-Methode**: `generateWebsiteCopy`
+  ist jetzt scharf. Ohne `ANTHROPIC_API_KEY` fällt der Resolver
+  weiterhin defensiv auf den Mock-Provider zurück.
+  - `src/core/ai/providers/anthropic/_client.ts` (neu) — gemeinsamer
+    Client-Builder + Error-Mapper für alle zukünftigen Anthropic-
+    Methoden:
+    - `getAnthropicApiKey(opts?)` mit defensivem Vor-Check, wirft
+      `AIProviderError("no_api_key")` mit deutscher Nachricht.
+    - `getAnthropicModel(opts?)` liest `ANTHROPIC_MODEL` aus der
+      ENV, Default `claude-sonnet-4-5`.
+    - `buildAnthropicClient(opts?)` setzt `maxRetries: 2`.
+    - `mapAnthropicError(err)` mappt SDK-Klassen direkt:
+      `AuthenticationError`/`PermissionDeniedError` → `no_api_key`,
+      `RateLimitError` → `rate_limited`,
+      `InternalServerError` → `provider_unavailable`,
+      `BadRequestError`/`UnprocessableEntityError` → `invalid_input`.
+  - `src/core/ai/providers/anthropic/website-copy.ts` (neu) —
+    `anthropicGenerateWebsiteCopy(input)`:
+    - **Tool Use als Strukturierungs-Vehikel** statt Free-Text-JSON.
+      Pseudo-Tool `emit_website_copy` mit `input_schema`, dessen
+      Properties exakt unserem `WebsiteCopyOutputSchema` entsprechen.
+      `tool_choice: { type: "tool", name: ... }` zwingt das Modell,
+      das Tool aufzurufen.
+    - **Prompt-Caching** via `cache_control: { type: "ephemeral" }`
+      auf System-Prompt **und** Tool-Definition (5-min-TTL,
+      ≥ 1024 Tokens pro Block, ~90 % Token-Rabatt bei Hit).
+    - **Identische Stilrichtlinien wie OpenAI-Provider** im
+      System-Prompt, damit ein späterer Provider-Wechsel keinen
+      Tonalitäts-Bruch erzeugt.
+    - **Doppelte Validierung**: `tool_use.input` (typisch `unknown`
+      aus SDK-Sicht) wird durch `WebsiteCopyOutputSchema.parse`
+      gejagt.
+- `src/core/ai/providers/anthropic-provider.ts`: komponiert nun den
+  Stub mit der scharfen Methode. 6 weitere Methoden bleiben Stub.
+- Smoketest `src/tests/ai-anthropic-provider.test.ts` (neu) mit
+  zwei Modi (analog zum OpenAI-Smoketest):
+  - **Strukturell** (12 Asserts, immer aktiv): Provider-Key, alle 7
+    Methoden sind Funktionen, ohne Key → `no_api_key` vor Netzwerk-
+    Call, ungültiges Input → `invalid_input`, Resolver mit Key →
+    anthropic, übrige 6 Methoden werfen `provider_unavailable`.
+  - **Live** (opt-in via `LP_TEST_ANTHROPIC_LIVE=1` +
+    `ANTHROPIC_API_KEY`): echter Call, Output gegen
+    `WebsiteCopyOutputSchema` validiert.
+
+### Dependencies
+- **`@anthropic-ai/sdk@^0.62.0`** als zweite externe AI-SDK-
+  Dependency hinzugefügt. Version 0.62 statt aktuelle 0.91, weil
+  v0.63+ als Peer-Dep `zod ^3.25` verlangt — wir bleiben bei
+  `zod 3.24.1` (gleiche Logik wie beim OpenAI-Bump auf v5 in
+  Code-Session 21). Eine spätere DX-Session bündelt den Zod-Bump
+  mit beiden SDK-Updates.
+- Bundle bleibt **unverändert bei 102 KB** — Anthropic-SDK ist
+  pure Server-Side, Tree-Shaking funktioniert sauber.
+
+### Notes
+- **Recherche** (Session-Protokoll): Quellen zu Anthropic-Tool-Use,
+  ephemerem Prompt-Caching (5 min TTL, ≥ 1024 Tokens, 90 % Rabatt)
+  und SDK-Error-Klassen im RUN_LOG-Eintrag „Code-Session 24".
+- **Keine UI-Änderung**, keine API-Route. Diff ~22 KB Code, ~5 KB
+  Test, ~3 KB Doku. 3 neue Dateien, 2 geänderte (+ `package.json`/
+  `package-lock.json`).
+- Alle Verifikationen grün: `typecheck`, `lint`, `build:static`,
+  alle vier Smoketests (Mock ~380, Resolver 22, OpenAI 14,
+  Anthropic 12).
+
+## [0.15.2] – Code-Session 23 – 2026-04-27 (Maintenance)
+
+### Fixed
+- **Business-Editor-Crash bei unvollständigem Hex** behoben.
+  Reproduktion: Im Dashboard `/dashboard/<slug>/business` tippt der
+  Nutzer in eines der Farb-Override-Felder. Während des Tippens
+  enthält das Feld kurzzeitig einen unvollständigen Wert wie `#`,
+  `#1` oder `#1f`. Die Live-Vorschau hört über `useWatch` auf jeden
+  Tastendruck, reicht den Zwischen-Wert direkt an `themeToCssVars`
+  → `hexToRgbTriplet` warf → React rendert die Fehler-Boundary
+  („Application error: a client-side exception has occurred").
+  Besonders auf Mobile durch Auto-Vervollständigung sofort
+  triggerbar.
+
+  **Fix in zwei Lagen** (defense in depth):
+  1. `business-edit-preview.tsx`: `applyColorOverrides` validiert
+     den Wert per Hex-Regex, bevor er das Theme überschreibt. Bei
+     ungültigem Wert bleibt die Basis-Farbe stehen — die Vorschau
+     sieht „eine Tippstelle lang" unverändert aus statt zu sterben.
+  2. `theme-resolver.ts`: `hexToRgbTriplet` wirft nicht mehr.
+     Stattdessen Fallback-Triplet `"0 0 0"` + `console.warn`. Falls
+     irgendwo anders ein Theme-Override durchschlüpft, crasht React
+     trotzdem nicht mehr.
+- `src/tests/themes.test.ts` entsprechend angepasst: invalides Hex
+  liefert Fallback statt zu werfen. 3 neue Asserts (`not-a-hex`,
+  `#`, `#1f`).
+
+### Notes
+- Reine Maintenance-Session — kein Feature, keine neue Recherche
+  über die existierenden Recherche-Quellen hinaus, keine
+  Roadmap-Erweiterung.
+- Diff ~3 KB. Alle Verifikationen grün.
 
 ## [0.15.1] – Code-Session 22 – 2026-04-27
 

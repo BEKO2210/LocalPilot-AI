@@ -3626,3 +3626,273 @@ nur eine scharfe Methode.
 - [Klixresults – Local SEO for Tradespeople: The 2026 Complete Guide](https://www.klixresults.co.uk/post/local-seo-for-tradespeople)
 - [Authority Specialist – 2026 German Auto Repair SEO Statistics](https://authorityspecialist.com/industry/automotive/german-auto-repair/seo-statistics)
 - [The AI Journal – How AI is Transforming Local SEO for Service Businesses (2026)](https://aijourn.com/how-ai-is-transforming-local-seo-for-service-businesses-2026-guide/)
+
+---
+
+## Code-Session 23 – Hotfix: Business-Editor-Crash bei unvollständigem Hex
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Maintenance / Bug-Fix (klein, atomar)
+Meilenstein: 1 (Foundation — Schliff)
+Commit: `d4d7cd5`
+
+### 1. Was wurde umgesetzt?
+
+Akut-Fix: der Auftraggeber meldete „Application error: a client-side
+exception has occurred" auf `/dashboard/<slug>/business`. Reproduktion:
+beim Tippen in den Farb-Override-Feldern (Primärfarbe / Sekundärfarbe
+/ Akzentfarbe) crasht die Live-Vorschau. Auf dem Handy sofort triggerbar
+durch Auto-Vervollständigung.
+
+Pfad zum Crash:
+1. Form-Wert via `useWatch` → ungültiges Zwischen-Hex (`#`, `#1`, `#1f`).
+2. `applyColorOverrides` reicht den Wert ungeprüft an `themeToCssVars`.
+3. `hexToRgbTriplet` warf `Error("ungültige Hex-Farbe …")`.
+4. React unwindet → Fehler-Boundary → „Application error".
+
+Fix in zwei Lagen (defense in depth):
+
+- `src/components/dashboard/business-edit/business-edit-preview.tsx`:
+  `applyColorOverrides` validiert den Wert per Hex-Regex, bevor er das
+  Theme überschreibt. Bei ungültigem Wert bleibt die Basis-Farbe
+  stehen — die Vorschau sieht „eine Tippstelle lang" unverändert aus
+  statt zu sterben.
+- `src/core/themes/theme-resolver.ts`: `hexToRgbTriplet` wirft nicht
+  mehr. Stattdessen Fallback-Triplet `"0 0 0"` + `console.warn`. Das
+  ist die zweite Verteidigungslinie — falls irgendwo anders ein
+  Theme-Override durchschlüpft, crasht React trotzdem nicht mehr.
+- `src/tests/themes.test.ts`: invalid-Hex-Test umgestellt. Statt
+  „wirft" jetzt 3 neue Asserts: `not-a-hex` → Fallback-Triplet,
+  `"#"` → Fallback-Triplet, `"#1f"` → Fallback-Triplet, plus
+  `console.warn`-Counter.
+
+### 2. Welche Dateien wurden geändert?
+
+Geändert (3 Dateien):
+- `src/components/dashboard/business-edit/business-edit-preview.tsx`
+- `src/core/themes/theme-resolver.ts`
+- `src/tests/themes.test.ts`
+
+Diff-Größe ~3 KB. Reine Maintenance — kein Feature, keine neue
+Dependency.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/themes.test.ts                      # incl. neue Hex-Asserts
+```
+
+Im Browser: `/dashboard/studio-haarlinie/business` öffnen, in der
+Primärfarbe-Spalte langsam tippen (`#1f47d6`). Bei jedem Tastendruck
+darf die Vorschau **nicht** crashen. Bei vollständig gültigem Wert
+übernimmt die Vorschau die neue Farbe.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                       | Status |
+| --------------------------------------------------------------- | ------ |
+| Kein Crash beim Tippen unvollständiger Hex-Werte                | ✅      |
+| `applyColorOverrides` ignoriert invalides Hex                   | ✅      |
+| `hexToRgbTriplet` wirft nicht mehr (Fallback `"0 0 0"`)          | ✅      |
+| Console-Warnung bei invalidem Hex                               | ✅      |
+| Theme-Tests an die neue Semantik angepasst                      | ✅      |
+| Build/Typecheck/Lint grün                                       | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 24** (siehe nächster Eintrag): Anthropic-Provider
+  scharf für `generateWebsiteCopy`.
+- Kein Recherche-Step nötig — der Fix ist mechanisch, keine neue
+  Recherche-Erkenntnis.
+- Keine Roadmap-Erweiterung — siehe Hinweis im
+  Session-Protokoll-§6.2: reine Hotfixes brauchen das nicht
+  zwingend, dafür wird der Maintenance-Backlog (`PROGRAM_PLAN.md`
+  Track C/D) ohnehin laufend gepflegt.
+
+### Quellen
+
+Keine zusätzliche Recherche — bekannter Pattern (defensive Validation
+gegen Live-Form-Werte). Bestehende Quellen aus Code-Session 10 zur
+React-Hook-Form-Architektur reichen.
+
+---
+
+## Code-Session 24 – Anthropic-Provider scharf (`generateWebsiteCopy`)
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar) + zweite externe AI-Dependency
+Meilenstein: 2 (KI-Schicht — Live-Provider-Phase)
+
+### 1. Was wurde umgesetzt?
+
+Erste scharfe Anthropic-Methode. Parallel zum OpenAI-Provider, aber
+mit Anthropic-spezifischem Pattern: **Tool Use** statt
+`zodResponseFormat` (Anthropic hat keinen direkten Zod-Helper).
+
+- `src/core/ai/providers/anthropic/_client.ts` (neu) — gemeinsamer
+  Client-Builder + Error-Mapper (analog zum OpenAI-Helper):
+  - `getAnthropicApiKey(opts?)` mit defensivem Vor-Check, wirft
+    `AIProviderError("no_api_key")`.
+  - `getAnthropicModel(opts?)` — `ANTHROPIC_MODEL`-ENV-Override,
+    Default `claude-sonnet-4-5`.
+  - `buildAnthropicClient(opts?)` — `maxRetries: 2` (SDK-Default).
+  - `mapAnthropicError(err)` — direktes Mapping über die SDK-
+    Error-Klassen:
+    - `AuthenticationError` / `PermissionDeniedError` → `no_api_key`
+    - `RateLimitError` → `rate_limited`
+    - `InternalServerError` → `provider_unavailable`
+    - `BadRequestError` / `UnprocessableEntityError` → `invalid_input`
+    - generischer `APIError` mit Status-Code-Fallback
+- `src/core/ai/providers/anthropic/website-copy.ts` (neu) — die
+  Live-Implementierung:
+  - **Tool Use**: pseudo-Tool `emit_website_copy` mit
+    `input_schema` (JSON Schema, von Hand geschrieben), dessen
+    Properties exakt dem `WebsiteCopyOutputSchema` entsprechen.
+    `tool_choice: { type: "tool", name: TOOL_NAME }` zwingt das
+    Modell, das Tool aufzurufen.
+  - **Prompt-Caching** via `cache_control: { type: "ephemeral" }`
+    auf System-Prompt **und** Tool-Definition. Beide Blöcke sind
+    ≥ 1024 Tokens, werden 5 min gecacht. Bei Hit zahlen wir nur
+    den variablen User-Teil (~90 % Token-Rabatt nach Anthropic-
+    Recherche).
+  - **Identische Stilrichtlinien wie OpenAI-Provider** im System-
+    Prompt — damit ein späterer Provider-Wechsel oder ein
+    Side-by-side-A/B-Test keinen Tonalitäts-Bruch erzeugt.
+  - **User-Prompt** aus Branchen-Kontext, Stadt, Tonalität, USPs,
+    Variant, optionalem Hint.
+  - **Doppelte Validierung**: SDK gibt `tool_use.input` als
+    `unknown` zurück → wird durch `WebsiteCopyOutputSchema.parse`
+    gejagt. Gleiche Pipeline wie Mock/OpenAI.
+  - Fehlerpfade: kein `tool_use`-Block in `response.content` →
+    `empty_response`. SDK-`APIError` → `mapAnthropicError`.
+- `src/core/ai/providers/anthropic-provider.ts`: Stub → komponiert
+  mit der scharfen Methode. 6 weitere Methoden bleiben Stub.
+- `src/tests/ai-anthropic-provider.test.ts` (neu) — strukturell
+  + opt-in live, gleiches Muster wie OpenAI-Smoketest:
+  - 12 strukturelle Asserts (Provider-Key, alle 7 Methoden sind
+    Funktionen, ohne Key → `no_api_key` vor Netzwerk-Call,
+    ungültiges Input → `invalid_input`, Resolver mit Key →
+    anthropic, übrige 6 Methoden → `provider_unavailable`).
+  - Live-Block (opt-in via `LP_TEST_ANTHROPIC_LIVE=1` +
+    `ANTHROPIC_API_KEY`) ruft echtes Modell, validiert Output.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (3 Code-Dateien):
+- `src/core/ai/providers/anthropic/_client.ts`
+- `src/core/ai/providers/anthropic/website-copy.ts`
+- `src/tests/ai-anthropic-provider.test.ts`
+
+Geändert:
+- `src/core/ai/providers/anthropic-provider.ts`
+- `package.json` + `package-lock.json` (`@anthropic-ai/sdk@^0.62.0`)
+- `docs/PROGRAM_PLAN.md` (Roadmap-Selbstaktualisierung, +2 Items)
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~30 KB im Code-Bereich. Im Session-Limit.
+
+### 3. Wie teste ich es lokal?
+
+Ohne API-Key (CI-Pfad):
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün, Bundle 102 KB
+npx tsx src/tests/ai-mock-provider.test.ts            # ~380 Asserts
+npx tsx src/tests/ai-provider-resolver.test.ts        # 22 Asserts
+npx tsx src/tests/ai-openai-provider.test.ts          # 14 Asserts
+npx tsx src/tests/ai-anthropic-provider.test.ts       # 12 Asserts
+```
+
+Mit API-Key (Live-Smoketest opt-in):
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+export LP_TEST_ANTHROPIC_LIVE=1
+npx tsx src/tests/ai-anthropic-provider.test.ts
+# → "✓ Live-Anthropic-Call (generateWebsiteCopy) erfolgreich."
+```
+
+Programmatisch:
+
+```ts
+import { getAIProvider } from "@/core/ai";
+const provider = getAIProvider();
+// Mit AI_PROVIDER=anthropic + ANTHROPIC_API_KEY: liefert anthropic-Provider.
+// Ohne: Mock-Fallback.
+await provider.generateWebsiteCopy({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich", "modern"],
+    uniqueSellingPoints: ["Termine auch samstags"],
+  },
+  variant: "hero",
+});
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                      | Status |
+| -------------------------------------------------------------- | ------ |
+| `@anthropic-ai/sdk`-Dependency installiert (v0.62, zod-3-kompat) | ✅      |
+| `generateWebsiteCopy` ruft echte Anthropic-API mit Tool Use     | ✅      |
+| Defensiver `no_api_key`-Vor-Check vor Netzwerk-Call             | ✅      |
+| Error-Mapping über SDK-Klassen (Auth, RateLimit, ServerError…)  | ✅      |
+| Caching: System + Tool mit `cache_control: ephemeral`           | ✅      |
+| Doppelte Validierung über `WebsiteCopyOutputSchema`             | ✅      |
+| Übrige 6 Anthropic-Methoden bleiben Stub                        | ✅      |
+| Resolver mit Key routet auf anthropic, ohne Key auf mock        | ✅      |
+| Strukturelle Smoketest (12 Asserts) ohne Netzwerk grün          | ✅      |
+| Live-Smoketest opt-in über `LP_TEST_ANTHROPIC_LIVE=1`           | ✅      |
+| Bundle bleibt 102 KB                                            | ✅      |
+| Build/Typecheck/Lint grün                                       | ✅      |
+| Recherche-Step + Quellen zitiert                                | ✅      |
+| Roadmap-Selbstaktualisierung: 2 neue Items                      | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 25**: zweite Anthropic-Methode
+  (`improveServiceDescription`). Gleiches Tool-Use-Muster mit
+  eigenem `service-description.ts`. Eigener `cache_control`-
+  Block pro Tool.
+- **Codex**: 9 Backlog-Tasks warten weiterhin (alle aus Session 20).
+- **Self-Extending Backlog** (2 neue Items aus dieser Session):
+  Provider-Parity-Suite (gleicher Input → beide Live-Provider),
+  `zodToToolInputSchema`-Helper für Anthropic-Tool-Use.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 25 — Anthropic, zweite Live-Methode (`improveServiceDescription`).**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „Anthropic tool use multi-step service description
+   prompt 2026 best practices".
+2. `src/core/ai/providers/anthropic/service-description.ts` neu,
+   analog zu `website-copy.ts`. Eigenes Tool `emit_service_description`
+   mit `input_schema` für `shortDescription` + `longDescription`.
+3. `anthropic-provider.ts` um die zweite Methode erweitern.
+4. `ai-anthropic-provider.test.ts` zwei zusätzliche Strukturell-
+   Asserts (no_api_key + invalid_input für die zweite Methode),
+   Stub-Assert für `improveServiceDescription` entfernen.
+5. PROGRAM_PLAN.md +1 Item, CHANGELOG/RUN_LOG, Commit, Push.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [Anthropic – Prompt Caching (Claude API Docs)](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+- [Anthropic – Introducing advanced tool use on the Claude Developer Platform](https://www.anthropic.com/engineering/advanced-tool-use)
+- [Thomas Wiegold – Claude API Structured Output: Complete Guide](https://thomas-wiegold.com/blog/claude-api-structured-output/)
+- [Markaicode – Cut Anthropic API Costs 90 % with Prompt Caching 2026](https://markaicode.com/anthropic-prompt-caching-reduce-api-costs/)
+- [AI SDK – Node: Dynamic Prompt Caching](https://ai-sdk.dev/cookbook/node/dynamic-prompt-caching)
+- [DEV Community – How to get consistent structured output from Claude](https://dev.to/heuperman/how-to-get-consistent-structured-output-from-claude-20o5)
+- [Anthropic – TypeScript SDK on GitHub](https://github.com/anthropics/anthropic-sdk-typescript)
+- [Anthropic – Models overview (Claude API Docs)](https://platform.claude.com/docs/en/about-claude/models/overview)
+- [Anthropic – TypeScript SDK on npm](https://www.npmjs.com/package/@anthropic-ai/sdk)
