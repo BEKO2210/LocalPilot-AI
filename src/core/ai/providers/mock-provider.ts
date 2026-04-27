@@ -6,25 +6,26 @@ import { mockGenerateFaqs } from "./mock/faqs";
 import { mockGenerateCustomerReply } from "./mock/customer-reply";
 import { mockGenerateReviewRequest } from "./mock/review-request";
 import { mockGenerateSocialPost } from "./mock/social-post";
+import { mockGenerateOfferCampaign } from "./mock/offer-campaign";
 
 /**
- * Mock-Provider — wird Schritt für Schritt mit hochwertigen
- * Beispieltexten befüllt. Methoden, die noch nicht implementiert
- * sind, fallen auf den Stub zurück und werfen
- * AIProviderError("provider_unavailable").
+ * Mock-Provider — alle 7 Methoden des `AIProvider`-Interfaces sind
+ * deterministisch belegt. `buildStubProvider` läuft nur noch als
+ * defensiver Default mit, falls das Interface irgendwann erweitert
+ * werden sollte.
  *
- * Status (Code-Session 19):
+ * Status (Code-Session 20 — Mock-Phase abgeschlossen):
  *   ✓ generateWebsiteCopy
  *   ✓ improveServiceDescription
  *   ✓ generateFaqs
  *   ✓ generateCustomerReply
  *   ✓ generateReviewRequest
  *   ✓ generateSocialPost
- *   · generateOfferCampaign       – folgt
+ *   ✓ generateOfferCampaign
  */
 const stub = buildStubProvider(
   "mock",
-  "Diese Mock-Methode ist noch nicht implementiert. Sie wird in einer der folgenden Code-Sessions ergänzt.",
+  "Diese Mock-Methode ist noch nicht implementiert. Sollte ein neues AIProvider-Interface-Feld auftauchen, wirft sie defensiv provider_unavailable.",
 );
 
 export const mockProvider: AIProvider = {
@@ -35,4 +36,5 @@ export const mockProvider: AIProvider = {
   generateCustomerReply: mockGenerateCustomerReply,
   generateReviewRequest: mockGenerateReviewRequest,
   generateSocialPost: mockGenerateSocialPost,
+  generateOfferCampaign: mockGenerateOfferCampaign,
 };

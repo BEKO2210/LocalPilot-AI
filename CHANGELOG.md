@@ -6,19 +6,118 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant (Meilenstein 2 – KI-Schicht)
-- Code-Session 20: Mock für `generateOfferCampaign` (schließt Mock-Phase ab).
+### Geplant (Meilenstein 2 – KI-Schicht, jetzt Live-Provider-Phase)
 - Code-Sessions 21–22: OpenAI-Provider scharf (mit Caching).
 - Code-Sessions 23–24: Anthropic-Provider scharf.
-- Code-Session 25: Cost-Tracking + Rate-Limit-UI.
+- Code-Sessions 25–26: Gemini-Provider + Cost-Tracking + Rate-Limit-UI.
+- Code-Session 27+: AI-API-Route hinter Auth, Dashboard-UI je
+  Capability, DOMPurify-Sanitizer auf übernommene KI-Outputs.
 
 ### Self-Extending Backlog
-Ab Code-Session 18 erweitert jede Session `docs/PROGRAM_PLAN.md` um
-mindestens einen neuen Punkt. Code-Session 19 hat 4 Punkte ergänzt:
-Track A (Social-Media-Forwarding über Buffer/Meta-Graph, Visual-
-Companion für `imageIdea`), Track D (5× duplizierter `clamp`,
-verwandter `tagify`/`normalizeQuestion`-Helper), Track E (dedizierte
-`socialPostPrompts` für alle 8 Goals pro Branche).
+Code-Session 20 hat 4 neue Items in `docs/PROGRAM_PLAN.md` ergänzt
+(Track A: Offer-Campaign-Bundle aus 1 Trigger → Social+Review,
+AI-API-Route mit Edge-Runtime; Track F: Glossar, Codex-Onboarding-
+Polish; **Track G neu**: Mitwirkende-Koordination und
+Codex-pre-commit-Schutz).
+
+## [0.14.0] – Code-Session 20 – 2026-04-27
+
+### Added
+- **Mock-Provider `generateOfferCampaign` ist scharf** — letzte von
+  sieben Mock-Methoden. Damit ist die **Mock-Phase abgeschlossen**:
+  alle 7 Methoden des `AIProvider`-Interfaces sind deterministisch
+  belegt.
+  - `src/core/ai/providers/mock/offer-campaign.ts` (neu):
+    - `headline` ≤ 120 — `${offerTitle} — bei ${businessName}`.
+    - `subline` ≤ 280 — Branchen-Label + Stadt + Tonalität, ohne
+      Superlative.
+    - `bodyText` ≤ 2000 — bis zu 3 Absätze (Inhalt + USP-Trust-Block
+      + optionaler „Gültig bis …"-Hinweis, wenn `validUntil`
+      mitkommt).
+    - `cta` ≤ 120 — zeit-orientiert: `Jetzt sichern — gültig bis …`
+      mit `validUntil`, `Jetzt unverbindlich anfragen.` ohne.
+    - Saatzeile aus `details` (≥ 10 Zeichen) wird übernommen,
+      sonst generischer Lückentext mit Branchen-Label.
+    - 2026-Recherche zu Limited-Time-Offers berücksichtigt: echte
+      Knappheit (nur wenn `validUntil`), Kunden-Nutzen vor Druck,
+      keine „letzte Chance"-Floskeln.
+- `src/core/ai/providers/mock-provider.ts`: alle 7 Methoden
+  komponiert. Status-Header: **Mock-Phase abgeschlossen**.
+- Smoketest `src/tests/ai-mock-provider.test.ts` um Block 12a–12i
+  erweitert (~30 zusätzliche Assertions, ~380 gesamt):
+  Längen-Checks, Wirkung von `validUntil` auf Body+CTA,
+  neutraler CTA ohne `validUntil`, Headline mit offerTitle+
+  businessName, Subline mit city+industryLabel, `details` als
+  Saatzeile, USPs als Trust-Bullets, Determinismus, zu kurzer
+  `offerTitle` → `invalid_input`. **Block 13 prüft, dass alle 7
+  Mock-Methoden Funktionen sind** (keine verbleibenden Stubs).
+  Helper `expectUnavailable` entfernt — wird durch keinen Test mehr
+  benötigt.
+
+### Changed
+- **README.md komplett überarbeitet** — selbst-tragendes
+  Roadmap-Konzept (rolling, kein Endpunkt). Konkret:
+  - Hero mit 9 Badges (Status, Methodology, No-Endpoint, Next.js,
+    TypeScript, Tailwind, Zod, License, Built-for).
+  - Programm-Konzept-Sektion erklärt, **warum es kein „fertig"
+    gibt** — und warum die README sich praktisch nicht mehr ändern
+    muss: Konkrete Session-Nummern stehen nur noch in CHANGELOG/
+    RUN_LOG, nicht im README.
+  - Rollende Status-Tabelle mit allen 7 Meilensteinen.
+  - Neue „Mitwirkende & Verantwortlichkeiten"-Tabelle
+    (Claude · Codex · Auftraggeber).
+  - Veraltete „Status nach Session 3"-Liste entfernt.
+- `docs/PROGRAM_PLAN.md` Meilenstein-2-Block aktualisiert
+  (Mock-Phase abgeschlossen, Live-Provider-Phase startet) und um
+  4 neue Backlog-Items in Tracks A/F/**G (neu)** erweitert.
+
+### Added (Methodik · Codex-Junior-Workflow)
+- **`codex.md`** (neu) — verbindlicher Verhaltenskodex für Codex
+  als Junior-Mitarbeiter:
+  - Harte Boundaries (NEVER-Zone): `Claude.md`,
+    `docs/PROGRAM_PLAN.md`, `docs/SESSION_PROTOCOL.md`, `codex.md`
+    selbst, alle Schemas, Provider-Code, Pricing, Industries,
+    Themes, Tooling-Configs, CI/CD.
+  - Komfortzone: Tippfehler, JSDoc, Trailing-Newlines, aria-labels
+    auf Icon-Only-Buttons, alt-Texte in Demo-Daten,
+    Charakterisierungs-Tests (nur ergänzend).
+  - Workflow: eigener `codex/<slug>`-Branch, Diff-Cap 20 KB / 8
+    Dateien, Pflicht-Verifikation (typecheck/lint/build/smoketests),
+    Commit-Format `chore(codex): …` mit Footer
+    `codex-backlog: #N`, kein Auto-Merge.
+  - 10 Abschnitte mit Tag-für-Tag-Spickzettel, Eskalations-
+    Kriterien, Konsequenzen bei Verstößen.
+- **`docs/CODEX_BACKLOG.md`** (neu) — vorab freigegebene Junior-
+  Aufgaben mit Status (`[pre-approved]`, `[in-progress]`, `[done]`,
+  `[needs-review]`, `[blocked]`). 9 Starter-Einträge:
+  1. JSDoc für `clamp`-Helper sammeln (alle 6 Mock-Files).
+  2. Tippfehler-Pass durch Marketing-Sektionen.
+  3. `aria-label` an Icon-Only-Buttons.
+  4. Trailing-Newline in allen Quelldateien.
+  5. `alt`-Texte in Demo-Daten.
+  6. **`[blocked]`** Prettier-Plugin-Tailwind aktivieren (Prettier
+     ist noch nicht eingeführt).
+  7. Glossar `docs/GLOSSARY.md` anlegen.
+  8. Konsistente deutsche Anführungszeichen in Doku.
+  9. README-Tippfehler nachpflegen.
+- **`docs/CODEX_LOG.md`** (neu) — append-only-Tagebuch für
+  Codex-Sessions mit striktem Format. Ermöglicht Claude beim
+  Reinkommen sofort einen Überblick, was Codex zwischendurch gemacht
+  hat.
+
+### Notes
+- **Recherche** (Session-Protokoll): Quellen zu 2026-Limited-Time-
+  Offer-Mustern (echte Knappheit, klare Deadline, Kunden-Nutzen)
+  im RUN_LOG-Eintrag „Code-Session 20".
+- **Doppel-Schritt-Session**: Code (Session 20) + drei
+  Methodik-Dokumente (README, codex.md, Codex-Backlog/Log) +
+  Roadmap-Selbstaktualisierung. Der Diff ist deshalb größer als
+  sonst (~70 KB).
+- 5 neue Dateien (`mock/offer-campaign.ts`, `codex.md`,
+  `docs/CODEX_BACKLOG.md`, `docs/CODEX_LOG.md`,
+  `mock-provider.ts` Bonus-Header), 4 geänderte Dateien.
+  Alle Verifikationen grün (`typecheck`, `lint`, `build:static`,
+  beide Smoketests, ~380 Assertions).
 
 ## [0.13.7] – Code-Session 19 – 2026-04-27
 

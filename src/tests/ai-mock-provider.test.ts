@@ -90,21 +90,10 @@ async function checkAllVariants(
   }
 }
 
-async function expectUnavailable(
-  label: string,
-  call: () => Promise<unknown>,
-): Promise<void> {
-  let err: unknown = null;
-  try {
-    await call();
-  } catch (e) {
-    err = e;
-  }
-  assert(
-    err instanceof AIProviderError && err.code === "provider_unavailable",
-    `${label}: wirft provider_unavailable`,
-  );
-}
+// Note: `expectUnavailable` wurde mit Code-Session 20 entfernt — alle 7
+// Mock-Methoden sind jetzt scharf. Wenn das Interface erweitert wird und
+// wieder Stub-Methoden auftauchen, kann die Helper-Funktion aus dem
+// Git-History wiederbelebt werden (Commit `5cb03b2` und früher).
 
 async function run(): Promise<void> {
   // 1. 2 Branchen × 4 Varianten → vollständig befüllte Outputs
@@ -1075,19 +1064,166 @@ async function run(): Promise<void> {
   );
 
   // -----------------------------------------------------------------------
-  // 12. Übrige 1 Methode muss weiterhin provider_unavailable werfen.
+  // 12. generateOfferCampaign (Code-Session 20 — schließt die Mock-Phase)
   // -----------------------------------------------------------------------
-  const placeholderContext = baseContextHairdresser;
-  await expectUnavailable("generateOfferCampaign", () =>
-    mockProvider.generateOfferCampaign({
-      context: placeholderContext,
-      offerTitle: "Sommer-Aktion",
-      details: "",
-    }),
+  // 12a. 2 Branchen × { mit/ohne validUntil } × { mit/ohne details }
+  //      → vollständige Outputs, alle Felder im Schema-Limit.
+  // -----------------------------------------------------------------------
+
+  async function checkOfferShape(
+    context: AIBusinessContext,
+    label: string,
+    args: { offerTitle: string; details?: string; validUntil?: string },
+  ): Promise<void> {
+    const out = await mockProvider.generateOfferCampaign({
+      context,
+      offerTitle: args.offerTitle,
+      details: args.details ?? "",
+      ...(args.validUntil !== undefined ? { validUntil: args.validUntil } : {}),
+    });
+    assert(
+      out.headline.length >= 2 && out.headline.length <= 120,
+      `${label}: headline im Limit`,
+    );
+    assert(
+      out.subline.length >= 2 && out.subline.length <= 280,
+      `${label}: subline im Limit`,
+    );
+    assert(
+      out.bodyText.length >= 2 && out.bodyText.length <= 2000,
+      `${label}: bodyText im Limit`,
+    );
+    assert(
+      out.cta.length >= 2 && out.cta.length <= 120,
+      `${label}: cta im Limit`,
+    );
+  }
+
+  await checkOfferShape(baseContextHairdresser, "hairdresser/min", {
+    offerTitle: "Frühlings-Aktion",
+  });
+  await checkOfferShape(baseContextAutoWorkshop, "auto_workshop/full", {
+    offerTitle: "TÜV-Paket Frühling",
+    details:
+      "TÜV-Vorbereitung inkl. Lichttest, Bremsen-Sichtprüfung und Zwischenkontrolle.",
+    validUntil: "31.05.2026",
+  });
+
+  // 12b. validUntil wirkt sich sichtbar auf Body und CTA aus.
+  const withValid = await mockProvider.generateOfferCampaign({
+    context: baseContextHairdresser,
+    offerTitle: "Pflege-Special",
+    details: "",
+    validUntil: "Ende Mai 2026",
+  });
+  assert(
+    withValid.bodyText.includes("Gültig bis Ende Mai 2026"),
+    "validUntil → Body enthält Gültigkeits-Hinweis",
+  );
+  assert(
+    withValid.cta.includes("Ende Mai 2026"),
+    "validUntil → CTA nennt das Enddatum",
   );
 
-  // 13. Provider-Key
+  // 12c. Ohne validUntil bleibt der CTA neutral-einladend, kein
+  //      „Gültig bis"-Hinweis im Body.
+  const noValid = await mockProvider.generateOfferCampaign({
+    context: baseContextHairdresser,
+    offerTitle: "Pflege-Special",
+    details: "",
+  });
+  assert(
+    !noValid.bodyText.includes("Gültig bis"),
+    "ohne validUntil: kein Gültigkeits-Hinweis im Body",
+  );
+  assert(
+    noValid.cta.toLowerCase().includes("unverbindlich"),
+    "ohne validUntil: CTA ist neutral-einladend",
+  );
+
+  // 12d. Headline enthält offerTitle und businessName.
+  assert(
+    noValid.headline.includes("Pflege-Special") &&
+      noValid.headline.includes("Salon Sophia"),
+    "headline enthält offerTitle und businessName",
+  );
+
+  // 12e. Subline ist lokal verankert (nennt city) und Branchen-Label.
+  assert(
+    noValid.subline.includes("Bremen") &&
+      noValid.subline.toLowerCase().includes("friseur"),
+    "subline: city + industryLabel",
+  );
+
+  // 12f. Mit details ≥ 10 Zeichen wird der Text als Inhalts-Saat
+  //      übernommen (statt generischem Lückentext).
+  const withDetails = await mockProvider.generateOfferCampaign({
+    context: baseContextAutoWorkshop,
+    offerTitle: "TÜV-Paket Frühling",
+    details:
+      "TÜV-Vorbereitung inkl. Lichttest, Bremsen-Sichtprüfung und Zwischenkontrolle.",
+  });
+  assert(
+    withDetails.bodyText.includes("Lichttest"),
+    "mit details: Saatzeile übernommen",
+  );
+
+  // 12g. USPs landen als Bullet-Block im bodyText.
+  assert(
+    withDetails.bodyText.includes("Was Sie bekommen:") &&
+      withDetails.bodyText.includes("· TÜV in 24 h"),
+    "USPs als Trust-Bullets im bodyText",
+  );
+
+  // 12h. Determinismus.
+  const oc1 = await mockProvider.generateOfferCampaign({
+    context: baseContextHairdresser,
+    offerTitle: "Pflege-Special",
+    details: "Pflegebehandlung mit Massage.",
+    validUntil: "31.05.2026",
+  });
+  const oc2 = await mockProvider.generateOfferCampaign({
+    context: baseContextHairdresser,
+    offerTitle: "Pflege-Special",
+    details: "Pflegebehandlung mit Massage.",
+    validUntil: "31.05.2026",
+  });
+  assert(
+    JSON.stringify(oc1) === JSON.stringify(oc2),
+    "generateOfferCampaign deterministisch",
+  );
+
+  // 12i. Defensive: zu kurzer offerTitle → invalid_input.
+  let ocCaught: unknown = null;
+  try {
+    await mockProvider.generateOfferCampaign({
+      context: baseContextHairdresser,
+      offerTitle: "X",
+      details: "",
+    });
+  } catch (err) {
+    ocCaught = err;
+  }
+  assert(
+    ocCaught instanceof AIProviderError && ocCaught.code === "invalid_input",
+    "offerTitle zu kurz → invalid_input",
+  );
+
+  // -----------------------------------------------------------------------
+  // 13. Provider-Key + Mock-Phase abgeschlossen.
+  //     Es gibt keine verbleibenden Stub-Methoden mehr.
+  // -----------------------------------------------------------------------
   assert(mockProvider.key === "mock", "mockProvider.key === 'mock'");
+
+  const allMethodsImplemented =
+    typeof mockProvider.generateWebsiteCopy === "function" &&
+    typeof mockProvider.improveServiceDescription === "function" &&
+    typeof mockProvider.generateFaqs === "function" &&
+    typeof mockProvider.generateCustomerReply === "function" &&
+    typeof mockProvider.generateReviewRequest === "function" &&
+    typeof mockProvider.generateSocialPost === "function" &&
+    typeof mockProvider.generateOfferCampaign === "function";
+  assert(allMethodsImplemented, "alle 7 Mock-Methoden sind Funktionen");
 }
 
 void run();
@@ -1102,5 +1238,7 @@ export const __AI_MOCK_PROVIDER_SMOKETEST__ = {
   reviewTones: 3,
   socialPlatforms: 5,
   socialGoals: 8,
-  totalAssertions: 350,
+  offerVariants: 4,
+  mockPhaseComplete: true,
+  totalAssertions: 380,
 };

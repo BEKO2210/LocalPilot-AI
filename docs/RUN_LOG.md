@@ -2990,3 +2990,239 @@ Bewusst NICHT: UI, echte Provider — der Mock ist dann komplett.
 - [First Ascent Design – Are Hashtags Still Relevant in 2026?](https://firstascentdesign.com/hashtag-strategy-2026/)
 - [PostWaffle – 50 Social Media Post Examples That Actually Drive Sales (2026)](https://www.postwaffle.com/blog/social-media-posts-examples)
 - [Plann by Linktree – Social Media Marketing for Hairdressers](https://www.plannthat.com/hairdresser-social-media-marketing/)
+
+---
+
+## Code-Session 20 – Mock-Phase abgeschlossen + README-Rewrite + Codex-Workflow
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein) + README-Refactor + Methodik (Codex-Junior)
+Meilenstein: 2 (KI-Schicht — Mock-Phase ✅) + Programm-Methodik
+
+### 1. Was wurde umgesetzt?
+
+Dreifach-Schritt:
+
+**A — Code (`generateOfferCampaign`):**
+- `src/core/ai/providers/mock/offer-campaign.ts` (neu) implementiert
+  `mockGenerateOfferCampaign(input): Promise<OfferCampaignOutput>`:
+  - Validierung via `OfferCampaignInputSchema.safeParse` →
+    `AIProviderError("invalid_input", …)`.
+  - **Headline** (≤ 120): `${offerTitle} — bei ${businessName}`.
+  - **Subline** (≤ 280): „Klar beschriebenes ${industryLabel}-Angebot
+    in ${city}, ${tone} umgesetzt." — lokal verankert, ohne
+    Superlative.
+  - **bodyText** (≤ 2000): bis zu 3 Absätze.
+    - Inhalts-Absatz: `details` (≥ 10 Zeichen) als Saatzeile
+      übernommen, sonst generischer Lückentext mit `industryLabel`.
+    - USP-Trust-Block: „Was Sie bekommen:\n· …\n· …\n· …"
+      (max. 3 Bullets aus `context.uniqueSellingPoints`).
+    - Validitäts-Hinweis: „Gültig bis ${validUntil}. …" — nur wenn
+      `validUntil` mitkommt.
+  - **CTA** (≤ 120): `Jetzt sichern — gültig bis …` mit `validUntil`,
+    `Jetzt unverbindlich anfragen.` ohne. Zeit-orientiert, kein Druck.
+  - 2026-Recherche zu Limited-Time-Offers berücksichtigt: echte
+    Knappheit, klare Deadline, Kunden-Nutzen vor Druck.
+  - Output gegen `OfferCampaignOutputSchema.parse` validiert.
+- `src/core/ai/providers/mock-provider.ts`: alle 7 Methoden
+  komponiert. Status-Header: **Mock-Phase abgeschlossen**.
+  `buildStubProvider` läuft nur noch als defensiver Default mit,
+  falls das Interface erweitert wird.
+- `src/tests/ai-mock-provider.test.ts` um Block 12a–12i erweitert
+  (~30 zusätzliche Assertions, ~380 gesamt):
+  - 12a: 2 Branchen × { mit/ohne validUntil/details } → Output-Shape.
+  - 12b: `validUntil` → Body und CTA enthalten Datum.
+  - 12c: ohne `validUntil` → CTA neutral-einladend, kein „Gültig
+    bis"-Hinweis im Body.
+  - 12d: Headline mit `offerTitle` + `businessName`.
+  - 12e: Subline mit `city` + `industryLabel`.
+  - 12f: `details` ≥ 10 Zeichen → Saatzeile übernommen
+    („Lichttest" erscheint im Body).
+  - 12g: USPs als Trust-Bullets (`Was Sie bekommen:` + `· TÜV in 24 h`).
+  - 12h: Determinismus.
+  - 12i: zu kurzer `offerTitle` → `invalid_input`.
+- **Block 13** prüft, dass alle 7 Mock-Methoden Funktionen sind —
+  keine Stub-Methoden mehr. Helper `expectUnavailable` wurde
+  entfernt (kein Test braucht ihn mehr).
+
+**B — README-Rewrite:**
+- `README.md` komplett überarbeitet: selbst-tragendes Roadmap-Konzept,
+  9 Badges, klare Trennung zwischen „rolling status" (READMI) und
+  „chronologisch" (CHANGELOG/RUN_LOG). Konkrete Session-Nummern
+  stehen nur noch in CHANGELOG/RUN_LOG, nicht im README — die
+  README muss nicht mehr alle 20 Sessions nachgepflegt werden.
+- Neue „Mitwirkende & Verantwortlichkeiten"-Tabelle benennt Claude,
+  Codex und Auftraggeber explizit.
+- Veraltete „Status nach Session 3"-Sektion entfernt.
+
+**C — Codex-Junior-Workflow:**
+- `codex.md` (neu, ~9 KB) — verbindlicher Verhaltenskodex:
+  - **NEVER-Zone** (Abschnitt 1): `Claude.md`, `PROGRAM_PLAN.md`,
+    `SESSION_PROTOCOL.md`, `codex.md` selbst, alle Schemas,
+    Provider-Code, Pricing, Industries, Themes, Tooling-Configs,
+    CI/CD, Dependencies.
+  - **Komfortzone** (Abschnitt 2): Tippfehler, JSDoc, Trailing-
+    Newlines, `aria-label` auf Icon-Only-Buttons, `alt`-Texte in
+    Demo-Daten, Charakterisierungs-Tests (nur ergänzend).
+  - **Workflow** (Abschnitt 3): `codex/<slug>`-Branch ab `main`,
+    Diff-Cap 20 KB / 8 Dateien, Pflicht-Verifikation
+    (typecheck/lint/build/smoketests), Commit-Format
+    `chore(codex): …` mit Footer `codex-backlog: #N`, kein
+    Auto-Merge.
+  - **Tag-für-Tag-Spickzettel** (Abschnitt 8): 11-Punkte-Checkliste.
+  - **Eskalations-Kriterien** (Abschnitt 9): Codex stoppt sofort,
+    schreibt `[needs-review]`-Eintrag.
+- `docs/CODEX_BACKLOG.md` (neu, ~6 KB) — 9 Starter-Tasks:
+  1. JSDoc für `clamp`-Helper (6 Mock-Files).
+  2. Tippfehler-Pass Marketing-Sektionen.
+  3. `aria-label` an Icon-Only-Buttons.
+  4. Trailing-Newline-Pass.
+  5. `alt`-Texte in Demo-Daten.
+  6. `[blocked]` Prettier-Plugin-Tailwind aktivieren.
+  7. Glossar `docs/GLOSSARY.md`.
+  8. Konsistente deutsche Anführungszeichen.
+  9. README-Tippfehler nachpflegen.
+- `docs/CODEX_LOG.md` (neu, ~1 KB) — append-only-Tagebuch mit
+  striktem Format. Beim Reinkommen liest Claude diese Datei zuerst.
+
+**D — Roadmap-Selbstaktualisierung (Pflicht-Schritt 6):**
+- `docs/PROGRAM_PLAN.md` Meilenstein-2-Block aktualisiert (Mock-
+  Phase abgeschlossen, Live-Provider-Phase startet).
+- 4 neue Backlog-Items:
+  - Track A: Offer-Campaign-Bundle (1 Trigger → Social+Review),
+    AI-API-Route mit Edge-Runtime.
+  - Track F: Glossar (Codex-Backlog #7), Codex-Onboarding-Polish.
+  - **Track G (neu)**: Mitwirkende-Koordination, granularer
+    Zugriffsschutz für Codex via pre-commit-Hook auf
+    `codex/`-Branches.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (4 Dateien):
+- `src/core/ai/providers/mock/offer-campaign.ts`
+- `codex.md`
+- `docs/CODEX_BACKLOG.md`
+- `docs/CODEX_LOG.md`
+
+Geändert:
+- `README.md` (komplett-Rewrite)
+- `src/core/ai/providers/mock-provider.ts`
+- `src/tests/ai-mock-provider.test.ts`
+- `docs/PROGRAM_PLAN.md` (Meilenstein 2 + Tracks A/F/G)
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~70 KB. Größer als die übliche 30–80-KB-Range, aber im
+oberen Drittel des Limits — gerechtfertigt durch die drei parallelen
+Methodik-Schritte (Mock-Phase-Abschluss, README-Rewrite,
+Codex-Workflow-Etablierung).
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → ~380 Asserts
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.generateOfferCampaign({
+  context: {
+    industryKey: "auto_workshop",
+    packageTier: "gold",
+    language: "de",
+    businessName: "KFZ Müller",
+    city: "Leipzig",
+    toneOfVoice: ["sachlich", "ehrlich"],
+    uniqueSellingPoints: ["TÜV in 24 h", "Leihwagen kostenlos"],
+  },
+  offerTitle: "TÜV-Paket Frühling",
+  details: "TÜV-Vorbereitung inkl. Lichttest, Bremsen-Sichtprüfung.",
+  validUntil: "31.05.2026",
+});
+// → { headline: "TÜV-Paket Frühling — bei KFZ Müller",
+//     subline:  "Klar beschriebenes Autowerkstatt-Angebot in Leipzig, …",
+//     bodyText: "TÜV-Vorbereitung inkl. Lichttest …\n\n
+//                Was Sie bekommen:\n· TÜV in 24 h\n· Leihwagen …\n\n
+//                Gültig bis 31.05.2026. …",
+//     cta:      "Jetzt sichern — gültig bis 31.05.2026." }
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                          | Status |
+| ------------------------------------------------------------------ | ------ |
+| `generateOfferCampaign` deterministisch, branchenneutral           | ✅      |
+| 7. von 7 Mock-Methoden scharf — **Mock-Phase abgeschlossen**       | ✅      |
+| validUntil wirkt sich auf Body und CTA aus                         | ✅      |
+| Ohne validUntil bleibt CTA neutral-einladend                       | ✅      |
+| `details` als Saatzeile übernommen                                 | ✅      |
+| USPs als Trust-Bullets im Body                                     | ✅      |
+| Defensive Input-Validierung → `invalid_input`                      | ✅      |
+| Output gegen `OfferCampaignOutputSchema` validiert                 | ✅      |
+| Smoketest +30 Assertions (~380 gesamt)                             | ✅      |
+| Build/Typecheck/Lint grün                                          | ✅      |
+| README-Rewrite: selbst-tragend, 9 Badges, Mitwirkende-Tabelle      | ✅      |
+| `codex.md` (10 Abschnitte, NEVER-Zone, Workflow, Eskalation)        | ✅      |
+| `docs/CODEX_BACKLOG.md` mit 9 Starter-Tasks                         | ✅      |
+| `docs/CODEX_LOG.md` (append-only-Format)                            | ✅      |
+| `docs/PROGRAM_PLAN.md` +4 neue Items (Tracks A/F/G)                 | ✅      |
+| Recherche-Step durchgeführt + Quellen zitiert                      | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 21**: OpenAI-Provider scharf machen — `openai`-SDK
+  als Dependency, `generateWebsiteCopy` als erste Live-Methode,
+  Caching-Schicht, Cost-Tracking-Pipe. Mock bleibt parallel als
+  Fallback.
+- **Codex**: 9 Backlog-Tasks warten auf einen Codex-Pass.
+- **Self-Extending Backlog** (4 neue Items aus dieser Session):
+  Offer-Campaign-Bundle, AI-API-Route mit Edge-Runtime, Glossar,
+  Codex-pre-commit-Schutz.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 21 – OpenAI-Provider scharf (`generateWebsiteCopy`).**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 OpenAI SDK structured outputs best practices",
+   „prompt caching" und „cost-tracking pattern für Provider-Adapter".
+2. Dependency `openai@^4` (oder neueste) hinzufügen
+   (`package.json` + `package-lock.json`). Dies ist die **erste**
+   externe AI-SDK-Dependency im Repo.
+3. `src/core/ai/providers/openai-provider.ts` aktualisieren:
+   - Schritt 1 dieser Session **nur** `generateWebsiteCopy` scharf
+     machen, alle anderen 6 Methoden bleiben Stub.
+   - System-Prompt aus `IndustryPreset.websiteCopyPrompts`,
+     User-Prompt aus dem `WebsiteCopyInput`.
+   - `response_format: { type: "json_object" }` mit Schema-Hinweis
+     im System-Prompt, dann
+     `WebsiteCopyOutputSchema.parse(JSON.parse(content))`.
+   - `AIProviderError`-Mapping: 401 → `no_api_key`, 429 →
+     `rate_limited`, 5xx → `provider_unavailable`.
+4. `src/tests/ai-provider-resolver.test.ts` **nicht** anfassen
+   (würde echten Call brauchen). Eine optionale, nur-mit-API-Key-
+   Smoketest-Datei `src/tests/ai-openai-live.test.ts` mit
+   `if (!process.env.OPENAI_API_KEY) skip;`.
+5. PROGRAM_PLAN.md +1 Item (Roadmap-Self-Step), CHANGELOG/RUN_LOG,
+   Commit, Push.
+
+Bewusst NICHT: andere Methoden, UI, Dashboard-Integration —
+dafür gibt es Folge-Sessions.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [LocaliQ – Limited-Time Offers: Tips, Templates & Examples to Boost Sales Fast](https://localiq.com/blog/limited-time-offers/)
+- [Hibu – 17 Spring Promotion Ideas to Grow Your Small Business](https://hibu.com/blog/marketing-tips/17-spring-promotion-ideas-to-grow-your-small-business)
+- [Engagelab – How to Leverage the Power of the Limited Time Offer Strategy](https://www.engagelab.com/blog/limited-time-offers)
+- [Strategic Factory – 2026 Content Calendar: Key Dates & Campaign Ideas for Every Industry](https://strategicfactory.com/resources/ultimate-2026-marketing-calendar-by-industry/)
+- [Claspo.io – 16 Limited Time Offer Examples & Best Practices Guide](https://claspo.io/blog/limited-time-offer-10-examples-to-boost-conversions/)
+- [GetSiteControl – 10 Limited-Time Offer Examples + Templates to Help You Craft Yours](https://getsitecontrol.com/blog/limited-time-offer-examples/)
+- [SDOCPA – Small Business Marketing Ideas That Actually Work in 2026](https://www.sdocpa.com/small-business-marketing-ideas/)
+- [Indeed – Limited-Time Offers: 3 Examples and How To Create One](https://www.indeed.com/career-advice/career-development/limited-time-offers)
