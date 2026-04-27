@@ -11,4 +11,5 @@ export { PublicTeam } from "./public-team";
 export { PublicOpeningHours } from "./public-opening-hours";
 export { PublicLocation } from "./public-location";
 export { PublicContact } from "./public-contact";
+export { PublicLeadForm } from "./public-lead-form";
 export { PublicMobileCtaBar } from "./public-mobile-cta-bar";

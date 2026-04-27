@@ -7,7 +7,74 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 12+: Lead-System, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+- Session 13+: KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.12.0] – Session 12 – 2026-04-27
+
+### Added
+- **Public-Site-Anfrageformular** ist jetzt **interaktiv**
+  (`<PublicLeadForm>`). Felder kommen aus `preset.leadFormFields` der
+  jeweiligen Branche, manuelle Validierung deckt Pflichtfelder, E-Mail-
+  Format, Telefon-Mindestlänge und die Geschäftsregel „Telefon ODER
+  E-Mail" ab. Eingehende Leads werden via `appendLead` in den Browser-
+  Storage geschrieben; nach erfolgreichem Submit zeigt das Formular einen
+  Bestätigungs-Block mit „Weitere Anfrage senden"-Button.
+- **Dashboard `/dashboard/[slug]/leads`** zeigt jetzt `<LeadsView>` mit:
+  - Status-Filter-Pills (Alle, Neu, Kontaktiert, Qualifiziert, Gewonnen,
+    Verloren, Archiviert) inkl. Live-Counter pro Status,
+  - Volltextsuche über Name, Telefon, E-Mail, Nachricht,
+  - Listen-/Detail-Layout (Listen-Click öffnet Detail-Pane in der
+    Sidebar bzw. unter der Liste auf Mobile),
+  - Direktkontakt-Buttons (`tel:`, `wa.me`, `mailto:`), Status-Pill-
+    Buttons (Wechsel mit einem Klick), Notizen-Textarea mit
+    Speichern/Verwerfen,
+  - 3 Antwort-Vorlagen (kurz, freundlich, Detail) mit Copy-to-Clipboard
+    und Live-Vorschau bereits aufgelöster Platzhalter (`{{name}}`,
+    `{{betrieb}}`),
+  - „Lokale Anfragen leeren"-Button (entfernt nur Browser-Einträge,
+    Demo-Leads bleiben).
+- **Mock-Store** `src/lib/mock-store/leads-overrides.ts` mit
+  `appendLead`, `updateStoredLead`, `getStoredLeads`, `hasStoredLeads`,
+  `clearStoredLeads`, `getEffectiveLeads(slug, fallback)` (mergt
+  Demo-Mock + Browser-Storage, sortiert nach `createdAt` absteigend),
+  `countByStatus(leads)` und `generateLeadId(slug)`.
+- `<LeadDetail>`-Component mit Inline-Notizen-Editor und
+  Antwort-Vorlagen.
+- `reply-templates.ts` mit 3 branchen-neutralen Vorlagen + `fillTemplate`-
+  Helper.
+- Sidebar zeigt `Anfragen` jetzt als produktive Sektion (kein
+  „Vorschau"-Badge mehr für Silber/Gold).
+- Smoketest `src/tests/leads-system.test.ts` (~15 Assertions): alle
+  Demo-Leads valide, Pflicht-Lead-Felder im Preset, Mock-Store SSR-
+  sicher, `countByStatus` exhaustive, Vorlagen-Platzhalter-Substitution.
+- `docs/LEAD_SYSTEM.md` mit Architektur, Datenfluss, Persistierungs-API,
+  Compliance-Notes und Paket-Gating-Tabelle.
+
+### Changed
+- **`<PublicContact>`** ersetzt das deaktivierte Vorschau-Formular durch
+  `<PublicLeadForm>`. Die Direktkontakt-Karte links bleibt unverändert.
+- **`/dashboard/[slug]/leads`-Page** rendert für Bronze weiterhin
+  `<ComingSoonSection>` (kein `lead_management`); Silber/Gold sehen
+  `<LeadsView>`.
+- **`src/components/dashboard/nav-config.ts`** – `leads`-Eintrag ohne
+  `comingInSession`.
+- **`src/tests/dashboard.test.ts`** – akzeptiert jetzt ≥ 4 produktive
+  Sektionen.
+- **`src/lib/mock-store/index.ts`** re-exportiert `leads-overrides`.
+
+### Notes
+- Bundle-Größe: Public-Site-Bundle wächst auf ~5,7 KB First-Load JS
+  (vorher 161 B, weil die Lead-Form jetzt client-seitig ist).
+  Dashboard-Leads-Bundle: 16,4 KB First-Load JS.
+- Persistierung läuft client-only; eine Anfrage, die in Browser A
+  abgeschickt wurde, ist in Browser B nicht sichtbar. Echte Sync folgt
+  in Session 19 (Supabase). Für Demo und Vertrieb reicht das aktuelle
+  Modell.
+- Branchenneutralität gewahrt: keine `if`-Verzweigungen je Branche, alle
+  Felder kommen aus dem Preset, alle Vorlagen aus generischen
+  `{{name}}`/`{{betrieb}}`-Platzhaltern.
+- **Compliance**: Demo-Hinweis unterhalb der Felder, keine sensiblen
+  Pflichtfelder (kein Geburtstag, keine Adresse, keine Kontonummer).
 
 ## [0.11.0] – Session 11 – 2026-04-27
 

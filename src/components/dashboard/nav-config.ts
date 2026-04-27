@@ -59,7 +59,6 @@ export const DASHBOARD_NAV: readonly DashboardNavItem[] = [
     pathSuffix: "/leads",
     label: "Anfragen",
     icon: Inbox,
-    comingInSession: 12,
   },
   {
     key: "ai",

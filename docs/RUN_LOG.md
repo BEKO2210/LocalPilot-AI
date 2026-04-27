@@ -1407,15 +1407,160 @@ Manuell im Browser:
 
 ### 6. Was ist der nächste empfohlene Run?
 
-**Session 12 – Lead-System.**
+**Session 12 – Lead-System.** (s. u.)
 
-Drei Bauteile parallel:
-1. **Public Site**: Anfrageformular auf `/site/[slug]` aktivieren –
-   Felder kommen aus `preset.leadFormFields`, Submission via Server
-   Action (oder client-only Mock-Store, falls Static-Export beibehalten
-   wird).
-2. **Dashboard `/leads`**: Liste eingegangener Anfragen mit Filter
-   (Status, Quelle), Detail-Drawer, Status-Wechsel, Notizen,
-   Antwort-Vorlagen mit Copy-to-Clipboard.
-3. **Mock-Store** `leads-overrides.ts` analog zu Sessions 10/11, plus
-   `appendLead(slug, lead)`-Helper für die Public-Site-Submission.
+---
+
+## Session 12 – Lead-System
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+Drei Bauteile gleichzeitig:
+
+**Public Site – `<PublicLeadForm>`**
+- Ersetzt das deaktivierte Vorschau-Formular aus Session 7.
+- Client Component, Felder dynamisch aus `preset.leadFormFields` der
+  jeweiligen Branche.
+- Manuelle Validierung: Pflichtfelder, E-Mail-Format, Telefon-
+  Mindestlänge plus Geschäftsregel „Telefon ODER E-Mail".
+- Submit konstruiert ein `Lead`-Objekt, parst es mit
+  `LeadSchema.safeParse` und schreibt es per `appendLead(slug, lead)`
+  in den Browser-Storage.
+- Erfolgs-Zustand mit „Weitere Anfrage senden"-Button. Fehler-Hinweise
+  inline + Fallback-Banner bei Persistierungsproblemen.
+- Standard-Felder werden auf das Lead-Modell gemappt; alle weiteren
+  Keys aus dem Preset (z. B. `vehicleModel`, `objectType`,
+  `drivingClass`) landen in `extraFields`.
+
+**Dashboard – `<LeadsView>`**
+- Toolbar mit Status-Filter-Pills (Alle, Neu, Kontaktiert, Qualifiziert,
+  Gewonnen, Verloren, Archiviert) inkl. Live-Counter pro Status.
+- Volltextsuche über Name, Telefon, E-Mail, Nachricht.
+- Listen-/Detail-Layout: Click in der Liste öffnet einen Detail-Pane in
+  der Sidebar (Desktop) bzw. unterhalb der Liste (Mobile).
+- Detail-Pane:
+  - Direktkontakt-Buttons (`tel:`, `wa.me`, `mailto:`).
+  - Status-Pill-Buttons in den 6 Status-Farben (Wechsel mit einem
+    Klick, Persistierung über `updateStoredLead`).
+  - Anzeige der Original-Nachricht und der branchen-spezifischen
+    Zusatzfelder (`extraFields`).
+  - Notizen-Textarea mit „Speichern" / „Verwerfen" für Drafts.
+  - 3 branchen-neutrale Antwort-Vorlagen (kurz, freundlich, Detail) mit
+    Copy-to-Clipboard und Live-Vorschau bereits aufgelöster Platzhalter
+    (`{{name}}`, `{{betrieb}}`).
+- „Lokale Anfragen leeren"-Button entfernt nur Browser-Einträge,
+  Demo-Leads bleiben erhalten.
+
+**Mock-Store – `leads-overrides.ts`**
+- API: `appendLead`, `updateStoredLead`, `getStoredLeads`,
+  `hasStoredLeads`, `clearStoredLeads`, `getEffectiveLeads`,
+  `countByStatus`, `generateLeadId`.
+- Versionierter localStorage-Schlüssel `lp:leads-override:v1:<slug>`,
+  defensive Schema-Validierung beim Lesen UND Schreiben.
+- `getEffectiveLeads(slug, fallback)` mergt Demo-Mock-Leads mit
+  persistierten Einträgen, sortiert nach `createdAt` absteigend.
+- SSR-sicher: ohne `window` liefert er konsistent leere Listen / no-op.
+
+**Drumherum**
+- Sidebar-Eintrag „Anfragen" ist jetzt produktiv (kein
+  „Vorschau"-Badge mehr für Silber/Gold).
+- Bronze (kein `lead_management`) bleibt auf `<ComingSoonSection>`,
+  zeigt aber zusätzlich, wie viele Demo-Anfragen anliegen.
+- Smoketest `src/tests/leads-system.test.ts` (~15 Assertions).
+- `docs/LEAD_SYSTEM.md` mit Architektur, Datenfluss, Persistierungs-
+  API, Compliance-Notes und Paket-Gating-Tabelle.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (6 Dateien):
+- `src/lib/mock-store/leads-overrides.ts`
+- `src/components/public-site/public-lead-form.tsx`
+- `src/components/dashboard/leads-view/leads-view.tsx`
+- `src/components/dashboard/leads-view/reply-templates.ts`
+- `src/components/dashboard/leads-view/index.ts`
+- `src/tests/leads-system.test.ts`
+- `docs/LEAD_SYSTEM.md`
+
+Geändert:
+- `src/components/public-site/public-contact.tsx` (Vorschau-Form
+  → echtes `<PublicLeadForm>`)
+- `src/components/public-site/index.ts` (Re-Export)
+- `src/app/dashboard/[slug]/leads/page.tsx` (Stub → `<LeadsView>` mit
+  Bronze-Gate)
+- `src/components/dashboard/nav-config.ts` (`leads` produktiv)
+- `src/lib/mock-store/index.ts` (re-exportiert leads-overrides)
+- `src/tests/dashboard.test.ts` (≥ 4 produktive Sektionen erwartet)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck        # tsc --noEmit + Smoketests
+npm run lint             # 0 warnings/errors
+npm run build:static     # Static Export
+npm run dev              # http://localhost:3000
+```
+
+Manuell:
+1. `/site/beauty-atelier#kontakt` öffnen → Anfrageformular ausfüllen,
+   absenden → Erfolgs-Zustand erscheint.
+2. `/dashboard/beauty-atelier/leads` öffnen → die eben gesendete
+   Anfrage steht oben in der Liste (über den Demo-Anfragen).
+3. Anfrage anklicken → Detail-Pane mit Direktkontakt, Status,
+   Notizen, Antwort-Vorlagen.
+4. Status auf „Kontaktiert" wechseln → Pill färbt sich amber.
+5. Notiz tippen → „Speichern" → State persistiert.
+6. „Kurze Bestätigung" kopieren → Clipboard enthält den fertigen Text
+   mit Name + Betrieb.
+7. `/dashboard/meisterbau-schneider/leads` (Bronze) → Coming-Soon-
+   Block plus Hinweis „X Demo-Anfragen liegen an".
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                          | Status                                                                |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| Leads können erstellt werden       | ✅ `<PublicLeadForm>` schreibt via `appendLead`                       |
+| Leads erscheinen im Dashboard      | ✅ `<LeadsView>` mergt Browser-Leads mit Demo-Mocks (`getEffectiveLeads`) |
+| Statusänderung funktioniert        | ✅ Pill-Buttons mit `updateStoredLead`                                |
+| Formular ist branchenspezifisch    | ✅ Felder aus `preset.leadFormFields`                                 |
+| Keine sensiblen unnötigen Daten    | ✅ kein Geburtstag, keine Adresse, keine Kontonummer                   |
+| Dynamisches Kontaktformular        | ✅ alle Field-Typen aus `LeadFormFieldType` werden gerendert          |
+| Lead speichern                     | ✅ localStorage + `LeadSchema.parse` defensive                         |
+| Lead-Dashboard                     | ✅ Filter, Suche, Detail-Pane                                         |
+| Notizen                            | ✅ Textarea mit Speichern/Verwerfen                                   |
+| Detailansicht                      | ✅ `<LeadDetail>` als Sidebar/Below-List                              |
+| Antwort kopieren                   | ✅ 3 Vorlagen, Copy mit „Kopiert"-Bestätigung                         |
+| Filter / Suche                     | ✅                                                                     |
+
+### 5. Was ist offen?
+
+- **Sessions 13–15** – KI-Assistent kann Antworten je Anfrage
+  generieren (Branche + USPs + Lead-Daten als Kontext).
+- **Session 16** – Bewertungs-Booster: nutzt `email`/`phone` aus
+  `won`-Leads, um nach erfolgtem Termin eine Vorlage zu schicken.
+- **Session 18** – Settings: Lead-Routing, Webhook-URL, Auto-Reply.
+- **Session 19** – Repository-Layer: ersetzt `leads-overrides` durch
+  Supabase + Realtime; Public Site triggert eine Server Action,
+  Dashboard streamt neue Leads.
+- Optional: CSV-Export für Übergabe an externes CRM.
+- Optional: Filter nach Quelle (Website, Telefon, WhatsApp, …).
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 13 – AI Provider Interface und Mock AI.**
+
+Provider-Interface technisch sauber vorbereiten: `src/core/ai/`-Modul
+mit:
+- `providers/{mock,openai,anthropic,gemini}-provider.ts` (Mock liefert
+  hochwertige Beispieltexte, andere Provider sind Skeleton).
+- `ai-client.ts` mit Provider-Resolver basierend auf
+  `AI_PROVIDER`-ENV; Fallback auf `mock`, falls Key fehlt.
+- API-Route `app/api/ai/generate/route.ts` (oder client-only Wrapper,
+  falls Static Export erhalten bleiben soll).
+- Test-Karte im Dashboard `/ai`, die alle 7 Methoden des
+  `AIProvider`-Interfaces (Session 2) sichtbar macht.
+Akzeptanz: App funktioniert ohne API-Key, Mock-Texte sind branchen-
+neutral und brauchbar, Fehler werden freundlich angezeigt.

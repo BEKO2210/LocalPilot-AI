@@ -1,5 +1,6 @@
 import { Mail, MessageCircle, Phone } from "lucide-react";
 import { PublicSection } from "./public-section";
+import { PublicLeadForm } from "./public-lead-form";
 import {
   formatPhoneDisplay,
   mailtoLink,
@@ -126,7 +127,7 @@ export function PublicContact({ business, leadFormFields }: PublicContactProps) 
           </ul>
         </div>
 
-        {/* Formular-Vorschau (Session 12 macht es interaktiv) */}
+        {/* Anfrageformular (Session 12: interaktiv, client-only Mock-Persistenz) */}
         <div
           className="rounded-theme-card border p-6"
           style={{
@@ -139,105 +140,12 @@ export function PublicContact({ business, leadFormFields }: PublicContactProps) 
             className="mt-1 text-sm"
             style={{ color: "rgb(var(--theme-muted-fg))" }}
           >
-            Das Formular wird in Kürze interaktiv. Diese Felder werden dabei abgefragt:
+            Felder passen sich an die Branche an – nur das Wichtigste,
+            ohne Schnickschnack.
           </p>
-          <form
-            className="mt-5 space-y-4"
-            aria-label="Anfrageformular (Vorschau)"
-            action="#kontakt"
-          >
-            {leadFormFields.map((field) => (
-              <div key={field.key} className="space-y-1.5">
-                <label
-                  htmlFor={`preview-${field.key}`}
-                  className="block text-xs font-medium uppercase tracking-wide"
-                  style={{ color: "rgb(var(--theme-muted-fg))" }}
-                >
-                  {field.label}
-                  {field.required ? " *" : null}
-                </label>
-                {field.type === "textarea" ? (
-                  <textarea
-                    id={`preview-${field.key}`}
-                    disabled
-                    aria-disabled
-                    placeholder={field.placeholder}
-                    className="w-full resize-none rounded-theme-button border p-3 text-sm opacity-70"
-                    style={{
-                      borderColor: "rgb(var(--theme-border))",
-                      backgroundColor: "rgb(var(--theme-muted))",
-                      color: "rgb(var(--theme-foreground))",
-                    }}
-                    rows={3}
-                  />
-                ) : field.type === "select" ? (
-                  <select
-                    id={`preview-${field.key}`}
-                    disabled
-                    aria-disabled
-                    className="w-full rounded-theme-button border p-3 text-sm opacity-70"
-                    style={{
-                      borderColor: "rgb(var(--theme-border))",
-                      backgroundColor: "rgb(var(--theme-muted))",
-                      color: "rgb(var(--theme-foreground))",
-                    }}
-                  >
-                    <option>Bitte wählen…</option>
-                    {field.options?.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    id={`preview-${field.key}`}
-                    type={
-                      field.type === "phone"
-                        ? "tel"
-                        : field.type === "number"
-                          ? "number"
-                          : field.type === "date"
-                            ? "date"
-                            : field.type === "time"
-                              ? "time"
-                              : field.type === "email"
-                                ? "email"
-                                : "text"
-                    }
-                    placeholder={field.placeholder}
-                    disabled
-                    aria-disabled
-                    className="w-full rounded-theme-button border p-3 text-sm opacity-70"
-                    style={{
-                      borderColor: "rgb(var(--theme-border))",
-                      backgroundColor: "rgb(var(--theme-muted))",
-                      color: "rgb(var(--theme-foreground))",
-                    }}
-                  />
-                )}
-                {field.helperText && (
-                  <p
-                    className="text-xs"
-                    style={{ color: "rgb(var(--theme-muted-fg))" }}
-                  >
-                    {field.helperText}
-                  </p>
-                )}
-              </div>
-            ))}
-
-            <p
-              className="rounded-theme-button border p-3 text-xs"
-              style={{
-                borderColor: "rgb(var(--theme-border))",
-                color: "rgb(var(--theme-muted-fg))",
-                backgroundColor: "rgb(var(--theme-muted))",
-              }}
-            >
-              Das interaktive Formular folgt im nächsten Update. Bis dahin nutzen Sie bitte den Direktkontakt links.
-            </p>
-          </form>
+          <div className="mt-5">
+            <PublicLeadForm business={business} fields={leadFormFields} />
+          </div>
         </div>
       </div>
     </PublicSection>
