@@ -30,7 +30,10 @@ import { openaiProvider } from "@/core/ai/providers/openai-provider";
 import { getAIProvider } from "@/core/ai";
 import { AIProviderError } from "@/types/ai";
 import type { AIBusinessContext, WebsiteCopyInput } from "@/types/ai";
-import { WebsiteCopyOutputSchema } from "@/core/validation/ai.schema";
+import {
+  ServiceDescriptionOutputSchema,
+  WebsiteCopyOutputSchema,
+} from "@/core/validation/ai.schema";
 
 function assert(condition: boolean, message: string): asserts condition {
   if (!condition) {
@@ -97,13 +100,24 @@ async function run(): Promise<void> {
     typeof openaiProvider.generateOfferCampaign === "function";
   assert(allMethods, "alle 7 OpenAI-Provider-Methoden sind Funktionen");
 
-  // 1c. Ohne API-Key wirft generateWebsiteCopy 'no_api_key'.
+  // 1c. Ohne API-Key werfen die scharfen Methoden 'no_api_key'.
   const savedKey = process.env["OPENAI_API_KEY"];
   delete process.env["OPENAI_API_KEY"];
   try {
     await expectThrowsWithCode(
       "no key → generateWebsiteCopy",
       () => openaiProvider.generateWebsiteCopy(heroInput),
+      "no_api_key",
+    );
+    await expectThrowsWithCode(
+      "no key → improveServiceDescription",
+      () =>
+        openaiProvider.improveServiceDescription({
+          context: baseContext,
+          serviceTitle: "Damenhaarschnitt",
+          currentDescription: "",
+          targetLength: "medium",
+        }),
       "no_api_key",
     );
   } finally {
@@ -122,6 +136,17 @@ async function run(): Promise<void> {
       }),
     "invalid_input",
   );
+  await expectThrowsWithCode(
+    "invalid input → improveServiceDescription",
+    () =>
+      openaiProvider.improveServiceDescription({
+        context: baseContext,
+        serviceTitle: "X", // zu kurz, Schema verlangt min(2)
+        currentDescription: "",
+        targetLength: "medium",
+      }),
+    "invalid_input",
+  );
 
   // 1e. Resolver mit AI_PROVIDER=openai + Key → openai (nicht Mock).
   const resolved = getAIProvider({
@@ -129,18 +154,8 @@ async function run(): Promise<void> {
   });
   assert(resolved.key === "openai", "Resolver routet auf openai mit Key");
 
-  // 1f. Übrige 6 Methoden werfen weiterhin 'provider_unavailable'.
-  await expectThrowsWithCode(
-    "improveServiceDescription stub",
-    () =>
-      openaiProvider.improveServiceDescription({
-        context: baseContext,
-        serviceTitle: "Damenhaarschnitt",
-        currentDescription: "",
-        targetLength: "medium",
-      }),
-    "provider_unavailable",
-  );
+  // 1f. Übrige 5 Methoden werfen weiterhin 'provider_unavailable'.
+  //     (improveServiceDescription ist mit Code-Session 22 scharf.)
   await expectThrowsWithCode(
     "generateFaqs stub",
     () =>
@@ -209,18 +224,33 @@ async function run(): Promise<void> {
       validated.heroTitle.length > 0 &&
         validated.heroSubtitle.length > 0 &&
         validated.aboutText.length > 0,
-      "Live-Call: alle drei Felder befüllt",
+      "Live-Call generateWebsiteCopy: alle drei Felder befüllt",
     );
-    // Keine harte Stadt-Assertion — das Modell darf den Stadt-Hinweis
-    // auch dezent ins About verweben statt direkt ins Hero zu setzen.
-    console.log("✓ Live-OpenAI-Call erfolgreich.");
+    console.log("✓ Live-OpenAI-Call (generateWebsiteCopy) erfolgreich.");
+
+    const sd = await openaiProvider.improveServiceDescription({
+      context: baseContext,
+      serviceTitle: "Damenhaarschnitt mit Tiefenpflege",
+      currentDescription:
+        "Wäsche, Schnitt, Föhn-Finish — Termine auch samstags möglich.",
+      targetLength: "long",
+    });
+    const sdValidated = ServiceDescriptionOutputSchema.parse(sd);
+    assert(
+      sdValidated.shortDescription.length > 0 &&
+        sdValidated.longDescription.length > 0,
+      "Live-Call improveServiceDescription: beide Felder befüllt",
+    );
+    console.log(
+      "✓ Live-OpenAI-Call (improveServiceDescription) erfolgreich.",
+    );
   }
 }
 
 void run();
 
 export const __AI_OPENAI_PROVIDER_SMOKETEST__ = {
-  structuralAssertions: 12,
+  structuralAssertions: 14,
   liveOptInVar: "LP_TEST_OPENAI_LIVE",
   // Live-Call läuft nur mit `LP_TEST_OPENAI_LIVE=1` UND `OPENAI_API_KEY`.
 };
