@@ -7293,3 +7293,133 @@ Retry-Queue mit Exponential-Backoff, max-Versuchs-Limit,
 und einem unobtrusive UI-Indikator („3 Anfragen in der
 Warteschlange").
 
+## Code-Session 64 – Lead-Retry-Queue
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Production-Hardening
+
+**Was**: Wenn das Public-Site-Formular einen Lead wegen
+Netzwerk-Hänger oder 5xx-Server-Fehler nur lokal in
+`leads-overrides` ablegen konnte, gab es bislang **keinen**
+Re-Try-Pfad. Diese Session führt eine localStorage-basierte
+Retry-Queue mit Exponential-Backoff ein, die beim nächsten
+`online`-Event und bei jedem Mount der Public-Site
+automatisch flushed.
+
+**Architektur-Entscheidung — eigener Storage-Key statt
+`leads-overrides` mitnutzen**: `leads-overrides` ist die
+Mock-Anzeige-Schicht (Demo-Dashboard liest sie). Sie soll
+auch dann erhalten bleiben, wenn die Retry-Queue erfolgreich
+geflushed hat — sonst verschwindet der Demo-Lead aus dem
+lokalen Dashboard. Daher zwei separate Slots:
+`lp:leads-overrides:v1` (Demo-Anzeige, Session 12) und
+`lp:lead-retry-queue:v2` (Production-Retry, Session 64).
+
+**Architektur-Entscheidung — Pure Helper mit StorageLike-
+Interface**: Statt direkt `localStorage` zu importieren
+(unmöglich für SSR + schwer testbar), nimmt der Helper ein
+`StorageLike`-Argument. Production: `window.localStorage`.
+Tests: Memory-Stub. SSR: `null` → silent no-op. Damit ist
+der gesamte Helper deterministisch testbar (~50 Asserts
+ohne fetch oder Browser-APIs).
+
+**Architektur-Entscheidung — 2xx + 4xx als Success
+behandeln**: Beim Flush nutzen wir `POST /api/leads` direkt.
+2xx ist offensichtlich Success. **4xx auch** — z.B. ein
+Validation-Fehler im Lead heißt: erneut zu schicken bringt
+nichts, der Server lehnt ihn weiter ab. Nur 5xx + Netzwerk-
+Throws triggern echten Retry mit Backoff. Das verhindert
+endlose Retry-Loops auf strukturell kaputten Leads.
+
+**Architektur-Entscheidung — Discarded-Items bleiben in der
+Queue**: Nach `maxAttempts=8` (~5min Plateau-Backoff,
+gesamt ca. 30+ Minuten Retry-Pfad) wird das Item mit
+`discardedAt`-Timestamp markiert. `getDueItems` filtert sie
+aus, aber sie sind weiterhin via `readQueue` sichtbar — ein
+Operator kann sie inspect/manuell verarbeiten. Volle
+Löschung erst per `clearQueue`.
+
+**Architektur-Entscheidung — kein Jitter im Backoff**: Bei
+einer Single-Browser-Queue gibt es kein Thundering-Herd-
+Problem (kein Cluster mit 1000 Clients, der gleichzeitig
+hits). `min(MAX_DELAY, BASE * 2^attempts)` reicht.
+
+**WebSearch (Track A)**: bestätigt
+- [@segment/localstorage-retry](https://github.com/segmentio/localstorage-retry)
+  Production-ready Implementation derselbe Pattern bei
+  Segment.io. Wir vermeiden die Dep aus Bundle-Größe-Gründen
+  (eigener Helper ist ~5KB statt 30KB), übernehmen aber
+  die Default-Werte (5s Base, 5min Max, factor 2).
+- [DEV – Queue-Based Exponential Backoff](https://dev.to/andreparis/queue-based-exponential-backoff-a-resilient-retry-pattern-for-distributed-systems-37f3)
+  Bestätigt: 4xx als Success-Klasse markieren ist Best-
+  Practice für client-side Retries.
+- [AWS Builders Library – Timeouts, Retries, Backoff with Jitter](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
+  Jitter wichtig im Server-Cluster, irrelevant in Single-
+  Browser-Kontext.
+
+**Dateien**:
+- ✚ `src/lib/lead-retry-queue.ts` — pure Helper:
+  - `enqueue(storage, payload, {id, now})` mit Idempotenz
+    über `id` (re-enqueue derselben ID ersetzt das alte
+    Item).
+  - `readQueue(storage)` mit JSON-Parse-Defensive (korrupter
+    Inhalt → leere Queue).
+  - `computeNextRetryAt(attempts, now, config?)` — pure
+    Backoff-Math.
+  - `getDueItems(storage, now)` mit FIFO-Sort + Discarded-
+    Filter.
+  - `markRetried(storage, id, {success, now})`: Success
+    entfernt; Fail erhöht attempts + neuer Backoff; bei
+    `>= maxAttempts` wird `discardedAt` gesetzt.
+  - `getQueueStats(storage, now)` für UI-Badge.
+- ✚ `src/tests/lead-retry-queue.test.ts` (~50 Asserts):
+  Memory-Storage-Stub für 14 Test-Szenarien.
+- 🔄 `src/components/public-site/public-lead-form.tsx`:
+  - Imports: `useEffect`, `useCallback`, `useRef`, `Cloud`-
+    Icon, retry-queue-Helpers.
+  - `getQueueStorage()` mit SSR/Privacy-Defensive.
+  - `flushRetryQueue` (useCallback): liest fällige Items,
+    sequentiell `POST /api/leads`, markRetried je nach
+    Status. `flushingRef` verhindert konkurrierende
+    Flushes.
+  - Mount-Effect: Stats laden + initial flush.
+  - Online-Event-Listener-Effect: bei `online` flushen.
+  - Bei `submitLead`-Result `local-fallback`: enqueue +
+    Stats updaten.
+  - Amber Badge oben im Form bei `queuePending > 0` mit
+    Singular/Plural-Text.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**40/41 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +1 lead-retry-queue grün. Bundle 102 KB shared
+unverändert.
+
+**Roadmap**: 1 abgehakt (Lead-Retry-Queue). Damit ist der
+Public-Site-Lead-Pfad production-tauglich. Folge-Items:
+- **Light-Pass Session 65** (5er-Multiple, Pflicht):
+  AIPlayground auf `callAIGenerate` migrieren (~100 Zeilen
+  inline → 30 Zeilen Helper-Aufruf). Zusätzlich Recap-Doku
+  zur AI-Schicht.
+- **Code-Session 66**: CSRF-Schutz für mutating Routes
+  (`PATCH/PUT/POST` auf `/api/businesses/...`). Aktuell
+  nur Cookie-Session-Auth — ein CSRF-Token sollte ergänzt
+  werden, bevor das Produkt produktiv geht.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — localStorage-
+Retry-Queue-Patterns 2026.
+
+**Status-Update**: ~96 % Richtung „erstes Betrieb-fertiges
+Produkt". Lead-System produktiv robust gegen Netzwerk-Hänger.
+Verbleibend bis MVP-funktional: Light-Pass 65,
+Security-Hardening (CSRF/HTML-Sanitize), Sentry,
+„Betrieb löschen", evtl. Multi-Member.
+
+**Nächste Session**: Code-Session 65 (5er-Multiple, Light-
+Pass) = **AIPlayground-Migration auf `callAIGenerate`**.
+Begründung: Sessions 61+62 haben den AI-Client-Helper für
+Reviews + Social etabliert (2 Konsumenten, ~38 Asserts).
+AIPlayground hat seit Session 28 noch seinen eigenen
+inline-Aufruf mit ~100 Zeilen Error-Handling — das ist die
+letzte Stelle, wo `/api/ai/generate` direkt aus einer UI-
+Component aufgerufen wird. Migration konsolidiert die
+Codebase und macht `ai-client.ts` zum *einzigen* Pfad.
+Zusätzlich Recap-Doku im Light-Pass-Stil.
+

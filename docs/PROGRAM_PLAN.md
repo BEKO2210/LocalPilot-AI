@@ -318,9 +318,19 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Whitespace-Slug-Defensive; UI nutzt `router.replace`
   statt `push` (kein Back-Button-Loop). +7 Asserts on top,
   39/40 Smoketests grün.
+- 64: Lead-Retry-Queue ✅. Wenn das Public-Site-Formular
+  einen Lead wegen Netzwerk-Hänger / 5xx nur lokal ablegt,
+  wird er ab sofort beim nächsten `online`-Event automatisch
+  erneut versendet. Pure Helper `lead-retry-queue.ts` (~250
+  Zeilen, ~50 Asserts) mit Exponential-Backoff (5s → 5min,
+  max 8 Versuche, danach `discardedAt`-Marker). Beim Flush
+  werden 4xx als Success-Klasse behandelt (kein endloser
+  Retry-Loop auf strukturell kaputten Leads). Form zeigt
+  amber Badge „N ältere Anfragen warten …" bei nicht-leerer
+  Queue. Damit ist der Public-Site-Lead-Pfad production-
+  tauglich gegen Netzwerk-Hänger.
 - 41+: Backup-Policy, Seed-Skript für Demo-Daten,
-  „Betrieb löschen"-Flow mit rekursivem Storage-Cleanup,
-  Retry-Queue für Lead-`local-fallback` (Session 64).
+  „Betrieb löschen"-Flow mit rekursivem Storage-Cleanup.
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant

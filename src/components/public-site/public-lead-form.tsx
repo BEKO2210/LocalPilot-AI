@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { CheckCircle2, AlertTriangle, Send, Info } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CheckCircle2, AlertTriangle, Cloud, Send, Info } from "lucide-react";
 import { LeadSchema } from "@/core/validation/lead.schema";
 import { LEAD_RETENTION_MONTHS, buildConsent } from "@/core/legal";
 import { appendLead, generateLeadId } from "@/lib/mock-store/leads-overrides";
@@ -12,8 +12,24 @@ import {
   type ServerSubmitInput,
   type SubmitResult,
 } from "@/lib/lead-submit";
+import {
+  enqueue as enqueueRetry,
+  getDueItems,
+  getQueueStats,
+  markRetried,
+  type StorageLike,
+} from "@/lib/lead-retry-queue";
 import type { Business } from "@/types/business";
 import type { LeadFormField } from "@/types/lead";
+
+function getQueueStorage(): StorageLike | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
 
 type PublicLeadFormProps = {
   business: Business;
@@ -148,6 +164,68 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
   const [success, setSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
+  const [queuePending, setQueuePending] = useState(0);
+  const flushingRef = useRef(false);
+
+  // Flush der Retry-Queue (Code-Session 64). Wird bei mount und
+  // bei `online`-Events ausgelöst — sequentiell, weil wir den
+  // Server nicht parallel mit identischen Leads bombardieren
+  // wollen (Idempotency liegt nicht im Lead-Insert-Pfad).
+  const flushRetryQueue = useCallback(async () => {
+    if (flushingRef.current) return;
+    const storage = getQueueStorage();
+    if (!storage) return;
+    flushingRef.current = true;
+    try {
+      const due = getDueItems(storage, new Date());
+      for (const item of due) {
+        try {
+          const res = await fetch("/api/leads", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(item.payload),
+          });
+          // 2xx oder 4xx (Validation-Fehler — nochmal versuchen
+          // bringt nichts) → markRetried success. Nur 5xx und
+          // Netzwerk-Fehler triggern echten Retry.
+          const treatAsSuccess = res.ok || (res.status >= 400 && res.status < 500);
+          markRetried(storage, item.id, {
+            success: treatAsSuccess,
+            now: new Date(),
+          });
+        } catch {
+          markRetried(storage, item.id, {
+            success: false,
+            now: new Date(),
+          });
+        }
+      }
+      const stats = getQueueStats(storage, new Date());
+      setQueuePending(stats.total);
+    } finally {
+      flushingRef.current = false;
+    }
+  }, []);
+
+  // Mount: Queue-Stats anzeigen, dann sofort flushen.
+  useEffect(() => {
+    const storage = getQueueStorage();
+    if (!storage) return;
+    setQueuePending(getQueueStats(storage, new Date()).total);
+    void flushRetryQueue();
+  }, [flushRetryQueue]);
+
+  // Online-Event-Listener: wenn der Browser wieder Verbindung
+  // hat, einmal flushen. `offline` sparen wir uns — das ist
+  // automatisch durch das nächste `online` triggerbar.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    function onOnline() {
+      void flushRetryQueue();
+    }
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [flushRetryQueue]);
 
   function setValue(key: string, next: string) {
     setValues((prev) => ({ ...prev, [key]: next }));
@@ -301,6 +379,21 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
         return;
       }
 
+      // local-fallback: Lead in die Retry-Queue schieben, damit er
+      // beim nächsten `online`-Event automatisch versendet wird.
+      // local-only ist Static-Build (keine API erreichbar) — kein
+      // Retry sinnvoll. server: alles glatt, kein Retry nötig.
+      if (result.kind === "local-fallback") {
+        const storage = getQueueStorage();
+        if (storage) {
+          enqueueRetry(storage, serverInput, {
+            id: validation.data.id,
+            now: new Date(),
+          });
+          setQueuePending(getQueueStats(storage, new Date()).total);
+        }
+      }
+
       // Erfolg (server / local-only / local-fallback). User-Hinweis
       // nur bei `local-fallback` sichtbar — bei „server" und
       // „local-only" (Static-Build) gibt es nichts zu kommunizieren.
@@ -388,6 +481,22 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
       aria-label="Anfrageformular"
       noValidate
     >
+      {queuePending > 0 ? (
+        <p
+          role="status"
+          className="flex items-center gap-2 rounded-theme-button border p-2 text-xs"
+          style={{
+            borderColor: "#fcd34d",
+            backgroundColor: "#fffbeb",
+            color: "#92400e",
+          }}
+        >
+          <Cloud className="h-3.5 w-3.5 flex-none" aria-hidden />
+          {queuePending === 1
+            ? "Eine ältere Anfrage wartet noch auf den Versand — sie wird automatisch beim nächsten Verbindungsaufbau zugestellt."
+            : `${queuePending} ältere Anfragen warten noch auf den Versand — sie werden automatisch beim nächsten Verbindungsaufbau zugestellt.`}
+        </p>
+      ) : null}
       {fields.map((field) => (
         <PublicLeadField
           key={field.key}

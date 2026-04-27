@@ -105,6 +105,12 @@
 - [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
 - [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
 
+### localStorage-Retry-Queue mit Exponential-Backoff (Code-Session 64)
+- [@segment/localstorage-retry](https://github.com/segmentio/localstorage-retry) — Production-ready Pattern bei Segment.io. Default-Werte (5s Base / 5min Max / Factor 2 / max 8 Versuche) übernommen, Implementation eigen wegen Bundle-Größe (64).
+- [DEV – Queue-Based Exponential Backoff](https://dev.to/andreparis/queue-based-exponential-backoff-a-resilient-retry-pattern-for-distributed-systems-37f3) — 4xx als Success-Klasse markieren bei client-side Retries (64).
+- [AWS Builders Library – Timeouts, Retries, Backoff with Jitter](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/) — Jitter wichtig im Cluster, irrelevant in Single-Browser-Kontext (64).
+- [Advanced Web Machinery – Exponential Backoff in JS](https://advancedweb.hu/how-to-implement-an-exponential-backoff-retry-strategy-in-javascript/) — Praxis-Beispiel mit clean Math (64).
+
 ### Browser→AI-API-Auth-Patterns (Code-Session 61)
 - [Next.js – Authentication](https://nextjs.org/docs/app/guides/authentication) — Bearer-Header in Client-Components ist Standard, solange Token nicht im JS-Bundle landet (61).
 - [TokenMix – AI API for React Apps 2026](https://tokenmix.ai/blog/ai-api-for-react-apps) — Sicherheits-Note: AI-Provider-Keys NIE direkt aus dem Browser; Backend-Proxy ist Pflicht (61).

@@ -7,14 +7,86 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Code-Sessions 64+: Direkt-Posten zu Buffer/Hootsuite/Meta-
-  Graph, Multi-Member-Verwaltung, Retry-Queue für Lead-
-  `local-fallback`, „Betrieb löschen"-Flow mit rekursivem
-  Storage-Cleanup, Edge-Runtime-Migration, CSRF-Schutz,
-  HTML-Sanitize-Whitelist, Impressum-Editor pro Betrieb,
-  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test,
-  AIPlayground auf `ai-client.ts`-Helper migrieren
-  (Light-Pass Session 65).
+- Code-Session 65 (Light-Pass, 5er-Multiple): AIPlayground
+  auf `ai-client.ts`-Helper migrieren (~100 Zeilen
+  Inline-Error-Handling konsolidieren) + Recap-Doku
+  AI-Schicht (`ai-client.ts` als zentraler Browser→
+  /api/ai/generate-Pfad).
+- Code-Sessions 66+: CSRF-Schutz, HTML-Sanitize-Whitelist,
+  Sentry-Integration, „Betrieb löschen"-Flow, Multi-Member-
+  Verwaltung, Direkt-Posten zu Buffer/Hootsuite/Meta-Graph,
+  Custom-Domain, Lighthouse-CI, Edge-Runtime-Migration,
+  Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
+  Schema↔Migration-Drift-Test.
+
+## [0.16.38] – Code-Session 64 – 2026-04-27
+
+Lead-Retry-Queue für `local-fallback`. Wenn das
+Public-Site-Formular einen Lead wegen Server-Fehler / Offline
+nur lokal ablegen konnte, wird er ab sofort beim nächsten
+`online`-Event automatisch erneut versendet. Vorher blieben
+solche Leads dauerhaft in localStorage stecken.
+
+- ✚ `src/lib/lead-retry-queue.ts` — pure Helper (~250
+  Zeilen):
+  - localStorage-basierte Queue unter
+    `lp:lead-retry-queue:v2`.
+  - `enqueue` (idempotent über `id`),
+    `getDueItems(now)`,
+    `markRetried(id, {success, now})`,
+    `getQueueStats(now)`,
+    `clearQueue`,
+    `computeNextRetryAt(attempts, now)` (Exponential-
+    Backoff: 5s → 10s → 20s → … → cap 5min, max 8 attempts,
+    danach `discardedAt`-Marker).
+  - `StorageLike`-Interface mit `null`-Defensive (SSR/
+    Privacy-Modus → silent no-op).
+  - Korrupter JSON / Non-Array / fehlende Felder im
+    Storage → leere Queue zurückliefern (kein Throw).
+- ✚ `src/tests/lead-retry-queue.test.ts` (~50 Asserts):
+  Memory-Storage-Stub. Backoff-Berechnung, FIFO-Reihenfolge,
+  Idempotenz, Discard nach maxAttempts, Stats,
+  null-Storage-Defensive, korrupter Storage.
+- 🔄 `src/components/public-site/public-lead-form.tsx`:
+  - Beim Mount: `getQueueStats` → Badge anzeigen, dann
+    `flushRetryQueue` einmal ausführen.
+  - `online`-Event-Listener: bei Verbindungs-Wiederkehr
+    flushen.
+  - Bei `submitLead`-Result `local-fallback`: Lead via
+    `enqueueRetry` in die Queue.
+  - `flushRetryQueue` läuft sequentiell (kein
+    Server-Bombing): pro Item ein `POST /api/leads`. 2xx
+    + 4xx (kein Re-Try-sinnvoll) → markRetried(success);
+    5xx + Throw → markRetried(fail) mit Backoff.
+  - Neuer `flushingRef` verhindert parallele Doppelflushes
+    bei kombinierten mount + online-Events.
+  - Amber Badge oben im Form: „N ältere Anfragen warten
+    noch auf den Versand …"
+
+40/41 Smoketests grün (industry-presets pre-existing red,
+Codex #11). +1 lead-retry-queue grün. typecheck ✅, lint ✅,
+beide Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Lead-Retry-Queue). Damit ist der
+Public-Site-Lead-Pfad production-tauglich gegen
+Netzwerk-Hänger und temporäre Server-Ausfälle. Verbleibend
+Pflicht-Items für „funktioniert alles": Light-Pass 65
+(AIPlayground), CSRF/Sanitize-Hardening, Sentry,
+„Betrieb löschen"-Flow.
+
+**Status-Update**: ~96 % Richtung „erstes Betrieb-fertiges
+Produkt". Lead-System ist produktiv robust. Verbleibend:
+Light-Pass 65, Security-Hardening (CSRF/HTML-Sanitize),
+Sentry, „Betrieb löschen", Multi-Member, Custom-Domain.
+
+**Manueller Test**: Public-Site → Anfrageformular → bei
+unterbrochener Verbindung absenden (DevTools → Network →
+Offline) → Erfolgs-State erscheint trotzdem („wird
+versendet sobald online"). Zurück zu Online-Modus +
+Reload → Form lädt mit „1 ältere Anfrage wartet …"-Badge
+→ Queue wird automatisch geflushed → Badge verschwindet.
+
+## [0.16.37] – Code-Session 63 – 2026-04-27
 
 ## [0.16.37] – Code-Session 63 – 2026-04-27
 
