@@ -300,11 +300,19 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   `rate-limit` / `static-build` / `fail`) als zentrale,
   getestete Browser→`/api/ai/generate`-Schnittstelle.
   Token-localStorage-Slot ist geteilt mit AIPlayground —
-  einmal eingeben, in beiden Panels nutzbar. Als nächste
-  Konsumenten: Social-Panel (Session 62) und AIPlayground-
-  Migration (Light-Pass 65).
+  einmal eingeben, in beiden Panels nutzbar.
+- 62: Live-Provider-Switch für Social-Panel ✅. Symmetrisch
+  zu 61 — gleicher Helper, gleicher Provider-Toggle, gleicher
+  Token-Slot. Zusätzlich neuer lokaler `parseSocialOutput`-
+  Helper für defensive Validation des `unknown`-Server-
+  Outputs. Damit sind alle drei produktiven AI-Pfade
+  (Playground, Reviews, Social) Live-fähig. Folge-Item:
+  AIPlayground-Migration auf `callAIGenerate` als Light-Pass
+  Session 65 (konsolidiert ~100 Zeilen inline-Error-Handling
+  aus Session 28).
 - 41+: Backup-Policy, Seed-Skript für Demo-Daten,
-  „Betrieb löschen"-Flow mit rekursivem Storage-Cleanup.
+  „Betrieb löschen"-Flow mit rekursivem Storage-Cleanup,
+  Default-Redirect bei einem Betrieb (Session 63).
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant

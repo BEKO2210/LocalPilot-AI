@@ -7,16 +7,63 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Code-Sessions 62+: Live-Provider-Switch auch für
-  Social-Panel (symmetrisch zu Reviews via `ai-client.ts`),
-  Direkt-Posten zu Buffer/Hootsuite/Meta-Graph,
-  Multi-Member-Verwaltung, Default-Redirect bei einem Betrieb,
-  Retry-Queue für Lead-`local-fallback`, „Betrieb löschen"-
-  Flow mit rekursivem Storage-Cleanup, Edge-Runtime-Migration,
-  CSRF-Schutz, HTML-Sanitize-Whitelist, Impressum-Editor pro
-  Betrieb, Seed-Skript für Demo-Daten,
+- Code-Sessions 63+: Direkt-Posten zu Buffer/Hootsuite/Meta-
+  Graph, Multi-Member-Verwaltung, Default-Redirect bei einem
+  Betrieb, Retry-Queue für Lead-`local-fallback`,
+  „Betrieb löschen"-Flow mit rekursivem Storage-Cleanup,
+  Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
+  Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
   Schema↔Migration-Drift-Test, AIPlayground auf
-  `ai-client.ts`-Helper migrieren (Konsolidierung).
+  `ai-client.ts`-Helper migrieren (Light-Pass Session 65).
+
+## [0.16.36] – Code-Session 62 – 2026-04-27
+
+Live-Provider-Switch für Social-Panel. Symmetrisch zu Session
+61 (Reviews-Panel) — derselbe `callAIGenerate`-Helper, derselbe
+Provider-Toggle-Block, derselbe geteilte Token-Slot. Damit
+sind beide produktiven Mock-Pfade live-fähig.
+
+- 🔄 `src/components/dashboard/social/social-post-panel.tsx`:
+  - Provider-Toggle (ARIA-radiogroup, 4 Optionen: Mock /
+    OpenAI / Anthropic / Gemini) zwischen Goal-Pills und
+    Topic-Input.
+  - Bei Non-Mock: Token-Input-Feld mit Hint-Text
+    („geteilt mit Reviews + Playground").
+  - `handleGenerate` async-Flow: Mock weiterhin direkt; Live
+    via `callAIGenerate({method: "generateSocialPost", ...})`.
+  - Neuer lokaler `parseSocialOutput`-Helper validiert das
+    `unknown`-Server-Output defensiv und liefert ein
+    `SocialPostOutput | null` — bei `null` zeigt das Panel
+    einen Fallback-Hinweis.
+  - Token-localStorage-Hydration symmetrisch zu Reviews +
+    AIPlayground (gleicher `AI_TOKEN_STORAGE_KEY`).
+  - Error-State über `userMessageForAIResult` für rate-
+    limit / static-build / forbidden / fail.
+
+39/40 Smoketests grün (industry-presets pre-existing red,
+Codex #11). typecheck ✅, lint ✅, beide Builds ✅. Bundle
+102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Social-Live). Damit sind beide
+produktiven Owner-Panels (Reviews, Social) Live-Provider-
+fähig. 1 Folge-Item: AIPlayground-Migration auf
+`callAIGenerate` (Light-Pass Session 65), die ~100 Zeilen
+inline Error-Handling konsolidieren würde.
+
+**Status-Update**: ~95 % Richtung „erstes Betrieb-fertiges
+Produkt". Live-AI ist auf allen drei Owner-Panels (Playground,
+Reviews, Social) verfügbar. Verbleibend: Custom-Domain,
+Sentry, Lighthouse-CI, Multi-Member-Verwaltung,
+„Betrieb löschen"-Flow, AIPlayground-Konsolidierung.
+
+**Manueller Test**: Dashboard → „Social-Media-Generator" →
+Plattform/Goal/Length wählen → Provider auf „OpenAI" → Token
+eingeben → Thema eintragen → „Post generieren". Mit aktivem
+SSR-Deploy zeigt der Server echte AI-Posts mit Plattform-
+spezifischen Char-Counter-Warnungen. Mit Mock-Provider
+sofort funktional ohne Token. Static-Build-Hint bei 404.
+
+## [0.16.35] – Code-Session 61 – 2026-04-27
 
 ## [0.16.35] – Code-Session 61 – 2026-04-27
 

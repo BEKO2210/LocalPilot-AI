@@ -7086,3 +7086,96 @@ weitere produktive Mock-Pfad und sollte symmetrisch live
 gehen können. Code wird sehr ähnlich aussehen
 (`method: "generateSocialPost"`), Aufwand minimal.
 
+## Code-Session 62 – Live-Provider-Switch für Social-Panel
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Symmetrisch zu Session 61 — Social-Post-Panel
+(Session 54) bekommt denselben Provider-Toggle (Mock / OpenAI
+/ Anthropic / Gemini) und Live-Pfad über
+`callAIGenerate({method: "generateSocialPost", ...})`. Mit
+Session 62 sind alle drei produktiven AI-Pfade
+(AIPlayground, Reviews, Social) Live-fähig.
+
+**Architektur-Entscheidung — exakte Symmetrie zu Session 61**:
+Gleiche `PROVIDER_OPTIONS`-Werte, gleicher `handleGenerate`-
+async-Flow (Mock direkt vs. Live via Helper), gleiches
+Token-Input-Pattern, gleicher localStorage-Slot. Einziger
+struktureller Unterschied: Output-Validation — Reviews hat
+ein `variants[]`-Array, Social hat ein flaches Objekt mit
+`shortPost`/`longPost`/`hashtags`/`imageIdea`/`cta`. Daher
+neuer lokaler `parseSocialOutput(unknown)`-Helper, der das
+`unknown`-Server-Output gegen die Pflichtfelder prüft und
+ein `SocialPostOutput | null` liefert. Bei `null` (ohne
+shortPost UND longPost) zeigt das Panel den Fallback-Hint
+„Bitte erneut versuchen oder Mock nutzen".
+
+**WebSearch (Track C)**: bestätigt
+- [React – useTransition](https://react.dev/reference/react/useTransition)
+  Aktuell nutzen Reviews- und Social-Panel weiterhin
+  `state.kind === "loading"` statt `useTransition`. Migrieren
+  würde Bundle-Effizienz + smoothen UI bringen, aber kein
+  funktionaler Unterschied — Plan-Item für späteren
+  Light-Pass.
+- [Adesh Gupta – useTransition Hook](https://www.adeshgg.in/blog/use-transition-hook)
+  Bestätigt: für „klick-und-warte"-UI mit klarer Loading-
+  State-UI (Spinner) ist `useState` ausreichend; `useTransition`
+  ist mehr für längere konkurrierende Updates.
+
+**Dateien**:
+- 🔄 `src/components/dashboard/social/social-post-panel.tsx`:
+  - Imports: `useEffect`, `KeyRound`, `Server`,
+    `AIProviderKey`, `callAIGenerate`,
+    `userMessageForAIResult`, `AI_TOKEN_STORAGE_KEY`.
+  - Neue States: `providerKey`, `apiToken`. Token-
+    localStorage-Hydration in `useEffect` symmetrisch zu
+    Reviews-Panel.
+  - Neuer lokaler `PROVIDER_OPTIONS`-Block (4 Optionen) +
+    `ProviderTabs`-Sub-Komponente (ARIA-radiogroup).
+  - Neuer lokaler `parseSocialOutput(raw: unknown):
+    SocialPostOutput | null` — defensive Validation der
+    Pflichtfelder mit Default-Strings für nicht-pflichtige.
+  - `handleGenerate`: Mock-Pfad unverändert; Live-Pfad ruft
+    `callAIGenerate(...)`. Bei `kind: "server"` durch
+    `parseSocialOutput` validieren; sonst Error-State mit
+    `userMessageForAIResult`.
+  - Token-Input-Feld + Hint-Text bei Non-Mock,
+    Provider-Toggle zwischen Goal-Pills und Topic-Input.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**39/40 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Keine neuen Tests nötig — `callAIGenerate` ist
+schon mit ~38 Asserts in Session 61 abgedeckt; Social-Panel-
+Logik selbst ist UI-spezifisch.
+
+**Roadmap**: 1 abgehakt (Social-Live). Mit Sessions 61+62
+sind alle produktiven Owner-Panels Live-fähig. 2 Folge-Items:
+- **Code-Session 63+**: Direkt-Posten zu Buffer/Hootsuite/
+  Meta-Graph (Track-A-Innovation, mittel-große Session).
+- **Code-Session 65 (Light-Pass)**: AIPlayground auf
+  `callAIGenerate` migrieren — die ~100-Zeilen-inline-
+  Error-Handling-Logik aus Session 28 kann auf den jetzt
+  in zwei Konsumenten gehärteten Helper umsteigen. Damit
+  ist `ai-client.ts` der eine zentrale Browser→
+  /api/ai/generate-Pfad.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — AI-Client-Auth-
+Patterns 2026 (Session 61), Track C — useTransition vs
+useState für Loading-UI (Session 62).
+
+**Status-Update**: ~95 % Richtung „erstes Betrieb-fertiges
+Produkt". Live-AI ist auf allen drei Owner-Panels verfügbar
+(Playground, Reviews, Social). Self-Service-Editor + Storage-
+Hygiene sind komplett. Verbleibend: Custom-Domain, Sentry,
+Lighthouse-CI, Multi-Member-Verwaltung, „Betrieb löschen"-
+Flow, AIPlayground-Konsolidierung.
+
+**Nächste Session**: Code-Session 63 = **Default-Redirect
+bei einem Betrieb**. Begründung: Wenn ein Owner nur einen
+einzigen Betrieb hat (Standardfall am Anfang), zeigen wir
+ihm aktuell trotzdem die Account-Auswahl-Seite vor dem
+Dashboard. Das ist ein unnötiger Klick. Pragma:
+`/account` → wenn `businesses.length === 1`, redirecte
+direkt auf `/dashboard/<slug>`. Klein, scharf, UX-Boost.
+Alternative wäre Multi-Member-Verwaltung (größere Session)
+oder Direkt-Posten (Track A) — beides danach.
+
