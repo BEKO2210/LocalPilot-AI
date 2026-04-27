@@ -1163,12 +1163,124 @@ Vorschau-Sektion mit Roadmap.
 
 ### 6. Was ist der nächste empfohlene Run?
 
-**Session 10 – Betriebsdaten und Branding bearbeiten.**
+**Session 10 – Betriebsdaten und Branding bearbeiten.** (s. u.)
 
-`src/app/dashboard/[slug]/business/page.tsx` von Stub zu echter Edit-
-Page promoten: Stammdaten-Formular (Name, Tagline, Beschreibung,
-Adresse, Kontakt, Öffnungszeiten), Theme-Picker, Branding-Felder
-(Logo-/Hero-Bild-Platzhalter), Validierung über bestehendes
-`BusinessSchema`/Zod, Speichern via Mock-Repository (Supabase folgt
-Session 19). Optional Live-Vorschau-Karte, die `<ThemeProvider>` mit
-den aktuellen Form-Werten rendert.
+---
+
+## Session 10 – Betriebsdaten und Branding bearbeiten
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- **Business-Editor** unter `/dashboard/[slug]/business` ersetzt den
+  Stub aus Session 9. React-Hook-Form + Zod-Resolver, validiert gegen
+  `BusinessProfileSchema` (neu, Subset von `BusinessSchema`).
+- **6 Form-Sektionen**:
+  1. Basisdaten – Name, Tagline (`{{city}}`-Platzhalter), Beschreibung
+  2. Branche & Paket – Industry-Select aus 13 Presets, Paket-Anzeige
+     (Display only, mit Link auf `/pricing`)
+  3. Adresse – Street, PLZ, Stadt, ISO-Land
+  4. Kontakt – Telefon, WhatsApp, E-Mail, Website, Maps, Bewertungslink
+  5. Öffnungszeiten – `<OpeningHoursEditor>` mit `useFieldArray`,
+     pro Tag „geschlossen" oder mehrere Slots (Mittagspause möglich)
+  6. Branding & Design – `<ThemePickerField>` (10 Themes als Karten),
+     optionale Color-Overrides, Logo- und Cover-URL-Felder
+- **`<BusinessEditPreview>`** – Live-Vorschau mit `<ThemeProvider>` +
+  `useWatch()`. Reagiert sofort auf Änderungen. Sticky-Sidebar Desktop,
+  oben auf Mobile.
+- **Mock-Store** in `src/lib/mock-store/`:
+  `getOverride`/`setOverride`/`clearOverride`/`hasOverride` über
+  localStorage mit versioniertem Schlüssel
+  (`lp:business-override:v1:<slug>`) und defensiver Schema-Validierung.
+- **Form-Primitive** in `src/components/forms/`:
+  `<FormSection>`, `<FormField>`, `<FormInput>`, `<FormTextarea>`,
+  `<FormSelect>`.
+- **Status-Bar** im Editor (sticky): „Lokale Anpassung aktiv", Anzahl
+  Fehler, Demo-Defaults laden, Verwerfen, Speichern.
+- **Sidebar** zeigt `Betriebsdaten` jetzt als produktive Sektion.
+- **Smoketest** `src/tests/business-edit.test.ts` (~10 Assertions).
+- **`docs/BUSINESS_EDITOR.md`** mit Architektur und Erweiterungsanleitung.
+- Dependencies ergänzt: `react-hook-form@7.54.2`,
+  `@hookform/resolvers@3.10.0`.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (12 Dateien):
+- `src/core/validation/business-profile.schema.ts`
+- `src/lib/mock-store/{business-overrides,business-profile,index}.ts`
+- `src/components/forms/{form-section,form-field,index}.tsx/.ts`
+- `src/components/dashboard/business-edit/{business-edit-form,
+  business-edit-preview,opening-hours-editor,theme-picker-field,
+  index}.tsx/.ts`
+- `src/tests/business-edit.test.ts`
+- `docs/BUSINESS_EDITOR.md`
+
+Geändert:
+- `src/app/dashboard/[slug]/business/page.tsx` (Stub → echter Editor)
+- `src/components/dashboard/nav-config.ts` (`business` jetzt produktiv)
+- `src/core/validation/index.ts` (re-exportiert Profile-Schema)
+- `src/tests/dashboard.test.ts` (≥ 2 produktive Sektionen)
+- `package.json` / `package-lock.json`
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm install               # RHF + Resolvers nachziehen
+npm run typecheck         # tsc --noEmit + Smoketests
+npm run lint              # 0 warnings/errors
+npm run build:static      # Static Export
+npm run dev               # http://localhost:3000/dashboard/beauty-atelier/business
+```
+
+Manuelle Schritte im Browser:
+1. `/dashboard/beauty-atelier/business` öffnen.
+2. Name oder Tagline ändern → Live-Vorschau aktualisiert sich sofort.
+3. Theme wechseln → Vorschau übernimmt Farben/Schriften.
+4. „Speichern" tippen → grüner Hinweis, Reload zeigt persistierten Stand.
+5. „Demo-Defaults laden" → Original kommt zurück.
+6. Pflichtfeld leeren → Inline-Fehler + Error-Counter im Status-Bar.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                       | Status                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| Betreiber kann Betrieb bearbeiten | ✅ alle 6 Demo-Slugs unter `/dashboard/<slug>/business`               |
+| Änderungen sind sichtbar        | ✅ Live-Themed-Preview + Reload zeigt persistierten Stand               |
+| Formular ist einfach            | ✅ 6 klar getrennte Sektionen, deutsche Labels & Hilfetexte             |
+| Validierung verständlich        | ✅ Inline-Fehler unter dem Feld, Fehler-Counter im Status-Bar           |
+| Business-Formular               | ✅ vollständig, Schema-validiert                                         |
+| Kontaktdaten / Adresse          | ✅ je eigene Sektion                                                     |
+| Öffnungszeiten                  | ✅ 7-Tage-Editor mit „geschlossen"-Toggle und mehreren Slots             |
+| Branche wählen                  | ✅ Select aus 13 Presets                                                 |
+| Paket anzeigen                  | ✅ Display-Card mit Link auf `/pricing`                                 |
+| Theme wählen                    | ✅ Visueller Picker mit Color-Swatches                                   |
+| Farben ändern                   | ✅ Drei Override-Felder (primary/secondary/accent)                       |
+| Logo / Bildplatzhalter          | ✅ Logo-URL + Cover-URL als Felder                                       |
+| Speichern mit Mock-Layer        | ✅ localStorage über `business-overrides.ts`                             |
+
+### 5. Was ist offen?
+
+- **Session 11** – `services`-Sub-Route mit CRUD-Form und Sortierung
+  (gleiches RHF + Mock-Store-Pattern).
+- **Session 12** – Lead-System (echtes Anfrageformular auf Public Site
+  + Detail-Drawer im Dashboard).
+- **Sessions 13–17** – KI-Provider, Bewertungs-Booster, Social-Generator.
+- **Session 18** – `settings`-Page (Slug, Veröffentlichungsstatus,
+  Locale).
+- **Session 19** – Storage-Backend für Logo/Cover-Upload + Supabase-
+  Repository (ersetzt localStorage-Mock).
+- Optional: nativer `<input type="color">` statt Hex-Text-Feld.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 11 – Leistungen verwalten.**
+
+`src/app/dashboard/[slug]/services/page.tsx` von Stub zu Editor:
+Listenansicht aller Services, anlegen, bearbeiten, deaktivieren,
+löschen, sortieren, Paket-Limit-Anzeige (Bronze 10, Silber 30,
+Gold 100), Featured-Markierung, Vorschau-Link pro Service. Nutzt das
+gleiche Mock-Store-Pattern (`services-overrides`) und die gleichen
+Form-Primitive aus Session 10.

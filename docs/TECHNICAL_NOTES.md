@@ -316,18 +316,42 @@ Konvention für eine neue Sektion:
 - **Smoketest** in `src/tests/dashboard.test.ts` validiert Nav-Config
   und Slug-Konsistenz.
 
-## Stand nach Session 9
+## Business-Editor (ab Session 10)
+
+- **`BusinessProfileSchema`** (`src/core/validation/business-profile.schema.ts`)
+  ist ein Subset von `BusinessSchema` mit den editierbaren Feldern (alle
+  System- und Aggregat-Felder bleiben raus). Leere String-Werte für
+  optionale Hex-/URL-Felder werden zu `undefined` transformiert –
+  praktisch für RHF, das leere Inputs als `""` liefert.
+- **Editor** unter `/dashboard/[slug]/business` nutzt React-Hook-Form +
+  `zodResolver(BusinessProfileSchema)`. Page selbst ist Server
+  Component, das Form ist `"use client"`.
+- **Persistierung** über `src/lib/mock-store/business-overrides.ts`
+  (localStorage, versionierter Schlüssel `lp:business-override:v1:<slug>`,
+  defensive Validierung). Der Store lebt client-only, kein SSR-Problem.
+- **Live-Preview** (`<BusinessEditPreview>`) nutzt `useWatch` und
+  `<ThemeProvider>` aus Session 5. Hex-Color-Overrides werden auf das
+  gewählte Basis-Theme angewendet, bevor es in den Provider geht.
+- **Form-Primitive** in `src/components/forms/` als Basis für die
+  kommenden Dashboard-Editoren (Services, Settings).
+- **Smoketest** `src/tests/business-edit.test.ts` validiert Profil-
+  Extraktion, Merge, Schema-Regeln.
+
+## Stand nach Session 10
 
 - App Router läuft, `/`, `/pricing`, `/themes`, `/demo` rendern statisch.
-  Plus `/site/<6 slugs>` (Public Sites) und `/dashboard` + 6 ×
-  8 Dashboard-Sektionen = insgesamt **62 prerendete Routen**.
+  Plus `/site/<6 slugs>`, `/dashboard` (Picker) und alle Dashboard-
+  Sektionen pro Slug. **`/dashboard/[slug]/business`** ist die erste
+  produktive Editor-Page (~66 KB First-Load JS).
 - Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber
   (Static und SSR).
 - Tailwind & Brand-Tokens stehen, Theme-Tokens als CSS-Variablen verfügbar.
 - Datenmodelle vollständig, Pricing-System produktiv.
 - 13 Branchen-Presets, 10 Themes registriert und validiert.
-- 6 Demo-Betriebe vollständig validiert; jeder hat eine eigene
-  Public Site UND ein eigenes Dashboard mit individuellem Theme.
+- 6 Demo-Betriebe vollständig validiert; jeder hat Public Site +
+  Dashboard + Editor mit individuellem Theme.
+- React-Hook-Form + Zod-Resolver eingeführt, Mock-Store als Pattern
+  für die kommenden Editoren etabliert.
 - GitHub-Pages-Deployment automatisiert; lokal über `build:static`.
 - `<LinkButton>` ist basePath-aware (interne Pfade via `next/link`).
 - Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
@@ -335,21 +359,23 @@ Konvention für eine neue Sektion:
 
 ## Offene technische Punkte
 
-- Dashboard-Sub-Routen ausbauen (`business` Session 10, `services`
-  Session 11, `leads` Session 12, `ai` Sessions 13–15, `reviews`
-  Session 16, `social` Session 17, `settings` Session 18).
+- Restliche Dashboard-Sub-Routen ausbauen (`services` Session 11,
+  `leads` Session 12, `ai` Sessions 13–15, `reviews` Session 16,
+  `social` Session 17, `settings` Session 18).
 - Lead-System (Session 12) – ersetzt die Formular-Vorschau in
   `<PublicContact>` und die Demo-Telefonnummer im `<CtaContact>` durch
   eine echte Erfassung (Server Action / API).
 - AI-Provider-Adapter (Session 13). Interface steht.
 - Repository-Layer / Mock vs. Supabase (Session 19) – Mock-Layer ist
-  bereits so gekapselt (`getMockBusinessBySlug` usw.), dass ein
-  späterer Tausch gegen Supabase ohne UI-Änderungen möglich bleibt.
+  bereits so gekapselt (`getMockBusinessBySlug`, `getOverride` usw.),
+  dass ein späterer Tausch gegen Supabase ohne UI-Änderungen möglich
+  bleibt.
 - Vitest-Setup (Session 20). Bis dahin tragen `tsc --noEmit` plus die
   `src/tests/*.test.ts`-Smoketests die Sicherheit.
-- Image-Hosting/-Optimierung – `logoUrl`/`coverImageUrl` optional im
-  Schema, werden aber noch nicht gerendert. Sobald sie kommen, via
+- Image-Hosting/-Optimierung – `logoUrl`/`coverImageUrl` jetzt im
+  Editor pflegbar, aber nicht gerendert. Sobald sie kommen, via
   `next/image` mit `unoptimized: true` für Static Export.
+- Color-Picker als nativer `<input type="color">` (statt Hex-Text).
 - Analytics/Tracking für Marketing-Funnel und Dashboard (Session 19+).
 - Sobald API-Routen oder Server Actions kommen: Vercel als
   Production-Target ergänzen, GitHub Pages bleibt als Showcase.

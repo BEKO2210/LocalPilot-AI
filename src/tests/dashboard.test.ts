@@ -35,8 +35,13 @@ assert(keys.size === DASHBOARD_NAV.length, "Nav-Keys sind eindeutig");
 const withoutSession = DASHBOARD_NAV.filter(
   (n) => typeof n.comingInSession !== "number",
 );
-assert(withoutSession.length === 1, "genau eine produktive Sektion (Übersicht)");
-assert(withoutSession[0]?.key === "overview", "produktive Sektion ist 'overview'");
+assert(
+  withoutSession.length >= 2,
+  `≥ 2 produktive Sektionen, aktuell ${withoutSession.length}`,
+);
+const productiveKeys = new Set(withoutSession.map((n) => n.key));
+assert(productiveKeys.has("overview"), "'overview' ist produktiv");
+assert(productiveKeys.has("business"), "'business' ist seit Session 10 produktiv");
 
 // Jede Stub-Sektion verweist auf eine plausible Session-Nummer (>= 10).
 for (const item of DASHBOARD_NAV) {

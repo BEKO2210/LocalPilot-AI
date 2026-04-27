@@ -47,7 +47,6 @@ export const DASHBOARD_NAV: readonly DashboardNavItem[] = [
     pathSuffix: "/business",
     label: "Betriebsdaten",
     icon: Building2,
-    comingInSession: 10,
   },
   {
     key: "services",
