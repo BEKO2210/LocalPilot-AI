@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthConfig, SESSION_COOKIE_NAME } from "@/core/ai/auth/check";
 import { buildSessionToken } from "@/core/ai/auth/session";
+import { enforceCsrf } from "@/lib/csrf";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -27,6 +28,9 @@ const LoginSchema = z.object({
 const SESSION_TTL_SECONDS = 7 * 24 * 3600;
 
 export async function POST(req: Request): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   let body: unknown;
   try {
     body = await req.json();

@@ -6,13 +6,92 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1 Restweg → MVP-funktional (Sessions 66–70)
-- **66**: CSRF-Schutz für mutating Routes.
+### Phase 1 Restweg → MVP-funktional (Sessions 67–70)
 - **67**: HTML-Sanitize-Whitelist auf User-Input.
 - **68**: Sentry-Integration.
 - **69**: „Betrieb löschen"-Flow mit rekursivem
   Storage-Cleanup.
 - **70** (Light-Pass): finaler Pre-MVP-Pass + Audit-Checkliste.
+
+## [0.16.40] – Code-Session 66 – 2026-04-27
+
+CSRF-Schutz für alle mutating API-Routen + Codex-#11-Fix
+(industry-presets-Test grün). Browser-CSRF-Vektoren werden
+durch Origin-/Referer-Header-Check geblockt; Bearer-Token-
+Calls bypassen den Check (CLI / Server-zu-Server). 10 Routen
+gehärtet, ein zentraler Helper (~36 Asserts) — kein Drift
+möglich.
+
+- ✚ `src/lib/csrf.ts` — pure Helper (~150 Zeilen):
+  - `verifyCsrfOrigin(req, options?)` mit
+    `{ok: true} | {ok: false, reason}`-Result.
+  - GET/HEAD/OPTIONS bypass (kein CSRF-Vektor).
+  - Bearer-Token-Header bypass (Token unmöglich von
+    fremder Site zu erraten).
+  - Origin-Header primär, `Referer` als Fallback (mit
+    URL-Parse).
+  - `Origin: null` (sandboxed iframes / file://) wird
+    explizit abgelehnt.
+  - `X-Forwarded-Host` + `X-Forwarded-Proto` für
+    Reverse-Proxy-Setups.
+  - Localhost-Heuristik: `localhost` / `127.0.0.1` werden
+    als http behandelt, falls kein `X-Forwarded-Proto`.
+  - `parseAllowedOrigins(env)`: comma-separated, normalisiert
+    Trailing-Slash, malformed wird durchgereicht (defensiv).
+  - `csrfErrorResponse(reason)`: einheitliche 403-Response
+    mit `error: "csrf_blocked"`.
+  - `enforceCsrf(req)`: Route-Level-Wrapper, liest
+    `LP_CSRF_ALLOWED_ORIGINS` aus ENV.
+- ✚ `src/tests/csrf.test.ts` (~36 Asserts):
+  parseAllowedOrigins (5 Cases), GET/HEAD/OPTIONS, Bearer-
+  Bypass (case-insensitive), Same-Origin, Cross-Origin,
+  Allow-List, Referer-Fallback, Origin=null, kein
+  Origin/Referer (mit + ohne `allowEmptyOrigin`),
+  X-Forwarded-Host/Proto, Localhost-Heuristik,
+  csrfErrorResponse, PUT/PATCH/DELETE.
+- 🔄 Alle 10 mutating Routes gepatcht — `enforceCsrf(req)`
+  als erste Zeile, vor Auth/Validation:
+  - `/api/leads` (POST)
+  - `/api/onboarding` (POST)
+  - `/api/ai/generate` (POST)
+  - `/api/businesses/[slug]` (PATCH)
+  - `/api/businesses/[slug]/services` (PUT)
+  - `/api/businesses/[slug]/image` (POST)
+  - `/api/businesses/[slug]/settings` (PATCH)
+  - `/api/auth/login` (POST)
+  - `/api/auth/logout` (POST) — `req`-Parameter
+    nachgereicht.
+  - `/api/auth/magic-link` (POST)
+- 🐛 `src/tests/industry-presets.test.ts` (Codex #11 fix):
+  Test parsed bewusst-invaliden `getFallbackPreset`-Output
+  durchs `IndustryPresetSchema` — schlug seit Sessions ~35
+  rot, weil das Schema den invaliden `key` ablehnt. Fix:
+  Schema-Parse durch direkte Feld-Asserts ersetzt
+  (`label`, `defaultServices`, `toneOfVoice`, `defaultFaqs`).
+  Verhalten unverändert, nur der Test ist jetzt korrekt
+  konstruiert.
+
+42/42 Smoketests grün — **erstmals seit Session 11 keine
+roten Tests mehr**. typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 Pflicht-Item abgehakt (CSRF) + 1 Bug-Fix
+(industry-presets). Phase 1 Restweg verkürzt: HTML-Sanitize
+(67), Sentry (68), „Betrieb löschen" (69), Pre-MVP-Pass (70).
+
+**Status-Update**: ~97 % Richtung „erstes Betrieb-fertiges
+Produkt". Security-Hardening greift: Defense-in-Depth gegen
+CSRF zusätzlich zur SameSite-Lax-Cookie-Default. Verbleibend:
+HTML-Sanitize, Sentry, Betrieb-löschen, Pre-MVP-Pass.
+
+**Manueller Test**: ohne `Origin`-Header (`curl -X POST
+http://localhost:3000/api/leads -d '{}'`) → 403 mit
+`csrf_blocked`. Mit `Origin: https://evil.example` → 403.
+Mit `Origin: http://localhost:3000` (Same-Origin) → normaler
+Request-Pfad. Mit `Authorization: Bearer …` → bypass, kein
+Origin-Check.
+
+## [0.16.39] – Code-Session 65 – 2026-04-27 (Light-Pass)
 
 ### Phase 2 → UI/UX-Polish (Sessions 71–80+)
 Mindestens 10 Sessions Audit + Polish über alle Seiten,

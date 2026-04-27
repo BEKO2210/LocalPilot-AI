@@ -29,6 +29,7 @@ import {
 import { getServiceRoleClient } from "@/core/database/supabase-service";
 import { isReservedSlug } from "@/lib/onboarding-validate";
 import { migrateBusinessImagesOnSlugChange } from "@/lib/storage-slug-migration";
+import { enforceCsrf } from "@/lib/csrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +52,9 @@ export async function PATCH(
   req: Request,
   ctx: RouteContext,
 ): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json(

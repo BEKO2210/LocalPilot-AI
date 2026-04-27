@@ -29,6 +29,7 @@ import {
   type BusinessProfile,
 } from "@/core/validation/business-profile.schema";
 import { profileToBusinessRow } from "@/lib/business-update";
+import { enforceCsrf } from "@/lib/csrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +42,9 @@ export async function PATCH(
   req: Request,
   ctx: RouteContext,
 ): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   // 1) Auth-Gate
   const user = await getCurrentUser();
   if (!user) {

@@ -337,15 +337,15 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
 Pflicht-Items, die `funktioniert alles` blockieren. Erst danach
 beginnt die UI/UX-Polish-Phase.
 
-- **65** (Light-Pass, 5er-Multiple): AIPlayground auf
-  `callAIGenerate` migrieren — letzte Stelle mit inline
-  `/api/ai/generate`-Aufruf + ~100 Zeilen Error-Handling. Plus
-  Recap-Doku `docs/AI.md` zur AI-Schicht. `simplify`-Skill am
-  Diff-Ende.
-- **66**: CSRF-Schutz für mutating Routes (PATCH/PUT/POST auf
-  `/api/businesses/...`, `/api/leads`, `/api/onboarding`).
-  Aktuell nur Cookie-Session-Auth — Token-Pattern (z. B.
-  Origin-Header-Check oder Double-Submit-Cookie) ergänzen.
+- **65** (Light-Pass, 5er-Multiple) ✅: AIPlayground auf
+  `callAIGenerate` migriert — letzte Stelle mit inline
+  `/api/ai/generate`-Aufruf + ~100 Zeilen Error-Handling
+  konsolidiert. Plus Recap-Doku `docs/AI.md`.
+- **66** ✅: CSRF-Schutz für mutating Routes via
+  Origin-/Referer-Header-Check (`lib/csrf.ts`, ~36 Asserts,
+  10 Routen geschützt). Bearer-Token bypasst (CLI/Server-zu-
+  Server). Außerdem industry-presets-Test (Codex #11)
+  gefixt — 42/42 Tests grün.
 - **67**: HTML-Sanitize-Whitelist auf User-Inputs, die in
   Public-Site rendern (Service-Beschreibungen, Tagline,
   About-Text). Aktuell läuft sanitize nur auf AI-Output —

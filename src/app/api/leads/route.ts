@@ -22,6 +22,7 @@ import {
   LeadRepositoryError,
   type NewLeadInput,
 } from "@/core/database/repositories";
+import { enforceCsrf } from "@/lib/csrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,9 @@ function statusForKind(kind: LeadRepositoryError["kind"]): number {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   let body: unknown;
   try {
     body = await req.json();

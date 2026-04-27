@@ -42,6 +42,7 @@ import {
   collectStoragePaths,
   removeStoragePaths,
 } from "@/lib/storage-cleanup";
+import { enforceCsrf } from "@/lib/csrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,6 +74,9 @@ export async function PUT(
   req: Request,
   ctx: RouteContext,
 ): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   // 1) Auth
   const user = await getCurrentUser();
   if (!user) {

@@ -38,6 +38,7 @@ import { estimateCost, formatCostUsd } from "@/core/ai/cost/pricing";
 import { chargeBudget, previewBudget } from "@/core/ai/cost/budget";
 import { sanitizeAIOutput } from "@/core/ai/sanitize";
 import { checkAuth } from "@/core/ai/auth/check";
+import { enforceCsrf } from "@/lib/csrf";
 
 /** Liefert das Default-Modell pro Provider — wie in den `_client.ts`-Dateien. */
 function modelForProvider(provider: string): string {
@@ -96,6 +97,9 @@ const RequestSchema = z.discriminatedUnion("method", [
 ]);
 
 export async function POST(req: Request): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   // 1. Auth-Check (Cookie-Session ODER Bearer-Token)
   const auth = checkAuth(req);
   if (!auth.ok) {

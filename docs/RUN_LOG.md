@@ -7547,3 +7547,114 @@ bei cross-site POST). Standard-Pattern: Origin-Header-
 Check + Double-Submit-Cookie. Klein-mittel, scharf
 abgrenzbar.
 
+## Code-Session 66 – CSRF-Schutz für alle mutating Routen + Codex-#11-Fix
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Security-Hardening
+
+**Was**: Defense-in-Depth gegen CSRF zusätzlich zur
+SameSite-Lax-Cookie-Default. Alle 10 mutating API-Routen
+(`POST`/`PUT`/`PATCH`/`DELETE`) bekommen einen Origin-
+Header-Check als erste Zeile im Handler. Plus Fix für den
+seit Session ~35 roten `industry-presets.test.ts` —
+Tests stehen jetzt erstmals seit Session 11 vollständig
+auf 42/42 grün.
+
+**Architektur-Entscheidung — Origin-Check statt CSRF-Token**:
+Doppelte Schutz-Layer wären (a) Origin-Header-Check + (b)
+Double-Submit-Cookie mit randomem Token. Für unseren Stack
+genügt (a):
+- Browser senden bei Cross-Site-POST den `Origin`-Header
+  zwingend (RFC 6454, alle modernen Browser).
+- Falsifizierung des `Origin`-Headers via Browser ist nicht
+  möglich (es ist im Forbidden-Header-List der Fetch-Spec).
+- Token-Pattern bringt Komplexität (Token-Generierung +
+  Cookie-Setzen + Hidden-Field in jedem Form), ohne in
+  unserem Use-Case zusätzliche Sicherheit zu liefern.
+
+**Architektur-Entscheidung — Bearer-Token bypasst CSRF**:
+Server-zu-Server-Calls (CLI-Skripte, externe Tools) haben
+keinen Browser-Origin. Wenn `Authorization: Bearer …`
+gesetzt ist, ist der Caller nicht-Browser → kein
+CSRF-Vektor. Token ist unmöglich aus einer fremden Site zu
+erraten.
+
+**Architektur-Entscheidung — `Origin: null` wird abgelehnt**:
+Browser senden `Origin: null` bei sandboxed iframes,
+`file://`-URLs, und einigen privacy-modes. Das könnten
+Angriffsvektoren sein (z.B. via Browser-Extension mit
+file:-Privileges). Sicherer Default: ablehnen, niemand mit
+legitimer UI sollte je `null` schicken.
+
+**WebSearch (Track D)**: bestätigt
+- [Next.js – Data Security Guide](https://nextjs.org/docs/app/guides/data-security)
+  Server Actions haben automatischen Origin-Check. Für
+  Custom-API-Routes ist das vom Entwickler zu implementieren.
+- [Next.js Security Best Practices 2026](https://www.authgear.com/post/nextjs-security-best-practices)
+  Defense-in-Depth: SameSite-Cookies + Origin-Check +
+  optional CSRF-Token. SameSite allein ist nicht genug
+  (top-level navigations, ältere Browser).
+- [LogRocket – Protecting Next.js Apps from CSRF](https://blog.logrocket.com/protecting-next-js-apps-csrf-attacks/)
+  Origin-Check ist 2026-Standard, Token-Pattern nur für
+  Banking-/High-Stakes-Use-Cases.
+- [DEV – CSRF Protection in Next.js](https://dev.to/adelhamad/csrf-protection-in-nextjs-1g1m)
+  Bestätigt: Origin-/Referer-Check ist OWASP-empfohlener
+  Pattern für API-Routen.
+
+**Dateien**:
+- ✚ `src/lib/csrf.ts` — pure Helper:
+  - `verifyCsrfOrigin(req, options?)` als
+    Hauptfunktion mit Discriminated-Union-Result.
+  - `parseAllowedOrigins(env)` mit Trailing-Slash-
+    Normalisierung.
+  - `csrfErrorResponse(reason)` als Standard-403-Response.
+  - `enforceCsrf(req)` als Route-Level-Wrapper, der
+    ENV liest und 403-Response zurückgibt oder `null`.
+- ✚ `src/tests/csrf.test.ts` (~36 Asserts):
+  Stub-`Request`-basiert. Allow-List-Parsing, GET/HEAD/
+  OPTIONS-Bypass, Bearer-Bypass, Same-Origin, Cross-Origin,
+  Allow-List-Match, Referer-Fallback, Origin=null,
+  fehlende Header, X-Forwarded-Host/Proto,
+  Localhost-Heuristik, csrfErrorResponse,
+  PUT/PATCH/DELETE.
+- 🔄 10 Routen gepatcht: `enforceCsrf(req)` als erste
+  Zeile, vor Auth/Validation. `/api/auth/logout`
+  bekam `req`-Parameter (vorher signaturlos).
+- 🐛 `src/tests/industry-presets.test.ts` (Codex #11 fix):
+  `IndustryPresetSchema.parse(getPresetOrFallback(invalid_key))`
+  schlug seit Session ~35 rot, weil das Schema den
+  bewusst-invaliden `key` ablehnt. Fix: Schema-Parse durch
+  direkte Feld-Asserts ersetzt (`label`,
+  `defaultServices`, `toneOfVoice`, `defaultFaqs`).
+  Verhalten von `getFallbackPreset` unverändert.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**42/42 Smoketests grün** — erstmals seit Session 11 keine
+roten Tests mehr. Bundle 102 KB shared unverändert.
+
+**Roadmap**: 2 Items abgehakt (CSRF + Codex #11). Phase 1
+Restweg:
+- **67**: HTML-Sanitize-Whitelist auf User-Input
+  (Service-Beschreibungen, Tagline, About) — XSS-Pendant
+  zum CSRF-Schutz heute.
+- **68**: Sentry-Integration.
+- **69**: „Betrieb löschen"-Flow.
+- **70** (Light-Pass): Pre-MVP-Pass + Audit-Checkliste.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — CSRF-Patterns
+2026.
+
+**Status-Update**: ~97 % Richtung „erstes Betrieb-fertiges
+Produkt". Security-Layer 1/2 (CSRF) live. Phase 1 noch
+4 Sessions, Phase 2 (UI/UX-Polish) ab 71.
+
+**Nächste Session**: Code-Session 67 = **HTML-Sanitize-
+Whitelist auf User-Input**. Begründung: Aktuell läuft
+`sanitizeAIOutput` nur auf AI-generierte Texte (Session 27).
+Der Owner kann aber direkt HTML in Service-Beschreibungen,
+Tagline, About-Text eintippen — Public-Site rendert das
+mit `dangerouslySetInnerHTML` o. ä. Ohne Whitelist könnte
+ein bösartiger Owner XSS auf die eigene Public-Site
+einschleusen (selbstattacke unwahrscheinlich, aber wenn ein
+Editor-User Schreibrecht hat, durchaus relevant).
+Pure-Helper-Pattern: Whitelist-Sanitizer für Plain-Text +
+optional Markdown-/Limited-HTML-Pfad. Klein, scharf.
+

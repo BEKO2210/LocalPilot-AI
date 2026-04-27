@@ -120,11 +120,29 @@ try {
 assert(threw, "getPreset wirft UnknownIndustryError bei unbekannten Keys");
 
 // Fallback liefert immer einen gültigen Datensatz, mit gespiegeltem Key.
+// Der Key wird als „originalKey" gespiegelt, daher kann hier kein
+// `IndustryKeySchema.parse` darauf laufen — stattdessen prüfen wir
+// die übrigen Pflichtfelder direkt.
 const unknown = getPresetOrFallback("definitely_not_a_real_key" as IndustryKey);
-IndustryPresetSchema.parse(unknown);
 assert(
   unknown.key === ("definitely_not_a_real_key" as IndustryKey),
   "Fallback spiegelt den ursprünglichen Key",
+);
+assert(
+  typeof unknown.label === "string" && unknown.label.length > 0,
+  "Fallback hat ein Label",
+);
+assert(
+  Array.isArray(unknown.defaultServices) && unknown.defaultServices.length > 0,
+  "Fallback hat defaultServices",
+);
+assert(
+  Array.isArray(unknown.toneOfVoice) && unknown.toneOfVoice.length > 0,
+  "Fallback hat toneOfVoice",
+);
+assert(
+  Array.isArray(unknown.defaultFaqs) && unknown.defaultFaqs.length > 0,
+  "Fallback hat defaultFaqs",
 );
 
 // Auch der direkte Aufruf liefert ein valides Preset.

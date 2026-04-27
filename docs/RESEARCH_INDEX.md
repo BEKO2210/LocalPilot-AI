@@ -145,6 +145,13 @@
 - [supabase Discussion #19418 – Rename folder with supabase-js](https://github.com/orgs/supabase/discussions/19418) — bestätigt: 2026 noch keine Folder-API, Loop über Files (57).
 - [supabase storage-js Issue #49 – Bucket-Rename](https://github.com/supabase/storage-js/issues/49) — Bucket-Rename existiert noch nicht (relevant nur als Negativ-Information, 57).
 
+### CSRF-Schutz für mutating API-Routen (Code-Session 66)
+- [Next.js – Data Security Guide](https://nextjs.org/docs/app/guides/data-security) — Server Actions haben automatischen Origin-Check; Custom-API-Routes müssen ihn selbst implementieren (66).
+- [Authgear – Next.js Security Best Practices 2026](https://www.authgear.com/post/nextjs-security-best-practices) — Defense-in-Depth: SameSite + Origin + optional Token (66).
+- [LogRocket – Protecting Next.js Apps from CSRF](https://blog.logrocket.com/protecting-next-js-apps-csrf-attacks/) — Origin-Check ist 2026-Standard (66).
+- [DEV – CSRF Protection in Next.js](https://dev.to/adelhamad/csrf-protection-in-nextjs-1g1m) — OWASP-empfohlener Pattern (66).
+- [Telerik – Protecting Next.js Apps Against CSRF](https://www.telerik.com/blogs/protecting-nextjs-applications-cross-site-request-forgery-csrf-attacks) — RFC 6454 Origin-Header (66).
+
 ### Storage-Cleanup-Patterns + Dependabot-Vulns (Code-Session 56)
 - [Supabase Docs – Delete Objects](https://supabase.com/docs/guides/storage/management/delete-objects) — Storage-API für DELETE; SQL-only-DELETE produziert orphans (56).
 - [supabase Discussion #36755 – Feature Request: Native Storage File Deletion Trigger on Row Delete](https://github.com/orgs/supabase/discussions/36755) — bestätigt: native DB→Storage-Trigger existiert 2026 noch nicht, Application-Cleanup ist Pflicht (56).
