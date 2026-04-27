@@ -7,18 +7,53 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 52: Settings-Page mit Slug-Wechsel + Publish-
-  Toggle** (Pflicht-Operationen für Live-Betrieb: Slug ändern
-  und Veröffentlichen). Settings ist auch der natürliche Ort
-  für die Legal-Sektion.
-- Code-Sessions 53+: Schreibpfad ServicesEditForm, Slug-Live-
-  Check vor Submit, Onboarding-Wizard mehrstufig, Multi-Member-
-  Verwaltung, Default-Redirect bei einem Betrieb, Retry-Queue
-  für Lead-`local-fallback`, Storage-Cleanup-Job für Slug-
-  Wechsel-Waisen, Edge-Runtime-Migration, CSRF-Schutz, HTML-
-  Sanitize-Whitelist, Impressum-Editor pro Betrieb, Seed-Skript
-  für Demo-Daten, Schema↔Migration-Drift-Test, **Dependency-
-  Sweep**.
+- **Code-Session 53: Reviews-UI scharf** — Bewertungs-Booster
+  als zielgerichtete UI (aktuell Status-Stub). Backend ist seit
+  Session 26 live. Höchster ROI nach Live-Schaltung.
+- Code-Sessions 54+: Social-Media-UI, Schreibpfad
+  ServicesEditForm, Multi-Member-Verwaltung, Default-Redirect
+  bei einem Betrieb, Retry-Queue für Lead-`local-fallback`,
+  Storage-Cleanup-Job für Slug-Wechsel-Waisen, Edge-Runtime-
+  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist, Impressum-
+  Editor pro Betrieb, Seed-Skript für Demo-Daten,
+  Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+
+## [0.16.26] – Code-Session 52 – 2026-04-27
+
+Settings-Page (Slug-Wechsel + Publish-Toggle + Locale) +
+README/Homepage-Sync (Drift seit Sessions 35–51 abgebaut).
+
+- ✚ `src/lib/business-settings.ts` — pure Helper:
+  `validateSettingsInput` (Slug-Regex, Reserved-List-Check, same-
+  slug-no-op, Locale-Validation), `submitSettingsUpdate` mit
+  7-stufigem Result (noop / server / not-authed / forbidden /
+  slug_taken / validation / fail).
+- ✚ `src/tests/business-settings.test.ts` (~30 Asserts):
+  alle Validation-Pfade, alle Result-Pfade, Body-Capture,
+  Pre-Validation-Skip-Server.
+- ✚ `src/app/api/businesses/[slug]/settings/route.ts` — PATCH
+  mit Auth-Gate + Server-Auth-Client + RLS, Slug-Re-Validierung,
+  Postgres-23505 → 409.
+- ✚ `src/components/dashboard/settings/settings-form.tsx` —
+  UI mit Slug-Sektion (Warn-Hinweis bei Dirty), Publish-Toggle,
+  Locale-Select, Auto-Redirect nach Slug-Wechsel.
+- 🔄 `src/app/dashboard/[slug]/settings/page.tsx` — von
+  ComingSoon-Stub auf scharfes Form umgestellt.
+- 🔄 `README.md` — Status-Tabelle aktualisiert (M2 ✅ scharf,
+  M4 🔄 aktiv, M5 ⏳ teilweise), Tech-Stack erweitert.
+- 🔄 `src/components/marketing/onboarding-promise.tsx` —
+  4 Schritte neu (Magic-Link → Branche/Paket → Inhalte/KI →
+  Veröffentlichen), neue CTAs.
+- 🔄 `src/components/layout/site-header.tsx` — „Login" + „Jetzt
+  starten"-CTAs ersetzen „Live-Demos" + „Pakete".
+
+34/35 Smoketests grün (industry-presets pre-existing red,
+Codex #11). Bundle 102 KB shared unverändert.
+
+**Status-Update**: ~80% Richtung „erstes Betrieb-fertiges
+Produkt". Pflicht-Capabilities komplett. Verbleibend:
+Reviews/Social-UI scharf, Schreibpfad Services, Storage-Cleanup,
+Custom-Domain, Sentry, Lighthouse-CI.
 
 ## [0.16.25] – Code-Session 51 – 2026-04-27
 

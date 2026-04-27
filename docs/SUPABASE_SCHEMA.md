@@ -329,6 +329,25 @@ nutzt einen `service_role`-Client, der RLS umgeht (Code-Session 42+).
   Tenant-Wiring-Session, sobald „Mein Account" inhaltlich mehr
   zeigt als nur die User-ID.
 
+### Settings-Pfad: Slug + Publish + Locale (Code-Session 52)
+
+`PATCH /api/businesses/[slug]/settings` ist die Pflicht-Route für
+**Live-Operationen**:
+
+| Feld          | Validation                              | Postgres-Effekt                       |
+| ------------- | --------------------------------------- | ------------------------------------- |
+| `newSlug`     | regex, 3–40, nicht reserved, ≠ current | `update businesses set slug=…`        |
+| `isPublished` | boolean                                 | `update businesses set is_published=…`|
+| `locale`      | 'de' \| 'en'                            | `update businesses set locale=…`      |
+
+Architektur identisch zu Session 50 (Server-Auth-Client, RLS macht
+Authorization). Postgres-`23505` (Slug-Unique-Violation) wird auf
+HTTP 409 gemappt. Bei erfolgreichem Slug-Wechsel macht das UI einen
+`router.push(/dashboard/<neuerSlug>/settings)` — sonst landet der
+User im 404. Alte Storage-Files (Logos/Hero-Bilder) bleiben unter
+dem alten Slug-Pfad als Waisen liegen → eigenes Plan-Item für
+Cleanup-Job.
+
 ### Storage-Pfad: Logos + Hero-Bilder (Code-Session 51)
 
 Bucket `business-images` (Migration 0008):

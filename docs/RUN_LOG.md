@@ -6020,3 +6020,91 @@ der natürliche Ort für die Legal-Sektion (USt-IdNr.,
 Aufsichtsbehörde — siehe Codex-Backlog). Vor Reviews/Social-UI,
 weil Publish-Toggle direkt unter „echter Kunde live" steht.
 
+---
+
+## Code-Session 52 – Settings-Page (Slug + Publish + Locale) + README/Homepage-Sync
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature + Doku
+
+**Was**: Letzte Pflicht-Operationen für Live-Betrieb sind jetzt im
+UI greifbar. Owner kann seinen Slug ändern (mit Validierung,
+Reserved-Liste, Postgres-Unique-Catch), seine Public-Site
+veröffentlichen oder als Entwurf zurückziehen, die Default-Sprache
+wechseln. Bei Slug-Wechsel macht das Form einen Auto-Redirect, sonst
+landet der User im 404.
+
+Zusätzlich: README + Homepage auf den aktuellen Stand gezogen — Status-
+Tabelle mit echten Meilenstein-Werten (M2 als ✅ scharf, M4 als 🔄
+aktiv), Tech-Stack ergänzt um `@supabase/ssr` + AI-SDKs, Header zeigt
+jetzt „Login" + „Jetzt starten"-CTAs (statt nur „Live-Demos" +
+„Pakete"), OnboardingPromise reflektiert Magic-Link + Image-Upload-
+Capability. Der Auftraggeber hatte zu Recht angemerkt, dass die
+README-Status-Sektion sich automatisch aktualisieren sollte — der
+Drift seit Sessions 35–51 war zu groß.
+
+**Dateien**:
+- ✚ `src/lib/business-settings.ts` — pure Helper.
+  `validateSettingsInput` (Slug-Regex, Reserved-List-Check, Locale,
+  same-slug-no-op), `submitSettingsUpdate` mit 7-stufigem Result
+  (noop / server / not-authed / forbidden / slug_taken /
+  validation / fail), `userMessageForResult`.
+- ✚ `src/tests/business-settings.test.ts` (~30 Asserts):
+  alle Validation-Pfade (zu kurz, Bindestrich-Anfang, reserviert,
+  Großbuchstaben → lowercase, gleicher Slug → no-op), alle
+  Result-Pfade, Body-Capture, Pre-Validation-Skip-Server.
+- ✚ `src/app/api/businesses/[slug]/settings/route.ts` — PATCH mit
+  Auth-Gate, Server-Auth-Client + RLS, Slug-Format-Re-Validierung
+  server-seitig, Postgres-23505 → 409.
+- ✚ `src/components/dashboard/settings/settings-form.tsx` — UI
+  mit drei Sektionen (Slug, Publish, Locale), Slug-Wechsel-Warn-
+  Hinweis bei Dirty, Auto-Redirect nach erfolgreichem Slug-Update.
+- 🔄 `src/app/dashboard/[slug]/settings/page.tsx` — von ComingSoon-
+  Stub auf scharfes Form umgestellt.
+- 🔄 `README.md` — Status-Tabelle aktualisiert (M2 ✅ scharf, M4
+  🔄 aktiv, M5 ⏳ teilweise), Tech-Stack-Block um `@supabase/ssr`,
+  AI-SDKs, Mock-first-Garantie. „Aktive Phase"-Zeile reflektiert
+  Backend-Sprint-Status.
+- 🔄 `src/components/marketing/onboarding-promise.tsx` — 4-Step-
+  Liste neu (Magic-Link → Branche/Paket → Inhalte/KI →
+  Veröffentlichen), neue CTAs „Jetzt anmelden" (führt zu
+  `/login`).
+- 🔄 `src/components/layout/site-header.tsx` — „Login"-Outline-CTA
+  (sm+) + „Jetzt starten"-Primary-CTA (führt zu `/onboarding`),
+  ersetzt „Live-Demos" + „Pakete".
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **34/35 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Static-Build hat `/api/businesses/[slug]/settings`
+korrekt nicht gemountet, SSR-Build hat ƒ. Settings-Page als
+●-SSG-prerendered. Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Settings + Doku-Sync). Codex-#10-
+Falle „deutsche Anführungszeichen in JSX-String" hat bei der
+Homepage-Anpassung wieder zugeschlagen — direkt mit Template-
+Literal gelöst.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Slug-Wechsel +
+Publish-Toggle.
+
+**Manueller Test**: Login → Dashboard → „Einstellungen"-Tab.
+Slug ändern → Speichern → Auto-Redirect auf neuen Pfad. Publish-
+Toggle umschalten → Public-Site `/site/<slug>` zeigt 404 wenn
+Entwurf, sonst die Site.
+
+**Status-Update**: ~80 % Richtung „erstes Betrieb-fertiges
+Produkt". Pflicht-Capabilities sind komplett. Verbleibend:
+- Schreibpfad ServicesEditForm (nice-to-have, Bronze hat eh
+  kein Service-Management)
+- Reviews/Social-UI scharf (Backend live, UI noch Status-Stubs)
+- Storage-Cleanup-Job (Slug-Wechsel-Waisen)
+- Custom-Domain auf Vercel
+- Sentry / Lighthouse-CI
+
+**Nächste Session**: Code-Session 53 = **Reviews-UI scharf**.
+Begründung: nach 52 hat der Owner alles, um seinen Betrieb live
+zu schalten. Der nächste Hebel für Engagement ist die Bewertungs-
+Anfrage-UI — aktuell Status-Stub bei `/dashboard/[slug]/reviews`.
+Backend (Mock + Live-Provider via AIPlayground) ist seit 26 fertig,
+aber als ChatGPT-Spielwiese, nicht als zielgerichteter
+Bewertungs-Booster. Vor Social-UI, weil Reviews den höchsten ROI
+haben (mehr Google-Sterne = mehr Vertrauen = mehr Anfragen).
+

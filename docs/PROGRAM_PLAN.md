@@ -182,6 +182,16 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Tile + „Hochladen" / „Ersetzen" / „Entfernen". URL landet
   über `methods.setValue` im Form und wird beim regulären
   „Speichern" mit-persistiert.
+- 52: Settings-Page (Slug-Wechsel + Publish-Toggle + Locale)
+  ✅. `PATCH /api/businesses/[slug]/settings` mit Auth-Gate +
+  RLS-only (Server-Auth-Client). Postgres-23505 → 409
+  „Slug vergeben". Pure Submit-Helper mit 7-stufigem Result
+  (noop / server / not-authed / forbidden / slug_taken /
+  validation / fail). Form macht bei Slug-Wechsel einen
+  `router.push` auf den neuen Slug-Pfad nach 0,9 s. Stub-Page
+  aus Session 32 ersetzt. README + Homepage angepasst
+  (Header zeigt jetzt „Login" + „Jetzt starten",
+  OnboardingPromise hat Magic-Link-Schritt + Login-CTA).
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 

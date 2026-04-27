@@ -5,23 +5,23 @@ import { LinkButton } from "@/components/ui/button";
 const STEPS = [
   {
     n: "1",
-    title: "Branche & Paket wählen",
-    text: "13 Branchen-Presets bringen Texte, Felder und Tonalität mit. Bronze für klein, Silber für laufend, Gold für groß.",
+    title: "Login per Magic-Link",
+    text: "E-Mail eingeben, einmal-Link klicken — fertig. Kein Passwort, kein Drittanbieter-Tracking.",
   },
   {
     n: "2",
-    title: "Inhalte einsetzen oder übernehmen lassen",
-    text: "Leistungen, Adresse, Bilder eintragen. Auf Wunsch importieren wir aus Ihrer alten Seite oder erzeugen einen ersten Entwurf per KI.",
+    title: "Branche & Paket wählen",
+    text: "20 Branchen-Presets bringen Texte, Felder und Tonalität mit. Bronze für klein, Silber für laufend, Gold für groß.",
   },
   {
     n: "3",
-    title: "Theme wählen, Vorschau prüfen",
-    text: "10 Themes – von Clean Light bis Premium Dark. Vorschau läuft live unter /site/ihr-slug.",
+    title: "Inhalte einsetzen oder per KI generieren",
+    text: "Leistungen, Adresse, Logo, Hero-Bild eintragen. Beschreibungen, FAQs und Posts erzeugt der KI-Assistent auf Knopfdruck.",
   },
   {
     n: "4",
-    title: "Veröffentlichen & weiter pflegen",
-    text: "Mit einem Klick live. Inhalte ändern Sie selbst, bei Bedarf greifen wir helfend ein.",
+    title: "Veröffentlichen unter Ihrem Slug",
+    text: `Theme aus 10 Vorlagen wählen, Slug einstellen, Schalter auf „veröffentlicht". Live unter /site/ihr-slug.`,
   },
 ];
 
@@ -53,7 +53,10 @@ export function OnboardingPromise() {
         </ol>
 
         <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <LinkButton href="/pricing" size="lg">
+          <LinkButton href="/login" size="lg">
+            Jetzt anmelden
+          </LinkButton>
+          <LinkButton href="/pricing" size="lg" variant="outline">
             Pakete vergleichen
           </LinkButton>
           <LinkButton href="/demo" size="lg" variant="outline">

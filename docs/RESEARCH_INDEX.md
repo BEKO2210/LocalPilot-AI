@@ -90,6 +90,11 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Slug-Wechsel + Publish-Toggle (Code-Session 52)
+- [Supabase Docs – Use Supabase with Next.js](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs) — Standard-Update-Pattern via `.update().eq()` (52).
+- [Supabase Docs – Use Supabase Auth with Next.js](https://supabase.com/docs/guides/auth/quickstarts/nextjs) — Authenticated-Client mit Cookie-Session in Route-Handler (52).
+- Postgres `23505` UNIQUE-Violation: `error.code === "23505"` aus dem Update-Result → 409 Conflict an den Client (Best-Practice aus eigener Session-50-Erfahrung).
+
 ### Supabase Storage + RLS (Code-Session 51)
 - [Supabase Docs – Storage Access Control](https://supabase.com/docs/guides/storage/security/access-control) — Public-Bucket bypasst SELECT-Auth, INSERT/UPDATE/DELETE bleiben policy-gated (51).
 - [Supabase Docs – Storage Buckets](https://supabase.com/docs/guides/storage/buckets/fundamentals) — Bucket-Konfiguration: file_size_limit + allowed_mime_types (51).

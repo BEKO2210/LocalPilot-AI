@@ -56,22 +56,26 @@ das:
 
 ## 🧭 Aktueller Status (rollend)
 
-| Meilenstein                       | Status      | Erfolgskriterium (kurz)                                     |
-| --------------------------------- | ----------- | ----------------------------------------------------------- |
-| **1 — Foundation**                | ✅ stabil   | Demo-fähiges Produkt, statisch deploybar, 6 Demo-Betriebe   |
-| **2 — KI-Schicht**                | 🔄 aktiv    | Alle 7 AI-Methoden mit Mock + 1 Live-Provider               |
-| **3 — Engagement & Wachstum**     | ⏳ vorbereitet | Bewertungs-/Social-/Kampagnen-Tools ohne externes Tool   |
-| **4 — Backend & Daten**           | ⏳ geplant  | Echte DB, Multi-Tenant, Auth, Backups                       |
-| **5 — Production-Readiness**      | ⏳ geplant  | Lighthouse ≥ 95, WCAG 2.2 AA, Sentry-Inbox leer             |
-| **6 — Vertikalisierung & Sales**  | ⏳ geplant  | „Onboarding < 60 min" mehrfach erprobt                      |
-| **7 — Innovation Loop ♾️**        | ♾️ permanent | Quartals-Schleifen: neue Modelle, Plattform-Features       |
+| Meilenstein                       | Status         | Erfolgskriterium (kurz)                                     |
+| --------------------------------- | -------------- | ----------------------------------------------------------- |
+| **1 — Foundation**                | ✅ stabil      | Demo-fähiges Produkt, statisch deploybar, 6 Demo-Betriebe   |
+| **2 — KI-Schicht**                | ✅ scharf      | 7 AI-Methoden mit Mock + 3 Live-Providern (OpenAI, Anthropic, Gemini) |
+| **3 — Engagement & Wachstum**     | ⏳ vorbereitet | Bewertungs-/Social-/Kampagnen-Tools ohne externes Tool      |
+| **4 — Backend & Daten**           | 🔄 aktiv       | Echte DB, Multi-Tenant, Auth, Storage — Read-/Write-/Upload-Pfade live |
+| **5 — Production-Readiness**      | ⏳ teilweise   | Vercel-Deploy ✅, DSGVO-Lead-Consent ✅, Sentry/Lighthouse offen |
+| **6 — Vertikalisierung & Sales**  | ⏳ geplant     | „Onboarding < 60 min" mehrfach erprobt                      |
+| **7 — Innovation Loop ♾️**        | ♾️ permanent   | Quartals-Schleifen: neue Modelle, Plattform-Features        |
 
-**Aktive Phase**: Mock-Provider scharf, Resolver mit ENV-Gate und Fallback —
-KI-Schicht ohne API-Key voll funktionsfähig. Echte Provider (OpenAI,
-Anthropic, Gemini) folgen Schritt für Schritt.
+**Aktive Phase**: Backend-Sprint läuft. Postgres-Schema komplett (8
+Migrationen, RLS auf jeder Tabelle), Magic-Link-Auth via `@supabase/ssr`,
+Onboarding-Flow, Image-Storage mit Bucket-Policy, BusinessEditForm +
+Settings-Page (Slug-Wechsel + Publish-Toggle) schreiben in DB. Pages-
+Schicht ist vollständig Repository-only — Mock vs. Supabase wird über
+`LP_DATA_SOURCE`-ENV geschaltet, ohne Code-Änderung.
 
 > Live-Stand: [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) ·
-> Versionshistorie: [`CHANGELOG.md`](./CHANGELOG.md)
+> Versionshistorie: [`CHANGELOG.md`](./CHANGELOG.md) ·
+> Schema-Doku: [`docs/SUPABASE_SCHEMA.md`](./docs/SUPABASE_SCHEMA.md)
 
 ---
 
@@ -116,12 +120,20 @@ Provider werden über `AI_PROVIDER` in `.env.local` umgeschaltet (siehe
   (Typen via `z.infer`, kein Drift möglich)
 - **React Hook Form** + `zodResolver` für Formulare
 - **Lucide Icons** für UI-Glyphen
-- **Mock-first**: Alle KI-Methoden haben deterministische
-  Mock-Implementierungen, sodass die App ohne Backend, ohne API-Key
-  und ohne Tracking voll funktioniert
-- Spätere Erweiterung: Supabase (Auth, DB, Storage), AI-Provider-SDKs
+- **AI-Provider live**: `openai@^5`, `@anthropic-ai/sdk@^0.62`,
+  `@google/genai@^1` — alle 7 Methoden via Adapter-Pattern (Mock
+  als Fallback). HMAC-Cookie-Auth via `node:crypto` (kein externes
+  Lib). DOMPurify-äquivalenter Sanitizer ohne externe Lib.
+- **Backend**: `@supabase/supabase-js@^2` für REST/Auth/Storage,
+  `@supabase/ssr@^0.10` für Cookie-Sessions in Next.js 15 SSR.
+  Postgres-Schema als versionierte SQL-Migrationen, RLS auf
+  jeder Tabelle.
+- **Mock-first-Garantie**: jede Capability (KI, Auth, DB-Read,
+  Storage) hat einen Mock-/localStorage-Fallback. Die App läuft
+  vollständig ohne API-Key, ohne Backend und ohne Tracking — der
+  GitHub-Pages-Demo-Build ist dafür der Beweis.
 - Deployment-Ziele: **GitHub Pages** (Static Export) +
-  **Vercel** (SSR-Routen)
+  **Vercel** (SSR + alle `/api/*`-Routen)
 
 ---
 
