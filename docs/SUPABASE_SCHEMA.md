@@ -329,6 +329,41 @@ nutzt einen `service_role`-Client, der RLS umgeht (Code-Session 42+).
   Tenant-Wiring-Session, sobald „Mein Account" inhaltlich mehr
   zeigt als nur die User-ID.
 
+### Storage-Pfad: Logos + Hero-Bilder (Code-Session 51)
+
+Bucket `business-images` (Migration 0008):
+- **public = true** — Logos werden auf der Public-Site geladen,
+  anonyme Besucher müssen ohne Auth lesen können. Public-Buckets
+  bypassen RLS bei SELECT.
+- **5 MB Limit**, **MIME-Whitelist**: PNG, JPEG, WebP. SVG ist
+  bewusst **ausgeschlossen** — XSS-Risiko durch eingebettetes
+  `<script>`-Tag.
+- **Schreibe-Pfad ausschließlich Service-Role**: keine
+  INSERT-/UPDATE-/DELETE-Policy auf `storage.objects`. Anon kann
+  nichts hochladen — der einzige Schreibe-Pfad ist die
+  Auth-gegated Server-Route.
+
+**Pfad-Konvention**: `<slug>/<kind>.<ext>` (z. B.
+`studio-haarlinie/logo.png`). Slug-basiert für saubere CDN-URLs.
+Bei Slug-Wechsel werden alte Dateien zu Waisen — Cleanup ist
+Plan-Item für eine spätere Session.
+
+**Server-Route** `POST /api/businesses/[slug]/image`:
+1. `getCurrentUser()` → 401.
+2. Owner-Check: authenticated-Client liest `businesses` →
+   maybeSingle, RLS lässt nur Owner durch. 0 Zeilen → 403.
+3. Multipart-Validierung server-seitig (Mime, Size, Kind ∈
+   {logo, cover}).
+4. Service-Role-Client uploadet mit `upsert: true`,
+   `cacheControl: "3600"`.
+5. Public-URL via `getPublicUrl(path)` zurück.
+
+Form pflegt die `logo_url`/`cover_image_url`-Spalte **nicht**
+direkt — User muss anschließend „Speichern" klicken (PATCH aus
+Session 50). So bleibt die Upload-Route fokussiert (Storage only),
+und der User behält Kontrolle, ob das neue Bild übernommen
+werden soll.
+
 ### Business-Update-Pfad (Code-Session 50)
 
 `PATCH /api/businesses/[slug]` ist scharf. Pfad:

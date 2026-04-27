@@ -5929,3 +5929,94 @@ Service-Role wird gebraucht, um RLS auf Storage-Bucket zu
 setzen. Vor Reviews/Social-UI, weil Storage die letzte
 fehlende Capability für End-to-End-Onboarding ist.
 
+---
+
+## Code-Session 51 – Storage-Bucket für Logos + Hero-Bilder
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Letzter visueller Baustein vor Live-Betrieb. Owner
+lädt sein Logo und Hero-Bild jetzt direkt im Dashboard hoch,
+statt eine URL eingeben zu müssen. Storage-Bucket hat sinnvolle
+Defaults (5 MB Limit, PNG/JPEG/WebP, SVG bewusst raus). Form
+zeigt Vorschau-Tile, ein Klick auf „Hochladen"/„Ersetzen"
+öffnet den File-Picker.
+
+**Architektur**: Server-Proxy-Upload (Form → API-Route →
+Service-Role-Client → Storage). Vorteile gegenüber Direct-
+Upload: simplere RLS (kein Path-Parsing in SQL nötig), Auth-
+Check zentral, einfacheres Error-Mapping. Bandwidth-Kosten
+sind für Logos vernachlässigbar.
+
+**Dateien**:
+- ✚ `supabase/migrations/0008_storage_buckets.sql` —
+  `business-images`-Bucket (public=true), 5 MB,
+  PNG/JPEG/WebP-Whitelist, SVG explizit raus (XSS-Risiko).
+  Hinweis-Kommentar: keine INSERT/UPDATE/DELETE-Policy auf
+  `storage.objects` für anon — Service-Role bypasst RLS.
+- ✚ `src/lib/business-image-upload.ts` — pure Helper.
+  `validateImageFile` (Mime, Size, Empty), `extensionForMime`,
+  `buildStoragePath` (slug-basiert), `submitImageUpload` mit
+  5-stufigem Result-Mapping (server / not-authed / forbidden
+  / validation / fail), `userMessageForResult`.
+- ✚ `src/tests/business-image-upload.test.ts` (~35 Asserts):
+  alle Validierungs-Pfade (PNG/JPG/WebP ok, GIF/PDF/SVG nein,
+  zu groß, leer), Pfad-Bau, alle 5 Submit-Pfade, FormData-
+  Capture, Pre-Validation-Skip-Server.
+- ✚ `src/app/api/businesses/[slug]/image/route.ts` — POST mit:
+  Auth-Gate, Owner-Check via authenticated-Read (RLS), server-
+  seitige Mime/Size-Validation (authoritative),
+  Service-Role-Upload mit `upsert: true`, Public-URL-Return.
+- ✚ `src/components/dashboard/business-edit/image-upload-field.tsx`
+  — Vorschau-Tile (80×80) + „Hochladen"/„Ersetzen"/„Entfernen"-
+  Buttons, Spinner während Upload, aria-live-Status.
+- 🔄 `src/components/dashboard/business-edit/business-edit-form.tsx`:
+  Logo-URL/Cover-URL-Textfelder ersetzt durch
+  `<ImageUploadField>` × 2 in der Branding-Sektion. Hidden
+  inputs halten die URLs im Form-State; Form-`setValue` mit
+  `shouldDirty: true` triggert das „Speichern"-Knöpfchen.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **32/33 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Static-Build hat `/api/businesses/[slug]/image`
+korrekt nicht gemountet, SSR-Build hat ƒ. Bundle: shared 102 KB
+unverändert.
+
+**Roadmap**: 1 Item abgehakt (Storage). 1 neues Folge-Item:
+Storage-Cleanup-Job für Slug-Wechsel-Waisen.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase Storage + RLS.
+
+**Manueller Schritt für den Auftraggeber**:
+1. Migration 0008 im Supabase-SQL-Editor ausführen — erstellt
+   das Bucket. Idempotent (`on conflict do update`).
+2. Optional im Supabase-Dashboard prüfen: **Storage** → das
+   Bucket „business-images" sollte als „public" angezeigt
+   werden.
+
+**Manueller Test** (mit Auth + Service-Role + ENVs +
+Migrationen 0001–0008):
+1. Login → Dashboard → „Betrieb"-Tab → Branding-Sektion.
+2. „Hochladen" → File-Picker → PNG-Logo wählen.
+3. Spinner kurz, Vorschau-Tile zeigt das neue Logo.
+4. Über dem Form sollte „1 Änderung"-Indikator stehen.
+5. „Speichern" klicken → grünes „in DB gespeichert".
+6. Public-Site `/site/<slug>` zeigt das neue Logo im Header.
+
+**Status-Update**: ~75 % auf dem Weg zum „erstes Betrieb-fertiges
+Produkt". Die Pflicht-Capabilities sind fast komplett —
+verbleibend für Vollausbau:
+- Slug-Wechsel-Cleanup (Storage-Waisen)
+- Reviews/Social-UI scharf (aktuell Status-Stubs)
+- Settings-Page (Slug ändern + Publish-Toggle, Branding)
+- Custom-Domain auf Vercel
+- Sentry / Lighthouse-CI
+
+**Nächste Session**: Code-Session 52 = **Settings-Page mit
+Slug-Wechsel + Publish-Toggle**. Begründung: nach 50/51 kann
+der Owner Stammdaten + Bilder editieren, aber er kann seinen
+Slug nicht ändern und seinen Betrieb nicht publishen. Beides
+sind Pflicht-Operationen für Live-Betrieb. Settings ist auch
+der natürliche Ort für die Legal-Sektion (USt-IdNr.,
+Aufsichtsbehörde — siehe Codex-Backlog). Vor Reviews/Social-UI,
+weil Publish-Toggle direkt unter „echter Kunde live" steht.
+

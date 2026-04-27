@@ -7,18 +7,64 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 51: Storage-Bucket für Logos + Hero-Bilder**
-  (Migration 0008 + Upload-UI). Nach 50 hat der Owner alle
-  Text-Felder editierbar — Logo/Hero-Bild bleibt aber URL-only.
-  Visuelles Pflicht-Feature für echten Live-Betrieb.
-- Code-Sessions 52+: Schreibpfad ServicesEditForm, Slug-Live-Check
-  vor Submit, Onboarding-Wizard mehrstufig (Adresse + Logo),
-  Multi-Member-Verwaltung, Default-Redirect bei einem Betrieb,
-  Retry-Queue für Lead-`local-fallback`, Edge-Runtime-Migration,
-  CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-Editor mit
-  Legal-Sektion, Impressum-Editor pro Betrieb, Seed-Skript für
-  Demo-Daten, Schema↔Migration-Drift-Test,
-  **Dependency-Sweep**.
+- **Code-Session 52: Settings-Page mit Slug-Wechsel + Publish-
+  Toggle** (Pflicht-Operationen für Live-Betrieb: Slug ändern
+  und Veröffentlichen). Settings ist auch der natürliche Ort
+  für die Legal-Sektion.
+- Code-Sessions 53+: Schreibpfad ServicesEditForm, Slug-Live-
+  Check vor Submit, Onboarding-Wizard mehrstufig, Multi-Member-
+  Verwaltung, Default-Redirect bei einem Betrieb, Retry-Queue
+  für Lead-`local-fallback`, Storage-Cleanup-Job für Slug-
+  Wechsel-Waisen, Edge-Runtime-Migration, CSRF-Schutz, HTML-
+  Sanitize-Whitelist, Impressum-Editor pro Betrieb, Seed-Skript
+  für Demo-Daten, Schema↔Migration-Drift-Test, **Dependency-
+  Sweep**.
+
+## [0.16.25] – Code-Session 51 – 2026-04-27
+
+Storage-Bucket für Logos + Hero-Bilder. Letzter visueller
+Baustein vor Live-Betrieb: Owner lädt Bilder direkt im
+Dashboard hoch.
+
+- ✚ `supabase/migrations/0008_storage_buckets.sql` —
+  `business-images`-Bucket (public=true), 5 MB Limit,
+  Mime-Whitelist (PNG/JPEG/WebP, **SVG raus** wegen XSS).
+  Server-Role-only Schreibe-Pfad — keine RLS-Policies auf
+  storage.objects nötig.
+- ✚ `src/lib/business-image-upload.ts` — pure Helper:
+  `validateImageFile` (Mime/Size/Empty), `extensionForMime`,
+  `buildStoragePath` (slug-basiert),
+  `submitImageUpload` mit 5-stufigem Result-Mapping (server /
+  not-authed / forbidden / validation / fail).
+- ✚ `src/tests/business-image-upload.test.ts` (~35 Asserts):
+  alle Validierungs-Pfade, Pfad-Bau, alle Submit-Pfade,
+  FormData-Capture, Pre-Validation-Skip-Server.
+- ✚ `src/app/api/businesses/[slug]/image/route.ts` — POST mit
+  Auth-Gate + Owner-Check (RLS) + server-seitige Validation +
+  Service-Role-Upload mit `upsert: true` + Public-URL-Return.
+- ✚ `src/components/dashboard/business-edit/image-upload-field.tsx`
+  — Vorschau-Tile + Hochladen/Ersetzen/Entfernen-Buttons,
+  Spinner-State, aria-live-Status.
+- 🔄 `business-edit-form.tsx`: Logo/Cover-URL-Textfelder
+  ersetzt durch `<ImageUploadField>` ×2 in Branding-Sektion.
+  Hidden inputs halten URLs im Form-State; setValue mit
+  `shouldDirty: true` triggert das Speichern-Knöpfchen.
+
+32/33 Smoketests grün (industry-presets pre-existing red,
+Codex #11). Static-Build: `/api/businesses/[slug]/image`
+korrekt nicht gemountet (pageExtensions-Filter), SSR-Build hat
+ƒ. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt. 1 neu (Storage-Cleanup-Job für Slug-
+Wechsel-Waisen).
+
+**Manueller Schritt** (einmalig im Supabase-SQL-Editor):
+Migration 0008 ausführen — erstellt das Bucket. Idempotent.
+
+**Manueller Test** (mit ENVs + Migrationen):
+Login → Dashboard → Betrieb-Tab → Branding → „Hochladen" →
+Vorschau zeigt neues Logo → Speichern → Public-Site zeigt das
+neue Logo im Header.
 
 ## [0.16.24] – Code-Session 50 – 2026-04-27
 

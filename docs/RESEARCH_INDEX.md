@@ -90,6 +90,14 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Supabase Storage + RLS (Code-Session 51)
+- [Supabase Docs – Storage Access Control](https://supabase.com/docs/guides/storage/security/access-control) — Public-Bucket bypasst SELECT-Auth, INSERT/UPDATE/DELETE bleiben policy-gated (51).
+- [Supabase Docs – Storage Buckets](https://supabase.com/docs/guides/storage/buckets/fundamentals) — Bucket-Konfiguration: file_size_limit + allowed_mime_types (51).
+- [Supabase JS API – storage-from-upload](https://supabase.com/docs/reference/javascript/storage-from-upload) — `upsert: true` für Re-Upload-Idempotenz (51).
+- [Supabase JS API – storage-from-getPublicUrl](https://supabase.com/docs/reference/javascript/storage-from-getpublicurl) — Public-URL-Konstruktion (51).
+- [Supabase Discussion #37611 – RLS Error mit Service Role](https://github.com/orgs/supabase/discussions/37611) — Service-Role bypasst RLS auf storage.objects (51).
+- [Niko Fischer – Supabase Storage File Upload Guide](https://nikofischer.com/supabase-storage-file-upload-guide) — Praxis-Beispiel Multipart-Upload (51).
+
 ### RLS-scoped UPDATE via Server-Auth-Client (Code-Session 50)
 - [Supabase Docs – Setting up Server-Side Auth for Next.js](https://supabase.com/docs/guides/auth/server-side/nextjs) — server-auth-Client liest Cookie, RLS gilt automatisch (50).
 - [Supabase Discussion #13792 – Authenticated client in API route](https://github.com/orgs/supabase/discussions/13792) — RLS-only-Pattern statt Service-Role für User-Updates (50).

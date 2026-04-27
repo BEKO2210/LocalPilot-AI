@@ -171,6 +171,17 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   bei Static-Build / 404 / offline transparent auf den
   localStorage-Pfad zurück. Bei 401/403/5xx KEIN Local-
   Schreiben → keine stille Drift mit DB.
+- 51: Storage-Bucket für Logos + Hero-Bilder ✅.
+  Migration 0008 erstellt `business-images`-Bucket (public=true,
+  5 MB Limit, PNG/JPEG/WebP, **kein SVG**). Server-Route
+  `POST /api/businesses/[slug]/image` macht Auth-Gate +
+  Owner-Read-Check via authenticated-Client, anschließend
+  Service-Role-Upload mit `upsert: true`. Pfad-Konvention
+  `<slug>/<kind>.<ext>`. Pure Upload-Helper mit Mime-/Size-/
+  SVG-Validation, ImageUploadField-Komponente mit Vorschau-
+  Tile + „Hochladen" / „Ersetzen" / „Entfernen". URL landet
+  über `methods.setValue` im Form und wird beim regulären
+  „Speichern" mit-persistiert.
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 

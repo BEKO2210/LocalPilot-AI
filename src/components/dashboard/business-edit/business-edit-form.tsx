@@ -49,6 +49,7 @@ import type { IndustryKey } from "@/types/common";
 import { OpeningHoursEditor } from "./opening-hours-editor";
 import { ThemePickerField } from "./theme-picker-field";
 import { BusinessEditPreview } from "./business-edit-preview";
+import { ImageUploadField } from "./image-upload-field";
 
 type BusinessEditFormProps = {
   business: Business;
@@ -599,35 +600,60 @@ export function BusinessEditForm({ business }: BusinessEditFormProps) {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  label="Logo-URL"
-                  htmlFor="logoUrl"
-                  hint="Optional. Bild-Upload folgt mit Storage-Anbindung."
-                  error={errors.logoUrl?.message}
-                >
-                  <FormInput
-                    id="logoUrl"
-                    type="url"
-                    placeholder="https://…"
-                    hasError={Boolean(errors.logoUrl)}
-                    {...methods.register("logoUrl")}
-                  />
-                </FormField>
-                <FormField
-                  label="Cover-Bild-URL"
-                  htmlFor="coverImageUrl"
-                  hint="Optional, später für die Hero-Sektion."
-                  error={errors.coverImageUrl?.message}
-                >
-                  <FormInput
-                    id="coverImageUrl"
-                    type="url"
-                    placeholder="https://…"
-                    hasError={Boolean(errors.coverImageUrl)}
-                    {...methods.register("coverImageUrl")}
-                  />
-                </FormField>
+                <ImageUploadField
+                  slug={business.slug}
+                  kind="logo"
+                  label="Logo"
+                  description="Erscheint im Header und Footer der Public-Site."
+                  currentUrl={methods.watch("logoUrl") ?? undefined}
+                  onUploaded={(url) =>
+                    methods.setValue("logoUrl", url, { shouldDirty: true })
+                  }
+                  onCleared={() =>
+                    methods.setValue("logoUrl", undefined, {
+                      shouldDirty: true,
+                    })
+                  }
+                />
+                <ImageUploadField
+                  slug={business.slug}
+                  kind="cover"
+                  label="Hero-Bild"
+                  description="Großes Bild oben auf der Public-Site (16:9 sieht am besten aus)."
+                  currentUrl={methods.watch("coverImageUrl") ?? undefined}
+                  onUploaded={(url) =>
+                    methods.setValue("coverImageUrl", url, {
+                      shouldDirty: true,
+                    })
+                  }
+                  onCleared={() =>
+                    methods.setValue("coverImageUrl", undefined, {
+                      shouldDirty: true,
+                    })
+                  }
+                />
               </div>
+              {/* Falls jemand manuelle URLs pflegen will (Override / externe
+                  CDN), bleiben die Felder hidden im Form und werden vom
+                  Upload-Field via setValue mitgepflegt. */}
+              <input
+                type="hidden"
+                {...methods.register("logoUrl")}
+              />
+              <input
+                type="hidden"
+                {...methods.register("coverImageUrl")}
+              />
+              {errors.logoUrl ? (
+                <p className="text-xs font-medium text-rose-600">
+                  Logo-URL: {errors.logoUrl.message}
+                </p>
+              ) : null}
+              {errors.coverImageUrl ? (
+                <p className="text-xs font-medium text-rose-600">
+                  Cover-URL: {errors.coverImageUrl.message}
+                </p>
+              ) : null}
             </FormSection>
           </div>
 
