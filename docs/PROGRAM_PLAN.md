@@ -366,6 +366,15 @@ beginnt die UI/UX-Polish-Phase.
   `app/global-error.tsx` als App-Router-ErrorBoundary für
   RootLayout-Crashes. Routen `/api/leads` + `/api/onboarding`
   melden 5xx-Errors. Observability-Layer eingezogen.
+- **69** ✅: „Betrieb löschen"-Flow mit rekursivem Storage-
+  Cleanup. `DELETE /api/businesses/<slug>` mit Auth + RLS
+  + Stack-basiertem Walker (`listAllPathsByPrefix` +
+  `removeAllByPrefix` in `storage-cleanup.ts`, +18 Asserts
+  → 70 gesamt). Submit-Helper `business-delete.ts` (~110
+  Zeilen, ~25 Asserts). UI mit Slug-Confirmation +
+  `window.confirm()` als zweite Stufe + Redirect auf
+  `/account?stay=1`. Lead-/Service-/Review-/FAQ-Cascade
+  via FK. Self-Service-Cycle damit vollständig.
 - **69**: „Betrieb löschen"-Flow mit rekursivem
   Storage-Cleanup. Nutzt vorhandene Helper aus 56/57/60.
 - **70** (Light-Pass, 5er-Multiple): finaler Pre-MVP-Pass —

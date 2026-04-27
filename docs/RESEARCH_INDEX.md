@@ -145,6 +145,12 @@
 - [supabase Discussion #19418 – Rename folder with supabase-js](https://github.com/orgs/supabase/discussions/19418) — bestätigt: 2026 noch keine Folder-API, Loop über Files (57).
 - [supabase storage-js Issue #49 – Bucket-Rename](https://github.com/supabase/storage-js/issues/49) — Bucket-Rename existiert noch nicht (relevant nur als Negativ-Information, 57).
 
+### Supabase Storage Recursive Operations (Code-Session 69)
+- [Supabase Discussion #4218 – Remove folder content](https://github.com/orgs/supabase/discussions/4218) — Native Folder-Delete-API existiert nicht; rekursiv iterieren ist Standard (69).
+- [Supabase Storage Folder-Operations Guide](https://supabase.com/docs/guides/troubleshooting/supabase-storage-inefficient-folder-operations-and-hierarchical-rls-challenges-b05a4d) — Folders sind Pseudo-Prefixes; List ist pro Ebene; rekursive Iteration vom Code (69).
+- [Fabian Fruhmann – Storage Delete Folder Fast Way](https://medium.com/@fabian.blackphoenix134/supabase-storage-delete-folder-the-fast-way-b11260b7325e) — Praxis-Beispiel mit `.list(prefix)` + Pagination (69).
+- [Supabase Storage Issue #173 – Recursive deletes](https://github.com/supabase/storage/issues/173) — Feature-Request offen; client-side Pattern bleibt notwendig (69).
+
 ### Sentry-Adapter-Pattern + ErrorBoundary (Code-Session 68)
 - [Sentry – Next.js Manual Setup](https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/) — Standard-Pattern: client.config + server.config + global-error.tsx (68).
 - [Sentry – App Router Auto-Instrumentation](https://github.com/getsentry/sentry-javascript/discussions/13442) — Auto-Instrumentation via `withSentryConfig`; wir verzichten zugunsten manueller Adapter (68).

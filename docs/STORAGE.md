@@ -166,13 +166,14 @@ Insgesamt ~130 Asserts auf der Storage-Schicht.
 
 ---
 
-## Bekannte Lücken (Stand Session 60)
+## Bekannte Lücken (Stand Session 69)
 
-- **Storage-Cleanup beim Business-Löschen**: aktuell hat das
-  Produkt keinen „Betrieb löschen"-Flow; sobald das kommt,
-  müssen alle Pfade unter `<slug>/` (Logo, Cover, Services)
-  rekursiv entfernt werden. `removeStoragePaths` kann das,
-  aber wir brauchen einen `listAllForSlug`-Helper.
+- ~~**Storage-Cleanup beim Business-Löschen**~~ ✅ erledigt
+  in Session 69. `listAllPathsByPrefix` + `removeAllByPrefix`
+  in `storage-cleanup.ts` löschen rekursiv alles unter
+  `<slug>/` beim `DELETE /api/businesses/<slug>`. Stack-
+  basierter Walker mit Pagination + Hard-Cap auf 10.000
+  Files.
 - **Service-DELETE während Bild-Upload läuft**: theoretische
   Race Condition. Falls der Upload schneller ist als der
   DELETE-Trigger, könnte ein Bild *nach* dem DELETE im Storage

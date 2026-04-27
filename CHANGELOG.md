@@ -6,10 +6,81 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1 Restweg → MVP-funktional (Sessions 69–70)
-- **69**: „Betrieb löschen"-Flow mit rekursivem
-  Storage-Cleanup.
+### Phase 1 Restweg → MVP-funktional (Session 70)
 - **70** (Light-Pass): finaler Pre-MVP-Pass + Audit-Checkliste.
+
+## [0.16.43] – Code-Session 69 – 2026-04-27
+
+„Betrieb löschen"-Flow mit rekursivem Storage-Cleanup. Owner
+kann den eigenen Betrieb dauerhaft entfernen — Self-Service-
+Recht + DSGVO-Recht auf Löschung. UI mit Slug-Confirmation
+gegen versehentliches Klicken; Server-Pfad mit Auth + RLS +
+rekursivem Bucket-Cleanup. Lead-/Service-/Review-/FAQ-Daten
+verschwinden via FK-Cascade.
+
+- 🔄 `src/lib/storage-cleanup.ts` erweitert um:
+  - `listAllPathsByPrefix(client, bucket, prefix)`:
+    Stack-basierter rekursiver Walker. Supabase hat keine
+    native rekursive List-API; wir paginiren pro Folder
+    (`.list(prefix, {limit:1000, offset})`) und stack-pushen
+    Pseudo-Folder (id===null). Hard-Cap auf 10.000 Files
+    als Safety-Net.
+  - `removeAllByPrefix(client, bucket, prefix)`: list +
+    batched remove (max 1000 paths pro Aufruf). Graceful —
+    bei Batch-Fehler werden die übrigen versucht; Counts
+    kumulieren.
+- 🔄 `src/tests/storage-cleanup.test.ts`: ~52 → ~70 Asserts.
+  Neue Stub-Tree-Tests für 5 Files in 3 Ebenen, Trailing-
+  Slash-Normalisierung, leerer Prefix, null-Client,
+  removeAllByPrefix-Integration mit Empty-Tree und
+  Service-Role-Fehlt-Pfad.
+- 🔄 `src/app/api/businesses/[slug]/route.ts`: neue
+  `DELETE`-Function. CSRF + Auth-Gate, RLS-getriebener
+  DB-DELETE auf `businesses` (0 Zeilen → 403, RLS-Policy
+  aus Migration 0007). Lead-/Service-/Review-/FAQ-Cascade
+  via FK (Migrations 0002/0005). Storage-Cleanup nach
+  DB-DELETE: `removeAllByPrefix(adminClient, "business-
+  images", slug)` — Best-Effort, Fehler werden via
+  `reportRouteError` (Session 68) gemeldet, blockieren
+  aber nicht. Antwort: `{slug, filesRemoved, filesFailed}`.
+- ✚ `src/lib/business-delete.ts` (~110 Zeilen):
+  `submitBusinessDelete(slug, deps?)` mit 4-Result-Kind-
+  Mapping (server / not-authed / forbidden / fail).
+  `userMessageForResult` mit Partial-Failure-Handling
+  („3 entfernt, 2 nicht aufgeräumt — Betrieb ist
+  trotzdem weg").
+- ✚ `src/tests/business-delete.test.ts` (~25 Asserts):
+  alle 4 Result-Kinds, URL-Encoding bei Slugs mit Spaces,
+  Default-Messages, Throw-Handling, Credentials-Check.
+- 🔄 `src/components/dashboard/settings/settings-form.tsx`:
+  Neue `<DangerZone>`-Sub-Komponente nach dem Settings-
+  Formular. Rote Card mit Slug-Confirmation-Input
+  („Tippe zur Bestätigung den Slug `xxx` ein"); Delete-
+  Button erst aktiv bei exaktem Match. Bei Click:
+  `window.confirm()` als zweite Stufe, dann
+  `submitBusinessDelete`. Bei Erfolg redirect auf
+  `/account?stay=1` (umgeht Auto-Redirect aus Session 63,
+  damit auch Solo-Owner die Account-Liste sehen, falls
+  sie einen neuen Betrieb anlegen wollen).
+
+45/45 Smoketests grün. typecheck ✅, lint ✅, beide Builds
+✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 Pflicht-Item abgehakt (Betrieb-löschen).
+Phase-1-Restweg: nur noch Session 70 (Light-Pass +
+Audit-Checkliste).
+
+**Status-Update**: ~99 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Cycle vollständig: Onboarding (S38) →
+Editor (S50–58) → Slug-Wechsel (S52+57) → Löschung (S69).
+DSGVO-konform.
+
+**Manueller Test**: Dashboard → Einstellungen → Danger-Zone
+→ Slug eintippen → Delete-Button aktiv → Klick → confirm-
+Dialog → DB+Storage gelöscht → Redirect auf
+`/account?stay=1`. Alte Public-Site-URL liefert 404.
+
+## [0.16.42] – Code-Session 68 – 2026-04-27
 
 ## [0.16.42] – Code-Session 68 – 2026-04-27
 

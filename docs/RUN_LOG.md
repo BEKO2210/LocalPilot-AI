@@ -7885,3 +7885,138 @@ mit-gelöscht (Migration 0005). Confirmation-UI:
 Slug-Eingabe-Bestätigung („Tippen Sie den Slug ein, um zu
 bestätigen") gegen versehentliches Löschen.
 
+## Code-Session 69 – „Betrieb löschen"-Flow
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Self-Service
+
+**Was**: Owner kann seinen Betrieb dauerhaft entfernen —
+DSGVO-Recht auf Löschung + normaler User-Flow. UI mit
+Slug-Confirmation gegen versehentliches Klicken; Server mit
+Auth + RLS + rekursivem Bucket-Cleanup. Lead-/Service-/
+Review-/FAQ-Daten verschwinden via FK-Cascade. Self-Service-
+Cycle ist damit vollständig.
+
+**Architektur-Entscheidung — eigene `DELETE`-Method statt
+einer separaten Route**: REST-Konvention. `DELETE
+/api/businesses/<slug>` ist der semantisch korrekte Pfad,
+und das Setzen einer separaten `/delete`-Route würde nur
+das Pattern brechen. Die bestehende `route.ts` hatte schon
+PATCH; wir ergänzen DELETE.
+
+**Architektur-Entscheidung — Storage-Cleanup als
+Best-Effort nach DB-DELETE**: DB ist der Source-of-Truth.
+Wenn der DB-DELETE erfolgreich ist und der Storage-Cleanup
+hängt, ist der Betrieb effektiv weg (RLS verhindert
+Re-Access, Public-Site liefert 404). Storage-Waisen sind
+hässlich aber nicht funktional gefährlich. Daher:
+DB-DELETE wird sofort committed; Storage-Errors werden via
+`reportRouteError` (Session 68) gemeldet aber nicht
+zurückgemeldet als 5xx — sonst bekäme der User „Fehler"
+trotz erfolgreich gelöschtem Betrieb.
+
+**Architektur-Entscheidung — rekursiver Walker mit
+Stack statt Recursion**: Supabase hat keine native rekursive
+List-API. Naive Implementation wäre rekursive
+JS-Function — bei tief verschachtelten Bucket-Strukturen
+könnte das den Call-Stack sprengen. Stack-basierter
+Walker ist deterministischer und hat einen Hard-Cap auf
+10.000 Files als Safety-Net (kein Bucket-weiter Scan
+durch Bug).
+
+**Architektur-Entscheidung — Slug-Confirmation als UX-
+Schutz**: GitHub-Pattern. Delete-Button ist erst aktiv,
+wenn der User den Slug exakt eintippt. Plus
+`window.confirm()` als zweite Stufe. Drei-Stufen-Schutz
+(Card-Visibility + Tippen + Confirm) gegen versehentliches
+Klicken.
+
+**Architektur-Entscheidung — Redirect auf
+`/account?stay=1`**: Session 63 redirected `/account` auf
+`/dashboard/<slug>`, wenn der User nur einen Betrieb hat.
+Nach dem Löschen würde diese Logik den User auf den
+gerade-gelöschten-Slug-Pfad schicken (404 oder andere
+Verwirrung). `?stay=1` umgeht den Auto-Redirect — der
+User landet sicher auf der Account-Liste, kann von dort
+einen neuen Betrieb anlegen.
+
+**WebSearch (Track A)**: bestätigt
+- [Supabase Discussion #4218 – Remove folder content](https://github.com/orgs/supabase/discussions/4218)
+  Native Folder-Delete-API existiert nicht; rekursiv
+  iterieren ist Standard.
+- [Supabase Storage Folder-Operations Guide](https://supabase.com/docs/guides/troubleshooting/supabase-storage-inefficient-folder-operations-and-hierarchical-rls-challenges-b05a4d)
+  Bestätigt: Folders sind nur Pseudo-Prefixes; List ist
+  pro Ebene; rekursive Iteration vom Client/Server-Code
+  notwendig.
+- [Fabian Fruhmann – Storage Delete Folder Fast Way](https://medium.com/@fabian.blackphoenix134/supabase-storage-delete-folder-the-fast-way-b11260b7325e)
+  Praxis-Beispiel mit `.list(prefix)` + Pagination.
+- [Supabase Storage Issue #173 – Recursive deletes](https://github.com/supabase/storage/issues/173)
+  Feature-Request offen; client-side Pattern bleibt.
+
+**Dateien**:
+- 🔄 `src/lib/storage-cleanup.ts`:
+  - `listAllPathsByPrefix(client, bucket, prefix)` —
+    Stack-basierter Walker. `LIST_PAGE_SIZE = 1000`,
+    `MAX_TOTAL_FILES = 10_000`. Heuristik:
+    `id === null || id === undefined` → Pseudo-Folder.
+  - `removeAllByPrefix(client, bucket, prefix)` — list
+    + batched remove (`REMOVE_BATCH_SIZE = 1000`).
+    Graceful: bei Batch-Fehler werden die übrigen
+    versucht; Counts + last reason kumulieren.
+- 🔄 `src/tests/storage-cleanup.test.ts`: 52 → 70
+  Asserts. Stub-Tree mit 5 Files in 3 Ebenen,
+  Trailing-Slash, leerer Prefix, null-Client,
+  removeAllByPrefix-Integration.
+- 🔄 `src/app/api/businesses/[slug]/route.ts`: neue
+  `DELETE`-Function. CSRF + Auth + Server-Auth-Client
+  (RLS-getrieben). DB-DELETE mit `.select(...)` zur
+  0-Rows-Detection (→ 403). Storage-Cleanup nach
+  DB-DELETE via `removeAllByPrefix`. `reportRouteError`
+  bei Cleanup-Fehler (Session 68). Antwort:
+  `{slug, filesRemoved, filesFailed}`.
+- ✚ `src/lib/business-delete.ts` (~110 Zeilen):
+  `submitBusinessDelete(slug, deps?)` mit 4-Result-Kind
+  (server / not-authed / forbidden / fail).
+  `userMessageForResult` mit Partial-Failure-Handling.
+- ✚ `src/tests/business-delete.test.ts` (~25 Asserts):
+  Result-Kinds, URL-Encoding, Default-Messages,
+  Throw-Handling.
+- 🔄 `src/components/dashboard/settings/settings-form.tsx`:
+  Neue `<DangerZone>`-Sub-Komponente nach dem Settings-
+  Form. Rote Card, Slug-Confirmation-Input, Delete-Button
+  mit `disabled={!canDelete}`. `window.confirm()` als
+  zweite Stufe. Bei Erfolg `setTimeout(() =>
+  router.push("/account?stay=1"), 1200)`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests grün**. +18 storage-cleanup-Asserts +
+1 neuer business-delete-Test (~25 Asserts). Bundle 102 KB
+shared unverändert.
+
+**Roadmap**: 1 Pflicht-Item abgehakt. Phase-1-Restweg:
+nur noch **Session 70** (Light-Pass + Pre-MVP-Audit-
+Checkliste). Damit MVP-funktional erreicht. Phase 2 ab
+Session 71 mit ≥10 Sessions UI/UX-Audit + Demo-Logo.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — Supabase
+Storage Recursive Operations 2026.
+
+**Status-Update**: ~99 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Cycle vollständig (Onboarding →
+Editor → Slug-Wechsel → Löschen). DSGVO-konform. Phase 1
+fast abgeschlossen.
+
+**Nächste Session**: Code-Session 70 (Light-Pass,
+5er-Multiple) = **Pre-MVP-Audit + Status-Recap**. Letzter
+Light-Pass vor MVP-Stand. Inhalt:
+1. `simplify`-Skill auf Sessions 66–69-Diff (CSRF, XSS,
+   Sentry, Delete) — alle Light-Pass-Items aus 65 wurden
+   nicht verfolgt; Konsolidierungs-Möglichkeiten prüfen
+   (z. B. `useAITokenSync`-Hook-Extraktion bei jetzt 3+
+   Konsumenten).
+2. Audit-Checkliste: alle 7 Phase-1-Items (61–69)
+   verifizieren — Helper-Tests grün, Routen-Coverage
+   vollständig, Doku synchron.
+3. `security-review`-Skill auf den gesamten Branch.
+4. Status-Recap als `docs/MVP_RECAP.md` (analog
+   `STORAGE.md` und `AI.md`) mit Architektur-Übersicht
+   für Phase-2-Sessions.
+

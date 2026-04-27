@@ -9,7 +9,9 @@ import {
   buildPublicUrl,
   collectStoragePaths,
   extractStoragePath,
+  listAllPathsByPrefix,
   moveStoragePath,
+  removeAllByPrefix,
   removeStoragePaths,
   rewritePathPrefix,
 } from "@/lib/storage-cleanup";
@@ -359,7 +361,118 @@ async function main() {
     "Public-URL korrekt zusammengebaut",
   );
 
-  console.log("storage-cleanup smoketest ✅ (~52 Asserts)");
+  // -------------------------------------------------------------------
+  // 24. listAllPathsByPrefix: Stack-Walker
+  // -------------------------------------------------------------------
+  // Stub-Storage mit Tree:
+  //   slug/logo.png  (Datei)
+  //   slug/cover.jpg (Datei)
+  //   slug/services/ (Folder)
+  //   slug/services/uuid-1.png  (Datei)
+  //   slug/services/uuid-2.png  (Datei)
+  //   slug/services/sub/ (Folder)
+  //   slug/services/sub/deep.png (Datei)
+  type Item = { name: string; id: string | null };
+  const tree: Record<string, readonly Item[]> = {
+    slug: [
+      { name: "logo.png", id: "f1" },
+      { name: "cover.jpg", id: "f2" },
+      { name: "services", id: null },
+    ],
+    "slug/services": [
+      { name: "uuid-1.png", id: "f3" },
+      { name: "uuid-2.png", id: "f4" },
+      { name: "sub", id: null },
+    ],
+    "slug/services/sub": [{ name: "deep.png", id: "f5" }],
+  };
+  const treeClient = {
+    storage: {
+      from: () => ({
+        list: async (
+          prefix: string,
+          opts: { limit: number; offset: number },
+        ) => {
+          const items = tree[prefix] ?? [];
+          const slice = items.slice(opts.offset, opts.offset + opts.limit);
+          return { data: slice, error: null };
+        },
+      }),
+    },
+  } as unknown as SupabaseClient;
+
+  const allPaths = await listAllPathsByPrefix(treeClient, BUCKET, "slug");
+  assert(allPaths.length === 5, "5 Files insgesamt");
+  assert(allPaths.includes("slug/logo.png"), "logo enthalten");
+  assert(allPaths.includes("slug/services/uuid-1.png"), "service-uuid-1 enthalten");
+  assert(
+    allPaths.includes("slug/services/sub/deep.png"),
+    "tief verschachtelte Datei enthalten",
+  );
+
+  // Trailing-Slash im prefix wird gestrippt
+  const trailing = await listAllPathsByPrefix(treeClient, BUCKET, "slug/");
+  assert(trailing.length === 5, "Trailing-Slash normalisiert");
+
+  // Empty-Prefix → []
+  const noPrefix = await listAllPathsByPrefix(treeClient, BUCKET, "");
+  assert(noPrefix.length === 0, "leerer Prefix → []");
+
+  // Null-Client → []
+  const listNoClient = await listAllPathsByPrefix(null, BUCKET, "slug");
+  assert(listNoClient.length === 0, "null-Client → []");
+
+  // -------------------------------------------------------------------
+  // 25. removeAllByPrefix: list + remove integriert
+  // -------------------------------------------------------------------
+  const removed: string[] = [];
+  const integratedClient = {
+    storage: {
+      from: () => ({
+        list: async (
+          prefix: string,
+          opts: { limit: number; offset: number },
+        ) => {
+          const items = tree[prefix] ?? [];
+          return {
+            data: items.slice(opts.offset, opts.offset + opts.limit),
+            error: null,
+          };
+        },
+        remove: async (paths: readonly string[]) => {
+          for (const p of paths) removed.push(p);
+          return { data: null, error: null };
+        },
+      }),
+    },
+  } as unknown as SupabaseClient;
+  const removeResult = await removeAllByPrefix(integratedClient, BUCKET, "slug");
+  assert(removeResult.removed === 5, "5 entfernt");
+  assert(removeResult.failed === 0, "0 failed");
+  assert(removed.length === 5, "remove() bekam 5 Pfade");
+
+  // Null-Client
+  const nullRemove = await removeAllByPrefix(null, BUCKET, "slug");
+  assert(nullRemove.failed === 0, "null-Client → 0 failed (nichts zu tun)");
+  assert(
+    nullRemove.reason !== null && nullRemove.reason.includes("Service-Role"),
+    "null-Client → Reason gesetzt",
+  );
+
+  // Empty-Tree
+  const emptyClient = {
+    storage: {
+      from: () => ({
+        list: async () => ({ data: [], error: null }),
+        remove: async () => ({ data: null, error: null }),
+      }),
+    },
+  } as unknown as SupabaseClient;
+  const emptyRemove = await removeAllByPrefix(emptyClient, BUCKET, "no-such-slug");
+  assert(emptyRemove.removed === 0, "leerer Tree → 0 removed");
+  assert(emptyRemove.failed === 0, "leerer Tree → 0 failed");
+
+  console.log("storage-cleanup smoketest ✅ (~70 Asserts)");
 }
 
 void main().catch((err) => {
@@ -367,4 +480,4 @@ void main().catch((err) => {
   process.exit(1);
 });
 
-export const __STORAGE_CLEANUP_SMOKETEST__ = { totalAssertions: 52 };
+export const __STORAGE_CLEANUP_SMOKETEST__ = { totalAssertions: 70 };
