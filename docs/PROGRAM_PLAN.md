@@ -356,9 +356,16 @@ beginnt die UI/UX-Polish-Phase.
   (onboarding, business PATCH, services PUT, leads POST).
   Defense-in-Depth-Security-Stack komplett: SameSite +
   CSRF + HTML-Sanitize.
-- **68**: Sentry-Integration für Error-Tracking (Browser +
-  Server). DSN-ENV, sourcemap-Upload im CI, Error-Boundary
-  in Layout.
+- **68** ✅: Error-Tracking via Adapter-Pattern.
+  `lib/error-reporter.ts` (~190 Zeilen, ~30 Asserts) mit
+  Public-API `captureException`/`captureMessage`/
+  `reportRouteError`. Default-Sink: console (0 KB Bundle).
+  Bei `SENTRY_DSN` ENV + installiertem `@sentry/nextjs`
+  wird Sentry lazy via `await import(...)` aktiviert —
+  keine harte Dep, kein Code-Wechsel beim Upgrade. Plus
+  `app/global-error.tsx` als App-Router-ErrorBoundary für
+  RootLayout-Crashes. Routen `/api/leads` + `/api/onboarding`
+  melden 5xx-Errors. Observability-Layer eingezogen.
 - **69**: „Betrieb löschen"-Flow mit rekursivem
   Storage-Cleanup. Nutzt vorhandene Helper aus 56/57/60.
 - **70** (Light-Pass, 5er-Multiple): finaler Pre-MVP-Pass —

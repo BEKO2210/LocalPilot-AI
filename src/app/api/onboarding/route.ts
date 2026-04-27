@@ -27,6 +27,7 @@ import {
   validateOnboarding,
 } from "@/lib/onboarding-validate";
 import { enforceCsrf } from "@/lib/csrf";
+import { reportRouteError } from "@/lib/error-reporter";
 import {
   sanitizeUserMultiLine,
   sanitizeUserSingleLine,
@@ -130,6 +131,7 @@ export async function POST(req: Request): Promise<Response> {
         { status: statusForKind(err.kind) },
       );
     }
+    reportRouteError(err, "/api/onboarding", { userId: user.id });
     return NextResponse.json(
       { error: "unknown", message: "Unerwarteter Fehler beim Onboarding." },
       { status: 500 },

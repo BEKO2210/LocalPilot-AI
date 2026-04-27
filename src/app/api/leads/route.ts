@@ -23,6 +23,7 @@ import {
   type NewLeadInput,
 } from "@/core/database/repositories";
 import { enforceCsrf } from "@/lib/csrf";
+import { reportRouteError } from "@/lib/error-reporter";
 import { sanitizeLeadStrings } from "@/lib/user-input-sanitize";
 
 export const runtime = "nodejs";
@@ -105,6 +106,7 @@ export async function POST(req: Request): Promise<Response> {
         { status: statusForKind(err.kind) },
       );
     }
+    reportRouteError(err, "/api/leads", { source: "lead-create" });
     return NextResponse.json(
       { error: "unknown", message: "Unerwarteter Fehler beim Speichern." },
       { status: 500 },

@@ -6,11 +6,75 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1 Restweg → MVP-funktional (Sessions 68–70)
-- **68**: Sentry-Integration.
+### Phase 1 Restweg → MVP-funktional (Sessions 69–70)
 - **69**: „Betrieb löschen"-Flow mit rekursivem
   Storage-Cleanup.
 - **70** (Light-Pass): finaler Pre-MVP-Pass + Audit-Checkliste.
+
+## [0.16.42] – Code-Session 68 – 2026-04-27
+
+Error-Tracking via Adapter-Pattern. Sentry-fähig **ohne**
+harte Dep — Default ist console-Sink (0 KB Bundle-Impact),
+bei `SENTRY_DSN` ENV + installiertem `@sentry/nextjs` wird
+Sentry lazy via `await import(...)` aktiviert. ErrorBoundary
+in `app/global-error.tsx` für Render-Fehler. Kritische API-
+Routen melden 5xx-Errors via `reportRouteError`.
+
+- ✚ `src/lib/error-reporter.ts` — Adapter-Modul (~190 Zeilen):
+  - `captureException(err, ctx?)`, `captureMessage(msg,
+    level, ctx?)`, `setUser`, `flushErrorReporter` als
+    Public-API.
+  - `initErrorReporter()`: idempotent, lazy. Liest
+    `SENTRY_DSN` (Server) bzw. `NEXT_PUBLIC_SENTRY_DSN`
+    (Browser). Bei DSN versucht `await import("@sentry/nextjs")`
+    in try/catch — Module-Not-Found → silent fallback auf
+    Console-Sink.
+  - Sample-Rate aus `SENTRY_TRACES_SAMPLE_RATE` ENV
+    (default 0.1 — konservativ).
+  - `__setSinkForTesting` / `__getActiveSinkForTesting`
+    für Stub-basierte Tests.
+  - `reportRouteError(err, route, extra?)` als Convenience
+    für API-Catch-Blöcke.
+- ✚ `src/tests/error-reporter.test.ts` (~30 Asserts):
+  Recording-Sink-Pattern. captureException mit/ohne Context,
+  Error-/String-/Object-Inputs, alle 4 Levels, Default-
+  Level=info, reportRouteError, flush mit/ohne Sink-flush,
+  init ohne DSN, init mit DSN aber fehlendem Paket
+  (fallback), Idempotenz, Console-Sink Smoke.
+- ✚ `src/app/global-error.tsx` — App-Router-Konvention:
+  fängt RootLayout-Render-Fehler ab. Inline-Styles als
+  Letztanker (Tailwind/Theme könnten gerade kaputt sein).
+  `useEffect` ruft `initErrorReporter().then(() =>
+  captureException(error, { tags: { source:
+  "global-error-boundary", digest } }))`. UI: Reset-Button
+  + Link zur Startseite + optional Error-Digest-ID.
+- 🔄 `/api/leads` (POST): `reportRouteError(err,
+  "/api/leads", { source: "lead-create" })` im 500er-
+  catch-Block (vor return).
+- 🔄 `/api/onboarding` (POST): `reportRouteError(err,
+  "/api/onboarding", { userId })` im 500er-catch.
+
+44/44 Smoketests grün. typecheck ✅, lint ✅, beide Builds
+✅. Bundle 102 KB shared unverändert (kein Sentry-Paket
+installiert; lazy-import wird zur Laufzeit gefangen).
+
+🛣️ Roadmap: 1 Pflicht-Item abgehakt (Error-Tracking).
+Phase-1-Restweg: „Betrieb löschen"-Flow (69), Pre-MVP-Pass
+(70).
+
+**Status-Update**: ~98 % Richtung „erstes Betrieb-fertiges
+Produkt". Observability-Layer eingezogen — bei aktivem
+Sentry-Setup landen Errors in der Inbox; ohne Sentry läuft
+alles über Server-Console-Logs (Vercel/Cloudflare
+zeigt sie an).
+
+**Manueller Test**: Ohne `SENTRY_DSN`-ENV: Console-Logs
+in Server-/Browser-Konsole. Mit `SENTRY_DSN` ENV +
+`npm i @sentry/nextjs` (optional, separat zu installieren):
+Errors landen in Sentry-Inbox mit `route`-Tag. ErrorBoundary
+zeigt Reset-/Home-Buttons bei React-Render-Crash.
+
+## [0.16.41] – Code-Session 67 – 2026-04-27
 
 ## [0.16.41] – Code-Session 67 – 2026-04-27
 

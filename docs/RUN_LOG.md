@@ -7774,3 +7774,114 @@ Begründung: Sentry ist Production-Pflicht für Error-Tracking
 Bundle-Impact ist signifikant (~30-40 KB) — daher genau
 prüfen und Tree-shaking nutzen.
 
+## Code-Session 68 – Error-Tracking via Adapter-Pattern
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Observability
+
+**Was**: Production-Error-Tracking eingezogen. Sentry-fähig,
+**ohne** harte Dep auf `@sentry/nextjs`. Default ist
+console-Sink (0 KB Bundle); bei `SENTRY_DSN`-ENV +
+installiertem Sentry-Paket wird Sentry lazy aktiviert.
+ErrorBoundary fängt React-Render-Crashes; kritische API-
+Routen melden 5xx-Errors. Damit landet jede Production-
+Anomalie in Logs/Sentry — eine notwendige Production-
+Voraussetzung.
+
+**Architektur-Entscheidung — Adapter statt direkter Dep**:
+Drei Optionen:
+1. `@sentry/nextjs` direkt installieren (~40 KB Bundle, neue
+   Dep, automatische Source-Maps).
+2. Eigene Reporter-Implementation komplett ohne Sentry.
+3. Adapter mit Lazy-Sentry-Import (gewählt).
+
+(3) gewinnt: 0 KB Bundle ohne Sentry, vollständige Sentry-
+Funktionalität wenn das Paket vorhanden ist, kein
+Code-Wechsel beim Upgrade. User installiert
+`@sentry/nextjs` + setzt ENV → Reporter wechselt
+automatisch. Demo-/Static-Builds bleiben schlank.
+
+**Architektur-Entscheidung — `await import` mit String-
+Variable**: Webpack/Turbopack würde einen statischen
+`import("@sentry/nextjs")` als Build-Dependency auflösen
+(Static-Build scheitert, wenn Paket fehlt). Trick: das
+Modul-Name ist eine Variable (`const moduleName =
+"@sentry/nextjs"`) + `webpackIgnore: true`-Pragma. Damit
+bleibt der Import zur Laufzeit dynamisch. Plus try/catch
+um den ganzen Block — fehlt das Paket, Module-Not-Found
+wird abgefangen, Console-Sink bleibt.
+
+**Architektur-Entscheidung — Sink-Test-Hook**:
+`__setSinkForTesting(sink)` ersetzt den aktiven Sink mit
+einem Recording-Sink. Tests haben damit deterministische
+Asserts ohne mock-libs oder vi.mock(). Production-Code
+sieht den Hook nicht (nur exportiert, nicht aufgerufen).
+
+**WebSearch (Track D)**: bestätigt
+- [Sentry – Next.js Manual Setup](https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/)
+  Standard-Pattern: client.config.ts + server.config.ts +
+  global-error.tsx. Wir nutzen eine vereinfachte Adapter-
+  Variante.
+- [Sentry – App Router Auto-Instrumentation](https://github.com/getsentry/sentry-javascript/discussions/13442)
+  Auto-Instrumentation braucht `withSentryConfig` in
+  `next.config.ts`. Wir verzichten — manueller
+  `captureException` reicht für unsere Skala.
+- [Sentry – Lazy-loading Integrations](https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/integrations/)
+  `await import(...)` für Sub-Integrations ist Sentry-
+  intern Pattern. Wir nutzen es einen Schritt höher (das
+  ganze Paket lazy).
+- [Sentry blog – Common Errors in Next.js](https://blog.sentry.io/common-errors-in-next-js-and-how-to-resolve-them/)
+  Liste der typischen Render-/API-Errors, die Sentry
+  fängt.
+
+**Dateien**:
+- ✚ `src/lib/error-reporter.ts` (~190 Zeilen):
+  - Public: `captureException`, `captureMessage`,
+    `flushErrorReporter`, `initErrorReporter`,
+    `reportRouteError`.
+  - Private: `consoleSink` als Default,
+    `readDsnFromEnv`/`readSampleRate` für ENV-Parsing.
+  - Test-Hooks: `__setSinkForTesting`,
+    `__getActiveSinkForTesting`.
+- ✚ `src/tests/error-reporter.test.ts` (~30 Asserts):
+  Recording-Sink-Pattern, alle Public-API-Pfade,
+  Init-Edge-Cases (kein DSN, DSN ohne Paket, Idempotenz),
+  Console-Sink-Smoke.
+- ✚ `src/app/global-error.tsx`: App-Router-Konvention für
+  RootLayout-Render-Fehler. `useEffect` ruft
+  `initErrorReporter` + `captureException`. Markup mit
+  Inline-Styles (kein Tailwind/Theme — könnte gerade
+  kaputt sein). UI: Reset-Button + Home-Link + optional
+  Error-Digest-ID.
+- 🔄 `/api/leads` (POST) + `/api/onboarding` (POST):
+  `reportRouteError(err, route, extra?)` im
+  500er-catch vor `return NextResponse.json(...)`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**44/44 Smoketests grün**. +1 error-reporter-Test (~30
+Asserts). Bundle 102 KB shared unverändert (Sentry nicht
+installiert; Lazy-Import zur Laufzeit gefangen).
+
+**Roadmap**: 1 Pflicht-Item abgehakt. Phase-1-Restweg:
+- **69**: „Betrieb löschen"-Flow.
+- **70** (Light-Pass): Pre-MVP-Pass + Audit-Checkliste +
+  `simplify`-Skill auf Sessions 66–69-Diff.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Sentry-Adapter-
+Patterns 2026.
+
+**Status-Update**: ~98 % Richtung „erstes Betrieb-fertiges
+Produkt". Observability-Layer eingezogen. Verbleibend Phase
+1: 2 Sessions („Betrieb löschen", Pre-MVP-Pass). Phase 2
+ab Session 71 mit ≥10 Sessions UI/UX-Audit + Demo-Logo.
+
+**Nächste Session**: Code-Session 69 = **„Betrieb
+löschen"-Flow**. Begründung: Owner muss seinen Betrieb
+sauber wieder loswerden können — DSGVO-Recht auf Löschung,
+plus normaler User-Flow „ich teste eine Woche, dann lösche
+ich". Aktuell: keinen Lösch-Flow. Strategie:
+`DELETE /api/businesses/[slug]` mit Auth-Gate + RLS +
+rekursivem Storage-Cleanup (alle Files unter `<slug>/` im
+business-images-Bucket). Lead-Daten via FK-Cascade
+mit-gelöscht (Migration 0005). Confirmation-UI:
+Slug-Eingabe-Bestätigung („Tippen Sie den Slug ein, um zu
+bestätigen") gegen versehentliches Löschen.
+

@@ -145,6 +145,12 @@
 - [supabase Discussion #19418 – Rename folder with supabase-js](https://github.com/orgs/supabase/discussions/19418) — bestätigt: 2026 noch keine Folder-API, Loop über Files (57).
 - [supabase storage-js Issue #49 – Bucket-Rename](https://github.com/supabase/storage-js/issues/49) — Bucket-Rename existiert noch nicht (relevant nur als Negativ-Information, 57).
 
+### Sentry-Adapter-Pattern + ErrorBoundary (Code-Session 68)
+- [Sentry – Next.js Manual Setup](https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/) — Standard-Pattern: client.config + server.config + global-error.tsx (68).
+- [Sentry – App Router Auto-Instrumentation](https://github.com/getsentry/sentry-javascript/discussions/13442) — Auto-Instrumentation via `withSentryConfig`; wir verzichten zugunsten manueller Adapter (68).
+- [Sentry – Lazy-loading Integrations](https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/integrations/) — `await import(...)` für Sub-Integrations; wir nutzen es eine Schicht höher (68).
+- [Sentry blog – Common Errors in Next.js](https://blog.sentry.io/common-errors-in-next-js-and-how-to-resolve-them/) — Liste typischer Render-/API-Errors, die Sentry fängt (68).
+
 ### User-Input-XSS-Sanitize-Patterns (Code-Session 67)
 - [OneUptime – How to Sanitize User Input in React](https://oneuptime.com/blog/post/2026-01-15-sanitize-user-input-react-injection/view) — Server-side Sanitize ist Pflicht, React-Auto-Escape reicht nicht für Logs/Templates (67).
 - [Zod Discussion #1358 – Sanitize via transform](https://github.com/colinhacks/zod/discussions/1358) — Zod selbst sanitized nicht; transform() ist der Hook (67).
