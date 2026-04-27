@@ -292,6 +292,17 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   (Upload, DELETE-Cleanup, Slug-Move Logo/Cover, Slug-Move
   Services). Storage-Architektur ist damit production-ready
   und vollständig dokumentiert.
+- 61: Live-Provider-Switch für Reviews-Panel ✅. Owner kann
+  pro Generate-Klick zwischen Mock-Provider und Live (OpenAI/
+  Anthropic/Gemini) umschalten. Neuer Pure-Helper
+  `src/lib/ai-client.ts` (~150 Zeilen) mit 6-Result-Kind-
+  Mapping (`server` / `not-authed` / `forbidden` /
+  `rate-limit` / `static-build` / `fail`) als zentrale,
+  getestete Browser→`/api/ai/generate`-Schnittstelle.
+  Token-localStorage-Slot ist geteilt mit AIPlayground —
+  einmal eingeben, in beiden Panels nutzbar. Als nächste
+  Konsumenten: Social-Panel (Session 62) und AIPlayground-
+  Migration (Light-Pass 65).
 - 41+: Backup-Policy, Seed-Skript für Demo-Daten,
   „Betrieb löschen"-Flow mit rekursivem Storage-Cleanup.
 

@@ -6973,3 +6973,116 @@ hier muss nur die client-side Provider-Wahl symmetrisch
 eingebaut werden. Klein, scharf, Quality-Boost ohne
 Architektur-Risiko.
 
+## Code-Session 61 – Live-Provider-Switch für Reviews-Panel
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Owner kann im Bewertungs-Booster-Panel pro Generate-
+Klick zwischen Mock-Provider (lokal, deterministisch) und
+Live-Provider (OpenAI / Anthropic / Gemini via
+`/api/ai/generate`) umschalten. Neue Pure-Helper-Datei
+`src/lib/ai-client.ts` zentralisiert den Browser→API-Aufruf
+mit klar definierten Result-Kinds.
+
+**Architektur-Entscheidung — neuer Helper statt AIPlayground-
+Code-Wiederverwendung**: AIPlayground hat seit Session 28
+einen inline-`fetch('/api/ai/generate')`-Aufruf mit ~100
+Zeilen Error-Handling. Den 1:1 ins Reviews-Panel zu
+kopieren wäre Code-Duplikat; den AIPlayground-Code zu
+refaktoren wäre Scope-Creep für Session 61. Saubere
+Mittellösung: neuen Helper `callAIGenerate(...)` schreiben,
+in Reviews-Panel benutzen, AIPlayground in einem späteren
+Light-Pass nachziehen. Helper hat damit ein scharfes Test-
+Fundament (~38 Asserts), bevor er der zweite Konsument bekommt.
+
+**Architektur-Entscheidung — geteilter `localStorage`-Key**:
+`AI_TOKEN_STORAGE_KEY = "lp:ai-api-token:v1"` ist die
+identische Konstante, die AIPlayground inline benutzt. Damit
+muss der Owner sein Bearer-Token nur einmal eingeben — beide
+Panels lesen aus demselben Slot. Kein doppelter Token-
+Eingabe-Flow, kein Drift.
+
+**Architektur-Entscheidung — 6-Result-Kinds**:
+`server` / `not-authed` / `forbidden` / `rate-limit` /
+`static-build` / `fail`. Symmetrisch zu Sessions 50/55/56
+(Submit-Helper-Pattern). `static-build` (404) ist der eigene
+Kind, weil es im UI eine andere Aktion bedeutet („zum Mock
+wechseln") als ein generischer 5xx-`fail`-Kind. `rate-limit`
+hat einen eigenen Kind, weil das UI später eine
+Reset-Countdown-Karte zeigen kann (wie AIPlayground es schon
+tut).
+
+**WebSearch (Track A)**: bestätigt
+- [Next.js – Authentication](https://nextjs.org/docs/app/guides/authentication)
+  Bearer-Header in Client-Components ist Standard, solange der
+  Token nicht im JS-Bundle landet (nur im
+  localStorage / SessionStorage).
+- [TokenMix – AI API for React Apps 2026](https://tokenmix.ai/blog/ai-api-for-react-apps)
+  Sicherheits-Note: API-Keys NIE direkt aus dem Browser an
+  Provider; immer Backend-Proxy. Genau unser Pattern via
+  `/api/ai/generate`.
+- [authjs.dev – React Reference](https://authjs.dev/reference/nextjs/react)
+  Cookie-Session reicht aus für eingeloggte Owner; Bearer-
+  Token ist nur für CLI / externe Skripte nötig.
+
+**Dateien**:
+- ✚ `src/lib/ai-client.ts` — pure Helper (~150 Zeilen):
+  - `callAIGenerate(req, deps?)` mit fetch-Wrapper +
+    Status-Mapping.
+  - `userMessageForResult(result)` für deutsche User-Hinweise.
+  - `AI_TOKEN_STORAGE_KEY` als geteilte Konstante.
+  - Whitespace-Token wird wie leer behandelt
+    (`apiToken?.trim().length > 0`).
+  - 6 Result-Kinds inkl. `static-build` für Pages-Builds.
+- ✚ `src/tests/ai-client.test.ts` (~38 Asserts):
+  Storage-Key-Konsistenz, 200/401/403/404/429/500/Throw,
+  Bearer-Header-Forwarding (mit/ohne Token, Whitespace-
+  Token), Body-Forwarding, Default-Messages,
+  `userMessageForResult` für alle Kinds inkl. Cost-Format.
+- 🔄 `src/components/dashboard/reviews/reviews-request-panel.tsx`:
+  - Neuer Provider-Toggle als ARIA-radiogroup
+    (Mock/OpenAI/Anthropic/Gemini).
+  - Bei Non-Mock: Token-Input-Feld mit Hint-Text
+    (Static-Build-Hinweis + „geteilt mit Playground").
+  - `handleGenerate` async-Flow: Mock direkt wie bisher;
+    Live über `callAIGenerate(...)`. Output-Variants laufen
+    durch denselben `substitutePlaceholders`-Pfad — UI-Code
+    unverändert.
+  - Token-localStorage-Hydration + -Persistenz analog
+    AIPlayground.
+  - Error-State zeigt rate-limit-/static-build-/forbidden-
+    Hinweise über `userMessageForAIResult`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**39/40 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +1 ai-client grün. Bundle 102 KB shared
+unverändert; Reviews-Page bleibt als Static-prerenderable —
+`callAIGenerate` ist client-only und tree-shakeable, kein
+Server-Code-Leak.
+
+**Roadmap**: 1 abgehakt. 2 neue Folge-Items:
+- **Code-Session 62**: Social-Panel symmetrisch auf
+  `ai-client.ts` umstellen — gleiche `method`-Erweiterung
+  (`generateSocialPost`), gleicher Provider-Toggle-Block.
+  Klein und scharf.
+- **Code-Session 65 (Light-Pass)**: AIPlayground auf
+  `ai-client.ts` migrieren. Sein inline-Aufruf hat ~100
+  Zeilen Error-Handling, die jetzt im Helper konsolidiert
+  sind. Konsolidierung passt perfekt in den Light-Pass.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — AI-Client-
+Auth-Patterns 2026.
+
+**Status-Update**: ~94 % Richtung „erstes Betrieb-fertiges
+Produkt". Live-AI ist auf einem produktiven Owner-Pfad
+verfügbar (Reviews). Verbleibend: Social-Live-Pfad,
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member-
+Verwaltung, „Betrieb löschen"-Flow.
+
+**Nächste Session**: Code-Session 62 = **Live-Provider-
+Switch für Social-Panel**. Begründung: Reviews-Panel hat
+gerade gezeigt, dass das `callAIGenerate`-Pattern sauber
+funktioniert — Social-Panel (Session 54) ist der einzige
+weitere produktive Mock-Pfad und sollte symmetrisch live
+gehen können. Code wird sehr ähnlich aussehen
+(`method: "generateSocialPost"`), Aufwand minimal.
+

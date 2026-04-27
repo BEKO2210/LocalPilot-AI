@@ -105,6 +105,12 @@
 - [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
 - [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
 
+### Browser→AI-API-Auth-Patterns (Code-Session 61)
+- [Next.js – Authentication](https://nextjs.org/docs/app/guides/authentication) — Bearer-Header in Client-Components ist Standard, solange Token nicht im JS-Bundle landet (61).
+- [TokenMix – AI API for React Apps 2026](https://tokenmix.ai/blog/ai-api-for-react-apps) — Sicherheits-Note: AI-Provider-Keys NIE direkt aus dem Browser; Backend-Proxy ist Pflicht (61).
+- [Auth.js – React Reference](https://authjs.dev/reference/nextjs/react) — Cookie-Session reicht für eingeloggte Owner; Bearer-Token nur für CLI / Skripte (61).
+- [Mock Service Worker (MSW)](https://www.npmjs.com/package/next-test-api-route-handler) — Empfohlen 2026 für fetch-Stubs; wir nutzen direkt einen Stub-fetch-Closure (61).
+
 ### Helper-Extraktion + Promise.all in Route-Handlern (Code-Session 60)
 - [Next.js – Getting Started: Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers) — Helper-Extraktion ist Standard-Pattern für testbare Route-Handler (60).
 - [makerkit – Next.js Route Handlers Best Practices 2026](https://makerkit.dev/blog/tutorials/nextjs-api-best-practices) — Universal try-catch wrapper + DI-Tests (60).

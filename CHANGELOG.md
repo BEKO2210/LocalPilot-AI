@@ -7,14 +7,93 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Code-Sessions 61+: Live-Provider-Variante für Reviews/Social-
-  Panels (Auth-Bearer + `/api/ai/generate`), Direkt-Posten zu
-  Buffer/Hootsuite/Meta-Graph, Multi-Member-Verwaltung,
-  Default-Redirect bei einem Betrieb, Retry-Queue für Lead-
-  `local-fallback`, „Betrieb löschen"-Flow mit rekursivem
-  Storage-Cleanup, Edge-Runtime-Migration, CSRF-Schutz,
-  HTML-Sanitize-Whitelist, Impressum-Editor pro Betrieb,
-  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test.
+- Code-Sessions 62+: Live-Provider-Switch auch für
+  Social-Panel (symmetrisch zu Reviews via `ai-client.ts`),
+  Direkt-Posten zu Buffer/Hootsuite/Meta-Graph,
+  Multi-Member-Verwaltung, Default-Redirect bei einem Betrieb,
+  Retry-Queue für Lead-`local-fallback`, „Betrieb löschen"-
+  Flow mit rekursivem Storage-Cleanup, Edge-Runtime-Migration,
+  CSRF-Schutz, HTML-Sanitize-Whitelist, Impressum-Editor pro
+  Betrieb, Seed-Skript für Demo-Daten,
+  Schema↔Migration-Drift-Test, AIPlayground auf
+  `ai-client.ts`-Helper migrieren (Konsolidierung).
+
+## [0.16.35] – Code-Session 61 – 2026-04-27
+
+Live-Provider-Switch für Reviews-Panel. Owner kann ab sofort
+zwischen Mock- und Live-Generierung (OpenAI / Anthropic /
+Gemini) umschalten. Neuer pure Helper `ai-client.ts` als
+zentrale Browser-Schnittstelle zur API-Route `/api/ai/generate`
+— testbar, mit klarem 6-Result-Kind-Mapping.
+
+- ✚ `src/lib/ai-client.ts` — pure Helper:
+  - `callAIGenerate({method, providerKey, input, apiToken?},
+    deps?)` ruft `POST /api/ai/generate` mit Bearer-Header
+    (falls Token gesetzt) + `credentials: same-origin`
+    (Cookie-Session-Pfad).
+  - 6-Result-Kinds: `server` (output + cost) /
+    `not-authed` (401) / `forbidden` (403) /
+    `rate-limit` (429 mit cost-Body, Reset-Zeit) /
+    `static-build` (404 — Pages-Build hat keine API) /
+    `fail` (5xx + Throw, mit Status-Code).
+  - `userMessageForResult(result)` für deutsche User-Hinweise
+    inkl. „Tages-Budget erschöpft (0.50 / 1.00 USD)"-Format.
+  - `AI_TOKEN_STORAGE_KEY` (`lp:ai-api-token:v1`) — geteilt
+    mit AIPlayground, sodass das Token einmal eingegeben in
+    beiden Panels funktioniert.
+- ✚ `src/tests/ai-client.test.ts` (~38 Asserts):
+  Storage-Key-Konsistenz, 200/401/403/404/429/500/Throw,
+  Bearer-Header-Setting (auch Whitespace-Token = kein
+  Header), Body-Forwarding, Header-Forwarding, alle
+  `userMessageForResult`-Pfade.
+- 🔄 `src/components/dashboard/reviews/reviews-request-panel.tsx`:
+  - Neuer Provider-Toggle (Mock/OpenAI/Anthropic/Gemini)
+    als ARIA-radiogroup zwischen Tone-Tabs und Eingaben.
+  - Bei Non-Mock: Token-Input-Feld mit Hint-Text
+    („/api/ai/generate, geteilt mit Playground, Static-
+    Export hat keine API").
+  - `handleGenerate` async-Flow: Mock weiterhin direkt;
+    Live geht über `callAIGenerate(...)` mit
+    `method: "generateReviewRequest"`. Output-Variants
+    werden gleich wie beim Mock durch
+    `substitutePlaceholders` veredelt — UI-Code unverändert.
+  - Error-Banner zeigt jetzt auch
+    rate-limit-/static-build-Hinweise (über
+    `userMessageForAIResult`).
+  - Token-localStorage-Hydration + -Persistenz (gleicher
+    Key wie AIPlayground).
+
+39/40 Smoketests grün (industry-presets pre-existing red,
+Codex #11). +1 ai-client grün. typecheck ✅, lint ✅, beide
+Builds ✅. Bundle 102 KB shared unverändert; Reviews-Page
++ Live-Toggle bleibt als Static-prerenderable —
+`callAIGenerate` ist client-only und tree-shakeable im
+Static-Export.
+
+🛣️ Roadmap: 1 abgehakt (Reviews-Live). 2 neue Folge-Items:
+- Social-Panel symmetrisch auf `ai-client.ts` umstellen
+  (Code-Session 62, klein und scharf).
+- AIPlayground auf den neuen Helper migrieren — sein inline
+  Aufruf ist seit Session 28 da, mit ~100 Zeilen
+  Error-Handling-Logik die jetzt im Helper konsolidiert ist
+  (Refactor-Light-Pass-Item).
+
+**Status-Update**: ~94 % Richtung „erstes Betrieb-fertiges
+Produkt". Live-AI ist auf einem produktiven Owner-Pfad
+verfügbar. Verbleibend: Social-Live-Pfad, Custom-Domain,
+Sentry, Lighthouse-CI, Multi-Member-Verwaltung,
+„Betrieb löschen"-Flow.
+
+**Manueller Test**: Dashboard → „Bewertungen" → „Provider:
+OpenAI" auswählen → Token-Feld erscheint → Bearer-Token
+eingeben (oder leer lassen, wenn man als Owner eingeloggt
+ist) → „Vorlagen generieren". Mit aktivem SSR-Deploy +
+gültigem Token zeigt der Server echte AI-Vorlagen, mit
+Mock-Provider sofort ohne Token. Beim Static-Export-Build
+(GitHub Pages) wechselt automatisch der Hint zum
+Mock-Switch.
+
+## [0.16.34] – Code-Session 60 – 2026-04-27 (Light-Pass)
 
 ## [0.16.34] – Code-Session 60 – 2026-04-27 (Light-Pass)
 
