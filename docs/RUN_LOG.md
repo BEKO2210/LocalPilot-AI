@@ -368,3 +368,154 @@ Plus Preset-Registry, Validierungsfunktion, Fallback-Preset und
 es fehlen die konkreten Inhalte für Friseur, Werkstatt, Reinigung,
 Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop und
 weitere.
+
+---
+
+## Session 4 – Branchen-Preset-System + GitHub Pages
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+**Deployment (vorgezogen, da Live-Preview am Handy gewünscht)**
+
+- `.github/workflows/deploy.yml`: Workflow deployt automatisch nach GitHub
+  Pages bei jedem Push auf `main` oder `claude/**`. Verwendet
+  `actions/configure-pages@v5`, `actions/upload-pages-artifact@v3`,
+  `actions/deploy-pages@v4`. Setzt `STATIC_EXPORT=true` und
+  `NEXT_PUBLIC_BASE_PATH=/<repo-name>` und schreibt `.nojekyll`.
+- `next.config.mjs` schaltet `output: "export"`, `trailingSlash`, `basePath`,
+  `assetPrefix` und `images.unoptimized` konditioniert auf `STATIC_EXPORT=true`.
+  Lokaler Dev und SSR-Build bleiben unverändert.
+- `npm run build:static` für lokale Verifikation des Static-Exports.
+- `docs/DEPLOYMENT.md` mit vollständiger Anleitung.
+- `Claude.md` Abschnitt 28 "DEPLOYMENT" als persistenter Eintrag.
+
+**Branchen-Presets (Kern von SESSION 4)**
+
+- 13 hochwertige `IndustryPreset`-Datensätze in
+  `src/core/industries/presets/`:
+  Friseur, Barbershop, Autowerkstatt, Reinigungsfirma, Kosmetikstudio,
+  Nagelstudio, Handwerker, Elektriker, Malerbetrieb, Fahrschule, Restaurant,
+  Fotograf, Personal Trainer.
+- Jedes Preset enthält: typische Leistungen (5–8), Hero-Texte, CTAs,
+  empfohlene Sektionen, FAQs (4), Benefits, Process-Steps, dynamische
+  Lead-Felder, Bewertungsanfrage-Vorlagen mit `{{customerName}}` und
+  `{{reviewLink}}`, Social-Media-Prompts, Website-Copy-Prompts, empfohlene
+  Themes, Bildempfehlungen, Tonalität und Compliance-Hinweise.
+- `src/core/industries/preset-helpers.ts`: gemeinsame Bausteine
+  (Standard-Lead-Felder, Standard-CTAs, Compliance-Konstanten).
+- `src/core/industries/fallback-preset.ts` mit `getFallbackPreset(originalKey)`
+  für unbekannte Branchen.
+- `src/core/industries/registry.ts`: `PRESET_REGISTRY`, `getPreset`,
+  `getPresetOrFallback`, `getAllPresets`, `listPresetKeys`,
+  `listMissingPresetKeys`, `hasPreset`, `getPresetsForTheme`,
+  `UnknownIndustryError`. Konsistenz-Check beim Module-Load
+  (Map-Key === preset.key).
+- `src/core/industries/index.ts` Barrel.
+- Smoketest `src/tests/industry-presets.test.ts` mit 30+ Assertions
+  (Mindestabdeckung, Schema, Pflichtfelder, Bewertungs-Platzhalter,
+  Compliance für medizin-/pflegenahe Branchen).
+- `docs/INDUSTRY_PRESETS.md`: Übersichtstabelle aller 13 Presets,
+  Zugriffs-API, Validierungsregeln, Erweiterungsanleitung,
+  Compliance-Stoppregeln.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (Deployment):
+- `.github/workflows/deploy.yml`
+- `docs/DEPLOYMENT.md`
+
+Neu (Branchen-Presets):
+- `src/core/industries/preset-helpers.ts`
+- `src/core/industries/fallback-preset.ts`
+- `src/core/industries/registry.ts`
+- `src/core/industries/index.ts`
+- `src/core/industries/presets/{hairdresser,barbershop,auto-workshop,
+  cleaning-company,cosmetic-studio,nail-studio,craftsman-general,
+  electrician,painter,driving-school,restaurant,photographer,
+  personal-trainer}.ts` (13 Dateien)
+- `src/tests/industry-presets.test.ts`
+- `docs/INDUSTRY_PRESETS.md`
+
+Geändert:
+- `next.config.mjs` (konditioneller Static-Export)
+- `package.json` (`build:static`-Script)
+- `Claude.md` (Abschnitt 28 "DEPLOYMENT")
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+Entfernt: `.gitkeep` in `src/core/industries`.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck      # auch der Smoketest wird geprüft
+npm run lint           # 0 warnings/errors
+npm run build          # SSR-Build
+npm run build:static   # Static-Export, Output unter out/
+npm run dev            # http://localhost:3000
+```
+
+Schnell-Check der Presets im Code:
+
+```ts
+import {
+  getPresetOrFallback,
+  listPresetKeys,
+  listMissingPresetKeys,
+} from "@/core/industries";
+
+listPresetKeys();          // 13 Branchen
+listMissingPresetKeys();   // 6 noch nicht modellierte Schlüssel
+getPresetOrFallback("hairdresser").defaultServices.length;  // 7
+getPresetOrFallback("local_shop").label;  // "Betrieb" (Fallback)
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                       | Status                                         |
+| ----------------------------------------------- | ---------------------------------------------- |
+| Jede Branche hat typische Leistungen            | ✅ 5–8 pro Preset                               |
+| Jede Branche hat CTAs                           | ✅ 2–3 pro Preset                               |
+| Jede Branche hat Formularfelder                 | ✅ ≥2 + branchenspezifische                    |
+| Jede Branche hat FAQ                            | ✅ 4 pro Preset                                 |
+| Jede Branche hat Social-Ideen                   | ✅ 2–3 pro Preset                               |
+| Jede Branche hat Bewertungs-Texte               | ✅ 2–3 Vorlagen pro Preset                      |
+| Neue Branche ist leicht ergänzbar               | ✅ Anleitung in `docs/INDUSTRY_PRESETS.md`     |
+
+Plus: Mindestens 10 Presets vorhanden – wir haben **13**.
+
+### 5. Was ist offen?
+
+- 6 weitere `IndustryKey`-Werte sind in `INDUSTRY_KEYS` definiert, haben
+  aber noch kein vollständiges Preset: `tutoring`, `local_shop`,
+  `dog_grooming`, `wellness_practice`, `real_estate_broker`,
+  `garden_landscaping`. `getPresetOrFallback()` fängt das auf, vollständige
+  Presets folgen je nach Vertriebsbedarf.
+- **Session 5** – Theme-Registry als konkrete Daten + Theme-Resolver.
+- **Session 6** – Mock-Inhalte für Demo-Betriebe (nutzt
+  `defaultServices`/`defaultFaqs` als Seed-Quelle).
+- **Session 7** – Public Site Generator unter `/site/[slug]` mit
+  `generateStaticParams()`, damit Static Export auf GitHub Pages weiter
+  funktioniert.
+- **Session 9** – Dashboard.
+- **Sessions 13–17** – AI-Provider, der `socialPostPrompts`,
+  `websiteCopyPrompts`, `reviewRequestTemplates` und `toneOfVoice` als
+  Kontext nutzt.
+- GitHub Pages erfordert einmaliges Aktivieren in **Settings → Pages →
+  Source → "GitHub Actions"**. Erst danach läuft der Workflow erfolgreich
+  durch.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 5 – Theme-System.**
+
+Konkrete Theme-Datensätze in `src/core/themes/` (mind. 10 Themes:
+clean_light, premium_dark, warm_local, medical_clean, beauty_luxury,
+automotive_strong, craftsman_solid, creative_studio, fitness_energy,
+education_calm). Plus Theme-Resolver, der CSS-Variablen aus dem Theme
+schreibt und in der App-Layout-Komponente konsumiert wird. Themes sollen
+beeinflussen: Farben, Buttons, Cards, Section-Abstände, Header-/Hero-Stil,
+Schatten, Rundungen. Anschließend kann die Public Site (Session 7)
+business-spezifisch designt werden.

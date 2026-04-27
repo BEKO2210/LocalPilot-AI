@@ -151,25 +151,68 @@ Konvention für ein neues Feature:
 3. Capability einer Stufe in `pricing-tiers.ts` zuordnen.
 4. Optional: Test-Assertion in `src/tests/pricing-helpers.test.ts`.
 
-## Stand nach Session 3
+## Branchen-Presets (ab Session 4)
 
-- App Router läuft, `/` rendert Marketing-Landingpage – Pricing-Karten
-  kommen aus der Code-Konfiguration.
-- Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber.
+- **`src/core/industries/presets/<key>.ts`** – pro Branche genau eine Datei
+  mit dem konkreten `IndustryPreset`-Datensatz, validiert beim
+  Module-Load via `IndustryPresetSchema.parse(...)`.
+- **`preset-helpers.ts`** liefert wiederverwendbare Lead-Felder, CTAs und
+  Compliance-Hinweise. Branchen-spezifische Felder leben direkt im Preset.
+- **`fallback-preset.ts`** spiegelt einen branchenneutralen Datensatz auf
+  einen beliebigen `IndustryKey` – verhindert leere Seiten bei unbekannter
+  Branche.
+- **`registry.ts`** ist die einzige öffentliche API: `getPreset`,
+  `getPresetOrFallback`, `getAllPresets`, `listPresetKeys`,
+  `listMissingPresetKeys`, `hasPreset`, `getPresetsForTheme`,
+  `UnknownIndustryError`. Beim Module-Load wird zusätzlich geprüft, dass
+  jeder Map-Key zum `preset.key` passt – verhindert vertauschte Imports.
+- **`src/tests/industry-presets.test.ts`** verifiziert: ≥10 Presets,
+  Schema-Validierung, Lead-Pflichtfelder, Bewertungs-Platzhalter,
+  Compliance-Hinweise für medizin-/pflegenahe Branchen.
+
+Konvention für ein neues Preset:
+
+1. `INDUSTRY_KEYS` in `src/types/common.ts` ggf. erweitern.
+2. Preset-Datei unter `src/core/industries/presets/` erstellen.
+3. In `PRESET_REGISTRY` (`registry.ts`) eintragen.
+4. Smoketest und `docs/INDUSTRY_PRESETS.md` aktualisieren.
+
+## Deployment (ab Session 3.1 / 4)
+
+- `next.config.mjs` schaltet `output: "export"`, `trailingSlash`, `basePath`
+  und `assetPrefix` konditioniert über `STATIC_EXPORT=true` ein.
+  `npm run dev` und `npm run build` ohne diese Variable bleiben voll
+  SSR-fähig – API-Routen, Server Actions etc. bleiben für Vercel möglich.
+- `.github/workflows/deploy.yml` triggert auf `main` und `claude/**`,
+  setzt `NEXT_PUBLIC_BASE_PATH=/<repo-name>`, schreibt eine `.nojekyll`
+  und deployt mit `actions/deploy-pages@v4`.
+- `npm run build:static` für lokale Verifikation.
+
+## Stand nach Session 4
+
+- App Router läuft, `/` rendert Marketing-Landingpage.
+- Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber
+  (Static und SSR).
 - Tailwind & Brand-Tokens stehen.
-- **Datenmodelle vollständig** (Session 2).
-- **Pricing-System produktiv**: konkrete Bronze/Silber/Gold-Konfiguration,
-  Feature-Locks, Upgrade-Hinweise, deutsche Klartext-Labels.
+- Datenmodelle vollständig, Pricing-System produktiv.
+- **13 Branchen-Presets** registriert und validiert.
+- **GitHub-Pages-Deployment** automatisiert; lokal über `build:static`.
 - Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
-  `npm run dev` (Smoketest auf `/`).
+  `npm run build:static`.
 
 ## Offene technische Punkte
 
-- AI-Provider-Adapter & ENV-Resolver (Session 13). Interface steht.
-- Branchen-Presets als konkrete Daten (Session 4).
 - Theme-Registry als konkrete Daten + Resolver (Session 5).
+- Mock-Inhalte für Demo-Betriebe (Session 6).
+- Public Site Generator unter `/site/[slug]` (Session 7) – wird
+  `generateStaticParams` aus den Mock-Daten nutzen, damit Static Export
+  weiter funktioniert.
+- Dashboard (Session 9+) – sobald Interaktivität nötig, prüfen ob als
+  Client-SPA innerhalb des Static Exports ausreichend.
+- AI-Provider-Adapter (Session 13). Interface steht.
 - Repository-Layer / Mock vs. Supabase (Session 19).
-- Vitest-Setup (offen, zu klären spätestens in Session 20). Bis dahin
-  tragen `tsc --noEmit` plus die `src/tests/*-helpers.test.ts`-Smoketests
-  die Sicherheit.
+- Vitest-Setup (Session 20). Bis dahin tragen `tsc --noEmit` plus die
+  `src/tests/*-helpers.test.ts`-Smoketests die Sicherheit.
 - Image-Hosting/-Optimierung (Session 7+).
+- Sobald API-Routen oder Server Actions kommen: Vercel als
+  Production-Target ergänzen, GitHub Pages bleibt als Showcase.

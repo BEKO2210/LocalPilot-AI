@@ -7,7 +7,70 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 4+: Branchen-Presets, Themes, Mock-Daten, Public Site Generator, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+- Session 5+: Themes, Mock-Daten, Public Site Generator, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.4.0] – Session 4 – 2026-04-27
+
+### Added
+- 13 Branchen-Presets unter `src/core/industries/presets/` mit kompletten,
+  validierten Datensätzen: Friseur, Barbershop, Autowerkstatt,
+  Reinigungsfirma, Kosmetikstudio, Nagelstudio, Handwerker, Elektriker,
+  Malerbetrieb, Fahrschule, Restaurant, Fotograf, Personal Trainer.
+- `src/core/industries/preset-helpers.ts`: wiederverwendbare Lead-Felder
+  (`NAME_FIELD`, `PHONE_FIELD`, `EMAIL_FIELD`, `MESSAGE_FIELD`,
+  `PREFERRED_DATE_FIELD`), Standard-CTAs (`CTA_APPOINTMENT_PRIMARY`,
+  `CTA_CALL`, `CTA_WHATSAPP`, `CTA_QUOTE`, `CTA_CALLBACK`) und
+  Compliance-Bausteine (`COMPLIANCE_NO_MEDICAL_PROMISE`,
+  `COMPLIANCE_NO_LEGAL_ADVICE`, `COMPLIANCE_NO_FINANCE_GUARANTEE`,
+  `COMPLIANCE_NO_AGE_RESTRICTED_PROMISE`).
+- `src/core/industries/fallback-preset.ts` mit
+  `getFallbackPreset(originalKey)` – branchenneutrales Universal-Preset, das
+  den ursprünglich angefragten `key` spiegelt.
+- `src/core/industries/registry.ts` mit:
+  - `PRESET_REGISTRY`-Lookup-Map.
+  - `getPreset`, `getPresetOrFallback`, `getAllPresets`, `listPresetKeys`,
+    `listMissingPresetKeys`, `hasPreset`, `getPresetsForTheme`.
+  - `UnknownIndustryError` für sprechende Fehler.
+  - Konsistenz-Check beim Module-Load (Map-Key === preset.key).
+- `src/core/industries/index.ts` Barrel.
+- `src/tests/industry-presets.test.ts` mit umfangreichem Smoketest:
+  Mindestabdeckung ≥ 10, Schema-Validierung, Pflichtfelder im Lead-Formular
+  (`name`, `phone`), Platzhalter in Bewertungs-Vorlagen
+  (`{{customerName}}`, `{{reviewLink}}`), Compliance-Hinweise für medizin-
+  /pflegenahe Branchen (Kosmetik, Nail, Trainer).
+- `docs/INDUSTRY_PRESETS.md` mit Übersichtstabelle, Zugriffs-API,
+  Validierungs-Regeln, Konvention zur 30-Min-Branchenergänzung und
+  Beziehung zu späteren Sessions.
+
+### Notes
+- `getPresetOrFallback()` ist die Standardvariante für Public Site und
+  Dashboard – nie wieder weiße Seite, falls eine Branche noch nicht
+  modelliert ist.
+- Lücken in `INDUSTRY_KEYS` (`tutoring`, `local_shop`, `dog_grooming`,
+  `wellness_practice`, `real_estate_broker`, `garden_landscaping`) sind
+  bewusst noch nicht modelliert – `listMissingPresetKeys()` macht sie zur
+  Laufzeit sichtbar.
+- Der Core bleibt branchenneutral: Public Site, Dashboard und KI-System
+  greifen ausschließlich über das Preset auf branchenspezifische Inhalte zu.
+
+## [0.3.1] – Hotfix – 2026-04-27
+
+### Added
+- `.github/workflows/deploy.yml`: GitHub Pages Deployment via Actions.
+  Trigger auf `main` und `claude/**`, baut mit `STATIC_EXPORT=true`,
+  `NEXT_PUBLIC_BASE_PATH=/<repo-name>` und einem `.nojekyll`-File für
+  `_next/`-Assets.
+- `npm run build:static`: lokaler Static-Export-Build (`STATIC_EXPORT=true`).
+- `docs/DEPLOYMENT.md`: vollständige Anleitung für GitHub Pages und
+  geplanter Vercel-Pfad.
+- `Claude.md` Abschnitt 28 "DEPLOYMENT" als persistenter Eintrag im
+  Master-Briefing.
+
+### Changed
+- `next.config.mjs` schaltet `output: "export"`, `trailingSlash`, `basePath`
+  und `assetPrefix` konditioniert auf `STATIC_EXPORT=true`. Lokaler
+  `npm run dev` und normaler `npm run build` bleiben damit voll
+  SSR-fähig.
 
 ## [0.3.0] – Session 3 – 2026-04-27
 
