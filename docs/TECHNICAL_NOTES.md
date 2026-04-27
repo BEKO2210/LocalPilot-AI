@@ -246,34 +246,72 @@ Konvention für einen neuen Demo-Betrieb:
 3. Optional: 3–5 Leads in `mock-leads.ts`.
 4. `npm run typecheck` / `npm run build` führen die Validierung automatisch aus.
 
-## Stand nach Session 6
+## Public Site (ab Session 7)
 
-- App Router läuft, `/`, `/themes` und `/demo` rendern statisch.
+- Route `/site/[slug]` mit `generateStaticParams(listMockBusinessSlugs())` –
+  Build:static prerendered alle 6 Slugs als HTML.
+- `generateMetadata` pro Business: Title, Description, OG, Canonical –
+  alles aus dem Datensatz, keine Branchen-Hardcodierung.
+- `<ThemeProvider>` wrappt jede Public Site → CSS-Variablen kaskadieren
+  durch alle Sektionen (`bg-theme-primary`, `rounded-theme-button`,
+  `shadow-theme`).
+- 13 Sektionskomponenten unter `src/components/public-site/`:
+  Hero, Services, Benefits, Process, Reviews, FAQ, Team, Contact,
+  OpeningHours, Location + Header, Footer, MobileCtaBar +
+  `<PublicSection>` Wrapper.
+- Section-Reihenfolge aus `preset.recommendedSections` (defensiv:
+  Contact / Öffnungszeiten / Standort kommen immer ans Ende).
+- Mobile-CTA-Bar (`fixed bottom-0`) blendet sich bei `md:` aus, drei
+  Buttons (Anrufen / WhatsApp / Anfrage), filtert je nach
+  Datenverfügbarkeit.
+- `src/lib/contact-links.ts` mit E.164-Normalisierung für
+  `tel:`/`wa.me`/`mailto:`.
+- Anfrageformular ist aktuell **Vorschau** (Felder aus Preset, `disabled`).
+  Echte Lead-Erfassung folgt in Session 12.
+- 404-Seite unter `src/app/site/[slug]/not-found.tsx`.
+
+Konvention für eine neue Sektion:
+
+1. Komponente unter `src/components/public-site/<name>.tsx` mit
+   `<PublicSection>` als Wrapper.
+2. Im Barrel `index.ts` exportieren.
+3. switch-Case in `src/app/site/[slug]/page.tsx` ergänzen.
+4. ggf. `RECOMMENDED_SECTIONS` in `src/types/common.ts` erweitern.
+
+## Stand nach Session 7
+
+- App Router läuft, `/`, `/themes`, `/demo` und `/site/<6 slugs>`
+  rendern statisch.
 - Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber
   (Static und SSR).
 - Tailwind & Brand-Tokens stehen, Theme-Tokens als CSS-Variablen verfügbar.
 - Datenmodelle vollständig, Pricing-System produktiv.
 - 13 Branchen-Presets, 10 Themes registriert und validiert.
-- **6 Demo-Betriebe** vollständig validiert (via Build), 25 Leads,
-  37 Services, 25 Reviews, 22 FAQs.
+- 6 Demo-Betriebe vollständig validiert; jeder hat eine eigene
+  Public Site mit individuellem Theme.
 - GitHub-Pages-Deployment automatisiert; lokal über `build:static`.
 - `<LinkButton>` ist basePath-aware (interne Pfade via `next/link`).
 - Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
-  `npm run build:static`.
+  `npm run build:static`. Build:static erzeugt aktuell **12 prerenderte
+  Routen**.
 
 ## Offene technische Punkte
 
-- Public Site Generator unter `/site/[slug]` (Session 7) –
-  `generateStaticParams(listMockBusinessSlugs())` für statisch
-  prerendete Slugs.
+- Marketing-Erweiterungen (Session 8) – tiefere Verkaufstexte,
+  Testimonials der Beta-Kund:innen, ggf. /pricing als eigene Seite.
 - Dashboard (Session 9+) – sobald Interaktivität nötig, prüfen ob als
   Client-SPA innerhalb des Static Exports ausreichend.
+- Lead-System (Session 12) – ersetzt die Formular-Vorschau in
+  `<PublicContact>` durch eine echte Erfassung.
 - AI-Provider-Adapter (Session 13). Interface steht.
 - Repository-Layer / Mock vs. Supabase (Session 19) – Mock-Layer ist
   bereits so gekapselt (`getMockBusinessBySlug` usw.), dass ein
   späterer Tausch gegen Supabase ohne UI-Änderungen möglich bleibt.
 - Vitest-Setup (Session 20). Bis dahin tragen `tsc --noEmit` plus die
   `src/tests/*.test.ts`-Smoketests die Sicherheit.
-- Image-Hosting/-Optimierung (Session 7+).
+- Image-Hosting/-Optimierung – aktuell stehen `logoUrl`/`coverImageUrl`
+  optional im Schema, werden aber noch nicht gerendert. Sobald sie kommen,
+  müssen sie via `next/image` mit `unoptimized: true` für Static Export
+  laufen.
 - Sobald API-Routen oder Server Actions kommen: Vercel als
   Production-Target ergänzen, GitHub Pages bleibt als Showcase.

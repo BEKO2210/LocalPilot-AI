@@ -782,11 +782,137 @@ getMockBusinessBySlug("beauty-atelier")?.themeKey; // "beauty_luxury"
 
 ### 6. Was ist der nächste empfohlene Run?
 
-**Session 7 – Public Site Generator.**
+**Session 7 – Public Site Generator.** (s. u.)
 
-Route `/site/[slug]/page.tsx` mit
-`generateStaticParams(listMockBusinessSlugs())`. Sektionen: Header, Hero,
-Services, Benefits, Process, Reviews, FAQ, Contact, OpeningHours, Footer
-+ Mobile-CTA-Bar. Inhalte aus `Business`-Aggregat +
-`getPresetOrFallback()`, Theme via `<ThemeProvider>`. Auf GitHub Pages
-werden alle 6 Slugs zur Build-Zeit prerendered.
+---
+
+## Session 7 – Public Site Generator
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- Route `/site/[slug]` mit `generateStaticParams(listMockBusinessSlugs())`.
+  Build:static prerendered jetzt **alle 6 Demo-Slugs** als HTML –
+  funktioniert ohne Server, ideal für GitHub Pages.
+- `generateMetadata` pro Business: Title (`<Name> – <Branche> in <Stadt>`),
+  Description, Canonical, OpenGraph, robots index/follow – alles aus
+  Business-Datensatz, keine Branchen-Hardcodierung.
+- 13 Public-Site-Komponenten unter `src/components/public-site/`:
+  `<PublicSection>` (theme-aware Wrapper, `lp-theme-section`),
+  `<PublicSiteHeader>` (Sticky, Initial-Logo, Anrufen + Anfragen),
+  `<PublicHero>` (Tagline + Hero-Title aus Preset, `{{city}}`
+  substituiert, Default-CTAs, Trust-Badge),
+  `<PublicServices>` (Grid sortiert nach `sortOrder`),
+  `<PublicBenefits>`, `<PublicProcess>` (aus Preset),
+  `<PublicReviews>` (Sterne + Schnitt + Datum),
+  `<PublicFaq>` (`<details>`-Akkordeon, kein Client-JS),
+  `<PublicTeam>` (nur wenn vorhanden),
+  `<PublicOpeningHours>` (Tabelle mit deutschen Tag-Labels),
+  `<PublicLocation>` (Adresse + Maps-Link),
+  `<PublicContact>` (Direktkontakt mit funktionierenden `tel:`/`wa.me`/
+  `mailto:`-Links + Anfrageformular-Vorschau aus
+  `preset.leadFormFields`, aktuell `disabled`),
+  `<PublicSiteFooter>` (Adresse + Impressum-/Datenschutz-Platzhalter +
+  „Powered by LocalPilot AI"),
+  `<PublicMobileCtaBar>` (`fixed bottom-0` auf Mobile, blendet sich bei
+  `md:` aus; Anrufen/WhatsApp/Anfrage – jeder Button nur sichtbar, wenn
+  die Daten vorhanden sind).
+- `src/lib/contact-links.ts` mit E.164-Normalisierung
+  (`telLink`, `whatsappLink`, `mailtoLink`, `formatPhoneDisplay`).
+- `<ThemeProvider>` umrahmt jede Public Site → CSS-Variablen kaskadieren
+  durch alle Sektionen (`bg-theme-primary`, `rounded-theme-button`,
+  `shadow-theme`).
+- Section-Reihenfolge aus `preset.recommendedSections` (defensiv:
+  Contact / Öffnungszeiten / Standort kommen immer ans Ende).
+- 404-Seite unter `src/app/site/[slug]/not-found.tsx` im Marketing-Layout.
+- `/demo`-Karten verlinken jetzt aktiv auf die jeweilige Public Site.
+- `lp-theme-section`-CSS-Klasse ergänzt (`padding`: `--theme-section-padding`).
+- Smoketest `src/tests/public-site.test.ts`: Kontakt-Link-Normalisierung
+  (Klammern, Bindestriche, Plus), Slug-Konsistenz, Pflicht „Telefon ODER
+  WhatsApp" für die Mobile-CTA-Bar.
+- `docs/PUBLIC_SITE.md` mit Architektur, Datenfluss, Static-Export-Regeln,
+  SEO-Pattern, Mobile-First-Notes, Erweiterungsanleitung.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (16 Dateien):
+- `src/app/site/[slug]/page.tsx`
+- `src/app/site/[slug]/not-found.tsx`
+- `src/components/public-site/{public-section,public-site-header,
+  public-site-footer,public-hero,public-services,public-benefits,
+  public-process,public-reviews,public-faq,public-team,
+  public-opening-hours,public-location,public-contact,
+  public-mobile-cta-bar,index}.tsx/.ts` (14 Dateien)
+- `src/lib/contact-links.ts`
+- `src/tests/public-site.test.ts`
+- `docs/PUBLIC_SITE.md`
+
+Geändert:
+- `src/app/globals.css` (`lp-theme-section`-Klasse)
+- `src/app/demo/page.tsx` (Public Site aktiv verlinkt)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck       # tsc --noEmit + Smoketests
+npm run lint            # 0 warnings/errors
+npm run build           # SSR-Build
+npm run build:static    # Static Export, alle 6 Slugs prerendered
+npm run dev             # http://localhost:3000/site/studio-haarlinie etc.
+```
+
+Live-Smoketest:
+
+```bash
+for slug in studio-haarlinie autoservice-mueller glanzwerk-reinigung beauty-atelier meisterbau-schneider fahrschule-stadtmitte; do
+  curl -s -o /dev/null -w "%{http_code} /site/$slug\n" "http://localhost:3000/site/$slug"
+done
+# erwartet: 6× 200
+
+curl -s -o /dev/null -w "%{http_code} /site/nope\n" http://localhost:3000/site/nope
+# erwartet: 404
+```
+
+Auf dem Handy: Mobile-CTA-Bar erscheint unten, drei Buttons
+(Anrufen / WhatsApp / Anfrage). Tippt man Anrufen, öffnet das Wähl-UI
+des Telefons; WhatsApp öffnet die App.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                       | Status                                              |
+| ----------------------------------------------- | --------------------------------------------------- |
+| Jede Demo hat eigene öffentliche Website        | ✅ 6 Slugs, alle erreichbar                         |
+| Inhalte kommen aus Daten/Preset                 | ✅ kein Branchen-Code in Sektionen                  |
+| Mobile Ansicht stark                            | ✅ Sticky-CTA-Bar, große Touch-Targets, lesbar      |
+| CTA Buttons funktionieren als Links             | ✅ `tel:`, `wa.me`, `mailto:`, Maps – alles aktiv   |
+| Keine harte Branchenlogik                       | ✅ alle Texte aus `IndustryPreset`                  |
+
+### 5. Was ist offen?
+
+- **Session 8** – Marketing-Erweiterungen (eigene `/pricing`-Seite,
+  tiefere Verkaufstexte, Testimonials).
+- **Session 9** – Dashboard-Grundgerüst.
+- **Session 12** – ersetzt die Formular-Vorschau in `<PublicContact>`
+  durch echte Lead-Erfassung (Server Action oder API).
+- **Sessions 13–17** – KI-Texte verbessern Hero-Title und
+  Service-Beschreibungen, ohne die Sektionen zu ersetzen.
+- **Session 19** – Repository-Layer kapselt Mock vs. Supabase, Public
+  Site bleibt unverändert.
+- Bilder (`logoUrl`/`coverImageUrl`) sind im Schema vorgesehen, aber
+  noch nicht gerendert – wenn sie kommen, via `next/image` mit
+  `unoptimized: true` für Static Export.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 8 – Marketing-Landingpage erweitern.**
+
+Die Marketing-Seite (`/`) hat aktuell die wichtigsten Verkaufselemente.
+Session 8 vertieft das: prominentere Demo-Verlinkung (z. B. Karten zu
+allen 6 Public Sites), eigene `/pricing`-Seite, Branchenkarten mit
+direktem Sprung zur Demo, echte Pakete-Vergleichs-Matrix und
+verkaufsorientierte Texte (Problem-/Lösung-Tiefe, ROI-Argumente,
+Onboarding-Versprechen). Optional: erste Testimonials und ein
+„So sieht es bei Ihnen aus"-Wechsler.

@@ -144,9 +144,8 @@ export default function DemoOverviewPage() {
                       <Link
                         href={`/site/${business.slug}`}
                         className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
-                        aria-disabled
                       >
-                        Public Site folgt in Session 7
+                        Public Site ansehen
                         <ArrowRight className="h-4 w-4" aria-hidden />
                       </Link>
                     </footer>
@@ -156,8 +155,8 @@ export default function DemoOverviewPage() {
             </div>
 
             <p className="mt-10 text-center text-xs text-ink-500">
-              Die echten Public Sites unter <code>/site/[slug]</code> kommen
-              in Session 7 (mit <code>generateStaticParams</code> für alle Slugs).
+              Jede Public Site wird zur Build-Zeit prerendered – das funktioniert
+              auch auf rein statischen Hostern wie GitHub Pages.
             </p>
           </Container>
         </Section>

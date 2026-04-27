@@ -23,8 +23,8 @@ Autowerkstatt bis zur Reinigungsfirma – und ist im Kern bewusst branchenneutra
 - Bronze/Silber/Gold-Pakete als echte Produktlogik (Feature-Locks im UI)
 - Branchen-Presets (Friseur, Werkstatt, Reinigung, Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop, …)
 
-Aktueller Stand: **Session 6** – 6 vollständig validierte Demo-Betriebe und Live-Übersicht unter `/demo`.
-Weitere Funktionen folgen in den Sessions 7–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
+Aktueller Stand: **Session 7** – Public Site Generator unter `/site/[slug]`, alle 6 Demo-Betriebe als statisch prerendierte Sites mit Theme-Provider, Mobile-CTA-Bar und SEO pro Betrieb.
+Weitere Funktionen folgen in den Sessions 8–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
 
 ---
 
@@ -94,9 +94,11 @@ src/
     layout/            Header, Footer, Navigation
     marketing/         Sektionen der Landingpage
     ui/                wiederverwendbare Primitive (Button, Container, Section)
-    public-site/       Sektionen der öffentlichen Betriebs-Websites (Session 7+)
+    public-site/       13 Sektionskomponenten der Public Sites (Session 7 ✅)
+    pricing/           PricingCard, PricingGrid, FeatureLock (Session 3 ✅)
+    theme/             ThemeProvider, ThemePreviewCard (Session 5 ✅)
     dashboard/         Dashboard-Bausteine (Session 9+)
-    forms/, pricing/, industry/, ai/, leads/, reviews/, social/, theme/  → folgen
+    forms/, industry/, ai/, leads/, reviews/, social/  → folgen
   core/
     validation/        Zod-Schemas (Session 2 ✅) – Single Source of Truth
     pricing/           PricingTier-Konfiguration + Helper (Session 3 ✅)
@@ -187,6 +189,7 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - [`docs/INDUSTRY_PRESETS.md`](./docs/INDUSTRY_PRESETS.md) – Branchen-Presets, Registry, Compliance
 - [`docs/THEMES.md`](./docs/THEMES.md) – Theme-System, CSS-Variablen, Tailwind-Integration
 - [`docs/MOCK_DATA.md`](./docs/MOCK_DATA.md) – Demo-Betriebe, Aggregation, Daten-Hygiene
+- [`docs/PUBLIC_SITE.md`](./docs/PUBLIC_SITE.md) – Public Site Generator, Sektionen, SEO
 - [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) – GitHub Pages und Vercel
 - [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) – Was wurde in welcher Session gebaut?
 - [`CHANGELOG.md`](./CHANGELOG.md) – Versionshistorie
@@ -213,7 +216,9 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
   und Live-Galerie unter `/themes`
 - ✅ **6 Demo-Betriebe** vollständig validiert, alle drei Pakete + 6 Themes,
   Live-Übersicht unter `/demo`
+- ✅ **Public Site Generator** unter `/site/[slug]` mit 13 themed Sektionen,
+  Mobile-CTA-Bar, business-spezifischer SEO und 6 statisch prerenderten Slugs
 - ✅ **GitHub-Pages-Deployment** über Workflow `.github/workflows/deploy.yml`
   mit konditionellem Static-Export
-- ⏳ Public Sites, Dashboard, KI-System –
-  folgen in Sessions 7 bis 22
+- ⏳ Dashboard, KI-System –
+  folgen in Sessions 8 bis 22

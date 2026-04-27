@@ -7,7 +7,54 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 7+: Public Site Generator, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+- Session 8+: Marketing-Erweiterungen, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.7.0] – Session 7 – 2026-04-27
+
+### Added
+- **Public Site Generator** unter `/site/[slug]` mit
+  `generateStaticParams(listMockBusinessSlugs())`. Build:static prerendered
+  jetzt **alle 6 Demo-Slugs** als statische HTML-Seiten – funktioniert
+  ohne Server, ideal für GitHub Pages.
+- **Pro-Business `generateMetadata`**: Title, Description, OpenGraph
+  und Canonical kommen aus dem Business-Datensatz (kein Branchen-Hardcoding).
+- **13 Public-Site-Komponenten** unter `src/components/public-site/`:
+  `<PublicSection>` (theme-aware Wrapper), `<PublicSiteHeader>`,
+  `<PublicSiteFooter>`, `<PublicHero>`, `<PublicServices>`,
+  `<PublicBenefits>`, `<PublicProcess>`, `<PublicReviews>`,
+  `<PublicFaq>`, `<PublicTeam>`, `<PublicOpeningHours>`,
+  `<PublicLocation>`, `<PublicContact>`, `<PublicMobileCtaBar>`.
+- **Sticky Mobile-CTA-Bar** mit Anrufen / WhatsApp / Anfrage – jede
+  Schaltfläche nur sichtbar, wenn der Betrieb die jeweiligen Daten hat.
+- **`<PublicContact>` Direktkontakt** mit funktionierenden `tel:`-,
+  `wa.me`- und `mailto:`-Deeplinks plus einer **Anfrageformular-Vorschau**
+  aus den `preset.leadFormFields`. Felder sind aktuell `disabled` (echte
+  Submission folgt in Session 12).
+- **`src/lib/contact-links.ts`**: E.164-normalisierte Helfer
+  (`telLink`, `whatsappLink`, `mailtoLink`, `formatPhoneDisplay`).
+- **`<ThemeProvider>` umrahmt jede Public Site** – CSS-Variablen
+  kaskadieren durch alle Sektionen, jede Site sieht spürbar anders aus,
+  ohne dass eine einzelne Branche im Code auftaucht.
+- **`/site/[slug]/not-found.tsx`** – freundliche 404-Seite im
+  Marketing-Layout, mit Links zur Demo-Übersicht und Startseite.
+- **`/demo`-Karten** verlinken jetzt aktiv auf die jeweilige Public Site.
+- **Section-Reihenfolge** kommt aus `preset.recommendedSections`,
+  Standard-Reihenfolge plus defensive Fallbacks (Contact / Öffnungszeiten /
+  Standort kommen immer ans Ende).
+- **`lp-theme-section`-CSS-Klasse** ergänzt – nutzt `--theme-section-padding`.
+- Smoketest `src/tests/public-site.test.ts`: Kontakt-Link-Normalisierung,
+  Slug-Konsistenz, Pflicht „Telefon ODER WhatsApp" pro Betrieb.
+- `docs/PUBLIC_SITE.md` mit Architektur, Datenfluss, Static-Export-Regeln,
+  SEO-Pattern, Mobile-First-Notes, Erweiterungsanleitung.
+
+### Notes
+- Build:static produziert jetzt **12 statisch prerenderte Routen**:
+  `/`, `/_not-found`, `/demo`, `/themes`, `/site/<6 slugs>`.
+- Static-Export-kompatibel: keine API-Routen, keine Server Actions, kein
+  Client-JS auf der Public Site (außer dem Mobile-Detail-Toggle der FAQs
+  über native `<details>`).
+- Branchenneutralität gewahrt: kein `if (industryKey === "...")` im
+  Komponenten-Code; Texte und Felder kommen ausschließlich aus dem Preset.
 
 ## [0.6.0] – Session 6 – 2026-04-27
 
