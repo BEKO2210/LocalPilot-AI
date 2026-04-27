@@ -1,10 +1,32 @@
+import type { AIProvider } from "@/types/ai";
 import { buildStubProvider } from "./_stub";
+import { openaiGenerateWebsiteCopy } from "./openai/website-copy";
 
 /**
- * OpenAI-Provider — Stub. Wird ab Code-Session 21 scharf gemacht
- * (offizielles `openai`-SDK + Response-Caching).
+ * OpenAI-Provider — wird Schritt für Schritt mit Live-Implementationen
+ * gefüllt. Methoden, die noch nicht scharf sind, fallen auf den Stub
+ * zurück und werfen `AIProviderError("provider_unavailable")`.
+ *
+ * Status (Code-Session 21 — erste Live-Methode):
+ *   ✓ generateWebsiteCopy        (Chat-Completions mit Structured Outputs)
+ *   · improveServiceDescription   – folgt
+ *   · generateFaqs                – folgt
+ *   · generateCustomerReply       – folgt
+ *   · generateReviewRequest       – folgt
+ *   · generateSocialPost          – folgt
+ *   · generateOfferCampaign       – folgt
+ *
+ * Hinweis: Wenn `OPENAI_API_KEY` fehlt, fällt der Resolver
+ * (`getAIProvider`) automatisch auf den Mock-Provider zurück. Wer
+ * `openaiProvider` direkt importiert und ohne Key aufruft, bekommt
+ * `AIProviderError("no_api_key")`.
  */
-export const openaiProvider = buildStubProvider(
+const stub = buildStubProvider(
   "openai",
-  "OpenAI-Provider ist noch nicht implementiert. Folgt in Code-Session 21+.",
+  "Diese OpenAI-Methode ist noch nicht scharf gemacht. Sie wird in einer der folgenden Code-Sessions ergänzt.",
 );
+
+export const openaiProvider: AIProvider = {
+  ...stub,
+  generateWebsiteCopy: openaiGenerateWebsiteCopy,
+};
