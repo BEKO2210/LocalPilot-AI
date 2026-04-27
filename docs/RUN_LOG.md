@@ -4356,3 +4356,48 @@ des Auftraggebers + Token-Beobachtung der eigenen Doku-Praxis.
 (Tab-Picker für 7 Methoden, clientseitiger Mock-Aufruf,
 Copy-to-Clipboard). Diese Session demonstriert dann erstmals den
 neuen Compact-Log-Format-Eintrag.
+
+---
+
+## Code-Session 27 – KI-Assistent-Playground-UI
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Erste echte Dashboard-UI für die KI-Schicht. `/dashboard/<slug>/ai`
+zeigt einen konfig-gesteuerten Playground für alle 7 Mock-Methoden:
+Methoden-Picker (Karten), Kontext-Box (read-only), dynamisches
+Formular (5 Field-Typen), Generate-Button, Ergebnis-Panel mit
+Copy-to-Clipboard. Funktioniert clientseitig im Static Export ohne
+API. Live-Provider bewusst nicht im Browser (würde API-Keys
+exposen) — folgt mit API-Route in Code-Session 28+.
+
+**Dateien**:
+- ✚ `src/components/dashboard/ai-playground/types.ts` (Discriminated
+  Union für 7 Output-Typen, FieldConfig)
+- ✚ `src/components/dashboard/ai-playground/method-configs.ts`
+  (Konfig-Map mit `fields` + `defaults` + `call(business, values)`
+  pro Methode, ruft `mockProvider` direkt)
+- ✚ `src/components/dashboard/ai-playground/ai-playground.tsx`
+  (Container mit Methoden-State, Form-State pro Methode, Error/
+  Loading via `useTransition`, generischer FieldRenderer für 5
+  Field-Typen)
+- ✚ `src/components/dashboard/ai-playground/result-panel.tsx`
+  (switch über `result.method` → spezifisches Rendering pro Typ
+  + Copy-Button pro Feld/Variante)
+- ✚ `src/components/dashboard/ai-playground/index.ts` (Barrel)
+- 🔄 `src/app/dashboard/[slug]/ai/page.tsx` (BackendReadyStatus →
+  `<AIPlayground business={business} />`)
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, alle 6
+Smoketests ✅. Bundle-Wachstum auf der `/ai`-Route: 102 → 163 KB
+(Mock-Provider-Chain zieht ~60 KB Industries + Validation +
+Provider-Code mit). Andere Routen unverändert.
+
+**Roadmap**: PROGRAM_PLAN +2 Items — AI-API-Route mit Auth für
+Live-Provider-Aufruf aus Browser; USP-Editor pro Betrieb.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C (Methodik) — neu ergänzt:
+- [Smashing Magazine – Building Dynamic Forms In React And Next.js (2026)](https://www.smashingmagazine.com/2026/03/building-dynamic-forms-react-next-js/) — schema-driven UI Pattern.
+- [Formisch Blog – React Form Library Comparison 2026](https://formisch.dev/blog/react-form-library-comparison/) — Discriminated Unions in Forms.
+
+**Nächste Session**: Code-Session 28 — `/api/ai/generate`-Route
+mit Auth-Stub, Provider-Dropdown im Playground.

@@ -7,13 +7,35 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht)
-- **Code-Session 27: KI-Assistent-Playground-UI** — Tab-/Karten-
-  Picker für alle 7 Methoden, clientseitiger Mock-Aufruf,
-  Copy-to-Clipboard, Provider-Auswahl-Badge. Damit endlich auch
-  visuell sichtbar, was die Schicht kann.
-- Code-Sessions 28+: Cost-Tracking + Rate-Limit-UI, AI-API-Route
-  hinter Auth (für echte Live-Provider-Calls aus dem UI),
+- **Code-Session 28: AI-API-Route mit Auth + Live-Provider im UI** —
+  `/api/ai/generate` als Edge-Function, Provider-Auswahl-Dropdown
+  im Playground (Mock / OpenAI / Anthropic / Gemini). Vorbedingung
+  für Cost-Tracking und Rate-Limiting.
+- Code-Sessions 29+: Cost-Tracking + Rate-Limit-UI,
   DOMPurify-Sanitizer auf übernommene KI-Outputs.
+
+## [0.16.1] – Code-Session 27 – 2026-04-27
+
+KI-Assistent-Playground im Dashboard. Erste sichtbare Berührung mit
+der KI-Schicht für den Auftraggeber.
+
+- ✚ `src/components/dashboard/ai-playground/` — neuer Ordner mit
+  5 Files: `types.ts` (Discriminated Union), `method-configs.ts`
+  (Konfig-Map für 7 Methoden), `ai-playground.tsx` (Container),
+  `result-panel.tsx` (switch über Output-Typ), `index.ts`.
+- 🔄 `src/app/dashboard/[slug]/ai/page.tsx` — Status-Stub durch
+  echtes Playground ersetzt. Methoden-Picker als Kartenraster,
+  Kontext aus Branchen-Preset vorausgefüllt, dynamisches Formular
+  mit 5 Field-Typen, Ergebnis-Panel mit Copy-to-Clipboard.
+- Aufruf clientseitig direkt gegen `mockProvider` — funktioniert im
+  Static Export auf GitHub Pages, kein Backend nötig.
+- Bundle-Wachstum nur auf der `/ai`-Route: 102 → 163 KB (Mock-
+  Provider-Chain). Andere Routen unverändert bei 102 KB.
+- 🛣️ Roadmap +2 Items: AI-API-Route mit Auth (Live-Provider im UI),
+  USP-Editor pro Betrieb (Track A/F).
+- Erste Session unter dem Compact-Log-Format aus Session 26.
+
+## [0.16.0] – State-Refresh + Methodik-Update – 2026-04-27
 
 ## [0.16.0] – State-Refresh + Methodik-Update – 2026-04-27
 
