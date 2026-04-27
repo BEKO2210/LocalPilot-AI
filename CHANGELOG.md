@@ -7,13 +7,63 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht)
-- Code-Session 15: Mock für `improveServiceDescription`.
 - Code-Session 16: Mock für `generateFaqs`.
 - Code-Session 17: Mock für `generateCustomerReply`.
 - Code-Sessions 18–20: Mock für Social-Posts, Bewertungs-Anfragen, Angebote.
 - Code-Sessions 21–22: OpenAI-Provider scharf (mit Caching).
 - Code-Sessions 23–24: Anthropic-Provider scharf.
 - Code-Session 25: Cost-Tracking + Rate-Limit-UI.
+
+## [0.13.3] – Code-Session 15 – 2026-04-27
+
+### Added
+- **Mock-Provider `improveServiceDescription` ist scharf** (zweite
+  von sieben Mock-Methoden — atomarer Schritt unter dem
+  Session-Protokoll):
+  - `src/core/ai/providers/mock/service-description.ts` –
+    deterministische Implementierung mit Saatzeilen-Strategie:
+    1. `currentDescription` (≥ 10 Zeichen) wird poliert übernommen,
+    2. sonst sucht ein fuzzy Match in `preset.defaultServices`
+       (bidirektionaler Substring) den passenden Service und
+       übernimmt dessen `shortDescription`,
+    3. letzter Fallback: generische, aber konkrete Zeile aus
+       Service-Titel + Tonalität + Betriebsnamen.
+  - Kurzversion (`shortDescription`, ≤ 240) ergänzt einen kurzen
+    Standort-Hinweis und ist Google-Business-Profile-tauglich
+    (lokal verankert, konkret statt superlativ).
+  - Langversion (`longDescription`, ≤ 2000) ist je nach
+    `targetLength` 1, 2 oder 3 Absätze:
+    - „short": Inhalt (Saatzeile + optional Preis/Dauer).
+    - „medium": Inhalt + Ablauf (aus `preset.defaultProcessSteps`,
+      Fallback generisch).
+    - „long": Inhalt + Ablauf + Trust-Block (aus den USPs des
+      Betriebs, Fallback nicht-superlativ).
+  - `clamp` schneidet auf Wortgrenze, `polish` sorgt für sauberen
+    Satzanfang/-abschluss. Output gegen `ServiceDescriptionOutputSchema`
+    validiert.
+- `mock-provider.ts` komponiert die zweite Methode dazu
+  (`{ ...stub, generateWebsiteCopy, improveServiceDescription }`).
+  Die übrigen 5 Methoden bleiben Stubs.
+- Smoketest `src/tests/ai-mock-provider.test.ts` um einen
+  ~15-Assertions-Block für `improveServiceDescription` erweitert
+  (~45 Assertions gesamt): 2 Branchen × 3 `targetLength`-Werte,
+  long > short, Preset-Match-Saatzeile, City-Hinweis,
+  `currentDescription` als Vorrang-Saat, Process-Steps und USPs
+  in der long-Variante, Determinismus, `invalid_input` bei zu
+  kurzem `serviceTitle`. Block für die jetzt nur noch 5 weiteren
+  Methoden mit `provider_unavailable` entsprechend angepasst.
+
+### Notes
+- **Recherche** (Session-Protokoll): Quellen zu 2026-Best-Practices
+  für Service-Page-Copy (lokal verankert, konkret statt superlativ,
+  GBP-tauglich) und deterministische Mock-LLM-Server im RUN_LOG-
+  Eintrag „Code-Session 15".
+- **Bewusst klein gehalten**: nur eine zusätzliche Mock-Methode.
+  Keine UI-Änderung, keine neuen Dependencies, kein Bundle-Zuwachs
+  (Mock-Modul bleibt tree-shaken solange noch keine Seite es
+  importiert). Diff ~14 KB, 1 neue Datei, 2 geänderte. Alle
+  Verifikationen grün (`typecheck`, `lint`, `build:static`,
+  beide Smoketests).
 
 ## [0.13.2] – Code-Session 14 – 2026-04-27
 

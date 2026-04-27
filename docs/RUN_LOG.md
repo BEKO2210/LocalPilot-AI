@@ -1960,3 +1960,192 @@ Bewusst NICHT: andere 5 Methoden, UI, echte Provider.
 - [LangChain Docs – FakeListLLM & Deterministic Test Doubles](https://python.langchain.com/docs/integrations/llms/fake)
 - [Smashing Magazine – Writing Hero & About Copy for Local Service Sites](https://www.smashingmagazine.com/2025/10/local-service-website-copy-patterns/)
 - [Nielsen Norman – „Above the Fold" Content for Small-Business Sites](https://www.nngroup.com/articles/above-the-fold/)
+
+---
+
+## Code-Session 15 – Mock-Provider: `improveServiceDescription`
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar)
+Meilenstein: 2 (KI-Schicht)
+
+### 1. Was wurde umgesetzt?
+
+Zweite von sieben Mock-Methoden wird scharf gemacht. Die übrigen 5
+bleiben Stubs und folgen einzeln in den nächsten Sessions.
+
+- `src/core/ai/providers/mock/service-description.ts` (neu)
+  implementiert `mockImproveServiceDescription(input): Promise<ServiceDescriptionOutput>`:
+  - Validierung des Inputs via `ServiceDescriptionInputSchema.safeParse`
+    → bei Fehler `AIProviderError("invalid_input", …)`.
+  - **Saatzeilen-Strategie** für die Kurzversion:
+    1. Existierende `currentDescription` (≥ 10 Zeichen) wird per
+       `polish` aufgeräumt (Großbuchstabe + Endsatzzeichen) und als
+       Saat genutzt.
+    2. Sonst sucht `findMatchingService` einen passenden Service im
+       Branchen-Preset über bidirektionalen Substring-Vergleich
+       (case-insensitive). Trifft, holt seine `shortDescription`.
+    3. Letzter Fallback: `${serviceTitle} bei ${businessName} – ${tone},
+       klar beschrieben.` — generisch, aber konkret.
+  - **Kurzversion** (`shortDescription`, ≤ 240): Saatzeile + optional
+    „Wir sind in {{city}} für Sie da." → tauglich für das 750-Zeichen-
+    Feld eines Google-Business-Profils, lokal verankert, ohne
+    Superlative.
+  - **Langversion** (`longDescription`, ≤ 2000) wird je nach
+    `targetLength` aus 1–3 Absätzen zusammengesetzt:
+    - **„short"**: nur Inhalts-Absatz (Saatzeile +
+      `Richtpreis: …` und/oder `Zeitbedarf: …`, falls der gematchte
+      Preset-Service Werte hat).
+    - **„medium"**: Inhalt + Ablauf-Absatz (aus
+      `preset.defaultProcessSteps`, sortiert nach `step`,
+      max. 3 Schritte; Fallback: generischer 1-Zeiler).
+    - **„long"**: Inhalt + Ablauf + Trust-Absatz aus den USPs des
+      Betriebs (Bullet-Liste, max. 3); Fallback ist eine
+      konkrete Default-Zeile („nachvollziehbare Termine,
+      ehrliche Beratung, sauberes Ergebnis – ohne
+      Marketing-Floskeln"), keine Superlative.
+  - `clamp(text, max)` schneidet auf Wortgrenze, `polish(text)` sorgt
+    für sauberen Satzanfang/-abschluss. Letzte Zeile:
+    `ServiceDescriptionOutputSchema.parse(result)` als
+    Sicherheitsnetz.
+- `src/core/ai/providers/mock-provider.ts` komponiert die zweite
+  Methode dazu:
+  ```ts
+  export const mockProvider: AIProvider = {
+    ...stub,
+    generateWebsiteCopy: mockGenerateWebsiteCopy,
+    improveServiceDescription: mockImproveServiceDescription,
+  };
+  ```
+  Status-Header im Datei-Kommentar von 14 → 15 hochgezogen.
+- `src/tests/ai-mock-provider.test.ts` um einen Block 7a–7h
+  erweitert (~15 zusätzliche Assertions, ~45 gesamt):
+  - 7a: 2 Branchen × 3 `targetLength`-Werte → Längen im Limit.
+  - 7b: `long.longDescription.length > short.longDescription.length`.
+  - 7c: Preset-Match-Saatzeile aus Friseur-Preset taucht im
+    `shortDescription` auf, Stadt ebenfalls.
+  - 7d: `currentDescription` hat Vorrang als Saat.
+  - 7e: `So läuft es ab` und Preset-Process-Step-Inhalt
+    („Termin") erscheinen in der long-Variante.
+  - 7f: USP („Termine auch samstags") erscheint im Trust-Block.
+  - 7g: Determinismus.
+  - 7h: zu kurzer `serviceTitle` → `invalid_input`.
+- Block 8 zählt jetzt nur noch 5 weitere Methoden, die
+  `provider_unavailable` werfen müssen
+  (improveServiceDescription wurde aus diesem Block entfernt).
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (1 Datei):
+- `src/core/ai/providers/mock/service-description.ts`
+
+Geändert:
+- `src/core/ai/providers/mock-provider.ts`
+- `src/tests/ai-mock-provider.test.ts`
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~14 KB. Klar im Session-Limit (30–80 KB), eher noch unter
+dem Untergrenzen-Soll — der Schritt ist isoliert.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → ~45 Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.improveServiceDescription({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich", "modern"],
+    uniqueSellingPoints: ["Termine auch samstags", "Faire Festpreise"],
+  },
+  serviceTitle: "Damenhaarschnitt",
+  currentDescription: "",
+  targetLength: "long",
+});
+// → { shortDescription: "Schnitt inkl. Beratung und Styling. Wir sind in Bremen…",
+//     longDescription:  "Schnitt inkl. Beratung und Styling. Richtpreis: ab 39 €. …
+//                        \n\nSo läuft es ab:\n1. …\n\nDas macht Salon Sophia in
+//                        Bremen aus:\n· Termine auch samstags\n· …" }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit. Eine
+Dashboard-Karte für „Service-Beschreibung verbessern" kommt in einer
+späteren Session, sobald genug Mock-Methoden für ein gemeinsames
+KI-Panel verfügbar sind.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                       | Status |
+| --------------------------------------------------------------- | ------ |
+| `improveServiceDescription` deterministisch, branchenneutral    | ✅      |
+| Saatzeilen-Strategie (current → preset-match → fallback)        | ✅      |
+| Preset-Match findet bekannte Services case-insensitiv           | ✅      |
+| `shortDescription` lokal verankert, ohne Superlative            | ✅      |
+| `longDescription` reagiert sichtbar auf `targetLength`          | ✅      |
+| Process-Steps und USPs fließen in die long-Variante ein         | ✅      |
+| Defensive Input-Validierung → `invalid_input`                   | ✅      |
+| Output gegen `ServiceDescriptionOutputSchema` validiert         | ✅      |
+| Übrige 5 Methoden bleiben Stubs (`provider_unavailable`)        | ✅      |
+| Smoketest +15 Assertions (~45 gesamt)                           | ✅      |
+| Build/Typecheck/Lint grün                                       | ✅      |
+| Session-Größe im Limit                                          | ✅ (~14 KB) |
+| Recherche-Step durchgeführt + Quellen zitiert                   | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 16**: `generateFaqs`-Mock — N FAQ-Paare aus
+  `preset.defaultFaqs` als Saat, plus Topics-Ableitung, mit
+  `count`-Steuerung und Deduplizierung.
+- **Code-Session 17**: `generateCustomerReply`-Mock — drei
+  Antwort-Tonalitäten (`short`/`friendly`/`professional`),
+  Kunden-Nachricht spiegeln + freundlich beantworten.
+- **Code-Sessions 18–20**: Mock für Social-Posts, Bewertungs-
+  Anfragen (Templates kommen aus `preset.reviewRequestTemplates`),
+  Angebote.
+- **Später**: API-Route, Dashboard-UI, echte Provider mit Caching,
+  Cost-Tracking.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 16 – Mock-Provider: `generateFaqs`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 FAQ-Schema, AI-friendly Q&A patterns local
+   service business" + „How-to-structure FAQ blocks for E-E-A-T".
+2. `src/core/ai/providers/mock/faqs.ts` neu, analog zu den
+   bisherigen Mock-Methoden: nimmt `preset.defaultFaqs` als
+   Saat, ergänzt aus `topics` (jeweils ein knappes Q/A-Paar
+   in der Tonalität des Betriebs) bis `count` erreicht ist,
+   dedupliziert nach Frage-Normalisierung.
+3. `mock-provider.ts` um die dritte Methode erweitern
+   (Status-Header 15 → 16).
+4. `src/tests/ai-mock-provider.test.ts` um FAQ-Block ergänzt
+   (gleiche 2 Branchen, 2 `count`-Werte, Dedupe-Test, Topic-Test).
+5. CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere 4 Methoden, UI, echte Provider.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [Firstep – SEO Best Practices for a Small Business (2026 Guide)](https://firstepbusiness.com/blog/seo-best-practices-for-a-small-business-2026-guide)
+- [The Brand Hopper – Local SEO: Google Business Profile Best Practices for 2026](https://thebrandhopper.com/learning-resources/local-seo-google-business-profile-best-practices-for-2026/)
+- [ALM Corp – 47 SEO Best Practices That Drive Results in 2026](https://almcorp.com/blog/seo-best-practices-complete-guide-2026/)
+- [Search Engine Land – Local SEO sprints: A 90-day plan for service businesses in 2026](https://searchengineland.com/local-seo-sprints-a-90-day-plan-for-service-businesses-in-2026-469059)
+- [Sitepoint – AI Agent Testing Automation: Developer Workflows for 2026](https://www.sitepoint.com/ai-agent-testing-automation-developer-workflows-for-2026/)
+- [CopilotKit/llmock – Deterministic mock LLM server with fixture-based routing](https://github.com/CopilotKit/llmock)
+- [DEV Community – MockLLM, a simulated LLM API for development and testing](https://dev.to/lukehinds/mockllm-a-simulated-large-language-model-api-for-development-and-testing-2d53)

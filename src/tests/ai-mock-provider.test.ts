@@ -212,16 +212,160 @@ async function run(): Promise<void> {
     "businessName zu kurz → invalid_input",
   );
 
-  // 7. Übrige 6 Methoden müssen weiterhin provider_unavailable werfen
-  const placeholderContext = baseContextHairdresser;
-  await expectUnavailable("improveServiceDescription", () =>
-    mockProvider.improveServiceDescription({
-      context: placeholderContext,
-      serviceTitle: "Haarschnitt",
+  // 7. improveServiceDescription (Code-Session 15)
+  // -----------------------------------------------------------------------
+  // 7a. 2 Branchen × 3 targetLength → vollständige Outputs, jeweils mit
+  //     Kurz- (≤ 240) und Langversion (≤ 2000).
+  // -----------------------------------------------------------------------
+
+  const TARGET_LENGTHS = ["short", "medium", "long"] as const;
+
+  async function checkServiceLengths(
+    context: AIBusinessContext,
+    serviceTitle: string,
+    label: string,
+  ): Promise<void> {
+    for (const targetLength of TARGET_LENGTHS) {
+      const out = await mockProvider.improveServiceDescription({
+        context,
+        serviceTitle,
+        currentDescription: "",
+        targetLength,
+      });
+      assert(
+        out.shortDescription.length >= 2 && out.shortDescription.length <= 240,
+        `${label}/${targetLength}: shortDescription im Limit`,
+      );
+      assert(
+        out.longDescription.length >= 2 && out.longDescription.length <= 2000,
+        `${label}/${targetLength}: longDescription im Limit`,
+      );
+    }
+  }
+
+  await checkServiceLengths(
+    baseContextHairdresser,
+    "Damenhaarschnitt",
+    "hairdresser/Damenhaarschnitt",
+  );
+  await checkServiceLengths(
+    baseContextAutoWorkshop,
+    "Inspektion",
+    "auto_workshop/Inspektion",
+  );
+
+  // 7b. „long" produziert mehr Inhalt als „short" (in der Regel mehr
+  //     Absätze, mindestens aber mehr Zeichen).
+  const sShort = await mockProvider.improveServiceDescription({
+    context: baseContextHairdresser,
+    serviceTitle: "Damenhaarschnitt",
+    currentDescription: "",
+    targetLength: "short",
+  });
+  const sLong = await mockProvider.improveServiceDescription({
+    context: baseContextHairdresser,
+    serviceTitle: "Damenhaarschnitt",
+    currentDescription: "",
+    targetLength: "long",
+  });
+  assert(
+    sLong.longDescription.length > sShort.longDescription.length,
+    "long > short bei longDescription",
+  );
+
+  // 7c. Preset-Match: bekannter Service-Titel taucht in der Kurzversion
+  //     mit der Preset-Saatzeile auf (Friseur-Preset hat Damenhaarschnitt
+  //     mit "Schnitt inkl. Beratung und Styling.").
+  const sMatch = await mockProvider.improveServiceDescription({
+    context: baseContextHairdresser,
+    serviceTitle: "Damenhaarschnitt",
+    currentDescription: "",
+    targetLength: "medium",
+  });
+  assert(
+    sMatch.shortDescription.toLowerCase().includes("schnitt"),
+    "Preset-Match: Saatzeile aus Preset im shortDescription",
+  );
+  assert(
+    sMatch.shortDescription.includes("Bremen"),
+    "shortDescription nennt die Stadt",
+  );
+
+  // 7d. currentDescription hat Vorrang als Saatzeile.
+  const sCurrent = await mockProvider.improveServiceDescription({
+    context: baseContextHairdresser,
+    serviceTitle: "Damenhaarschnitt",
+    currentDescription: "Ein Damenhaarschnitt mit Tiefenpflege und Föhn-Finish.",
+    targetLength: "medium",
+  });
+  assert(
+    sCurrent.shortDescription.includes("Tiefenpflege"),
+    "currentDescription wird als Saatzeile übernommen",
+  );
+
+  // 7e. Process-Steps des Presets erscheinen in der long-Variante
+  //     (Friseur-Preset Schritt 1 = „Termin anfragen").
+  const sLongHair = await mockProvider.improveServiceDescription({
+    context: baseContextHairdresser,
+    serviceTitle: "Damenhaarschnitt",
+    currentDescription: "",
+    targetLength: "long",
+  });
+  assert(
+    sLongHair.longDescription.includes("So läuft es ab"),
+    "long-Variante hat Ablauf-Block",
+  );
+  assert(
+    sLongHair.longDescription.includes("Termin"),
+    "long-Variante zeigt Preset-Process-Step (Termin)",
+  );
+
+  // 7f. USPs landen im Trust-Block der long-Variante.
+  assert(
+    sLongHair.longDescription.includes("Termine auch samstags"),
+    "long-Variante zeigt USP im Trust-Block",
+  );
+
+  // 7g. Determinismus: zweimal identisch.
+  const a1 = await mockProvider.improveServiceDescription({
+    context: baseContextAutoWorkshop,
+    serviceTitle: "Inspektion",
+    currentDescription: "",
+    targetLength: "medium",
+  });
+  const a2 = await mockProvider.improveServiceDescription({
+    context: baseContextAutoWorkshop,
+    serviceTitle: "Inspektion",
+    currentDescription: "",
+    targetLength: "medium",
+  });
+  assert(
+    a1.shortDescription === a2.shortDescription &&
+      a1.longDescription === a2.longDescription,
+    "improveServiceDescription deterministisch",
+  );
+
+  // 7h. Defensive: zu kurzer serviceTitle → invalid_input.
+  let sCaught: unknown = null;
+  try {
+    await mockProvider.improveServiceDescription({
+      context: baseContextHairdresser,
+      serviceTitle: "X",
       currentDescription: "",
       targetLength: "medium",
-    }),
+    });
+  } catch (err) {
+    sCaught = err;
+  }
+  assert(
+    sCaught instanceof AIProviderError && sCaught.code === "invalid_input",
+    "serviceTitle zu kurz → invalid_input",
   );
+
+  // -----------------------------------------------------------------------
+  // 8. Übrige 5 Methoden müssen weiterhin provider_unavailable werfen.
+  // -----------------------------------------------------------------------
+  const placeholderContext = baseContextHairdresser;
   await expectUnavailable("generateFaqs", () =>
     mockProvider.generateFaqs({
       context: placeholderContext,
@@ -261,7 +405,7 @@ async function run(): Promise<void> {
     }),
   );
 
-  // 8. Provider-Key
+  // 9. Provider-Key
   assert(mockProvider.key === "mock", "mockProvider.key === 'mock'");
 }
 
@@ -270,5 +414,6 @@ void run();
 export const __AI_MOCK_PROVIDER_SMOKETEST__ = {
   industries: 2,
   variants: VARIANTS.length,
-  totalAssertions: 30,
+  serviceLengths: 3,
+  totalAssertions: 45,
 };
