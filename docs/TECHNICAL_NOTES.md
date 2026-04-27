@@ -14,9 +14,11 @@ Architektur-, Stack- und Konventionsentscheidungen. Wird pro Session ergänzt.
 - **ESLint** über `next lint` (Next + TypeScript Regelsatz).
 - **Vercel** als Deployment-Ziel.
 
+- **Zod 3** für Validierung. Schemas in `src/core/validation/`, Typen daraus
+  via `z.infer` abgeleitet. Single Source of Truth für Datenmodelle.
+
 Spätere Erweiterungen:
 
-- **Zod** für Validierung (Session 2).
 - **React Hook Form** für Formulare (Session 10+).
 - **Supabase** für Auth, Datenhaltung, Storage (Session 19).
 - Optional **Vitest** für Unit-Tests (`src/tests`).
@@ -93,19 +95,46 @@ sondern in `src/core/industries` als `IndustryPreset`.
 | `/api/businesses`      | Business-CRUD                               | Session 19 |
 | `/api/ai/generate`     | KI-Endpoint                                 | Session 13 |
 
-## Stand nach Session 1
+## Datenmodell-Architektur (ab Session 2)
+
+- **`src/types/common.ts`** ist das einzige Modul, das die String-Literal-Keys
+  als `as const`-Tupel definiert (`PACKAGE_TIERS`, `INDUSTRY_KEYS`, `THEME_KEYS`,
+  `FEATURE_KEYS`, `LEAD_STATUSES`, …). Daraus werden die Typen
+  (`PackageTier = (typeof PACKAGE_TIERS)[number]` usw.) abgeleitet. Wer einen
+  neuen Wert ergänzen will, ergänzt ihn nur hier – Schemas und Typen ziehen
+  automatisch nach.
+- **`src/core/validation/*.schema.ts`** sind die Zod-Schemas und damit die
+  Single Source of Truth für die Objektformen (Business, Service, Lead, …).
+- **`src/types/*.ts`** re-exportieren die per `z.infer` abgeleiteten Typen.
+  Konsumenten importieren bevorzugt aus `@/types`. Drift zwischen Schema und
+  Typ ist konstruktionsbedingt nicht möglich.
+- **`src/data/mock-types.ts`** definiert das `MockDataset`-Aggregat plus
+  `validateMockDataset()`. Die echten Mock-Inhalte folgen in Session 6.
+- **`src/tests/schema-validation.test.ts`** parst jedes Schema einmal mit
+  realistischen Beispieldaten. Schlägt zur Compile-Zeit (`tsc --noEmit`) und
+  zur Laufzeit (`zod.parse`) fehl, falls etwas nicht zusammenpasst.
+
+Konvention für Neuanlagen:
+
+1. Erst Konstanten-Tupel in `types/common.ts` ergänzen, falls neue Keys nötig.
+2. Schema in `core/validation/*.schema.ts` schreiben, Typ via `z.infer`.
+3. Schlanken Re-Export in `types/<domain>.ts`.
+4. Smoketest-Beispiel in `tests/schema-validation.test.ts` ergänzen.
+
+## Stand nach Session 2
 
 - App Router läuft, `/` rendert Marketing-Landingpage.
-- Strict TS aktiv, ESLint vorhanden.
+- Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber.
 - Tailwind & Brand-Tokens stehen.
-- Folder-Skelett über `.gitkeep` ausgeführt – Session 2+ kann direkt darauf aufbauen.
-- Keine externen Services (Supabase, OpenAI etc.) erforderlich.
-- Build-Verifikation: `npm run dev`, `npm run build`, `npm run lint`, `npm run typecheck`.
+- **Datenmodelle vollständig**: Business, Service, Lead, Review, FAQ,
+  IndustryPreset, Theme, PricingTier, plus alle 7 AI-Eingaben/-Ausgaben.
+- **Zod-Validierung** überall vorhanden, inkl. Geschäftsregeln (z. B. Lead
+  braucht Telefon ODER E-Mail; OpeningSlot `open < close`; Slug-Format).
+- Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`.
 
 ## Offene technische Punkte
 
-- Zod-Validierung & Schemas (Session 2).
-- AI-Provider-Adapter & ENV-Resolver (Session 13).
+- AI-Provider-Adapter & ENV-Resolver (Session 13). Interface steht.
 - Repository-Layer / Mock vs. Supabase (Session 19).
-- Vitest-Setup (offen, zu klären in Session 2 oder 20).
+- Vitest-Setup (offen, zu klären spätestens in Session 20).
 - Image-Hosting/-Optimierung (Session 7+).
