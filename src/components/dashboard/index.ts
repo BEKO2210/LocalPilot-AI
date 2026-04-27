@@ -5,6 +5,7 @@ export { BusinessHeader } from "./business-header";
 export { DashboardCard } from "./dashboard-card";
 export { EmptyState } from "./empty-state";
 export { ComingSoonSection } from "./coming-soon-section";
+export { BackendReadyStatus } from "./backend-ready-status";
 
 export { PackageStatusCard } from "./overview/package-status-card";
 export { LeadsSummaryCard } from "./overview/leads-summary-card";

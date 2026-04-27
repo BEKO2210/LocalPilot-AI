@@ -4071,3 +4071,288 @@ nur eine scharfe Methode.
 - [Tessl – Anthropic boosts Claude API with Structured Outputs](https://tessl.io/blog/anthropic-brings-structured-outputs-to-claude-developer-platform-making-api-responses-more-reliable/)
 - [Hacker News – Structured outputs on the Claude Developer Platform](https://news.ycombinator.com/item?id=45930598)
 - [Instructor – Anthropic Claude Tutorial: Structured Outputs](https://python.useinstructor.com/integrations/anthropic/)
+
+---
+
+## Code-Session 25 (UI-Patch) – KI-Assistent-Stub auf echten Stand
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Bug-Fix / Doku-Seite (chirurgisch)
+Meilenstein: 1 (Foundation — Schliff)
+Commit: `6bed32f`
+
+### 1. Was wurde umgesetzt?
+
+Auf Hinweis des Auftraggebers: die Stub-Seite
+`/dashboard/<slug>/ai` zeigte noch „Folgt in Session 13" und
+„Provider-Adapter für Mock, OpenAI, Anthropic und Gemini" als
+Zukunfts-Versprechen. Seit Code-Sessions 13–25 ist das Backend
+tatsächlich scharf (Mock: alle 7, OpenAI/Anthropic: je 2 Methoden).
+
+Ersetzt das generische `ComingSoonSection`-Snippet durch eine
+ehrliche Status-Seite:
+
+- Header-Badge **„Backend bereit · UI in Session 27"**.
+- **Provider-Status-Tabelle** mit 7 Methoden × 4 Provider, je
+  Checkmark/Clock-Icon. Spiegelt den tatsächlichen Stand exakt
+  (Mock: alle 7 scharf, OpenAI/Anthropic: je 2, Gemini: 0 — wird
+  mit Code-Session 26 auf 1 hochgezogen).
+- Beschreibung pro Methode (Variants, Tonalitäten, Plattformen).
+- Paket-Status-Block bleibt, mit aktualisierter Botschaft.
+- Empty-State erklärt: Methoden funktionieren headless (siehe
+  Smoketests), UI folgt in Code-Session 27.
+
+### 2. Welche Dateien wurden geändert?
+
+Geändert (1 Datei):
+- `src/app/dashboard/[slug]/ai/page.tsx`
+
+Diff-Größe ~6 KB. Reine Doku-Seite, keine neue Logik.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+```
+
+Im Browser:
+`https://beko2210.github.io/LocalPilot-AI/dashboard/studio-haarlinie/ai/`
+nach Pages-Propagation (1–5 min). Statt „Folgt in Session 13"
+sollte jetzt die Status-Tabelle erscheinen.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                  | Status |
+| ---------------------------------------------------------- | ------ |
+| Stale Stub durch Status-Seite ersetzt                      | ✅      |
+| Provider-Status-Tabelle reflektiert wahren Stand           | ✅      |
+| Build/Typecheck/Lint grün                                  | ✅      |
+| Pages-Deploy enthält den Patch                             | ⏳ propagation |
+
+### 5. Was ist offen?
+
+Code-Session 27 — die echte Dashboard-UI für den KI-Assistent-
+Playground (Methoden-Picker, Formulare, Mock-Aufruf, Copy-to-
+Clipboard).
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 26 — Gemini-Provider scharf** (`generateWebsiteCopy`).
+Kommt direkt im Anschluss als separater Commit.
+
+### Quellen
+
+Keine zusätzliche Recherche — kompositorische Doku-Seite, keine
+neuen Pattern.
+
+---
+
+## Code-Session 26 – Gemini-Provider scharf (`generateWebsiteCopy`)
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar) + dritte (letzte) externe AI-Dependency
+Meilenstein: 2 (KI-Schicht — Live-Provider-Phase)
+
+### 1. Was wurde umgesetzt?
+
+Erste scharfe Gemini-Methode. Damit hat **jeder der drei
+Live-Provider** mindestens eine scharfe Methode (`generateWebsiteCopy`):
+OpenAI (Session 21), Anthropic (Session 24), Gemini (Session 26).
+
+- `src/core/ai/providers/gemini/_client.ts` (neu) — gemeinsamer
+  Client-Builder für alle zukünftigen Gemini-Methoden:
+  - `getGeminiApiKey(opts?)` mit defensivem Vor-Check, wirft
+    `AIProviderError("no_api_key")` mit deutscher Nachricht.
+  - `getGeminiModel(opts?)` — `GEMINI_MODEL`-ENV-Override, Default
+    `gemini-2.0-flash`.
+  - `buildGeminiClient(opts?)` — instanziiert `GoogleGenAI` aus
+    dem `@google/genai`-SDK.
+  - `mapGeminiError(err)` — mappt SDK-`ApiError` über HTTP-Status:
+    401/403 → `no_api_key`, 429 → `rate_limited`,
+    5xx → `provider_unavailable`, 400 → `invalid_input`. Kein
+    `instanceof`-Match auf konkrete Subklassen — über Status-Code
+    stabiler über SDK-Versionen.
+- `src/core/ai/providers/gemini/website-copy.ts` (neu) — die
+  Live-Implementierung:
+  - Eingabevalidierung über `WebsiteCopyInputSchema.safeParse` vor
+    Key-Prüfung.
+  - **Structured Output via `responseJsonSchema`**: Gemini hat seit
+    SDK v1.x ein natives Constrained-Sampling-Feld, kein Tool-Use-
+    Workaround wie Anthropic, kein Helper-Modul wie OpenAI.
+  - `responseMimeType: "application/json"` zwingt JSON-Output.
+  - **`propertyOrdering`** im Schema: laut 2026-Best-Practices muss
+    die Reihenfolge der Properties im Schema mit der Reihenfolge im
+    System-Prompt übereinstimmen (sonst kann das Modell die Felder
+    verwechseln). Wir nennen `heroTitle` → `heroSubtitle` →
+    `aboutText` in beiden Stellen.
+  - **System-Prompt** identisch zu OpenAI/Anthropic-Pendants —
+    gleiche Stilrichtlinien, gleiches Fallback-Verhalten,
+    Tonalitäts-Konsistenz beim Provider-Wechsel.
+  - **JSON-Parse + Zod-Validate** als doppelte Sicherheit: SDK
+    gibt `response.text` als String, wir parsen und validieren
+    gegen `WebsiteCopyOutputSchema`.
+  - **Kein Caching** in dieser Iteration. Gemini hat eine separate
+    `caches.create(...)`-API, die sich erst ab größerem Volumen
+    lohnt — auf Roadmap.
+- `src/core/ai/providers/gemini-provider.ts`: Stub → komponiert mit
+  der scharfen Methode. 6 weitere Methoden bleiben Stub.
+- `src/tests/ai-gemini-provider.test.ts` (neu) — strukturell + opt-in
+  live, gleiches Muster wie OpenAI/Anthropic-Smoketests:
+  - 12 strukturelle Asserts (Provider-Key, alle 7 Methoden sind
+    Funktionen, ohne Key → `no_api_key` vor Netzwerk-Call,
+    ungültiges Input → `invalid_input`, Resolver mit Key → gemini,
+    übrige 6 Methoden → `provider_unavailable`).
+  - Live-Block (opt-in via `LP_TEST_GEMINI_LIVE=1` +
+    `GEMINI_API_KEY`) ruft echtes Modell, validiert Output.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (3 Code-Dateien):
+- `src/core/ai/providers/gemini/_client.ts`
+- `src/core/ai/providers/gemini/website-copy.ts`
+- `src/tests/ai-gemini-provider.test.ts`
+
+Geändert:
+- `src/core/ai/providers/gemini-provider.ts`
+- `package.json` + `package-lock.json` (`@google/genai@^1`)
+- `docs/PROGRAM_PLAN.md` (Roadmap-Selbstaktualisierung, +1 Item)
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~30 KB im Code-Bereich. Im Session-Limit.
+
+### 3. Wie teste ich es lokal?
+
+Ohne API-Key (CI-Pfad):
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün, Bundle 102 KB
+npx tsx src/tests/ai-mock-provider.test.ts            # ~380 Asserts
+npx tsx src/tests/ai-provider-resolver.test.ts        # 22 Asserts
+npx tsx src/tests/ai-openai-provider.test.ts          # 14 Asserts
+npx tsx src/tests/ai-anthropic-provider.test.ts       # 14 Asserts
+npx tsx src/tests/ai-gemini-provider.test.ts          # 12 Asserts
+npx tsx src/tests/themes.test.ts                      # incl. Hex-Asserts
+```
+
+Mit API-Key (Live-Smoketest opt-in):
+
+```bash
+export GEMINI_API_KEY="ya29-..."
+export LP_TEST_GEMINI_LIVE=1
+npx tsx src/tests/ai-gemini-provider.test.ts
+# → "✓ Live-Gemini-Call (generateWebsiteCopy) erfolgreich."
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                       | Status |
+| --------------------------------------------------------------- | ------ |
+| `@google/genai`-Dependency installiert (v1.x)                    | ✅      |
+| `generateWebsiteCopy` ruft echte Gemini-API mit `responseJsonSchema` | ✅  |
+| Defensiver `no_api_key`-Vor-Check vor Netzwerk-Call              | ✅      |
+| Error-Mapping über SDK-`ApiError` + HTTP-Status                  | ✅      |
+| `propertyOrdering` Schema = System-Prompt-Reihenfolge            | ✅      |
+| Doppelte Validierung über `WebsiteCopyOutputSchema`              | ✅      |
+| Übrige 6 Gemini-Methoden bleiben Stub                            | ✅      |
+| Resolver mit Key routet auf gemini, ohne Key auf mock            | ✅      |
+| Strukturelle Smoketest (12 Asserts) ohne Netzwerk grün           | ✅      |
+| Live-Smoketest opt-in über `LP_TEST_GEMINI_LIVE=1`               | ✅      |
+| Bundle bleibt 102 KB                                             | ✅      |
+| Build/Typecheck/Lint grün                                        | ✅      |
+| Recherche-Step + Quellen zitiert                                 | ✅      |
+| Roadmap-Selbstaktualisierung: 1 neues Item                       | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 27**: KI-Assistent-Playground-UI im Dashboard.
+  Tab-/Karten-Picker für alle 7 Methoden, clientseitiger Mock-
+  Aufruf, Copy-to-Clipboard, Provider-Auswahl-Badge. Damit
+  visuell sichtbar, was die Schicht kann.
+- **Self-Extending Backlog** (1 neues Item aus dieser Session):
+  Gemini Context Caching aktivieren — eigene
+  `caches.create(...)`-API mit TTL-Tracking + Cost-Bucket pro
+  Branche/Variant.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 27 — KI-Assistent-Playground-UI** (UI-Catch-Up).
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 React form patterns dynamic schema-driven UI
+   structured output preview".
+2. `src/components/dashboard/ai-playground/` neuer Ordner mit:
+   - `ai-playground.tsx` — Container mit Methoden-Picker.
+   - 7 Method-Forms (`website-copy-form.tsx`, etc.).
+   - `result-panel.tsx` mit Copy-to-Clipboard.
+3. `src/app/dashboard/[slug]/ai/page.tsx` ersetzen — statt Status-
+   Seite jetzt der echte Playground.
+4. Ruft Mock-Provider clientseitig — kein Backend nötig, da
+   Mock deterministisch ohne Netzwerk arbeitet.
+5. Live-Provider-Calls bleiben für eine spätere API-Route-Session.
+6. PROGRAM_PLAN.md Update, CHANGELOG/RUN_LOG, Commit, Push.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [Google Cloud – Structured output (Generative AI on Vertex AI)](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/control-generated-output)
+- [Google AI for Developers – Structured outputs (Gemini API)](https://ai.google.dev/gemini-api/docs/structured-output)
+- [Firebase – Generate structured output using the Gemini API](https://firebase.google.com/docs/ai-logic/generate-structured-output)
+- [Google Cloud – Specify a MIME response type for the Gemini API](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/samples/generativeaionvertexai-gemini-controlled-generation-response-schema)
+- [DEV Community – How To Generate Structured Output (JSON, YAML) in Gemini AI](https://dev.to/shrsv/how-to-generate-structured-output-json-yaml-in-gemini-ai-2ok0)
+- [APIDog – How to Use the Google Gen AI TypeScript/JavaScript SDK](https://apidog.com/blog/how-to-use-the-google-gen-ai/)
+- [Google AI Developers Forum – Structured output from API using responseSchema](https://discuss.ai.google.dev/t/structured-output-from-api-using-responseschema-need-help/50297)
+- [GitHub – googleapis/js-genai](https://github.com/googleapis/js-genai)
+
+---
+
+## State-Refresh nach Session 26 + Methodik-Update — 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE` · Typ: Maintenance + Methodik
+
+**Was**: Erste komplette State-Refresh-Runde nach dem neuen
+Programm-Konzept. Auslöser: Auftraggeber hat „Bewertungen Vorschau /
+Social Media Vorschau / Einstellungen Vorschau" auf der Webseite gesehen
+(stale ComingSoon-Stubs). Gleichzeitig Methodik um wiederkehrenden
+Refresh-Rhythmus + Token-Effizienz erweitert, sodass solche Driften
+automatisch gefangen werden.
+
+**Dateien**:
+- ✚ `src/components/dashboard/backend-ready-status.tsx` (wiederverwendbare
+  Status-Karte für „Backend bereit · UI in Session N")
+- 🔄 `src/components/dashboard/index.ts` (Re-Export)
+- 🔄 `src/app/dashboard/[slug]/reviews/page.tsx` (BackendReadyStatus
+  statt ComingSoon, da generateReviewRequest scharf ist)
+- 🔄 `src/app/dashboard/[slug]/social/page.tsx` (BackendReadyStatus,
+  da generateSocialPost scharf ist)
+- 🔄 `src/app/dashboard/[slug]/settings/page.tsx` (Session-Nummer
+  von 18 auf realistische 32 korrigiert; bleibt ComingSoon, da
+  Settings echtes Backend braucht)
+- ✚ `docs/RESEARCH_INDEX.md` (zentraler Quellen-Speicher; spart
+  Tokens bei zukünftigen RUN_LOG-Einträgen)
+- ✚ `docs/STATE_REFRESH_CHECKLIST.md` (Light-Pass alle 5 Sessions,
+  Deep-Pass alle 20)
+- 🔄 `Claude.md` (Programm-Philosophie Punkte 8 + 9: Refresh-Cadence
+  und Token-Effizienz-Logging-Regeln)
+- 🔄 `docs/SESSION_PROTOCOL.md` (Schritt 5 Doku: Compact-Format ab
+  Session 27; Schritt 7 neu: State-Refresh-Cadence)
+- 🔄 `docs/CODEX_BACKLOG.md` (+1 Item: deutsche Anführungszeichen
+  in JSX-Prop-Strings escapen — von Claude zweimal getroffen,
+  typischer Codex-Sweep)
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, alle 6
+Smoketests ✅ (Mock ~380, Resolver 22, OpenAI 14, Anthropic 14,
+Gemini 12, Themes inkl. Hex-Asserts). Bundle 102 KB unverändert.
+
+**Roadmap**: Keine neuen PROGRAM_PLAN-Items; das Methodik-Update
+ist selbst Track G (Mitwirkende-Koordination).
+
+**Quellen**: keine neue Recherche — kompositorisch aus Beobachtungen
+des Auftraggebers + Token-Beobachtung der eigenen Doku-Praxis.
+
+**Nächste Session**: Code-Session 27 — KI-Assistent-Playground-UI
+(Tab-Picker für 7 Methoden, clientseitiger Mock-Aufruf,
+Copy-to-Clipboard). Diese Session demonstriert dann erstmals den
+neuen Compact-Log-Format-Eintrag.

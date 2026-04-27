@@ -68,19 +68,48 @@ Bei UI-Änderungen zusätzlich:
 - Screenshot oder `curl`-Smoketest auf der betroffenen Route.
 - Mobile-Check (375 px Viewport, mind. mental durchgespielt).
 
-### 5. Doku
+### 5. Doku (Compact-Format ab Code-Session 27)
 
-- **CHANGELOG.md** – kurzer Eintrag in `[Unreleased]` oder neuer
-  Versions-Block.
-- **`docs/RUN_LOG.md`** – Standard-Eintrag mit den 6 Antworten:
-  1. Was wurde umgesetzt?
-  2. Welche Dateien wurden geändert?
-  3. Wie teste ich es lokal?
-  4. Welche Akzeptanzkriterien sind erfüllt?
-  5. Was ist offen?
-  6. Was ist der nächste empfohlene Run?
-  Plus: **Quellen** der Recherche aus Schritt 2.
-- Bei größerem Feature: eigene `docs/<FEATURE>.md`.
+Token-effizient. Doppelung zwischen CHANGELOG und RUN_LOG vermeiden.
+
+**CHANGELOG.md** – kurz, Release-Notes-Stil. Pro Session ein
+Versions-Block mit:
+- 1 Satz „Was hat sich geändert?"
+- 3–8 Bullets, was reinkam.
+- Falls Dependencies bewegt wurden, eine Zeile dazu.
+- Falls Roadmap erweitert: eine Zeile mit Track + Anzahl Items.
+
+Kein „Notes"-Block, keine ASCII-Tabelle, kein Prose-Absatz.
+
+**`docs/RUN_LOG.md`** – chronologisches Technical-Log, Compact-Format:
+
+```markdown
+## Code-Session N – <kurzer Titel>
+Datum · Branch · Typ (Feature / Refactor / Polish / Maintenance / …)
+
+**Was**: 1–3 Sätze, was die Session inhaltlich getan hat.
+
+**Dateien**: bullet-Liste, neu / geändert / entfernt mit ✚ / 🔄 / 🗑️.
+
+**Verifikation**: 1 Zeile pro Check (typecheck/lint/build/Smoketests),
+alle ✅ oder eine konkrete Fehler-Anmerkung.
+
+**Roadmap**: 1 Zeile, welche PROGRAM_PLAN-Items neu / verschärft sind.
+
+**Quellen**: `RESEARCH_INDEX.md` Track X (Stichwort), Track Y. Kein
+Vollzitat im RUN_LOG-Eintrag — nur Pointer.
+
+**Nächste Session**: 1 Zeile, was als Nächstes empfohlen ist.
+```
+
+Längere Einträge (Sessions 1–26) bleiben im Bestand. Der Compact-
+Format-Wechsel gilt **vorwärts** ab Code-Session 27.
+
+**`docs/RESEARCH_INDEX.md`** – zentraler Quellen-Speicher (siehe Datei
+selbst). Neue Quellen aus dem WebSearch-Step werden dort angefügt,
+**nicht** im RUN_LOG zitiert.
+
+**Bei größerem Feature**: eigene `docs/<FEATURE>.md` (unverändert).
 
 ### 6. Roadmap-Selbstaktualisierung (verbindlich ab Code-Session 18)
 
@@ -104,7 +133,26 @@ Plan-Punkt), wurde der Recherche-Step nicht gründlich genug gemacht
 oder die Beobachtungen aus der Implementierung wurden nicht
 festgehalten. Beides ist ein Protokoll-Verstoß.
 
-### 7. Commit + Push
+### 7. State-Refresh-Cadence (verbindlich ab Code-Session 27)
+
+Wenn die abgeschlossene Session-Nummer **durch 5 teilbar** ist
+(`N % 5 === 0`), wird **zusätzlich** zur normalen Doku der
+**Light-Pass** aus `docs/STATE_REFRESH_CHECKLIST.md` ausgeführt:
+
+- Smoketest-Regression (alle 6 Tests grün).
+- Stale-Stub-Audit (`grep -rn "comingInSession=" src/app/dashboard`).
+- README-Provider-Matrix prüfen.
+- Codex-Backlog sichten.
+- Mini-Eintrag im RUN_LOG.
+
+Wenn `N % 20 === 0`, **Deep-Pass** zusätzlich (Webseiten-Walkthrough,
+`npm outdated`, Bundle-Größen-Check, RESEARCH_INDEX-Konsolidierung).
+
+Findet die fällige Sync auf einer regulären Code-Session statt, wird
+sie im Commit-Body als `state-refresh-light:` / `state-refresh-deep:`
+sub-bullet vermerkt — kein eigener Commit nötig.
+
+### 8. Commit + Push
 
 Conventional Commit, Branch `claude/setup-localpilot-foundation-xx0GE`
 oder spätere Feature-Branches.

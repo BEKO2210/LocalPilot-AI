@@ -206,6 +206,43 @@ build:static; alle internen Links funktionieren (manuelle Stichprobe).
 
 ---
 
+### #10 — `[pre-approved]` Deutsche Anführungszeichen in JSX-Prop-Strings escapen
+
+**Suchpfad:** `src/app/**/*.tsx`, `src/components/**/*.tsx`
+
+**Aufgabe:** Wenn ein JSX-Prop-String (z. B. `description="…"`)
+oder ein Element in einem String-Array innerhalb von `{[...]}` ein
+deutsches Anführungszeichenpaar `„…"` enthält, bricht der Parser
+beim schließenden `"` ab — Build-Error
+`Unterminated string literal` / `Identifier expected`.
+
+**Fix:** Den betroffenen String von `"…"` auf Template-Literal
+`` `…` `` umstellen. Der Inhalt bleibt 1:1 gleich, nur die Quotes
+außen werden zu Backticks.
+
+Beispiel:
+```tsx
+// vorher (crasht):
+"in_person nutzt gesprochenen Stil mit „…"-Anführungszeichen."
+// nachher (grün):
+`in_person nutzt gesprochenen Stil mit „…"-Anführungszeichen.`
+```
+
+**Boundary:**
+- **Nur** String-Literale anfassen, in denen tatsächlich ein
+  „…"-Paar auftaucht.
+- **Keine** Übersetzungs-Änderungen.
+- **Nicht** automatisch alles auf Backticks umstellen — nur dort,
+  wo der Build sonst bricht.
+
+**Verifikation:** `npm run typecheck && npm run lint && npm run build:static`.
+
+**Begründung**: Schon zweimal von Claude getroffen
+(Code-Session 20 README + Code-Session 26 reviews/social) —
+typischer Junior-Sweep, der zukünftige Build-Fails verhindert.
+
+---
+
 ### #9 — `[pre-approved]` README-Tippfehler nachpflegen
 
 **Pfad:** `README.md`

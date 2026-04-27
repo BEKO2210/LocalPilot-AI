@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ComingSoonSection, DashboardShell } from "@/components/dashboard";
+import { BackendReadyStatus, DashboardShell } from "@/components/dashboard";
 import {
   getMockBusinessBySlug,
   listMockBusinessSlugs,
@@ -13,7 +13,7 @@ export function generateStaticParams(): Params[] {
 }
 
 export const metadata = {
-  title: "Bewertungs-Booster – Vorschau",
+  title: "Bewertungs-Booster – Status",
   robots: { index: false, follow: false },
 };
 
@@ -24,18 +24,24 @@ export default async function DashboardReviewsPage({ params }: PageProps) {
 
   return (
     <DashboardShell business={business} active="reviews">
-      <ComingSoonSection
+      <BackendReadyStatus
         business={business}
         title="Bewertungs-Booster"
-        description="Vorlagen für WhatsApp, SMS und E-Mail – mit Platzhaltern für Kundenname und Bewertungslink."
-        comingInSession={16}
-        gatingFeature="review_booster_basic"
-        upcomingFeatures={[
-          "Bewertungslink zentral pflegen",
-          "Branchen-passende Vorlagen aus dem Preset",
-          "Tonalität wählen (kurz / freundlich / Follow-up)",
-          "Copy-to-Clipboard mit ersetzten Platzhaltern",
-          "Silber/Gold: KI-Varianten und Kampagnen-Modi",
+        description="Vorlagen für WhatsApp, SMS, E-Mail und persönlich – mit Platzhaltern für Kundenname und Bewertungslink."
+        uiInSession={27}
+        backendCapabilities={[
+          "Mock-Provider liefert deterministische Vorlagen für alle 4 Kanäle × 3 Tonalitäten (kurz / freundlich / Follow-Up).",
+          "Substitution für {{customerName}}, {{reviewLink}}, {{businessName}}.",
+          "Branchen-spezifische Saatzeilen aus preset.reviewRequestTemplates (sofern hinterlegt) — sonst synthetisiert.",
+          `in_person nutzt gesprochenen Stil mit „…"-Anführungszeichen.`,
+          "Defensive Schema-Validierung; ungültige reviewLink-URLs werden mit invalid_input abgewiesen.",
+        ]}
+        upcomingUiFeatures={[
+          "Bewertungslink des Betriebs zentral pflegen (Settings).",
+          "Variante wählen, Platzhalter füllen, Copy-to-Clipboard.",
+          "Live-Vorschau der drei Tonalitäts-Optionen nebeneinander.",
+          "Direktversand-Buttons (mailto:, wa.me, sms:) für Mobile.",
+          "Silber/Gold: A/B-Test über mehrere Tonalitäten mit Tracking-Param.",
         ]}
       />
     </DashboardShell>
