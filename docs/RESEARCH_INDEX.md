@@ -105,6 +105,14 @@
 - [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
 - [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
 
+### Bulk-Sync Services + RLS-driven Diff (Code-Session 55)
+- [Supabase JS – upsert with onConflict](https://supabase.com/docs/reference/javascript/upsert) — `onConflict: "id"` für UPDATE-bei-Match-INSERT-sonst (55).
+- [Supabase Docs – Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security) — Policy mit USING + WITH CHECK; gleiche Policy deckt UPDATE OLD + NEW row (55).
+- [PostgREST – Bulk Operations](https://docs.postgrest.org/en/stable/references/api/tables_views.html#bulk-operations) — UPSERT als Bulk-INSERT mit ON CONFLICT, kein BEGIN/COMMIT erforderlich (55).
+- [GitHub Discussion supabase/supabase-js #1574 – No transactions in supabase-js v2](https://github.com/supabase/supabase-js/discussions/1574) — Bestätigt: keine Transaktionen, deshalb 2-Statement-Strategie (UPSERT + DELETE) (55).
+- [RFC 4122 – UUID v4 specification](https://datatracker.ietf.org/doc/html/rfc4122#section-4.4) — Variant-Bits `[89ab]`, Version-Bits `[1-5]` für `looksLikeDbUuid`-Regex (55).
+- [Postgres Docs – gen_random_uuid()](https://www.postgresql.org/docs/current/functions-uuid.html) — Server-side UUID-Generierung (55).
+
 ### Slug-Wechsel + Publish-Toggle (Code-Session 52)
 - [Supabase Docs – Use Supabase with Next.js](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs) — Standard-Update-Pattern via `.update().eq()` (52).
 - [Supabase Docs – Use Supabase Auth with Next.js](https://supabase.com/docs/guides/auth/quickstarts/nextjs) — Authenticated-Client mit Cookie-Session in Route-Handler (52).

@@ -156,3 +156,14 @@ produktive Sektionen (Übersicht, Betriebsdaten, Leistungen).
 - **Session 19** – Repository-Layer ersetzt
   `services-overrides.ts` transparent (Supabase-Tabelle pro Service).
   Der Editor selbst bleibt unverändert.
+- **Session 55** – Schreibpfad in DB: Form ruft beim Speichern
+  jetzt `PUT /api/businesses/<slug>/services` mit der gesamten
+  Liste auf. Server berechnet Diff (UPDATE / INSERT / DELETE)
+  über RLS-only Server-Auth-Client. Bei 404 / Offline /
+  Static-Build fällt das Form transparent auf den
+  localStorage-Pfad zurück. Differenzierte Banner zeigen
+  „in der DB gespeichert" (emerald, mit Counts) vs. „lokal
+  gespeichert (Demo)" (amber). Pseudo-IDs aus
+  `buildEmptyService` werden serverseitig durch
+  `crypto.randomUUID()` ersetzt — der Editor selbst kann ohne
+  Konsequenzen weiter Pseudo-IDs vergeben.

@@ -215,8 +215,24 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Pure Format-Helper mit ~40 Asserts (Labels, Limits,
   assessLength, composeFinalPost mit Tag-Normalisierung +
   case-insensitive Dedupe, adviseHashtagCount).
+- 55: Schreibpfad in DB für `ServicesEditForm` ✅.
+  Symmetrisch zu Session 50, aber Bulk-Sync statt flat-PATCH.
+  `PUT /api/businesses/[slug]/services` mit Auth-Gate +
+  RLS-only. Pseudo-IDs (`svc-<slug>-<random>`) werden
+  serverseitig durch `crypto.randomUUID()` ersetzt; echte
+  UUIDs (Migration 0007 RLS-Variant `[89ab]`, Version `[1-5]`)
+  per `looksLikeDbUuid` erkannt → UPDATE-Pfad. Server berechnet
+  Diff: `existingIds - incomingIds → DELETE`, Rest → UPSERT
+  (`onConflict: "id"`). Lead-FK-Cascade auf `null` bewahrt
+  Lead-Daten. Pure Submit-Helper `services-update.ts` mit
+  6-stufigem Result + ~40 Asserts. Form mit drei differenzierten
+  Bannern (server/local/error) + `submitting`-State. **Damit
+  ist der Hauptinhalt der Public-Site (Friseur-Leistungen,
+  Werkstatt-Pakete) endgültig self-service-fähig.**
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
-  durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
+  durchziehen, Backup-Policy, Seed-Skript für Demo-Daten,
+  Storage-Cleanup-Job auf Service-`imageUrl`-Waisen
+  ausweiten (analog zu Slug-Wechsel-Job).
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant

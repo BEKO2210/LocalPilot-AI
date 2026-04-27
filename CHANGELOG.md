@@ -7,10 +7,6 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 55: Schreibpfad ServicesEditForm** — symmetrisch
-  zu Session 50 (PATCH `/api/businesses/[slug]/services` mit
-  Bulk-Update + RLS). Damit ist auch der Hauptinhalt der
-  Public-Site persistent editierbar.
 - Code-Sessions 56+: Live-Provider-Variante für Reviews/Social-
   Panels (Auth-Bearer + `/api/ai/generate`), Direkt-Posten zu
   Buffer/Hootsuite/Meta-Graph, Multi-Member-Verwaltung, Default-
@@ -19,6 +15,61 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
   Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
   Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
   Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+
+## [0.16.29] – Code-Session 55 – 2026-04-27
+
+Schreibpfad **ServicesEditForm** scharf: Owner kann seine
+Leistungsliste persistent in die DB schreiben — nicht mehr nur
+in einen Mock-State. Symmetrisch zu Session 50, aber Array-
+Form statt Flat-Object: Bulk-Upsert + Delete-Diff.
+
+- ✚ `src/lib/services-update.ts` — pure Helper:
+  `looksLikeDbUuid` (UUID-v1-5-Regex, lehnt Pseudo-IDs wie
+  `svc-<slug>-<random>` ab), `splitServices` (in `toUpdate` /
+  `toInsert`), `serviceToWireRow` (camelCase → snake_case mit
+  optionalem `keepId`), `buildServicesPayload`, `submitServicesUpdate`
+  mit 6-stufigem Result (`server` / `not-authed` / `forbidden` /
+  `validation` / `local-fallback` / `fail`), `userMessageForResult`.
+- ✚ `src/tests/services-update.test.ts` (~40 Asserts):
+  UUID-Detection inkl. v1-Variant-Char-Validierung, Splitting,
+  Wire-Row-Mapping mit `keepId` true/false, alle 6 Submit-Pfade
+  inkl. Body-Capture und URL-Pfad.
+- ✚ `src/app/api/businesses/[slug]/services/route.ts` (PUT):
+  Auth-Gate via `getCurrentUser()`, Business-Lookup über Server-
+  Auth-Client (RLS prüft Owner-Status), pro Row Re-Map snake →
+  camel → ServiceSchema-Validierung → snake zurück. Pseudo-IDs
+  werden serverseitig durch `crypto.randomUUID()` ersetzt.
+  Bulk-Upsert via `onConflict: "id"`, separater DELETE für
+  Waisen (Lead-FK-Cascade `set null` bewahrt Lead-Daten).
+  Antwort: `{ ok, inserted, updated, deleted }`.
+- 🔄 `src/components/dashboard/services-edit/services-edit-form.tsx`:
+  `onSubmit` async — versucht Server-PUT, fällt bei 404/Offline
+  auf localStorage zurück. Differenzierte Banner: emerald „in
+  der Datenbank" mit Counts, amber „Lokal gespeichert (Demo)",
+  rose „Bitte prüfe markierte Karten / Speichern fehlgeschlagen".
+  `validation`-fieldErrors mit `services.<i>.<feld>`-Pfad
+  werden 1:1 via `methods.setError` ins RHF-Form gemappt.
+  Submit-Button mit `submitting`-State („Speichere …").
+
+36/37 Smoketests grün (industry-presets pre-existing red,
+Codex #11). Beide Builds grün. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Schreibpfad ServicesEditForm). Damit
+sind alle End-User-UI-Capabilities (Stamm-, Bild-, Slug-,
+Review-, Social-, Services-Pfad) vollständig persistent. 1
+Folge-Item: bei Service-DELETE den verlinkten Bild-Storage-
+Bucket-Eintrag mit aufräumen (analog Slug-Wechsel-Storage-Job).
+
+**Status-Update**: ~88% Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Editor (Meilenstein 2) ist
+abgeschlossen. Verbleibend für Vollausbau: Live-Provider-Switch
+(Reviews/Social), Storage-Cleanup-Job, Custom-Domain, Sentry,
+Lighthouse-CI, Multi-Member-Verwaltung.
+
+**Manueller Test**: Dashboard → „Leistungen" → bestehende
+Karte editieren oder neue „Leistung anlegen" → Speichern →
+emerald-Banner mit Counts erscheint → Reload zeigt Werte aus
+DB (nicht nur localStorage).
 
 ## [0.16.28] – Code-Session 54 – 2026-04-27
 

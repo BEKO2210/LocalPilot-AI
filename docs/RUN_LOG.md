@@ -6261,3 +6261,125 @@ symmetrisch zu Session 50 (PATCH `/api/businesses/[slug]/
 services` mit Bulk-Update + RLS), nur etwas größer wegen der
 Array-Form.
 
+## Code-Session 55 – Schreibpfad ServicesEditForm
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature · 5er-Multiple
+
+**Was**: `ServicesEditForm` schreibt nicht mehr nur in
+localStorage, sondern echt in die DB. Owner editiert die
+gesamte Leistungsliste (add/edit/delete/reorder) und drückt
+„Speichern" → Server berechnet Diff (UPDATE / INSERT / DELETE)
+in einer Transaktion-light (3 Statements ohne expliziten
+BEGIN, durch RLS abgesichert). Damit ist der **Hauptinhalt**
+der Public-Site (Friseur-Leistungen, Werkstatt-Pakete) endgültig
+self-service-fähig.
+
+**Architektur-Entscheidung — Bulk-Sync statt Item-CRUD**:
+Symmetrisch zu Session 50 (BusinessEdit). Alternative wäre
+Item-CRUD-API (POST/PATCH/DELETE pro Service), das hätte aber
+Locking-Probleme (zwei Owner editieren gleichzeitig dasselbe
+Item) und einen schwierigeren Reorder-Pfad. Bulk-Sync mit der
+gesamten Liste als Wahrheits-Snapshot ist deterministisch,
+race-frei und 1:1 zur RHF-`useFieldArray`-State-Form.
+
+**Pseudo-IDs vs DB-UUIDs**: Demo-Daten und neu hinzugefügte
+Services tragen `svc-<slug>-<random>`-IDs. Postgres lehnt das
+als ungültiges UUID ab. Lösung: `looksLikeDbUuid` (UUID-v1-5-
+Regex) trennt UPDATE-Kandidaten (echte UUID) von INSERT-Kandi-
+daten. Server ersetzt Pseudo-IDs durch `crypto.randomUUID()`
+vor dem Upsert.
+
+**Lead-FK-Cascade**: Wenn ein Service gelöscht wird, kann
+Migration 0005 die `lead.requested_service_id` auf `null`
+setzen — Lead-Datensatz bleibt erhalten, nur die Service-
+Referenz fällt weg. Daten gehen nicht verloren.
+
+**Dateien**:
+- ✚ `src/lib/services-update.ts` — pure Logic-Helper:
+  - `looksLikeDbUuid(id)` — UUID-v1-5-Regex (Variant `[89ab]`,
+    Version `[1-5]`).
+  - `splitServices(list)` → `{toUpdate, toInsert}`.
+  - `serviceToWireRow(s, businessId, {keepId})` — camelCase →
+    snake_case + alle nullable Felder explizit auf `null`.
+  - `buildServicesPayload(list, businessId)` — kombiniert
+    UPDATE-Rows (mit ID) und INSERT-Rows (ohne ID) zu einem
+    `{services: [...]}`-Body.
+  - `submitServicesUpdate(slug, list, businessId, deps)` —
+    PUT `/api/businesses/<slug>/services`. 6 Result-Kinds:
+    `server` (mit inserted/updated/deleted-Counts) /
+    `not-authed` / `forbidden` / `validation` (fieldErrors) /
+    `local-fallback` (404 / Throw → Form fällt auf
+    localStorage) / `fail` (5xx).
+  - `userMessageForResult(r)` — deutscher User-Hinweis je
+    Kind. Server-Result formatiert Counts: „Gespeichert: 1
+    neu, 2 aktualisiert, 0 entfernt."
+- ✚ `src/tests/services-update.test.ts` — ~40 Asserts:
+  UUID-Detection (inkl. v1-Variant-Char-Validierung,
+  Großbuchstaben, leerer String), Splitting, Wire-Row mit
+  `keepId` true/false, alle 6 Submit-Pfade (200, 404, 401,
+  403, 400-validation, 500, throw), Body-Capture (Pseudo-IDs
+  raus, echte UUIDs durch), URL-Pfad-Encoding.
+- ✚ `src/app/api/businesses/[slug]/services/route.ts` (PUT):
+  Auth-Gate via `getCurrentUser()` → 401. Business-Lookup
+  über Server-Auth-Client (RLS): RLS lehnt 0 Zeilen ab → 403.
+  Pro Body-Row: snake → camel → `ServiceSchema.safeParse()`
+  → snake. Aggregierte fieldErrors → 400. UPSERT via
+  `onConflict: "id"` (Bulk in einem Statement). DELETE-Diff
+  via `existingIds - incomingIds`. Antwort:
+  `{ ok, inserted, updated, deleted }`. **RLS-getrieben**, kein
+  Service-Role-Client — `is_business_owner(business_id)`
+  prüft INSERT/UPDATE/DELETE-Permissions automatisch.
+- 🔄 `src/components/dashboard/services-edit/services-edit-form.tsx`:
+  - Neue Hooks: `submitting`, `savedTo: "server"|"local"|null`,
+    `submitMessage`, `serverNote`.
+  - `onSubmit` async: ruft `submitServicesUpdate`, mappt
+    Result auf UI-State. `server`-Pfad löscht localStorage-
+    Override (DB ist Wahrheit), `local-fallback`-Pfad
+    schreibt Override wie bisher.
+  - `validation`-fieldErrors mit Pfad `services.<i>.<feld>`
+    werden direkt via `methods.setError(path as
+    FieldPath<...>)` ins RHF-Form gemappt — RHF versteht den
+    Pfad-Syntax 1:1.
+  - 3 differenzierte Banner: emerald „in der DB gespeichert"
+    mit Counts, amber „lokal gespeichert (Demo)", rose
+    „Bitte prüfen / Speichern fehlgeschlagen".
+  - Submit-Button mit `submitting`-Spinner-Text
+    („Speichere …").
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅. **36/37
+Smoketests grün** (industry-presets pre-existing red, Codex
+#11). Services-Update-Test = +1 grün.
+
+**Roadmap**: 1 Item abgehakt (Schreibpfad ServicesEditForm —
+damit alle End-User-UI-Capabilities persistent). 1 Folge-Item:
+Storage-Cleanup-Job auch für Service-`imageUrl`-Waisen erweitern,
+analog zu Slug-Wechsel-Bucket-Job.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — Supabase JS v2.104
+Bulk-Upsert mit `onConflict`, Delete-Diff-Pattern, RLS für
+INSERT/UPDATE/DELETE auf gleicher Policy via
+`is_business_owner(NEW.business_id)`.
+
+**Status-Update**: ~88 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Editor (Meilenstein 2) ist
+abgeschlossen — Owner kann jetzt **alles**, was auf der
+Public-Site sichtbar ist, ohne Code-Eingriff ändern. Verbleibend
+für Vollausbau: Live-Provider-Switch (Reviews/Social),
+Storage-Cleanup-Job, Custom-Domain, Sentry, Lighthouse-CI,
+Multi-Member-Verwaltung.
+
+**Manueller Test**: Dashboard → „Leistungen" → existierende
+Karte editieren oder neue „Leistung anlegen" → Speichern → bei
+aktivem Supabase-Backend erscheint emerald-Banner mit Counts;
+Reload zeigt DB-Werte. Bei fehlendem Backend (Static-Build /
+404) erscheint amber-Banner; Werte sind in localStorage
+persistiert.
+
+**Nächste Session**: Code-Session 56 = **Storage-Cleanup-Job
+Erweiterung**. Begründung: Mit Schreibpfad ServicesEditForm
+können Owner Bilder zu Services hochladen und Services dann
+wieder löschen — die Bilder-Bucket-Einträge bleiben dabei
+zurück (Waisen). Analog zum Slug-Wechsel-Cleanup-Job aus
+Session 47, aber für Service-`imageUrl`. Alternative wäre
+Live-Provider-Switch in Reviews/Social — der ist aber kein
+Self-Service-Blocker, sondern Quality-Layer; daher danach.
+

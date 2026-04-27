@@ -5,12 +5,14 @@ import {
   FormProvider,
   useFieldArray,
   useForm,
+  type FieldPath,
   type SubmitHandler,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertCircle,
   CheckCircle2,
+  Cloud,
   Plus,
   Save,
   Sparkles,
@@ -23,6 +25,11 @@ import {
   getServicesOverride,
   setServicesOverride,
 } from "@/lib/mock-store";
+import {
+  submitServicesUpdate,
+  userMessageForResult,
+  type ServicesUpdateResult,
+} from "@/lib/services-update";
 import { getPresetOrFallback } from "@/core/industries";
 import { isLimitExceeded } from "@/core/pricing";
 import type { Business } from "@/types/business";
@@ -79,6 +86,10 @@ export function ServicesEditForm({ business }: ServicesEditFormProps) {
   );
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [hasOverride, setHasOverride] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [savedTo, setSavedTo] = useState<"server" | "local" | null>(null);
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [serverNote, setServerNote] = useState<string | null>(null);
 
   const methods = useForm<ServicesFormValues>({
     resolver: zodResolver(ServicesFormSchema),
@@ -122,18 +133,80 @@ export function ServicesEditForm({ business }: ServicesEditFormProps) {
     : 0;
   const isDirty = methods.formState.isDirty;
 
-  const onSubmit: SubmitHandler<ServicesFormValues> = (data) => {
+  /**
+   * Submit-Strategie (Code-Session 55) — symmetrisch zu Session 50:
+   *
+   *   1. Versuche Server-PUT `/api/businesses/<slug>/services`
+   *      mit der gesamten Liste. Server diff't gegen `existing`
+   *      und bulk-upserted/löscht.
+   *   2. Bei `server`-Erfolg: localStorage-Override löschen
+   *      (DB ist Wahrheit) und „Gespeichert in der Datenbank" zeigen.
+   *   3. Bei `local-fallback` (404 / offline / Static-Build):
+   *      Override schreiben, „Lokal gespeichert (Demo)" zeigen.
+   *   4. Bei `validation`: Fehler pro Feld (`services.<i>.<feld>`)
+   *      über `methods.setError` ins Form mappen.
+   *   5. Bei `not-authed` / `forbidden` / `fail`: Hinweis, KEIN
+   *      Local-Schreiben (würde Drift mit DB erzeugen).
+   */
+  const onSubmit: SubmitHandler<ServicesFormValues> = async (data) => {
     const normalized = normalizeOrder(data.services);
     if (isLimitExceeded(tier, "maxServices", normalized.length)) {
       // UI-Hinweis steht bereits über die Summary-Karte – wir blockieren
       // hier zusätzlich das Speichern, damit kein kaputter Zustand entsteht.
       return;
     }
-    const ok = setServicesOverride(business.slug, normalized);
-    if (ok) {
-      methods.reset({ services: normalized });
-      setSavedAt(new Date());
-      setHasOverride(true);
+
+    setSubmitting(true);
+    setSubmitMessage(null);
+    setServerNote(null);
+    setSavedTo(null);
+    try {
+      const result: ServicesUpdateResult = await submitServicesUpdate(
+        business.slug,
+        normalized,
+        business.id,
+      );
+
+      if (result.kind === "server") {
+        clearServicesOverride(business.slug);
+        setHasOverride(false);
+        setSavedAt(new Date());
+        setSavedTo("server");
+        setServerNote(userMessageForResult(result));
+        methods.reset({ services: normalized });
+        return;
+      }
+
+      if (result.kind === "local-fallback") {
+        const ok = setServicesOverride(business.slug, normalized);
+        if (ok) {
+          methods.reset({ services: normalized });
+          setSavedAt(new Date());
+          setSavedTo("local");
+          setHasOverride(true);
+        } else {
+          setSubmitMessage("Speichern derzeit nicht möglich.");
+        }
+        return;
+      }
+
+      if (result.kind === "validation") {
+        // Server-fieldErrors-Keys: `services.<index>.<feld>`. RHF
+        // versteht denselben Pfad direkt — `setError` mappt 1:1.
+        for (const [path, message] of Object.entries(result.fieldErrors)) {
+          methods.setError(path as FieldPath<ServicesFormValues>, {
+            type: "server",
+            message,
+          });
+        }
+        setSubmitMessage("Bitte prüfe die markierten Karten.");
+        return;
+      }
+
+      const msg = userMessageForResult(result);
+      if (msg) setSubmitMessage(msg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -220,19 +293,45 @@ export function ServicesEditForm({ business }: ServicesEditFormProps) {
             </button>
             <button
               type="submit"
-              disabled={!isDirty || overLimit}
+              disabled={!isDirty || overLimit || submitting}
               className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               <Save className="h-3.5 w-3.5" aria-hidden />
-              Speichern
+              {submitting ? "Speichere …" : "Speichern"}
             </button>
           </div>
         </div>
 
-        {savedAt ? (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        {savedAt && savedTo === "server" ? (
+          <div
+            role="status"
+            className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          >
+            <Cloud className="mt-0.5 h-4 w-4 flex-none" aria-hidden />
+            <span>
+              Gespeichert in der Datenbank. Public-Site zeigt die neuen
+              Leistungen beim nächsten Aufruf.
+              {serverNote ? <> {" · "}{serverNote}</> : null}
+            </span>
+          </div>
+        ) : null}
+        {savedAt && savedTo === "local" ? (
+          <div
+            role="status"
+            className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
             <CheckCircle2 className="h-4 w-4" aria-hidden />
-            Gespeichert. Reihenfolge und Änderungen sind im Browser persistiert.
+            Lokal gespeichert (Demo-Modus, kein Auth-Backend aktiv).
+            Reihenfolge und Änderungen sind nur in diesem Browser persistiert.
+          </div>
+        ) : null}
+        {submitMessage ? (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+          >
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-none" aria-hidden />
+            {submitMessage}
           </div>
         ) : null}
 
