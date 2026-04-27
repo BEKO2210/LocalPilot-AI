@@ -7,13 +7,11 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 50: Schreibpfad in DB für BusinessEditForm**
-  — der `BusinessEditForm` schreibt aktuell nur in einen
-  Mock-State. Owner muss seine Stammdaten (Slug, Name, Tagline,
-  Description, Theme, Farben) persistent ändern können. Server-
-  Action mit Service-Role oder authenticated-Update.
-- Code-Sessions 51+: Schreibpfad ServicesEditForm, Storage-Bucket
-  für Logos + Hero-Bilder (Avatar-Upload-UI), Slug-Live-Check
+- **Code-Session 51: Storage-Bucket für Logos + Hero-Bilder**
+  (Migration 0008 + Upload-UI). Nach 50 hat der Owner alle
+  Text-Felder editierbar — Logo/Hero-Bild bleibt aber URL-only.
+  Visuelles Pflicht-Feature für echten Live-Betrieb.
+- Code-Sessions 52+: Schreibpfad ServicesEditForm, Slug-Live-Check
   vor Submit, Onboarding-Wizard mehrstufig (Adresse + Logo),
   Multi-Member-Verwaltung, Default-Redirect bei einem Betrieb,
   Retry-Queue für Lead-`local-fallback`, Edge-Runtime-Migration,
@@ -21,6 +19,50 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
   Legal-Sektion, Impressum-Editor pro Betrieb, Seed-Skript für
   Demo-Daten, Schema↔Migration-Drift-Test,
   **Dependency-Sweep**.
+
+## [0.16.24] – Code-Session 50 – 2026-04-27
+
+Schreibpfad in DB für `BusinessEditForm`. Owner kann seine
+Stammdaten jetzt persistent ändern. Server-Auth-Client + RLS
+ersetzen manuelle Authorization-Checks.
+
+- ✚ `src/lib/business-update.ts` — `profileToBusinessRow`
+  (camelCase→snake_case, `null`-Fallback statt `undefined`),
+  `submitBusinessUpdate(slug, profile)` mit 7-stufigem
+  Result-Mapping (server / not-authed / forbidden / validation
+  / local-fallback / fail), `userMessageForResult`.
+- ✚ `src/tests/business-update.test.ts` (~30 Asserts): alle
+  Result-Pfade, snake_case-Mapping inkl. `null` für optionale
+  Felder, URL-Encoding bei Slugs, PATCH-Body-Capture.
+- ✚ `src/app/api/businesses/[slug]/route.ts` — PATCH mit
+  Auth-Gate + zod-Validation + Server-Auth-Client (NICHT
+  Service-Role). Migration-0007-Policy greift, 0-Zeilen-Update
+  → 403, 23505 → 409.
+- 🔄 `src/components/dashboard/business-edit/business-edit-form.tsx`:
+  async onSubmit, `savedTo`-State unterscheidet
+  „in DB"-Banner (grün) vom „Demo lokal"-Banner (gelb).
+  `submitMessage` für Fehler. Bei validation-Errors →
+  per-Feld `methods.setError`. Bei not-authed/forbidden/fail:
+  KEIN localStorage-Schreiben (verhindert stille Drift mit DB).
+
+31/32 Smoketests grün (industry-presets pre-existing red,
+Codex #11). Static-Build: `/api/businesses/[slug]` korrekt
+nicht gemountet (pageExtensions-Filter), SSR-Build hat ƒ.
+Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt. 1 neu (Services-Editor analog,
+nice-to-have).
+
+🔁 state-refresh-light (Session 50 ist 5er-Multiple):
+31/32 grün, 3 Stale-Stubs bekannt (Codex-#12), 2 needs-review
+aktiv.
+
+**Manueller Test** (mit ENVs + Migrationen):
+- Login → Dashboard → „Betrieb"-Tab → Name ändern →
+  „Speichern" → grünes „in DB gespeichert"-Banner →
+  Public-Site zeigt neuen Wert.
+- Static-Vorschau: gelbes „Demo lokal"-Banner, Verhalten
+  identisch zu vorher.
 
 ## [0.16.23] – Code-Session 49 – 2026-04-27
 

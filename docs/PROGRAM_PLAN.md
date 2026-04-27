@@ -162,6 +162,15 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   (`page.tsx` Übersicht + `leads/page.tsx`) lesen jetzt aus
   dem Repo. Letzter Mock-Direktzugriff der Pages-Schicht ist
   damit erledigt.
+- 50: Schreibpfad in DB für `BusinessEditForm` ✅.
+  `PATCH /api/businesses/[slug]` mit Auth-Gate + RLS-only
+  (Owner-Update via Migration-0007-Policy, KEIN Service-Role).
+  Pure Submit-Helper `business-update.ts` mit 7-stufigem
+  `BusinessUpdateResult`-Mapping (server / not-authed /
+  forbidden / validation / local-fallback / fail). Form fällt
+  bei Static-Build / 404 / offline transparent auf den
+  localStorage-Pfad zurück. Bei 401/403/5xx KEIN Local-
+  Schreiben → keine stille Drift mit DB.
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 

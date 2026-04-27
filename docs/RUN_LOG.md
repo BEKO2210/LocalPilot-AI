@@ -5846,3 +5846,86 @@ folgt danach in Session 51, weil das eigene Storage-Bucket-Auth
 braucht. Vor Reviews/Social-UI, weil Edit-Pfade die Pflicht-
 Funktionalität sind, Reviews/Social nice-to-have.
 
+---
+
+## Code-Session 50 – Schreibpfad in DB für BusinessEditForm
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Owner kann seine Stammdaten (Name, Tagline, Beschreibung,
+Branche, Theme, Adresse, Kontakt, Öffnungszeiten, Brand-Farben,
+Logo-/Cover-URL) jetzt **persistent in der DB** ändern. Form
+versucht zuerst Server-PATCH; bei 401/403/5xx blockiert mit
+sichtbarem Fehler, bei 404 / offline / Static-Build fällt
+transparent auf localStorage zurück (Demo-Modus).
+
+**Architektur-Schlüsselentscheidung**: Server-Auth-Client (NICHT
+Service-Role). Damit greift die Migration-0007-Policy „Allow owner
+to update own business" automatisch — ein böswilliger User kann
+den Slug eines fremden Betriebs aufrufen und bekommt vom UPDATE
+0 Zeilen zurück. RLS ersetzt manuelle Authorization-Checks im
+Code.
+
+**Dateien**:
+- ✚ `src/lib/business-update.ts` — `profileToBusinessRow`
+  (camelCase→snake_case mit `null`-Fallback statt `undefined`),
+  `submitBusinessUpdate(slug, profile)` mit 7-stufigem
+  `BusinessUpdateResult`-Mapping, `userMessageForResult` für
+  User-Texte (silent für `server`/`local-fallback`).
+- ✚ `src/tests/business-update.test.ts` (~30 Asserts):
+  alle Result-Pfade, snake_case-Mapping (incl. `null` für
+  optionale Felder), URL-Encoding bei Slugs mit Sonderzeichen,
+  PATCH-Body-Capture.
+- ✚ `src/app/api/businesses/[slug]/route.ts` — PATCH-Handler.
+  Body als snake_case akzeptieren, intern auf camelCase mappen
+  + `BusinessProfileSchema` validieren (zod-Issues → fieldErrors-
+  Map). Server-Auth-Client + `.eq("slug", slug)` UPDATE. RLS
+  greift automatisch. 0-Zeilen-Update → 403.
+- 🔄 `src/components/dashboard/business-edit/business-edit-form.tsx`:
+  `onSubmit` ist async, ruft `submitBusinessUpdate`. Neuer
+  `savedTo`-State (`"server"` | `"local"` | `null`) zeigt
+  unterschiedliche Erfolgs-Banner. `submitMessage` für Fehler.
+  Bei `validation`-Result: per-Feld `methods.setError`. Bei
+  `not-authed` / `forbidden` / `fail`: KEIN localStorage-Schreiben
+  (würde stille Drift mit DB erzeugen).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **31/32 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Static-Build hat `/api/businesses/[slug]` korrekt
+nicht gemountet (`pageExtensions`-Filter), SSR-Build hat ƒ.
+Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Business-Stammdaten-Schreibpfad).
+1 neues Folge-Item: Services-Editor analog (ist nice-to-have,
+nicht blocker für ersten Kunden — Owner kann Services über die
+Dashboard-Seite manuell anlegen).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — RLS-scoped UPDATE via
+Server-Auth-Client.
+
+**state-refresh-light** (Session 50 ist 5er-Multiple):
+- Smoketest-Regression: 31/32 grün, industry-presets bleibt
+  Codex-#11.
+- Stale-Stub-Audit: 3 Treffer (services/leads/settings) —
+  bekannt, Codex-#12 sammelt.
+- Codex-Backlog: 2 needs-review aktiv, kein Codex-Done.
+- Bundle: 102 KB shared stabil.
+
+**Manueller Test** (mit Auth + Service-Role + ENVs):
+1. Login → Onboarding → Account → „Dashboard öffnen" → Tab
+   „Betrieb".
+2. Name oder Tagline ändern → „Speichern".
+3. Grünes „Gespeichert in der Datenbank"-Banner.
+4. Public-Site `/site/<slug>` aktualisieren → neue Werte
+   sichtbar.
+5. Static-Pages-Vorschau: gelbes „Lokal gespeichert (Demo)"-
+   Banner — gleiches Verhalten wie vorher.
+
+**Nächste Session**: Code-Session 51 = **Storage-Bucket für
+Logos + Hero-Bilder** (Migration 0008 + Upload-UI). Begründung:
+nach 50 hat der Owner alle Text-Felder editierbar, aber Logo
+und Hero-Bild sind weiterhin URLs (kein Upload). Für „echter
+Kunde live": Logo-Upload ist visuelles Pflicht-Feature.
+Service-Role wird gebraucht, um RLS auf Storage-Bucket zu
+setzen. Vor Reviews/Social-UI, weil Storage die letzte
+fehlende Capability für End-to-End-Onboarding ist.
+

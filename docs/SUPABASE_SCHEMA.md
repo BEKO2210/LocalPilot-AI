@@ -329,6 +329,25 @@ nutzt einen `service_role`-Client, der RLS umgeht (Code-Session 42+).
   Tenant-Wiring-Session, sobald „Mein Account" inhaltlich mehr
   zeigt als nur die User-ID.
 
+### Business-Update-Pfad (Code-Session 50)
+
+`PATCH /api/businesses/[slug]` ist scharf. Pfad:
+
+1. `getCurrentUser()` → 401 wenn nicht eingeloggt.
+2. Body als snake_case-Row akzeptiert (vom Form-Helper geliefert),
+   intern wieder in camelCase gemappt und gegen
+   `BusinessProfileSchema` validiert. Bei Failure: 400 mit
+   `fieldErrors`.
+3. **Server-Auth-Client** (`createServerSupabaseClient()`) führt
+   das UPDATE aus — explizit NICHT der Service-Role-Client. Damit
+   greift die Migration-0007-Policy „Allow owner to update own
+   business" automatisch: ein User, der nicht im
+   `business_owners`-Eintrag des Slugs ist, sieht das UPDATE auf
+   0 Zeilen reduziert.
+4. Trifft das UPDATE 0 Zeilen → 403 mit kombinierter „Owner oder
+   Slug existiert nicht"-Meldung (kein Existenz-Leak).
+5. Postgres `23505` (unique-violation auf Slug) → 409.
+
 ### Lead-Read-Pfad (Code-Session 49)
 
 `LeadRepository.listForBusiness(businessId)` ergänzt den Schreibe-

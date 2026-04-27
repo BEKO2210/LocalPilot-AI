@@ -90,6 +90,12 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### RLS-scoped UPDATE via Server-Auth-Client (Code-Session 50)
+- [Supabase Docs – Setting up Server-Side Auth for Next.js](https://supabase.com/docs/guides/auth/server-side/nextjs) — server-auth-Client liest Cookie, RLS gilt automatisch (50).
+- [Supabase Discussion #13792 – Authenticated client in API route](https://github.com/orgs/supabase/discussions/13792) — RLS-only-Pattern statt Service-Role für User-Updates (50).
+- [Egghead – Restrict Access to Authenticated Users with Supabase RLS Policies](https://egghead.io/lessons/next-js-restrict-access-to-authenticated-users-with-supabase-rls-policies) — Owner-Update-Beispiel (50).
+- [Permit.io – Supabase Authentication and Authorization in Next.js](https://www.permit.io/blog/supabase-authentication-and-authorization-in-nextjs-implementation-guide) — Audit-trail beim UPDATE (50).
+
 ### Lead-Listing + Pagination-Patterns (Code-Session 49)
 - [Supabase Docs – JavaScript: Order the results](https://supabase.com/docs/reference/javascript/order) — `order()`-Pflicht für stabile Pagination (49).
 - [Supabase Docs – JavaScript API: select](https://supabase.com/docs/reference/javascript/select) — `count: 'estimated'` vs. `'exact'` Trade-off (49).

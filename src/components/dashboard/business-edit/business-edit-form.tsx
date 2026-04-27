@@ -10,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Building2,
   CheckCircle2,
+  Cloud,
   Crown,
   MapPin,
   Palette,
@@ -38,6 +39,11 @@ import {
   profileFromBusiness,
   setOverride,
 } from "@/lib/mock-store";
+import {
+  submitBusinessUpdate,
+  userMessageForResult,
+  type BusinessUpdateResult,
+} from "@/lib/business-update";
 import type { Business } from "@/types/business";
 import type { IndustryKey } from "@/types/common";
 import { OpeningHoursEditor } from "./opening-hours-editor";
@@ -52,6 +58,9 @@ export function BusinessEditForm({ business }: BusinessEditFormProps) {
   const initialProfile = useMemo(() => profileFromBusiness(business), [business]);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [hasLocalOverride, setHasLocalOverride] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [savedTo, setSavedTo] = useState<"server" | "local" | null>(null);
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
 
   const methods = useForm<BusinessProfile>({
     resolver: zodResolver(BusinessProfileSchema),
@@ -78,12 +87,73 @@ export function BusinessEditForm({ business }: BusinessEditFormProps) {
   const errors = methods.formState.errors;
   const isDirty = methods.formState.isDirty;
 
-  const onSubmit: SubmitHandler<BusinessProfile> = (data) => {
-    const ok = setOverride(business.slug, data);
-    if (ok) {
-      setSavedAt(new Date());
-      setHasLocalOverride(true);
-      methods.reset(data, { keepDirty: false });
+  /**
+   * Submit-Strategie (Code-Session 50):
+   *
+   *   1. Versuche Server-PATCH `/api/businesses/<slug>`.
+   *   2. Bei `server`-Erfolg: localStorage-Override löschen
+   *      (DB ist Wahrheit) und „Gespeichert (Server)" anzeigen.
+   *   3. Bei `local-fallback` (404 / offline / Static-Build):
+   *      lokalen Override schreiben und „Gespeichert (Demo)"
+   *      anzeigen.
+   *   4. Bei `not-authed` / `forbidden`: Fehler-Hinweis, KEIN
+   *      Local-Schreiben (würde stillschweigend Inkonsistenz mit
+   *      DB erzeugen, sobald der User wieder einloggt).
+   *   5. Bei `validation`: Fehler pro Feld in das Form mappen.
+   *   6. Bei `fail` (5xx): Fehler-Hinweis, kein Local-Schreiben
+   *      — sonst riskieren wir lokale Werte, die in der DB
+   *      anders sind.
+   */
+  const onSubmit: SubmitHandler<BusinessProfile> = async (data) => {
+    setSubmitting(true);
+    setSubmitMessage(null);
+    setSavedTo(null);
+    try {
+      const result: BusinessUpdateResult = await submitBusinessUpdate(
+        business.slug,
+        data,
+      );
+
+      if (result.kind === "server") {
+        // Server hat persistiert → lokales Override hat keine
+        // Existenzberechtigung mehr (würde nur Drift erzeugen).
+        clearOverride(business.slug);
+        setHasLocalOverride(false);
+        setSavedAt(new Date());
+        setSavedTo("server");
+        methods.reset(data, { keepDirty: false });
+        return;
+      }
+
+      if (result.kind === "local-fallback") {
+        const ok = setOverride(business.slug, data);
+        if (ok) {
+          setSavedAt(new Date());
+          setSavedTo("local");
+          setHasLocalOverride(true);
+          methods.reset(data, { keepDirty: false });
+        } else {
+          setSubmitMessage("Speichern derzeit nicht möglich.");
+        }
+        return;
+      }
+
+      if (result.kind === "validation") {
+        for (const [path, message] of Object.entries(result.fieldErrors)) {
+          methods.setError(path as keyof BusinessProfile, {
+            type: "server",
+            message,
+          });
+        }
+        setSubmitMessage("Bitte prüfe die markierten Felder.");
+        return;
+      }
+
+      // not-authed / forbidden / fail
+      const msg = userMessageForResult(result);
+      if (msg) setSubmitMessage(msg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -150,19 +220,43 @@ export function BusinessEditForm({ business }: BusinessEditFormProps) {
             </button>
             <button
               type="submit"
-              disabled={!isDirty}
+              disabled={!isDirty || submitting}
               className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               <Save className="h-3.5 w-3.5" aria-hidden />
-              Speichern
+              {submitting ? "Speichere …" : "Speichern"}
             </button>
           </div>
         </div>
 
-        {savedAt ? (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        {savedAt && savedTo === "server" ? (
+          <div
+            role="status"
+            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          >
+            <Cloud className="h-4 w-4" aria-hidden />
+            Gespeichert in der Datenbank. Public-Site zeigt die neuen Werte
+            beim nächsten Aufruf.
+          </div>
+        ) : null}
+        {savedAt && savedTo === "local" ? (
+          <div
+            role="status"
+            className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
             <CheckCircle2 className="h-4 w-4" aria-hidden />
-            Gespeichert. Neuladen der Seite zeigt die übernommenen Werte.
+            Lokal gespeichert (Demo-Modus, kein Auth-Backend aktiv).
+            Neuladen der Seite zeigt die übernommenen Werte nur in diesem
+            Browser.
+          </div>
+        ) : null}
+        {submitMessage ? (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+          >
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-none" aria-hidden />
+            {submitMessage}
           </div>
         ) : null}
 
