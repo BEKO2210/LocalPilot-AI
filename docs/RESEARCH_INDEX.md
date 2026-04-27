@@ -90,6 +90,13 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### generateStaticParams + dynamicParams (Code-Session 47)
+- [Next.js – generateStaticParams Functions Reference](https://nextjs.org/docs/app/api-reference/functions/generate-static-params) — partielles Prerendern, Memoization (47).
+- [Next.js – Dynamic Routes (file-conventions)](https://nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes) — `dynamicParams=true`-Default-Verhalten (47).
+- [Next.js Discussion #81155 – dynamicParams not working with Next 15/16](https://github.com/vercel/next.js/discussions/81155) — Caveats bei Cache-Components (47).
+- [Next.js – Static Exports Guide](https://nextjs.org/docs/app/guides/static-exports) — Pflicht-Slug-Liste fürs Static-Export (47).
+- [Next.js – Empty generateStaticParams with Cache Components](https://nextjs.org/docs/messages/empty-generate-static-params) — leere Arrays brechen den Build (47).
+
 ### Supabase-js v2 FK-Embed Type-Inferenz (Code-Session 46)
 - [Supabase Docs – Querying Joins and Nested tables](https://supabase.com/docs/guides/database/joins-and-nesting) — `!inner`-Modifier, Single-vs-Array-Verhalten je FK-Richtung (46).
 - [Supabase JS API – select](https://supabase.com/docs/reference/javascript/select) — Embed-Syntax, conservative Array-Typing-Default (46).

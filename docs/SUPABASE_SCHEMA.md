@@ -404,7 +404,24 @@ mit `mapMembershipRow`, das defensiv beide Embed-Formen normalisiert:
 
 `unwrapEmbed` greift in beiden Fällen das erste Objekt heraus.
 
+### Page-Loader (Code-Session 47)
+
+`src/lib/page-business.ts` ist die zentrale Server-Side-Brücke
+zwischen Page-Komponenten und `BusinessRepository`:
+
+- `loadBusinessOrNotFound(slug)` — wirft `notFound()` aus
+  `next/navigation`, wenn der Repository-Pfad nichts liefert.
+  Für Server-Component-`page.tsx`-Hauptpfade.
+- `listSlugParams()` — direkt verwendbar in
+  `generateStaticParams`. Liefert `[{slug:"…"}, …]` aus dem
+  konfigurierten Repository.
+
+Die Public-Site `/site/[slug]/*` (Hauptseite, Datenschutz,
+Impressum) ist seit Session 47 vollständig auf diesen Pfad
+umgestellt. Dashboard-Pages folgen in Session 48.
+
 ### Roadmap
 
-- **Session 47+** — Dashboard-Read aus Supabase (Public-Site und Dashboard-UI lesen aus DB statt Mock, sobald `LP_DATA_SOURCE=supabase`), Onboarding-Wizard mehrstufig, Member-Verwaltung.
+- **Session 48** — `/dashboard/[slug]/*` (9 Pages: layout, page, business, services, leads, ai, reviews, social, settings) auf den Repository-Pfad umstellen.
+- **Session 49+** — Onboarding-Wizard mehrstufig, Member-Verwaltung, Slug-Live-Check, Default-Redirect bei einem Betrieb.
 - **0008+** — Storage-Buckets für Logos und Hero-Bilder, Backup-Policy.

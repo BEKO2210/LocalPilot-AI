@@ -137,6 +137,15 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Cards mit Rolle/Tier/Publish-Badges, Empty-State CTA auf
   `/onboarding`. Damit ist die End-to-End-Schleife geschlossen:
   Login → Onboarding → Account → Dashboard.
+- 47: Public-Site auf Repository umgestellt ✅. Drei Pages
+  (`/site/[slug]`, `/site/[slug]/datenschutz`, `/site/[slug]/
+  impressum`) lesen jetzt über `loadBusinessOrNotFound` aus dem
+  konfigurierten Repository (Mock im Static-Export, Supabase
+  in SSR mit `LP_DATA_SOURCE=supabase`). `generateStaticParams`
+  ist async und liefert Slugs aus dem Repository. Mit
+  `dynamicParams=true` (Default) werden neue Slugs nach
+  Build-Zeit on-demand gerendert. Dashboard-Migration folgt in
+  Session 48 (9 Pages).
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 

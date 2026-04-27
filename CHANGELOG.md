@@ -7,18 +7,49 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 47: Dashboard-Read aus Supabase** — sobald
-  `LP_DATA_SOURCE=supabase` aktiv ist, lesen `/dashboard/[slug]/...`
-  und `/site/[slug]/...` aus DB statt Mock. RLS aus 0007 trägt die
-  Owner-Sichtbarkeit. Schließt die nächste Lücke nach 46: User
-  sieht seinen **echten** Betrieb, nicht nur einen Demo-Mock.
-- Code-Sessions 48+: Slug-Live-Check, Onboarding-Wizard mehrstufig
-  (Adresse + Logo), Multi-Member-Verwaltung, Default-Redirect bei
-  einem Betrieb, Retry-Queue für Lead-`local-fallback`, Storage-
-  Bucket für Logos, Edge-Runtime-Migration, CSRF-Schutz,
-  HTML-Sanitize-Whitelist, Settings-Editor mit Legal-Sektion,
-  Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
-  Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+- **Code-Session 48: Dashboard-Pages auf Repository umstellen**
+  — symmetrisch zu 47, aber für die 9 `/dashboard/[slug]/*`-
+  Pages + Layout. Damit liest auch das Dashboard aus DB.
+- Code-Sessions 49+: Slug-Live-Check, Onboarding-Wizard
+  mehrstufig (Adresse + Logo), Multi-Member-Verwaltung,
+  Default-Redirect bei einem Betrieb, Retry-Queue für Lead-
+  `local-fallback`, Storage-Bucket für Logos, Edge-Runtime-
+  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-
+  Editor mit Legal-Sektion, Impressum-Editor pro Betrieb,
+  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test,
+  **Dependency-Sweep**.
+
+## [0.16.21] – Code-Session 47 – 2026-04-27
+
+Public-Site liest aus Repository statt Mock-Direktzugriff.
+Teil 1 von 2 — Dashboard folgt in Session 48 (Splitting wegen
+Atomar-Limit).
+
+- ✚ `src/lib/page-business.ts` — Server-Side-Brücke zwischen
+  Page-Komponenten und `BusinessRepository`.
+  `loadBusinessOrNotFound`, `listBusinessSlugsForPages`,
+  `listSlugParams`. Default-Repo-Arg für Production, Override
+  für Tests.
+- ✚ `src/tests/page-business.test.ts` (~10 Asserts):
+  vorhandener Slug → Business, unbekannter Slug → `notFound()`-
+  Wurf (Digest-Match), Slug-Liste vollständig, Form-Check,
+  Privacy gegen ENV-Key-Leaks.
+- 🔄 `src/app/site/[slug]/page.tsx` — Mock-Direktzugriff durch
+  `loadBusinessOrNotFound` ersetzt. Metadata-Pfad nutzt das
+  Repository direkt (kein 404 für Metadata), `generateStaticParams`
+  ist async.
+- 🔄 `src/app/site/[slug]/datenschutz/page.tsx` — gleicher Swap.
+- 🔄 `src/app/site/[slug]/impressum/page.tsx` — gleicher Swap.
+
+30/31 Smoketests grün (industry-presets pre-existing red,
+Codex #11). Alle 6 Mock-Slugs werden in beiden Builds weiterhin
+als ●-SSG-Pfade prerendered. Bundle 102 KB shared unverändert.
+
+**Manueller Test** (nach Session 48 vollständig):
+- Static-Pages-Vorschau: identisches Verhalten, Mock-Daten.
+- Vercel + `LP_DATA_SOURCE=supabase` + mindestens ein Eintrag
+  in `businesses`: `/site/<slug>` zeigt DB-Daten. RLS sorgt
+  dafür, dass nur veröffentlichte Betriebe sichtbar sind.
 
 ## [0.16.20] – Code-Session 46 – 2026-04-27
 

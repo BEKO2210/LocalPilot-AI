@@ -5644,3 +5644,66 @@ die Owner-Sichtbarkeit. Damit kann ein User seinen echten
 Betrieb sehen, nicht nur einen Demo-Mock. Vor Storage und Member-
 Verwaltung, weil Read der direkte Folge-Schritt aus 46 ist.
 
+---
+
+## Code-Session 47 – Public-Site liest aus Repository (Teil 1 von 2)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Refactor
+
+**Was**: Beim Plan-Schritt fiel auf, dass „Dashboard + Public-
+Site umstellen" 12 Pages anfasst — über dem Atomar-Limit. Ich
+splitte: **Session 47** macht die drei `/site/[slug]/*`-Pages
+(Hauptseite, Datenschutz, Impressum), **Session 48** macht die
+neun `/dashboard/[slug]/*`-Pages. Vorteil: jede Session hat
+klare Akzeptanz, der Account-Page-CTA „Public-Site" liefert
+sofort echte DB-Daten.
+
+Neuer zentraler Loader `src/lib/page-business.ts` mit
+`loadBusinessOrNotFound` (wirft `notFound()` für unbekannte
+Slugs), `listBusinessSlugsForPages` (Slug-Liste vom Repository)
+und `listSlugParams` (direkt für `generateStaticParams`
+nutzbar).
+
+**Dateien**:
+- ✚ `src/lib/page-business.ts` — Server-Side-Helper. Default-
+  Repo-Argument für Production, Override-Argument für Tests.
+  Kommentar erklärt Static-Export-vs-SSR-Semantik.
+- ✚ `src/tests/page-business.test.ts` (~10 Asserts):
+  vorhandener Slug → Business, unbekannter Slug → `notFound()`-
+  Wurf (Digest enthält `NEXT_NOT_FOUND`/`NEXT_HTTP_ERROR`),
+  Slug-Liste vollständig, `listSlugParams`-Form-Check, Privacy-
+  Smoketest gegen ENV-Key-Leaks im Output.
+- 🔄 `src/app/site/[slug]/page.tsx` — `getMockBusinessBySlug` +
+  `notFound()` ersetzt durch `loadBusinessOrNotFound`. Metadata-
+  Pfad nutzt `getBusinessRepository().findBySlug` direkt
+  (Metadata soll bei unbekanntem Slug nicht 404'en, sondern
+  leeres Metadata zurückgeben — sonst kollidiert das mit dem
+  404-Pfad der Page selbst). `generateStaticParams` ist async.
+- 🔄 `src/app/site/[slug]/datenschutz/page.tsx` — gleicher Swap.
+- 🔄 `src/app/site/[slug]/impressum/page.tsx` — gleicher Swap.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **30/31 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Alle 6 Mock-Slugs werden in beiden Builds weiterhin
+als ●-SSG-Pfade prerendered. Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item teil-abgehakt (Public-Site-Read). 1 neues
+Item für Session 48 (`/dashboard/[slug]/*` analog umstellen,
+9 Pages).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — generateStaticParams
++ dynamicParams.
+
+**Manueller Test** (nach Session-48 wirksam):
+- Static-Pages-Vorschau: identisches Verhalten wie vorher,
+  Mock-Daten.
+- Vercel + `LP_DATA_SOURCE=supabase` + Migrationen 0001–0007
+  + mindestens ein Eintrag in `businesses`: `/site/<slug>`
+  zeigt die DB-Daten statt Mock. RLS sorgt dafür, dass nur
+  veröffentlichte Betriebe sichtbar sind.
+
+**Nächste Session**: Code-Session 48 = **Dashboard-Pages auf
+Repository umstellen**. Symmetrisch zu 47, aber für die 9
+`/dashboard/[slug]/*`-Pages plus den Layout. Damit liest auch
+das Dashboard aus DB. Eine atomare Refactor-Session ohne
+Logik-Änderung — nur konsistente Anwendung des Loader-Patterns.
+

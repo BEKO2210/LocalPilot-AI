@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import {
   PublicBenefits,
   PublicContact,
@@ -16,13 +15,14 @@ import {
   PublicTeam,
 } from "@/components/public-site";
 import { ThemeProvider } from "@/components/theme";
-import {
-  averageRatingByBusiness,
-  getMockBusinessBySlug,
-  listMockBusinessSlugs,
-} from "@/data";
+import { averageRatingByBusiness } from "@/data";
 import { getPresetOrFallback } from "@/core/industries";
 import { getThemeOrFallback } from "@/core/themes";
+import {
+  listSlugParams,
+  loadBusinessOrNotFound,
+} from "@/lib/page-business";
+import { getBusinessRepository } from "@/core/database/repositories";
 
 type Params = { slug: string };
 type PageProps = {
@@ -30,11 +30,17 @@ type PageProps = {
 };
 
 /**
- * Erzeugt zur Build-Zeit eine statische Seite pro Demo-Slug.
- * Damit funktioniert der Static Export für GitHub Pages – kein Server nötig.
+ * Erzeugt zur Build-Zeit eine statische Seite pro bekanntem Slug.
+ *
+ * Im Static-Export-Build und in SSR mit `LP_DATA_SOURCE=mock` sind
+ * das die Mock-Slugs. In SSR mit `supabase` werden die Slugs aus
+ * der Tabelle `public.businesses` gezogen (RLS-gefiltert). Mit
+ * `dynamicParams = true` (Default) werden zusätzliche Slugs zur
+ * Laufzeit on-demand gerendert — neue Betriebe nach Build-Zeit
+ * funktionieren also auch.
  */
-export function generateStaticParams(): Params[] {
-  return listMockBusinessSlugs().map((slug) => ({ slug }));
+export async function generateStaticParams(): Promise<Params[]> {
+  return listSlugParams();
 }
 
 /**
@@ -45,7 +51,11 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const business = getMockBusinessBySlug(slug);
+  // Hier nutzen wir das Repository direkt (statt
+  // `loadBusinessOrNotFound`), weil Metadata bei unbekanntem Slug
+  // nicht 404'en, sondern einfach leeres Metadata zurückgeben soll —
+  // sonst kollidiert das mit dem 404-Pfad der Page selbst.
+  const business = await getBusinessRepository().findBySlug(slug);
   if (!business) return {};
 
   const preset = getPresetOrFallback(business.industryKey);
@@ -82,8 +92,7 @@ const SECTION_ORDER = [
 
 export default async function PublicSitePage({ params }: PageProps) {
   const { slug } = await params;
-  const business = getMockBusinessBySlug(slug);
-  if (!business) notFound();
+  const business = await loadBusinessOrNotFound(slug);
 
   const preset = getPresetOrFallback(business.industryKey);
   const theme = getThemeOrFallback(business.themeKey);
