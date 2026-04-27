@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -11,12 +12,17 @@ import {
   Link2,
   Loader2,
   Save,
+  Trash2,
 } from "lucide-react";
 import {
   submitSettingsUpdate,
   userMessageForResult,
   type Locale,
 } from "@/lib/business-settings";
+import {
+  submitBusinessDelete,
+  userMessageForResult as userMessageForDeleteResult,
+} from "@/lib/business-delete";
 import type { Business } from "@/types/business";
 
 /**
@@ -96,7 +102,8 @@ export function SettingsForm({ business }: { readonly business: Business }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl space-y-8">
+    <div className="max-w-2xl space-y-10">
+    <form onSubmit={handleSubmit} className="space-y-8">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
           Einstellungen
@@ -249,5 +256,141 @@ export function SettingsForm({ business }: { readonly business: Business }) {
         </button>
       </div>
     </form>
+    <DangerZone slug={business.slug} businessName={business.name} />
+    </div>
+  );
+}
+
+/**
+ * Danger-Zone (Code-Session 69) — Slug-Confirmation gegen
+ * versehentliches Löschen. Erst aktiv, wenn der User den Slug
+ * exakt eintippt. Bei Erfolg redirect auf `/account?stay=1`,
+ * damit die Account-Liste sichtbar bleibt (statt direkt auf
+ * dem nicht-mehr-existierenden Dashboard zu landen).
+ */
+function DangerZone({
+  slug,
+  businessName,
+}: {
+  readonly slug: string;
+  readonly businessName: string;
+}) {
+  const router = useRouter();
+  const [confirmInput, setConfirmInput] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteFeedback, setDeleteFeedback] = useState<{
+    kind: "ok" | "err";
+    message: string;
+  } | null>(null);
+
+  const canDelete = confirmInput.trim() === slug && !deleting;
+
+  async function handleDelete() {
+    if (!canDelete) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        `Wirklich „${businessName}" löschen? Diese Aktion kann nicht rückgängig gemacht werden — alle Leads, Services und Bilder gehen verloren.`,
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    setDeleteFeedback(null);
+    const result = await submitBusinessDelete(slug);
+    const msg = userMessageForDeleteResult(result);
+    if (result.kind === "server") {
+      setDeleteFeedback({
+        kind: "ok",
+        message: msg ?? "Betrieb gelöscht.",
+      });
+      // Kurz das Erfolgs-Feedback zeigen, dann auf Account.
+      // `?stay=1` umgeht den Auto-Redirect (Session 63), falls
+      // der User noch andere Betriebe hat.
+      setTimeout(() => router.push("/account?stay=1"), 1200);
+      return;
+    }
+    setDeleting(false);
+    setDeleteFeedback({
+      kind: "err",
+      message: msg ?? "Löschen fehlgeschlagen.",
+    });
+  }
+
+  return (
+    <section className="rounded-2xl border-2 border-rose-200 bg-rose-50 p-6">
+      <div className="flex items-start gap-3">
+        <AlertTriangle
+          className="mt-0.5 h-5 w-5 flex-none text-rose-700"
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold text-rose-900">
+            Gefahrenzone
+          </h2>
+          <p className="mt-1 text-sm text-rose-900/90">
+            Diesen Betrieb dauerhaft löschen. Alle zugehörigen Daten
+            (Leistungen, Leads, Bilder, Bewertungs-Anfragen) werden
+            entfernt und können nicht wiederhergestellt werden.
+          </p>
+          <div className="mt-4 space-y-3">
+            <label
+              htmlFor="delete-confirm-slug"
+              className="block text-xs font-medium text-rose-900"
+            >
+              Tippe zur Bestätigung den Slug{" "}
+              <code className="rounded bg-white/70 px-1.5 py-0.5 font-mono text-[12px] text-rose-900">
+                {slug}
+              </code>{" "}
+              ein:
+            </label>
+            <input
+              id="delete-confirm-slug"
+              type="text"
+              value={confirmInput}
+              onChange={(e) => setConfirmInput(e.target.value)}
+              placeholder={slug}
+              autoComplete="off"
+              className="w-full rounded-lg border border-rose-300 bg-white px-3 py-2 font-mono text-sm shadow-soft outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-200"
+            />
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={!canDelete}
+              className="inline-flex items-center gap-2 rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white transition-opacity hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Lösche …
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  Betrieb dauerhaft löschen
+                </>
+              )}
+            </button>
+            {deleteFeedback ? (
+              <p
+                role={deleteFeedback.kind === "err" ? "alert" : "status"}
+                className={`flex items-start gap-2 text-xs font-medium ${
+                  deleteFeedback.kind === "ok"
+                    ? "text-emerald-800"
+                    : "text-rose-900"
+                }`}
+              >
+                {deleteFeedback.kind === "ok" ? (
+                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden />
+                ) : (
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden />
+                )}
+                {deleteFeedback.message}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

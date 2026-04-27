@@ -16,6 +16,7 @@
 
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/core/database/supabase-server";
+import { enforceCsrf } from "@/lib/csrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,9 @@ const SAFE_PATH_RE = /^\/[a-zA-Z0-9_\-/]*$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: Request): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   let body: unknown;
   try {
     body = await req.json();

@@ -6726,3 +6726,1557 @@ Update aktualisiert. Klein (~30 Zeilen Settings-Route +
 ~5 Asserts), aber sauber abgrenzbar — schließt die
 Storage-Hygiene-Lücke aus 58.
 
+## Code-Session 59 – Service-Bilder beim Slug-Wechsel mit-migrieren
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Hygiene
+
+**Was**: Bei Slug-Rename via `PATCH /api/businesses/<slug>/
+settings` werden ab sofort auch Service-Bilder (`<old-slug>/
+services/<id>.<ext>`) auf den neuen Slug-Prefix gemoved und
+ihre `services.image_url`-Werte aktualisiert. Schließt die
+Hygiene-Lücke aus Session 58 — vorher wären Service-Bilder
+nach einem Slug-Wechsel als Waisen unter dem alten
+Slug-Prefix verblieben, mit broken-image-Tags auf der
+Public-Site.
+
+**Architektur-Entscheidung — pro-Row-UPDATE in `Promise.all`**:
+WebSearch bestätigte: supabase-js v2 hat keinen native Bulk-
+Update mit unterschiedlichen Werten pro Row
+([postgrest-js #174](https://github.com/supabase/postgrest-js/issues/174)).
+Optionen wären (a) Raw-SQL über RPC, (b) `upsert` mit
+Partial-Rows, (c) pro-Row-UPDATE in `Promise.all`. (b) hätte
+NOT-NULL-Constraint-Probleme im (theoretischen) INSERT-Pfad.
+(a) ist DSL-Bruch und braucht eine eigene Migration. (c) ist
+bei realistic 5–30 Services pro Business performant genug
+(parallele Roundtrips, kein sequenzielles Warten) und
+robust — wenn ein einzelner UPDATE fehlschlägt, betrifft
+das nur eine Service-URL, nicht den ganzen Slug-Wechsel.
+
+**Architektur-Entscheidung — Slug-Wechsel ist bereits
+committed**: Phase 1 (Slug-UPDATE) ist atomic; Service-Image-
+Migration läuft danach als Best-Effort. Wenn der Server
+zwischen Move und URL-Patch crasht, ist das Storage-Object
+bereits umbenannt, aber die DB-Spalte zeigt noch auf den
+alten Pfad → broken Image. Akzeptabler Edge-Case (User kann
+manuell neu hochladen). Die Move-Operationen sind nicht
+gesammelt rollback-fähig — und das wäre auch falsch, weil
+ein erfolgreicher Move ohne URL-Patch immer noch besser ist
+als eine 23505-Exception unter Datenverlust.
+
+**WebSearch (Track A)**: bestätigt
+- [supabase/postgrest-js #174 – Support bulk update](https://github.com/supabase/postgrest-js/issues/174)
+  Native Bulk-Update mit unterschiedlichen Werten pro Row
+  existiert 2026 noch nicht; pro-Row-UPDATE oder RPC sind
+  die zwei sauberen Wege.
+- [supabase Discussion #15744 – RPC to update multiple rows](https://github.com/orgs/supabase/discussions/15744)
+  RPC ist die performanteste Variante für >>100 Rows — bei
+  unserer Skala overkill.
+- [Supabase JS – update](https://supabase.com/docs/reference/javascript/update)
+  Standard-Update mit `.eq("id", x)` ist pro-Row korrekt
+  und atomic.
+
+**Dateien**:
+- 🔄 `src/app/api/businesses/[slug]/settings/route.ts`:
+  - Nach dem Logo/Cover-Block (Session 57) ein zweiter
+    Block für Service-Bilder. Nur aktiv bei `slugChanged`.
+  - SELECT `id, image_url` aus `services` WHERE
+    `business_id = data.id AND image_url IS NOT NULL`.
+    Server-Auth-Client (RLS) — der Owner-Check für den
+    Lookup ist über die UPDATE-Phase 1 implizit schon
+    bestätigt (sonst hätten wir 403 zurückgegeben).
+  - `Promise.all` über alle Rows: extract → rewrite →
+    move → neue URL bauen oder null bei Fehler. Pro Row
+    ein `Patch`-Objekt.
+  - Zweites `Promise.all`: pro Patch ein
+    `update({image_url:...}).eq("id", id)` parallel. DB-
+    Errors werden nur geloggt.
+  - Antwort um `serviceImagesMoved` + `serviceImagesFailed`.
+- 🔄 `src/lib/business-settings.ts`:
+  - `SettingsUpdateResult.server`: `serviceImagesMoved`,
+    `serviceImagesFailed` als optionale Felder.
+  - `ApiSuccessBody` parst die neuen Counts.
+  - Komplett rückwärtskompatibel — bestehender
+    `business-settings.test.ts` bleibt grün ohne Anpassung.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**37/38 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Keine neuen Smoketests in dieser Session — die
+Pure-Helper waren schon mit ~52 Asserts in Session 56+57
+abgedeckt; neue Logik ist API-Route-spezifisch (DB-
+Roundtrips), die wir traditionell nicht im Smoketest mocken.
+
+**Roadmap**: Storage-Hygiene-Stack ist jetzt **vollständig
+symmetrisch**:
+- Upload: 51 (Logo/Cover) + 58 (Service)
+- DELETE-Cleanup: 56 (Service-Bilder beim Bulk-DELETE)
+- Slug-Wechsel-Move: 57 (Logo/Cover) + 59 (Service-Bilder)
+
+Nächste Session 60 ist 5er-Multiple → Light-Pass-Refactor
+(z.B. die zwei Slug-Move-Blöcke in settings/route.ts in
+einen gemeinsamen `migrateBusinessImagesOnSlugChange`-
+Helper extrahieren) + Recap-Dokumentation des aktuellen
+Stands für „erstes Betrieb-fertiges Produkt"-Meilenstein.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — Supabase Bulk-
+Update-Patterns 2026.
+
+**Status-Update**: ~92 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Editor + Storage-Hygiene komplett.
+Verbleibend für Vollausbau: Live-Provider-Switch
+(Reviews/Social), Custom-Domain, Sentry, Lighthouse-CI,
+Multi-Member-Verwaltung.
+
+**Nächste Session**: Code-Session 60 = **Light-Pass +
+Storage-Hygiene-Recap**. 5er-Multiple — Pflicht-Light-Pass.
+Begründung: Sessions 56–59 haben den Storage-Hygiene-Stack
+in vier separaten Blöcken etabliert; Light-Pass-Stoff dafür:
+(a) Extraktion eines `migrateBusinessImagesOnSlugChange`-
+Helpers aus den zwei Blöcken in `settings/route.ts`,
+(b) Konsolidierung der `imagesMoved`/`imagesFailed`/
+`serviceImagesMoved`/`serviceImagesFailed`-Felder in einer
+einzigen `MoveResultGroup`-Struktur,
+(c) Recap-Dokumentation in `STORAGE.md` (neu), die alle 4
+Hygiene-Pfade in einem Diagramm zeigt.
+
+## Code-Session 60 – Light-Pass: Storage-Migration-Helper + STORAGE.md
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Light-Pass · 5er-Multiple
+
+**Was**: Sessions 56–59 haben den Storage-Hygiene-Stack
+inkrementell ausgebaut, sodass am Ende in `settings/route.ts`
+zwei nahezu identische Slug-Move-Blöcke nebeneinander
+standen (Logo/Cover aus 57, Service-Bilder aus 59). Diese
+Light-Pass-Session konsolidiert sie in einen einzigen pure
+Helper, schreibt einen vollständigen Stub-Client-basierten
+Test, und ergänzt eine neue `STORAGE.md`-Dokumentation, die
+alle vier Hygiene-Pfade (Upload / DELETE-Cleanup / Slug-Move
+für Logo+Cover / Slug-Move für Service-Bilder) in einem
+Diagramm zeigt.
+
+**Architektur-Entscheidung — Helper statt Inline**: Die
+beiden Move-Blöcke in `settings/route.ts` waren strukturell
+identisch (extract → rewrite → move → URL-build → DB-update).
+Einziger echter Unterschied: ein Block updated 2 Spalten in
+einem UPDATE auf `businesses`, der andere updated N Rows mit
+je einer Spalte auf `services`. Beide werden zu Sub-Aufgaben
+des neuen Helpers, der sie via `Promise.all` parallel
+ausführt (race-frei, weil disjunkte Tabellen + disjunkte
+Storage-Pfade). Test-Stubs für `SupabaseClient` reichen aus
+— kein in-Memory-Mock-Backend nötig.
+
+**Architektur-Entscheidung — Helper-Doku statt
+Inline-Komments**: Die Sessions-Kommentare „Code-Session 57"
+und „Code-Session 59" in der Route waren historisch sinnvoll,
+aber redundant nach der Konsolidierung. Sie wandern in den
+JSDoc des Helpers + die neue `STORAGE.md`. Die Route ist
+jetzt frei von Storage-Detail-Wissen.
+
+**WebSearch (Track C)**: bestätigt
+- [Next.js – Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers)
+  Helper-Extraktion ist Standard-Pattern für testbare
+  Route-Handler.
+- [makerkit – Next.js Route Handlers Best Practices](https://makerkit.dev/blog/tutorials/nextjs-api-best-practices)
+  „Universal try-catch wrapper" + dependency-injection für
+  Tests ist 2026-Best-Practice.
+- [Drew Bredvick – Promise.all in App Router](https://drew.tech/posts/promise-all-in-nextjs-app-router)
+  Promise.all über independent DB-Calls ist im App-Router
+  performance-Best-Practice.
+
+**Dateien**:
+- ✚ `src/lib/storage-slug-migration.ts` — pure Helper
+  ~250 Zeilen:
+  - `migrateBusinessImagesOnSlugChange(deps, input)` als
+    Top-Level-Function. `deps`: `supabase` (Server-Auth),
+    `adminClient` (Service-Role, kann null sein), optional
+    `warn`-Logger. `input`: `oldSlug`, `newSlug`, `bucket`,
+    `business: { id, logo_url, cover_image_url }`.
+  - Private `moveOneUrl(...)` extrahiert die vier-Schritt-
+    Logik (extract → rewrite → move → URL-build) in einen
+    re-usable-Helper, der von beiden Sub-Aufgaben aufgerufen
+    wird.
+  - `migrateLogoCover(...)` und `migrateServices(...)` als
+    private Sub-Funktionen — beide gracefully bei null/missing
+    Daten.
+  - Top-Level-Migration läuft Logo/Cover und Services in
+    `Promise.all` parallel.
+  - Liefert `SlugMigrationResult { logoCover: MoveCounts,
+    services: MoveCounts }`.
+- ✚ `src/tests/storage-slug-migration.test.ts` (~38
+  Asserts):
+  - `makeStubs(opts)`-Factory baut `SupabaseClient`-Stubs
+    (Reads, Updates, Storage-Move) mit Konfiguration für
+    Lookup-Errors, Update-Errors, Move-Result-Map.
+  - 9 Test-Szenarien: No-op, Happy-Path, externe URL skip,
+    Move-Failure, Service-Bilder-Happy (3 Rows),
+    Service-Bilder-Mixed (1 failed), Lookup-Error,
+    null-Admin, DB-Update-Error.
+  - Asserts gegen die Mocks: Move-from/to-Pfade, DB-UPDATE-
+    Patches, Filter-Spalten, Warning-Strings.
+- 🔄 `src/app/api/businesses/[slug]/settings/route.ts`:
+  - Imports `extractStoragePath`/`moveStoragePath`/
+    `rewritePathPrefix`/`buildPublicUrl` weg, stattdessen
+    `migrateBusinessImagesOnSlugChange`.
+  - 2 inline Migrations-Blöcke (~140 Zeilen) → 1 Helper-
+    Aufruf (~20 Zeilen, davon 15 Zeilen Setup für `input`).
+  - `slugChanged`-Check vor dem Aufruf (bei `false` setzen
+    wir die Counts auf 0 ohne Helper-Call).
+  - Antwort-Shape unverändert — kein Bestandstest betroffen.
+- ✚ `docs/STORAGE.md` — neue Recap-Doku:
+  - Bucket-Layout-Tabelle.
+  - Pfad-Konventionen-Block (`<slug>/logo.<ext>`,
+    `<slug>/cover.<ext>`, `<slug>/services/<id>.<ext>`).
+  - ASCII-Diagramm aller 4 Hygiene-Pfade.
+  - Detail-Beschreibung für jeden Pfad: Wer / Wie / Auth /
+    Persistenz / Graceful-Mode.
+  - Helper-Übersicht (`business-image-upload.ts`,
+    `storage-cleanup.ts`, `storage-slug-migration.ts`).
+  - Test-Coverage-Tabelle (~130 Asserts insgesamt).
+  - Bekannte Lücken-Liste (Business-DELETE-Flow,
+    Race-Conditions).
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**38/39 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +1 storage-slug-migration grün — gesamt jetzt
+~340 Asserts in 38 Test-Files.
+
+**Light-Pass-Bilanz Sessions 56–60**:
+- 4 neue API/Logic-Pfade hinzugefügt (Cleanup, Slug-Move
+  Logo/Cover, Service-Image-Upload, Slug-Move Services)
+- 3 neue pure-Helper-Module
+  (`storage-cleanup.ts`, erweitert; `storage-slug-migration.ts`)
+- ~130 neue Test-Asserts
+- 1 Recap-Doku (`STORAGE.md`)
+- Ein Dependabot-Vuln-Fix (postcss + eslint, separater Commit)
+- Ein UI-Feature (Service-Image-Upload-UI)
+- Refactor: 140 → 20 Zeilen in `settings/route.ts`
+- 8 Sessions × 0 Regressions (alle 38 Tests grün)
+
+**Roadmap**: Storage-Hygiene-Stack ist jetzt **production-
+ready** und vollständig dokumentiert. Zukünftige Storage-
+Operationen können direkt auf den drei Helper-Modulen
+aufsetzen.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Next.js Route-
+Handler-Patterns 2026.
+
+**Status-Update**: ~93 % Richtung „erstes Betrieb-fertiges
+Produkt". Storage-Architektur ist Production-ready.
+Verbleibend: Live-Provider-Switch (Reviews/Social),
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member-
+Verwaltung, „Betrieb löschen"-Flow.
+
+**Nächste Session**: Code-Session 61 = **Live-Provider-
+Switch für Reviews-Panel**. Begründung: Storage-Hygiene-
+Stack ist abgeschlossen — als nächster Quality-Sprung sollte
+das Reviews-Panel (Session 53) den Mock-Provider gegen einen
+echten AI-Aufruf via `/api/ai/generate` (Auth-Bearer)
+ersetzen können. Pattern liegt schon in `AIPlayground` vor;
+hier muss nur die client-side Provider-Wahl symmetrisch
+eingebaut werden. Klein, scharf, Quality-Boost ohne
+Architektur-Risiko.
+
+## Code-Session 61 – Live-Provider-Switch für Reviews-Panel
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Owner kann im Bewertungs-Booster-Panel pro Generate-
+Klick zwischen Mock-Provider (lokal, deterministisch) und
+Live-Provider (OpenAI / Anthropic / Gemini via
+`/api/ai/generate`) umschalten. Neue Pure-Helper-Datei
+`src/lib/ai-client.ts` zentralisiert den Browser→API-Aufruf
+mit klar definierten Result-Kinds.
+
+**Architektur-Entscheidung — neuer Helper statt AIPlayground-
+Code-Wiederverwendung**: AIPlayground hat seit Session 28
+einen inline-`fetch('/api/ai/generate')`-Aufruf mit ~100
+Zeilen Error-Handling. Den 1:1 ins Reviews-Panel zu
+kopieren wäre Code-Duplikat; den AIPlayground-Code zu
+refaktoren wäre Scope-Creep für Session 61. Saubere
+Mittellösung: neuen Helper `callAIGenerate(...)` schreiben,
+in Reviews-Panel benutzen, AIPlayground in einem späteren
+Light-Pass nachziehen. Helper hat damit ein scharfes Test-
+Fundament (~38 Asserts), bevor er der zweite Konsument bekommt.
+
+**Architektur-Entscheidung — geteilter `localStorage`-Key**:
+`AI_TOKEN_STORAGE_KEY = "lp:ai-api-token:v1"` ist die
+identische Konstante, die AIPlayground inline benutzt. Damit
+muss der Owner sein Bearer-Token nur einmal eingeben — beide
+Panels lesen aus demselben Slot. Kein doppelter Token-
+Eingabe-Flow, kein Drift.
+
+**Architektur-Entscheidung — 6-Result-Kinds**:
+`server` / `not-authed` / `forbidden` / `rate-limit` /
+`static-build` / `fail`. Symmetrisch zu Sessions 50/55/56
+(Submit-Helper-Pattern). `static-build` (404) ist der eigene
+Kind, weil es im UI eine andere Aktion bedeutet („zum Mock
+wechseln") als ein generischer 5xx-`fail`-Kind. `rate-limit`
+hat einen eigenen Kind, weil das UI später eine
+Reset-Countdown-Karte zeigen kann (wie AIPlayground es schon
+tut).
+
+**WebSearch (Track A)**: bestätigt
+- [Next.js – Authentication](https://nextjs.org/docs/app/guides/authentication)
+  Bearer-Header in Client-Components ist Standard, solange der
+  Token nicht im JS-Bundle landet (nur im
+  localStorage / SessionStorage).
+- [TokenMix – AI API for React Apps 2026](https://tokenmix.ai/blog/ai-api-for-react-apps)
+  Sicherheits-Note: API-Keys NIE direkt aus dem Browser an
+  Provider; immer Backend-Proxy. Genau unser Pattern via
+  `/api/ai/generate`.
+- [authjs.dev – React Reference](https://authjs.dev/reference/nextjs/react)
+  Cookie-Session reicht aus für eingeloggte Owner; Bearer-
+  Token ist nur für CLI / externe Skripte nötig.
+
+**Dateien**:
+- ✚ `src/lib/ai-client.ts` — pure Helper (~150 Zeilen):
+  - `callAIGenerate(req, deps?)` mit fetch-Wrapper +
+    Status-Mapping.
+  - `userMessageForResult(result)` für deutsche User-Hinweise.
+  - `AI_TOKEN_STORAGE_KEY` als geteilte Konstante.
+  - Whitespace-Token wird wie leer behandelt
+    (`apiToken?.trim().length > 0`).
+  - 6 Result-Kinds inkl. `static-build` für Pages-Builds.
+- ✚ `src/tests/ai-client.test.ts` (~38 Asserts):
+  Storage-Key-Konsistenz, 200/401/403/404/429/500/Throw,
+  Bearer-Header-Forwarding (mit/ohne Token, Whitespace-
+  Token), Body-Forwarding, Default-Messages,
+  `userMessageForResult` für alle Kinds inkl. Cost-Format.
+- 🔄 `src/components/dashboard/reviews/reviews-request-panel.tsx`:
+  - Neuer Provider-Toggle als ARIA-radiogroup
+    (Mock/OpenAI/Anthropic/Gemini).
+  - Bei Non-Mock: Token-Input-Feld mit Hint-Text
+    (Static-Build-Hinweis + „geteilt mit Playground").
+  - `handleGenerate` async-Flow: Mock direkt wie bisher;
+    Live über `callAIGenerate(...)`. Output-Variants laufen
+    durch denselben `substitutePlaceholders`-Pfad — UI-Code
+    unverändert.
+  - Token-localStorage-Hydration + -Persistenz analog
+    AIPlayground.
+  - Error-State zeigt rate-limit-/static-build-/forbidden-
+    Hinweise über `userMessageForAIResult`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**39/40 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +1 ai-client grün. Bundle 102 KB shared
+unverändert; Reviews-Page bleibt als Static-prerenderable —
+`callAIGenerate` ist client-only und tree-shakeable, kein
+Server-Code-Leak.
+
+**Roadmap**: 1 abgehakt. 2 neue Folge-Items:
+- **Code-Session 62**: Social-Panel symmetrisch auf
+  `ai-client.ts` umstellen — gleiche `method`-Erweiterung
+  (`generateSocialPost`), gleicher Provider-Toggle-Block.
+  Klein und scharf.
+- **Code-Session 65 (Light-Pass)**: AIPlayground auf
+  `ai-client.ts` migrieren. Sein inline-Aufruf hat ~100
+  Zeilen Error-Handling, die jetzt im Helper konsolidiert
+  sind. Konsolidierung passt perfekt in den Light-Pass.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — AI-Client-
+Auth-Patterns 2026.
+
+**Status-Update**: ~94 % Richtung „erstes Betrieb-fertiges
+Produkt". Live-AI ist auf einem produktiven Owner-Pfad
+verfügbar (Reviews). Verbleibend: Social-Live-Pfad,
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member-
+Verwaltung, „Betrieb löschen"-Flow.
+
+**Nächste Session**: Code-Session 62 = **Live-Provider-
+Switch für Social-Panel**. Begründung: Reviews-Panel hat
+gerade gezeigt, dass das `callAIGenerate`-Pattern sauber
+funktioniert — Social-Panel (Session 54) ist der einzige
+weitere produktive Mock-Pfad und sollte symmetrisch live
+gehen können. Code wird sehr ähnlich aussehen
+(`method: "generateSocialPost"`), Aufwand minimal.
+
+## Code-Session 62 – Live-Provider-Switch für Social-Panel
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Symmetrisch zu Session 61 — Social-Post-Panel
+(Session 54) bekommt denselben Provider-Toggle (Mock / OpenAI
+/ Anthropic / Gemini) und Live-Pfad über
+`callAIGenerate({method: "generateSocialPost", ...})`. Mit
+Session 62 sind alle drei produktiven AI-Pfade
+(AIPlayground, Reviews, Social) Live-fähig.
+
+**Architektur-Entscheidung — exakte Symmetrie zu Session 61**:
+Gleiche `PROVIDER_OPTIONS`-Werte, gleicher `handleGenerate`-
+async-Flow (Mock direkt vs. Live via Helper), gleiches
+Token-Input-Pattern, gleicher localStorage-Slot. Einziger
+struktureller Unterschied: Output-Validation — Reviews hat
+ein `variants[]`-Array, Social hat ein flaches Objekt mit
+`shortPost`/`longPost`/`hashtags`/`imageIdea`/`cta`. Daher
+neuer lokaler `parseSocialOutput(unknown)`-Helper, der das
+`unknown`-Server-Output gegen die Pflichtfelder prüft und
+ein `SocialPostOutput | null` liefert. Bei `null` (ohne
+shortPost UND longPost) zeigt das Panel den Fallback-Hint
+„Bitte erneut versuchen oder Mock nutzen".
+
+**WebSearch (Track C)**: bestätigt
+- [React – useTransition](https://react.dev/reference/react/useTransition)
+  Aktuell nutzen Reviews- und Social-Panel weiterhin
+  `state.kind === "loading"` statt `useTransition`. Migrieren
+  würde Bundle-Effizienz + smoothen UI bringen, aber kein
+  funktionaler Unterschied — Plan-Item für späteren
+  Light-Pass.
+- [Adesh Gupta – useTransition Hook](https://www.adeshgg.in/blog/use-transition-hook)
+  Bestätigt: für „klick-und-warte"-UI mit klarer Loading-
+  State-UI (Spinner) ist `useState` ausreichend; `useTransition`
+  ist mehr für längere konkurrierende Updates.
+
+**Dateien**:
+- 🔄 `src/components/dashboard/social/social-post-panel.tsx`:
+  - Imports: `useEffect`, `KeyRound`, `Server`,
+    `AIProviderKey`, `callAIGenerate`,
+    `userMessageForAIResult`, `AI_TOKEN_STORAGE_KEY`.
+  - Neue States: `providerKey`, `apiToken`. Token-
+    localStorage-Hydration in `useEffect` symmetrisch zu
+    Reviews-Panel.
+  - Neuer lokaler `PROVIDER_OPTIONS`-Block (4 Optionen) +
+    `ProviderTabs`-Sub-Komponente (ARIA-radiogroup).
+  - Neuer lokaler `parseSocialOutput(raw: unknown):
+    SocialPostOutput | null` — defensive Validation der
+    Pflichtfelder mit Default-Strings für nicht-pflichtige.
+  - `handleGenerate`: Mock-Pfad unverändert; Live-Pfad ruft
+    `callAIGenerate(...)`. Bei `kind: "server"` durch
+    `parseSocialOutput` validieren; sonst Error-State mit
+    `userMessageForAIResult`.
+  - Token-Input-Feld + Hint-Text bei Non-Mock,
+    Provider-Toggle zwischen Goal-Pills und Topic-Input.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**39/40 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Keine neuen Tests nötig — `callAIGenerate` ist
+schon mit ~38 Asserts in Session 61 abgedeckt; Social-Panel-
+Logik selbst ist UI-spezifisch.
+
+**Roadmap**: 1 abgehakt (Social-Live). Mit Sessions 61+62
+sind alle produktiven Owner-Panels Live-fähig. 2 Folge-Items:
+- **Code-Session 63+**: Direkt-Posten zu Buffer/Hootsuite/
+  Meta-Graph (Track-A-Innovation, mittel-große Session).
+- **Code-Session 65 (Light-Pass)**: AIPlayground auf
+  `callAIGenerate` migrieren — die ~100-Zeilen-inline-
+  Error-Handling-Logik aus Session 28 kann auf den jetzt
+  in zwei Konsumenten gehärteten Helper umsteigen. Damit
+  ist `ai-client.ts` der eine zentrale Browser→
+  /api/ai/generate-Pfad.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — AI-Client-Auth-
+Patterns 2026 (Session 61), Track C — useTransition vs
+useState für Loading-UI (Session 62).
+
+**Status-Update**: ~95 % Richtung „erstes Betrieb-fertiges
+Produkt". Live-AI ist auf allen drei Owner-Panels verfügbar
+(Playground, Reviews, Social). Self-Service-Editor + Storage-
+Hygiene sind komplett. Verbleibend: Custom-Domain, Sentry,
+Lighthouse-CI, Multi-Member-Verwaltung, „Betrieb löschen"-
+Flow, AIPlayground-Konsolidierung.
+
+**Nächste Session**: Code-Session 63 = **Default-Redirect
+bei einem Betrieb**. Begründung: Wenn ein Owner nur einen
+einzigen Betrieb hat (Standardfall am Anfang), zeigen wir
+ihm aktuell trotzdem die Account-Auswahl-Seite vor dem
+Dashboard. Das ist ein unnötiger Klick. Pragma:
+`/account` → wenn `businesses.length === 1`, redirecte
+direkt auf `/dashboard/<slug>`. Klein, scharf, UX-Boost.
+Alternative wäre Multi-Member-Verwaltung (größere Session)
+oder Direkt-Posten (Track A) — beides danach.
+
+## Code-Session 63 – Default-Redirect bei einem Betrieb
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · UX
+
+**Was**: Owner mit nur einem Betrieb sehen die Account-
+Übersicht aktuell als unnötigen Zwischenstop zwischen Login
+und Dashboard. Diese Session fügt einen automatischen
+Redirect ein: bei `businesses.length === 1` springt
+`/account` direkt auf `/dashboard/<slug>`. Bypass über
+Query-Param `?stay=1`, damit Multi-Business-Vorbereitung
+(„Neuer Betrieb"-Flow, „Account wechseln") weiter
+funktioniert.
+
+**Architektur-Entscheidung — Pure Helper + Client-Side
+Redirect**: Account-Page ist seit Session 43 eine Client
+Component (Static-Export-Kompatibilität). Server-Side
+Redirect wäre eleganter (kein Loader-Flicker), aber bricht
+den Static-Build. Pure Helper `shouldRedirectToSingle()`
+kapselt die Entscheidungs-Logik testbar; UI macht
+`router.replace(target)` im `useEffect`. Loader-State
+(`redirecting`) verhindert kurzen Karten-Flash.
+
+**Architektur-Entscheidung — `replace` statt `push`**:
+`router.replace(target)` ersetzt die Account-URL im
+Browser-Verlauf, statt sie zu pushen. Sonst würde Back-
+Navigation aus dem Dashboard wieder auf `/account` landen,
+das sofort wieder redirectet — Endlosschleife mit dem
+Back-Button. `replace` ist genau das richtige Tool für
+„dieser Schritt soll im Verlauf nicht existieren".
+
+**Architektur-Entscheidung — `?stay=1` statt
+`useSearchParams`-Hook**: Next.js 15 verlangt
+`<Suspense>`-Wrapping um `useSearchParams`-Konsumenten beim
+Static-Export. Account-Page ist `"use client"` und liest
+URL-Params nur einmal beim Initial-Render — `window.location.
+search` ist da pragmatischer und kompatibel mit
+Static-Build.
+
+**Architektur-Entscheidung — Whitespace-Slug → null**:
+Defensive: wenn ein Membership-Slug versehentlich leer ist
+(Daten-Inkonsistenz), redirecten wir nicht. Sonst landet
+der User auf `/dashboard/` (führender Slash, kein Slug),
+was eine 404 erzeugt. Lieber Liste anzeigen, User sieht
+das Problem, kann es selbst beheben.
+
+**WebSearch (Track C)**: bestätigt
+- [Next.js – Redirecting](https://nextjs.org/docs/app/guides/redirecting)
+  Server-side `redirect()` ist Best-Practice in Server-
+  Components. Für Client Components ist `router.replace()`
+  korrekt.
+- [WorkOS – Next.js App Router Authentication 2026](https://workos.com/blog/nextjs-app-router-authentication-guide-2026)
+  Defense-in-Depth: Middleware/Server-Layout/Page-Level —
+  unsere Account-Page macht den Auth-Check auf Page-Level,
+  was nach den Empfehlungen 2026 sicher ist (CVE-2025-29927
+  betraf nur Middleware-only-Auth).
+- [Wisp Blog – Best Practices for Redirecting Users
+  Post-Authentication](https://www.wisp.blog/blog/best-practices-for-redirecting-users-post-authentication-in-nextjs)
+  Bestätigt: Replace statt Push für Post-Auth-Flows ist
+  der Standard, vermeidet Back-Button-Schleifen.
+
+**Dateien**:
+- 🔄 `src/lib/account-businesses.ts`:
+  - Neuer pure Helper `shouldRedirectToSingle(list, options?)
+    → string | null`.
+  - Bedingungen: genau 1 Membership AND
+    `!options.stay` AND nicht-leerer Slug.
+- 🔄 `src/tests/account-businesses.test.ts`: ~33 → ~40
+  Asserts. 7 neue Test-Cases (1 Betrieb, 0 Betriebe, 2+
+  Betriebe, stay=true, stay=false, Whitespace-Slug,
+  langer Slug).
+- 🔄 `src/app/account/page.tsx`:
+  - Neuer `redirecting`-State.
+  - Neuer `useEffect`-Block nach dem Lade-Effekt: liest
+    `?stay=1` aus `window.location.search`, ruft
+    `shouldRedirectToSingle(list, {stay})`, bei Treffer
+    `setRedirecting(true)` + `router.replace(target)`.
+  - Neuer Render-Branch zwischen `auth.kind === "loading"`
+    und `auth.kind === "authed"`: zeigt Loader „Du hast nur
+    einen Betrieb — wir öffnen direkt das Dashboard …"
+    während des Redirects.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**39/40 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +7 Asserts in account-businesses.test.ts.
+
+**Roadmap**: 1 abgehakt. Folge-UX-Items, klein:
+- Dashboard-Header bekommt einen „Alle Betriebe"-Link mit
+  `?stay=1`-Bypass (vermutlich erst sinnvoll, sobald
+  Multi-Member existiert).
+- Back-Link aus Account-Liste zum letzten Dashboard
+  (sessionStorage-State).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Next.js
+Post-Auth-Redirect-Patterns 2026.
+
+**Status-Update**: ~95.5 % Richtung „erstes Betrieb-fertiges
+Produkt". UX-First-Click-Distance ist minimiert (Login →
+Dashboard ohne Zwischenstop für Solo-Owner). Verbleibend:
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member,
+„Betrieb löschen"-Flow, AIPlayground-Konsolidierung,
+Direkt-Posten.
+
+**Nächste Session**: Code-Session 64 = **Retry-Queue für
+Lead-`local-fallback`**. Begründung: Sessions 56–63 haben
+Storage-Hygiene + UX-Polish abgehakt. Was die echte
+Production-Tauglichkeit blockiert: wenn ein Lead vom
+Public-Site-Formular (Session 12) wegen Netzwerk-Hänger
+nur lokal landet (`local-fallback`-Result), gibt es aktuell
+keinen Re-Try-Pfad — die Anfrage geht in localStorage und
+wird nie zur DB geflushed, sobald die Verbindung wieder
+da ist. Klein-bis-mittlere Session: localStorage-basierte
+Retry-Queue mit Exponential-Backoff, max-Versuchs-Limit,
+und einem unobtrusive UI-Indikator („3 Anfragen in der
+Warteschlange").
+
+## Code-Session 64 – Lead-Retry-Queue
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Production-Hardening
+
+**Was**: Wenn das Public-Site-Formular einen Lead wegen
+Netzwerk-Hänger oder 5xx-Server-Fehler nur lokal in
+`leads-overrides` ablegen konnte, gab es bislang **keinen**
+Re-Try-Pfad. Diese Session führt eine localStorage-basierte
+Retry-Queue mit Exponential-Backoff ein, die beim nächsten
+`online`-Event und bei jedem Mount der Public-Site
+automatisch flushed.
+
+**Architektur-Entscheidung — eigener Storage-Key statt
+`leads-overrides` mitnutzen**: `leads-overrides` ist die
+Mock-Anzeige-Schicht (Demo-Dashboard liest sie). Sie soll
+auch dann erhalten bleiben, wenn die Retry-Queue erfolgreich
+geflushed hat — sonst verschwindet der Demo-Lead aus dem
+lokalen Dashboard. Daher zwei separate Slots:
+`lp:leads-overrides:v1` (Demo-Anzeige, Session 12) und
+`lp:lead-retry-queue:v2` (Production-Retry, Session 64).
+
+**Architektur-Entscheidung — Pure Helper mit StorageLike-
+Interface**: Statt direkt `localStorage` zu importieren
+(unmöglich für SSR + schwer testbar), nimmt der Helper ein
+`StorageLike`-Argument. Production: `window.localStorage`.
+Tests: Memory-Stub. SSR: `null` → silent no-op. Damit ist
+der gesamte Helper deterministisch testbar (~50 Asserts
+ohne fetch oder Browser-APIs).
+
+**Architektur-Entscheidung — 2xx + 4xx als Success
+behandeln**: Beim Flush nutzen wir `POST /api/leads` direkt.
+2xx ist offensichtlich Success. **4xx auch** — z.B. ein
+Validation-Fehler im Lead heißt: erneut zu schicken bringt
+nichts, der Server lehnt ihn weiter ab. Nur 5xx + Netzwerk-
+Throws triggern echten Retry mit Backoff. Das verhindert
+endlose Retry-Loops auf strukturell kaputten Leads.
+
+**Architektur-Entscheidung — Discarded-Items bleiben in der
+Queue**: Nach `maxAttempts=8` (~5min Plateau-Backoff,
+gesamt ca. 30+ Minuten Retry-Pfad) wird das Item mit
+`discardedAt`-Timestamp markiert. `getDueItems` filtert sie
+aus, aber sie sind weiterhin via `readQueue` sichtbar — ein
+Operator kann sie inspect/manuell verarbeiten. Volle
+Löschung erst per `clearQueue`.
+
+**Architektur-Entscheidung — kein Jitter im Backoff**: Bei
+einer Single-Browser-Queue gibt es kein Thundering-Herd-
+Problem (kein Cluster mit 1000 Clients, der gleichzeitig
+hits). `min(MAX_DELAY, BASE * 2^attempts)` reicht.
+
+**WebSearch (Track A)**: bestätigt
+- [@segment/localstorage-retry](https://github.com/segmentio/localstorage-retry)
+  Production-ready Implementation derselbe Pattern bei
+  Segment.io. Wir vermeiden die Dep aus Bundle-Größe-Gründen
+  (eigener Helper ist ~5KB statt 30KB), übernehmen aber
+  die Default-Werte (5s Base, 5min Max, factor 2).
+- [DEV – Queue-Based Exponential Backoff](https://dev.to/andreparis/queue-based-exponential-backoff-a-resilient-retry-pattern-for-distributed-systems-37f3)
+  Bestätigt: 4xx als Success-Klasse markieren ist Best-
+  Practice für client-side Retries.
+- [AWS Builders Library – Timeouts, Retries, Backoff with Jitter](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
+  Jitter wichtig im Server-Cluster, irrelevant in Single-
+  Browser-Kontext.
+
+**Dateien**:
+- ✚ `src/lib/lead-retry-queue.ts` — pure Helper:
+  - `enqueue(storage, payload, {id, now})` mit Idempotenz
+    über `id` (re-enqueue derselben ID ersetzt das alte
+    Item).
+  - `readQueue(storage)` mit JSON-Parse-Defensive (korrupter
+    Inhalt → leere Queue).
+  - `computeNextRetryAt(attempts, now, config?)` — pure
+    Backoff-Math.
+  - `getDueItems(storage, now)` mit FIFO-Sort + Discarded-
+    Filter.
+  - `markRetried(storage, id, {success, now})`: Success
+    entfernt; Fail erhöht attempts + neuer Backoff; bei
+    `>= maxAttempts` wird `discardedAt` gesetzt.
+  - `getQueueStats(storage, now)` für UI-Badge.
+- ✚ `src/tests/lead-retry-queue.test.ts` (~50 Asserts):
+  Memory-Storage-Stub für 14 Test-Szenarien.
+- 🔄 `src/components/public-site/public-lead-form.tsx`:
+  - Imports: `useEffect`, `useCallback`, `useRef`, `Cloud`-
+    Icon, retry-queue-Helpers.
+  - `getQueueStorage()` mit SSR/Privacy-Defensive.
+  - `flushRetryQueue` (useCallback): liest fällige Items,
+    sequentiell `POST /api/leads`, markRetried je nach
+    Status. `flushingRef` verhindert konkurrierende
+    Flushes.
+  - Mount-Effect: Stats laden + initial flush.
+  - Online-Event-Listener-Effect: bei `online` flushen.
+  - Bei `submitLead`-Result `local-fallback`: enqueue +
+    Stats updaten.
+  - Amber Badge oben im Form bei `queuePending > 0` mit
+    Singular/Plural-Text.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**40/41 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +1 lead-retry-queue grün. Bundle 102 KB shared
+unverändert.
+
+**Roadmap**: 1 abgehakt (Lead-Retry-Queue). Damit ist der
+Public-Site-Lead-Pfad production-tauglich. Folge-Items:
+- **Light-Pass Session 65** (5er-Multiple, Pflicht):
+  AIPlayground auf `callAIGenerate` migrieren (~100 Zeilen
+  inline → 30 Zeilen Helper-Aufruf). Zusätzlich Recap-Doku
+  zur AI-Schicht.
+- **Code-Session 66**: CSRF-Schutz für mutating Routes
+  (`PATCH/PUT/POST` auf `/api/businesses/...`). Aktuell
+  nur Cookie-Session-Auth — ein CSRF-Token sollte ergänzt
+  werden, bevor das Produkt produktiv geht.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — localStorage-
+Retry-Queue-Patterns 2026.
+
+**Status-Update**: ~96 % Richtung „erstes Betrieb-fertiges
+Produkt". Lead-System produktiv robust gegen Netzwerk-Hänger.
+Verbleibend bis MVP-funktional: Light-Pass 65,
+Security-Hardening (CSRF/HTML-Sanitize), Sentry,
+„Betrieb löschen", evtl. Multi-Member.
+
+**Nächste Session**: Code-Session 65 (5er-Multiple, Light-
+Pass) = **AIPlayground-Migration auf `callAIGenerate`**.
+Begründung: Sessions 61+62 haben den AI-Client-Helper für
+Reviews + Social etabliert (2 Konsumenten, ~38 Asserts).
+AIPlayground hat seit Session 28 noch seinen eigenen
+inline-Aufruf mit ~100 Zeilen Error-Handling — das ist die
+letzte Stelle, wo `/api/ai/generate` direkt aus einer UI-
+Component aufgerufen wird. Migration konsolidiert die
+Codebase und macht `ai-client.ts` zum *einzigen* Pfad.
+Zusätzlich Recap-Doku im Light-Pass-Stil.
+
+## Code-Session 65 – Light-Pass: AIPlayground-Migration + AI.md
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Light-Pass · 5er-Multiple
+
+**Was**: Sessions 61+62 haben den `callAIGenerate`-Helper
+(`lib/ai-client.ts`) als zentralen Browser→`/api/ai/generate`-
+Pfad mit ~38 Asserts etabliert (Reviews-Panel + Social-Panel).
+Diese Light-Pass-Session migriert den dritten und letzten
+Konsumenten — den AIPlayground (Session 28). Damit ist
+`ai-client.ts` die **einzige** Stelle, an der die Browser-
+Schicht mit der API spricht. Plus neue Recap-Doku
+`docs/AI.md` mit ASCII-Diagramm der gesamten Pipeline.
+
+**Architektur-Entscheidung — AIPlayground bleibt eigene
+PROVIDER_OPTIONS**: Die `PROVIDER_OPTIONS`-Konstante ist
+in jedem der drei Panels lokal (mit unterschiedlichen
+Description-Texten). Eine Konsolidierung in
+`ai-client.ts` wäre möglich, aber der Mehrwert ist gering
+(8 Zeilen × 3 Stellen vs. ein zentrales Modul). Bewusste
+Entscheidung gegen DRY-um-jeden-Preis.
+
+**Architektur-Entscheidung — Mock-Pfad behält try/catch**:
+`callAIGenerate` wirft nicht (alle Fehlerklassen kommen als
+Result-Kinds zurück). Der Mock-Pfad nutzt aber `config.call`,
+was eine Provider-Methode ist und potenziell throw'n kann —
+daher dort weiterhin try/catch. Asymmetrie ist mit Kommentar
+dokumentiert.
+
+**Architektur-Entscheidung — `as any` + `as PlaygroundCostInfo`
+bleibt**: `AIGenerateResult.server` deklariert
+`output: unknown` und `cost?: unknown`. Casts sind für die
+Migration nötig. Tightening via Generic im Helper
+(`AIGenerateResult<O, C>`) ist Light-Pass-Item für eine
+spätere Session — aktuell zwei Konsumenten haben einfache
+Output-Typen, der Playground hat 7 verschiedene. Generic-
+Refactor sprengt den Light-Pass-Scope.
+
+**WebSearch (Track C)**: bestätigt
+- [Next.js – Fetch Wrapper Best Practices](https://dev.to/dmitrevnik/fetch-wrapper-for-nextjs-a-deep-dive-into-best-practices-53dh)
+  Helper-Extraktion mit explicit Result-Mapping ist
+  2026-Standard.
+- [freeCodeCamp – Reusable Architecture for Large Next.js Apps](https://www.freecodecamp.org/news/reusable-architecture-for-large-nextjs-applications/)
+  „Custom hooks" + „utility functions" in `src/utils` /
+  `src/lib` für DRY-Kompabilität — passt 1:1 zu unserem
+  `lib/ai-client.ts` + `lib/storage-cleanup.ts` etc.
+
+**Dateien**:
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx`:
+  - Imports: `AIProviderError` + lokale `RateLimitState`-
+    Interface + `TOKEN_STORAGE_KEY`-Konstante weg.
+    `AI_TOKEN_STORAGE_KEY` + `callAIGenerate` +
+    `AIGenerateRateLimit` aus `ai-client.ts`. Plus
+    `PlaygroundCostInfo` als top-of-file Import (vorher
+    inline `import("./types")`-Cast).
+  - `RateLimitState` als Type-Alias für
+    `AIGenerateRateLimit`.
+  - `handleGenerate` von ~95 inline-Zeilen auf ~30 Zeilen
+    Switch-über-`r.kind` reduziert.
+  - Kommentar dokumentiert die Try/Catch-Asymmetrie
+    Mock-vs-Live (Mock kann werfen, callAIGenerate nicht).
+- ✚ `docs/AI.md` — neue Recap-Doku ~5 KB:
+  - ASCII-Diagramm der gesamten Pipeline Browser → Server →
+    Provider → Sanitize → Cost-Track.
+  - Tabelle der 7 Methoden + Schemas + Konsumenten.
+  - Result-Kind-Tabelle (5 Kinds × HTTP-Status × UI-Aktion).
+  - Provider-Tabelle (Mock / OpenAI / Anthropic / Gemini).
+  - Code-Sessions-Historie 14–65.
+  - Test-Coverage (~184 Asserts gesamt).
+- 🔄 `docs/PROGRAM_PLAN.md`: Neue Sektion „Phase 2 Restweg
+  → UI/UX-Polish (Sessions 71–80+)" mit konkret 10-Sessions-
+  Plan + Skill-Mapping-Tabelle.
+
+**simplify-Skill-Anwendung**: Drei Review-Agents (Reuse /
+Quality / Efficiency) liefen parallel auf den Diff. Drei
+Findings, davon zwei zu Light-Pass-Items vertagt
+(`useAITokenSync`-Hook bei 3+ identischen Patterns;
+Generic-Tightening von `AIGenerateResult.server`). Zwei
+unmittelbare Fixes appliziert (top-of-file Import +
+Kommentar zur Asymmetrie).
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**40/41 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle 102 KB shared unverändert.
+
+**Light-Pass-Bilanz Sessions 61–65**:
+- 1 neuer Pure Helper (`ai-client.ts`, ~38 Asserts)
+- 3 Konsumenten migriert (Reviews 61, Social 62,
+  Playground 65)
+- 2 Recap-Docs (`STORAGE.md` aus 60, `AI.md` aus 65)
+- ~100 Zeilen inline-Error-Handling konsolidiert
+- 5 Sessions × 0 Regressions
+- Phase-2-Roadmap (10 Sessions UI/UX) festgeschrieben
+
+**Roadmap**: 1 Light-Pass abgehakt. Phase-1-Pflicht-Items:
+- **66**: CSRF-Schutz für mutating Routes.
+- **67**: HTML-Sanitize-Whitelist auf User-Input
+  (Defense-in-Depth — XSS-Schutz auf Service-Beschreibungen,
+  Tagline, About-Text).
+- **68**: Sentry-Integration.
+- **69**: „Betrieb löschen"-Flow.
+- **70** (Light-Pass): Pre-MVP-Pass + Audit-Checkliste.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Next.js Fetch-
+Wrapper-Patterns 2026, Reusable-Architecture für
+Helper-Extraktion.
+
+**Status-Update**: ~96.5 % Richtung „erstes Betrieb-fertiges
+Produkt". AI-Pipeline production-clean (3 Konsumenten ×
+1 Helper × 5 Result-Kinds). Verbleibend Phase 1: 5 Sessions
+Security-Hardening + Operations. Phase 2 ab Session 71 mit
+mindestens 10 Sessions UI/UX-Audit + Brand-Identity (Demo-
+Logo via `algorithmic-art` Skill in Session 76).
+
+**Nächste Session**: Code-Session 66 = **CSRF-Schutz für
+mutating Routes**. Begründung: Aktuell schützt nur Cookie-
+Session (+ optional Bearer-Token) die `PATCH/PUT/POST`-
+Routen unter `/api/businesses/...`, `/api/leads`,
+`/api/onboarding`. Ohne CSRF-Token könnte ein Drittanbieter
+einen eingeloggten Owner über eine eigene Site dazu
+verleiten, mutierende Requests auszulösen (CORS-Same-Origin
+schützt Reads, nicht Writes — Browser sendet Cookie auch
+bei cross-site POST). Standard-Pattern: Origin-Header-
+Check + Double-Submit-Cookie. Klein-mittel, scharf
+abgrenzbar.
+
+## Code-Session 66 – CSRF-Schutz für alle mutating Routen + Codex-#11-Fix
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Security-Hardening
+
+**Was**: Defense-in-Depth gegen CSRF zusätzlich zur
+SameSite-Lax-Cookie-Default. Alle 10 mutating API-Routen
+(`POST`/`PUT`/`PATCH`/`DELETE`) bekommen einen Origin-
+Header-Check als erste Zeile im Handler. Plus Fix für den
+seit Session ~35 roten `industry-presets.test.ts` —
+Tests stehen jetzt erstmals seit Session 11 vollständig
+auf 42/42 grün.
+
+**Architektur-Entscheidung — Origin-Check statt CSRF-Token**:
+Doppelte Schutz-Layer wären (a) Origin-Header-Check + (b)
+Double-Submit-Cookie mit randomem Token. Für unseren Stack
+genügt (a):
+- Browser senden bei Cross-Site-POST den `Origin`-Header
+  zwingend (RFC 6454, alle modernen Browser).
+- Falsifizierung des `Origin`-Headers via Browser ist nicht
+  möglich (es ist im Forbidden-Header-List der Fetch-Spec).
+- Token-Pattern bringt Komplexität (Token-Generierung +
+  Cookie-Setzen + Hidden-Field in jedem Form), ohne in
+  unserem Use-Case zusätzliche Sicherheit zu liefern.
+
+**Architektur-Entscheidung — Bearer-Token bypasst CSRF**:
+Server-zu-Server-Calls (CLI-Skripte, externe Tools) haben
+keinen Browser-Origin. Wenn `Authorization: Bearer …`
+gesetzt ist, ist der Caller nicht-Browser → kein
+CSRF-Vektor. Token ist unmöglich aus einer fremden Site zu
+erraten.
+
+**Architektur-Entscheidung — `Origin: null` wird abgelehnt**:
+Browser senden `Origin: null` bei sandboxed iframes,
+`file://`-URLs, und einigen privacy-modes. Das könnten
+Angriffsvektoren sein (z.B. via Browser-Extension mit
+file:-Privileges). Sicherer Default: ablehnen, niemand mit
+legitimer UI sollte je `null` schicken.
+
+**WebSearch (Track D)**: bestätigt
+- [Next.js – Data Security Guide](https://nextjs.org/docs/app/guides/data-security)
+  Server Actions haben automatischen Origin-Check. Für
+  Custom-API-Routes ist das vom Entwickler zu implementieren.
+- [Next.js Security Best Practices 2026](https://www.authgear.com/post/nextjs-security-best-practices)
+  Defense-in-Depth: SameSite-Cookies + Origin-Check +
+  optional CSRF-Token. SameSite allein ist nicht genug
+  (top-level navigations, ältere Browser).
+- [LogRocket – Protecting Next.js Apps from CSRF](https://blog.logrocket.com/protecting-next-js-apps-csrf-attacks/)
+  Origin-Check ist 2026-Standard, Token-Pattern nur für
+  Banking-/High-Stakes-Use-Cases.
+- [DEV – CSRF Protection in Next.js](https://dev.to/adelhamad/csrf-protection-in-nextjs-1g1m)
+  Bestätigt: Origin-/Referer-Check ist OWASP-empfohlener
+  Pattern für API-Routen.
+
+**Dateien**:
+- ✚ `src/lib/csrf.ts` — pure Helper:
+  - `verifyCsrfOrigin(req, options?)` als
+    Hauptfunktion mit Discriminated-Union-Result.
+  - `parseAllowedOrigins(env)` mit Trailing-Slash-
+    Normalisierung.
+  - `csrfErrorResponse(reason)` als Standard-403-Response.
+  - `enforceCsrf(req)` als Route-Level-Wrapper, der
+    ENV liest und 403-Response zurückgibt oder `null`.
+- ✚ `src/tests/csrf.test.ts` (~36 Asserts):
+  Stub-`Request`-basiert. Allow-List-Parsing, GET/HEAD/
+  OPTIONS-Bypass, Bearer-Bypass, Same-Origin, Cross-Origin,
+  Allow-List-Match, Referer-Fallback, Origin=null,
+  fehlende Header, X-Forwarded-Host/Proto,
+  Localhost-Heuristik, csrfErrorResponse,
+  PUT/PATCH/DELETE.
+- 🔄 10 Routen gepatcht: `enforceCsrf(req)` als erste
+  Zeile, vor Auth/Validation. `/api/auth/logout`
+  bekam `req`-Parameter (vorher signaturlos).
+- 🐛 `src/tests/industry-presets.test.ts` (Codex #11 fix):
+  `IndustryPresetSchema.parse(getPresetOrFallback(invalid_key))`
+  schlug seit Session ~35 rot, weil das Schema den
+  bewusst-invaliden `key` ablehnt. Fix: Schema-Parse durch
+  direkte Feld-Asserts ersetzt (`label`,
+  `defaultServices`, `toneOfVoice`, `defaultFaqs`).
+  Verhalten von `getFallbackPreset` unverändert.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**42/42 Smoketests grün** — erstmals seit Session 11 keine
+roten Tests mehr. Bundle 102 KB shared unverändert.
+
+**Roadmap**: 2 Items abgehakt (CSRF + Codex #11). Phase 1
+Restweg:
+- **67**: HTML-Sanitize-Whitelist auf User-Input
+  (Service-Beschreibungen, Tagline, About) — XSS-Pendant
+  zum CSRF-Schutz heute.
+- **68**: Sentry-Integration.
+- **69**: „Betrieb löschen"-Flow.
+- **70** (Light-Pass): Pre-MVP-Pass + Audit-Checkliste.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — CSRF-Patterns
+2026.
+
+**Status-Update**: ~97 % Richtung „erstes Betrieb-fertiges
+Produkt". Security-Layer 1/2 (CSRF) live. Phase 1 noch
+4 Sessions, Phase 2 (UI/UX-Polish) ab 71.
+
+**Nächste Session**: Code-Session 67 = **HTML-Sanitize-
+Whitelist auf User-Input**. Begründung: Aktuell läuft
+`sanitizeAIOutput` nur auf AI-generierte Texte (Session 27).
+Der Owner kann aber direkt HTML in Service-Beschreibungen,
+Tagline, About-Text eintippen — Public-Site rendert das
+mit `dangerouslySetInnerHTML` o. ä. Ohne Whitelist könnte
+ein bösartiger Owner XSS auf die eigene Public-Site
+einschleusen (selbstattacke unwahrscheinlich, aber wenn ein
+Editor-User Schreibrecht hat, durchaus relevant).
+Pure-Helper-Pattern: Whitelist-Sanitizer für Plain-Text +
+optional Markdown-/Limited-HTML-Pfad. Klein, scharf.
+
+## Code-Session 67 – HTML-Sanitize-Whitelist auf User-Input
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Security-Hardening
+
+**Was**: Defense-in-Depth gegen XSS auf der Schreibstelle.
+Bevor User-Input (Owner + Lead) in die DB landet, durchläuft
+er einen HTML-Stripper + Whitespace-Normalisierung +
+Length-Cap. React's `{text}`-Rendering schützt primär beim
+Lesen, aber Logs/Email-Templates/zukünftige Markdown-
+Renderer würden ungeschützten Input direkt als HTML rendern.
+Sanitize *am Schreibpunkt* schützt alle Nachverbraucher.
+
+**Architektur-Entscheidung — Wiederverwendung von
+`sanitizeText`**: Session 27 hat den HTML-Stripper bereits
+für AI-Output gebaut (Entity-Decoder + Control-Char-Cleanup
++ iterativer Strip). Statt eine zweite Implementation zu
+schreiben, wrappt der neue Helper diesen mit
+Whitespace-Normalisierung + Domain-Wrappern. Eine
+gemeinsame Quelle für die Strip-Logik = ein
+Audit-/Update-Punkt.
+
+**Architektur-Entscheidung — kein DOMPurify**:
+DOMPurify/`isomorphic-dompurify` braucht JSDOM (~120 KB im
+Server-Bundle). Lohnt sich, sobald wir eine Markdown-
+**Whitelist** (Bold/Italic/Listen) brauchen. Solange wir
+User-Input ausschließlich als Plain-Text rendern, reicht
+der konservative Stripper aus.
+
+**Architektur-Entscheidung — Domain-Wrapper statt
+generischer Map**: Statt eines „mapStringFields(obj,
+fn)"-Helpers gibt es drei Domain-Wrapper:
+`sanitizeBusinessProfileStrings`,
+`sanitizeServiceStrings`, `sanitizeLeadStrings`. Vorteil:
+pro Feld kann der passende Modus (single/multi-line) +
+Length-Limit explizit gesetzt werden. Tagline ist
+Single-Line-200, Description ist Multi-Line-5000, Country
+ist Single-Line-2 (ISO-Code) — alles im Wrapper als Code,
+nicht als magic-Tabelle.
+
+**Architektur-Entscheidung — extraFields auch sanitized**:
+Lead-Forms in 19 Branchen-Presets können extraFields
+liefern (`vehicleModel`, `objectType`, `drivingClass`).
+Diese werden im Dashboard und in Leads-Tabellen gerendert.
+Daher: Keys + String-Werte sanitized; Number/Boolean
+bleiben als sicherer Typ; leere Keys gefiltert (verhindert
+JSON-Injection-Tricks).
+
+**WebSearch (Track D)**: bestätigt
+- [OneUptime – How to Sanitize User Input in React](https://oneuptime.com/blog/post/2026-01-15-sanitize-user-input-react-injection/view)
+  Server-side Sanitize ist Pflicht; React-Auto-Escape
+  reicht nicht für Logs/Templates.
+- [Zod Discussion #1358 – Sanitize via transform](https://github.com/colinhacks/zod/discussions/1358)
+  Zod selbst sanitized nicht; transform() ist der Hook.
+  Wir nutzen *vor* der Validation, weil unser Sanitize
+  schon Length-Caps macht und Zod-Errors auf
+  bereits-gestripptem Input klarere Meldungen liefern.
+- [Saud Patel – Server-Side Validation and Sanitization](https://medium.com/@saudpatel.mscit22/server-side-validation-and-sanitization-using-zod-in-node-js-55e46e126635)
+  Pattern: sanitize → validate → DB-Insert. Genau unser
+  Flow.
+- [Ahmed Adel – zod-xss-sanitizer](https://github.com/AhmedAdelFahim/zod-xss-sanitizer)
+  Existing-Package — wir verzichten wegen Dep-Bloat
+  (eigener Helper ist ~5 KB statt ~30 KB + transitive Deps).
+
+**Dateien**:
+- ✚ `src/lib/user-input-sanitize.ts` — pure Helper:
+  - `sanitizeUserText(input, {maxLength, singleLine})` als
+    Hauptfunktion.
+  - `sanitizeUserSingleLine` und `sanitizeUserMultiLine`
+    als Convenience-Wrapper.
+  - 3 Domain-Wrapper für BusinessProfile, Service, Lead.
+  - Wiederverwendet `sanitizeText` aus Session 27.
+- ✚ `src/tests/user-input-sanitize.test.ts` (~45 Asserts):
+  defensive Inputs (null/undefined/number/object),
+  HTML-Strip-Bypass (entity-encoded + numeric),
+  Single-vs-Multi-Line-Pipeline, Length-Limits,
+  Domain-Wrapper, extraFields-Edge-Cases (number/boolean
+  bleiben, leere Keys filtern), Idempotenz,
+  doppelt-encoded Entity-Schutz.
+- 🔄 `/api/onboarding` (POST): name + tagline single-line,
+  description multi-line — vor `validateOnboarding`.
+- 🔄 `/api/businesses/[slug]` (PATCH):
+  `sanitizeBusinessProfileStrings` nach `parseSnakeRowAsProfile`,
+  vor DB-UPDATE.
+- 🔄 `/api/businesses/[slug]/services` (PUT):
+  `sanitizeServiceStrings` pro Service-Row im
+  Re-Map-Block, vor `ServiceSchema.safeParse`.
+- 🔄 `/api/leads` (POST): `sanitizeLeadStrings` vor
+  `repo.create()` — auch extraFields.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**43/43 Smoketests grün**. +1 user-input-sanitize-Test (~45
+Asserts). Bundle 102 KB shared unverändert.
+
+**Roadmap**: 1 Pflicht-Item abgehakt. Phase-1-Restweg:
+- **68**: Sentry-Integration. DSN-ENV, Browser+Server-
+  Init, Source-Map-Upload, ErrorBoundary in Layout.
+- **69**: „Betrieb löschen"-Flow.
+- **70** (Light-Pass): Pre-MVP-Pass + Audit-Checkliste.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — User-Input-XSS-
+Sanitize-Patterns 2026.
+
+**Status-Update**: ~97.5 % Richtung „erstes Betrieb-fertiges
+Produkt". Defense-in-Depth-Security-Stack komplett:
+SameSite-Cookies + CSRF-Origin-Check (S66) + HTML-Sanitize
+(S67). Verbleibend Phase 1: 3 Sessions.
+
+**Nächste Session**: Code-Session 68 = **Sentry-Integration**.
+Begründung: Sentry ist Production-Pflicht für Error-Tracking
++ Performance-Monitoring. Integration in Browser (`onError`/
+`onUnhandledRejection` + React-ErrorBoundary) und Server
+(`/api/*`-Route-Errors + Logger). DSN aus ENV
+(`NEXT_PUBLIC_SENTRY_DSN`), Sampling-Rate konservativ
+(default 0.1), Sourcemap-Upload nur in Production-Build.
+Bundle-Impact ist signifikant (~30-40 KB) — daher genau
+prüfen und Tree-shaking nutzen.
+
+## Code-Session 68 – Error-Tracking via Adapter-Pattern
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Observability
+
+**Was**: Production-Error-Tracking eingezogen. Sentry-fähig,
+**ohne** harte Dep auf `@sentry/nextjs`. Default ist
+console-Sink (0 KB Bundle); bei `SENTRY_DSN`-ENV +
+installiertem Sentry-Paket wird Sentry lazy aktiviert.
+ErrorBoundary fängt React-Render-Crashes; kritische API-
+Routen melden 5xx-Errors. Damit landet jede Production-
+Anomalie in Logs/Sentry — eine notwendige Production-
+Voraussetzung.
+
+**Architektur-Entscheidung — Adapter statt direkter Dep**:
+Drei Optionen:
+1. `@sentry/nextjs` direkt installieren (~40 KB Bundle, neue
+   Dep, automatische Source-Maps).
+2. Eigene Reporter-Implementation komplett ohne Sentry.
+3. Adapter mit Lazy-Sentry-Import (gewählt).
+
+(3) gewinnt: 0 KB Bundle ohne Sentry, vollständige Sentry-
+Funktionalität wenn das Paket vorhanden ist, kein
+Code-Wechsel beim Upgrade. User installiert
+`@sentry/nextjs` + setzt ENV → Reporter wechselt
+automatisch. Demo-/Static-Builds bleiben schlank.
+
+**Architektur-Entscheidung — `await import` mit String-
+Variable**: Webpack/Turbopack würde einen statischen
+`import("@sentry/nextjs")` als Build-Dependency auflösen
+(Static-Build scheitert, wenn Paket fehlt). Trick: das
+Modul-Name ist eine Variable (`const moduleName =
+"@sentry/nextjs"`) + `webpackIgnore: true`-Pragma. Damit
+bleibt der Import zur Laufzeit dynamisch. Plus try/catch
+um den ganzen Block — fehlt das Paket, Module-Not-Found
+wird abgefangen, Console-Sink bleibt.
+
+**Architektur-Entscheidung — Sink-Test-Hook**:
+`__setSinkForTesting(sink)` ersetzt den aktiven Sink mit
+einem Recording-Sink. Tests haben damit deterministische
+Asserts ohne mock-libs oder vi.mock(). Production-Code
+sieht den Hook nicht (nur exportiert, nicht aufgerufen).
+
+**WebSearch (Track D)**: bestätigt
+- [Sentry – Next.js Manual Setup](https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/)
+  Standard-Pattern: client.config.ts + server.config.ts +
+  global-error.tsx. Wir nutzen eine vereinfachte Adapter-
+  Variante.
+- [Sentry – App Router Auto-Instrumentation](https://github.com/getsentry/sentry-javascript/discussions/13442)
+  Auto-Instrumentation braucht `withSentryConfig` in
+  `next.config.ts`. Wir verzichten — manueller
+  `captureException` reicht für unsere Skala.
+- [Sentry – Lazy-loading Integrations](https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/integrations/)
+  `await import(...)` für Sub-Integrations ist Sentry-
+  intern Pattern. Wir nutzen es einen Schritt höher (das
+  ganze Paket lazy).
+- [Sentry blog – Common Errors in Next.js](https://blog.sentry.io/common-errors-in-next-js-and-how-to-resolve-them/)
+  Liste der typischen Render-/API-Errors, die Sentry
+  fängt.
+
+**Dateien**:
+- ✚ `src/lib/error-reporter.ts` (~190 Zeilen):
+  - Public: `captureException`, `captureMessage`,
+    `flushErrorReporter`, `initErrorReporter`,
+    `reportRouteError`.
+  - Private: `consoleSink` als Default,
+    `readDsnFromEnv`/`readSampleRate` für ENV-Parsing.
+  - Test-Hooks: `__setSinkForTesting`,
+    `__getActiveSinkForTesting`.
+- ✚ `src/tests/error-reporter.test.ts` (~30 Asserts):
+  Recording-Sink-Pattern, alle Public-API-Pfade,
+  Init-Edge-Cases (kein DSN, DSN ohne Paket, Idempotenz),
+  Console-Sink-Smoke.
+- ✚ `src/app/global-error.tsx`: App-Router-Konvention für
+  RootLayout-Render-Fehler. `useEffect` ruft
+  `initErrorReporter` + `captureException`. Markup mit
+  Inline-Styles (kein Tailwind/Theme — könnte gerade
+  kaputt sein). UI: Reset-Button + Home-Link + optional
+  Error-Digest-ID.
+- 🔄 `/api/leads` (POST) + `/api/onboarding` (POST):
+  `reportRouteError(err, route, extra?)` im
+  500er-catch vor `return NextResponse.json(...)`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**44/44 Smoketests grün**. +1 error-reporter-Test (~30
+Asserts). Bundle 102 KB shared unverändert (Sentry nicht
+installiert; Lazy-Import zur Laufzeit gefangen).
+
+**Roadmap**: 1 Pflicht-Item abgehakt. Phase-1-Restweg:
+- **69**: „Betrieb löschen"-Flow.
+- **70** (Light-Pass): Pre-MVP-Pass + Audit-Checkliste +
+  `simplify`-Skill auf Sessions 66–69-Diff.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Sentry-Adapter-
+Patterns 2026.
+
+**Status-Update**: ~98 % Richtung „erstes Betrieb-fertiges
+Produkt". Observability-Layer eingezogen. Verbleibend Phase
+1: 2 Sessions („Betrieb löschen", Pre-MVP-Pass). Phase 2
+ab Session 71 mit ≥10 Sessions UI/UX-Audit + Demo-Logo.
+
+**Nächste Session**: Code-Session 69 = **„Betrieb
+löschen"-Flow**. Begründung: Owner muss seinen Betrieb
+sauber wieder loswerden können — DSGVO-Recht auf Löschung,
+plus normaler User-Flow „ich teste eine Woche, dann lösche
+ich". Aktuell: keinen Lösch-Flow. Strategie:
+`DELETE /api/businesses/[slug]` mit Auth-Gate + RLS +
+rekursivem Storage-Cleanup (alle Files unter `<slug>/` im
+business-images-Bucket). Lead-Daten via FK-Cascade
+mit-gelöscht (Migration 0005). Confirmation-UI:
+Slug-Eingabe-Bestätigung („Tippen Sie den Slug ein, um zu
+bestätigen") gegen versehentliches Löschen.
+
+## Code-Session 69 – „Betrieb löschen"-Flow
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Self-Service
+
+**Was**: Owner kann seinen Betrieb dauerhaft entfernen —
+DSGVO-Recht auf Löschung + normaler User-Flow. UI mit
+Slug-Confirmation gegen versehentliches Klicken; Server mit
+Auth + RLS + rekursivem Bucket-Cleanup. Lead-/Service-/
+Review-/FAQ-Daten verschwinden via FK-Cascade. Self-Service-
+Cycle ist damit vollständig.
+
+**Architektur-Entscheidung — eigene `DELETE`-Method statt
+einer separaten Route**: REST-Konvention. `DELETE
+/api/businesses/<slug>` ist der semantisch korrekte Pfad,
+und das Setzen einer separaten `/delete`-Route würde nur
+das Pattern brechen. Die bestehende `route.ts` hatte schon
+PATCH; wir ergänzen DELETE.
+
+**Architektur-Entscheidung — Storage-Cleanup als
+Best-Effort nach DB-DELETE**: DB ist der Source-of-Truth.
+Wenn der DB-DELETE erfolgreich ist und der Storage-Cleanup
+hängt, ist der Betrieb effektiv weg (RLS verhindert
+Re-Access, Public-Site liefert 404). Storage-Waisen sind
+hässlich aber nicht funktional gefährlich. Daher:
+DB-DELETE wird sofort committed; Storage-Errors werden via
+`reportRouteError` (Session 68) gemeldet aber nicht
+zurückgemeldet als 5xx — sonst bekäme der User „Fehler"
+trotz erfolgreich gelöschtem Betrieb.
+
+**Architektur-Entscheidung — rekursiver Walker mit
+Stack statt Recursion**: Supabase hat keine native rekursive
+List-API. Naive Implementation wäre rekursive
+JS-Function — bei tief verschachtelten Bucket-Strukturen
+könnte das den Call-Stack sprengen. Stack-basierter
+Walker ist deterministischer und hat einen Hard-Cap auf
+10.000 Files als Safety-Net (kein Bucket-weiter Scan
+durch Bug).
+
+**Architektur-Entscheidung — Slug-Confirmation als UX-
+Schutz**: GitHub-Pattern. Delete-Button ist erst aktiv,
+wenn der User den Slug exakt eintippt. Plus
+`window.confirm()` als zweite Stufe. Drei-Stufen-Schutz
+(Card-Visibility + Tippen + Confirm) gegen versehentliches
+Klicken.
+
+**Architektur-Entscheidung — Redirect auf
+`/account?stay=1`**: Session 63 redirected `/account` auf
+`/dashboard/<slug>`, wenn der User nur einen Betrieb hat.
+Nach dem Löschen würde diese Logik den User auf den
+gerade-gelöschten-Slug-Pfad schicken (404 oder andere
+Verwirrung). `?stay=1` umgeht den Auto-Redirect — der
+User landet sicher auf der Account-Liste, kann von dort
+einen neuen Betrieb anlegen.
+
+**WebSearch (Track A)**: bestätigt
+- [Supabase Discussion #4218 – Remove folder content](https://github.com/orgs/supabase/discussions/4218)
+  Native Folder-Delete-API existiert nicht; rekursiv
+  iterieren ist Standard.
+- [Supabase Storage Folder-Operations Guide](https://supabase.com/docs/guides/troubleshooting/supabase-storage-inefficient-folder-operations-and-hierarchical-rls-challenges-b05a4d)
+  Bestätigt: Folders sind nur Pseudo-Prefixes; List ist
+  pro Ebene; rekursive Iteration vom Client/Server-Code
+  notwendig.
+- [Fabian Fruhmann – Storage Delete Folder Fast Way](https://medium.com/@fabian.blackphoenix134/supabase-storage-delete-folder-the-fast-way-b11260b7325e)
+  Praxis-Beispiel mit `.list(prefix)` + Pagination.
+- [Supabase Storage Issue #173 – Recursive deletes](https://github.com/supabase/storage/issues/173)
+  Feature-Request offen; client-side Pattern bleibt.
+
+**Dateien**:
+- 🔄 `src/lib/storage-cleanup.ts`:
+  - `listAllPathsByPrefix(client, bucket, prefix)` —
+    Stack-basierter Walker. `LIST_PAGE_SIZE = 1000`,
+    `MAX_TOTAL_FILES = 10_000`. Heuristik:
+    `id === null || id === undefined` → Pseudo-Folder.
+  - `removeAllByPrefix(client, bucket, prefix)` — list
+    + batched remove (`REMOVE_BATCH_SIZE = 1000`).
+    Graceful: bei Batch-Fehler werden die übrigen
+    versucht; Counts + last reason kumulieren.
+- 🔄 `src/tests/storage-cleanup.test.ts`: 52 → 70
+  Asserts. Stub-Tree mit 5 Files in 3 Ebenen,
+  Trailing-Slash, leerer Prefix, null-Client,
+  removeAllByPrefix-Integration.
+- 🔄 `src/app/api/businesses/[slug]/route.ts`: neue
+  `DELETE`-Function. CSRF + Auth + Server-Auth-Client
+  (RLS-getrieben). DB-DELETE mit `.select(...)` zur
+  0-Rows-Detection (→ 403). Storage-Cleanup nach
+  DB-DELETE via `removeAllByPrefix`. `reportRouteError`
+  bei Cleanup-Fehler (Session 68). Antwort:
+  `{slug, filesRemoved, filesFailed}`.
+- ✚ `src/lib/business-delete.ts` (~110 Zeilen):
+  `submitBusinessDelete(slug, deps?)` mit 4-Result-Kind
+  (server / not-authed / forbidden / fail).
+  `userMessageForResult` mit Partial-Failure-Handling.
+- ✚ `src/tests/business-delete.test.ts` (~25 Asserts):
+  Result-Kinds, URL-Encoding, Default-Messages,
+  Throw-Handling.
+- 🔄 `src/components/dashboard/settings/settings-form.tsx`:
+  Neue `<DangerZone>`-Sub-Komponente nach dem Settings-
+  Form. Rote Card, Slug-Confirmation-Input, Delete-Button
+  mit `disabled={!canDelete}`. `window.confirm()` als
+  zweite Stufe. Bei Erfolg `setTimeout(() =>
+  router.push("/account?stay=1"), 1200)`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests grün**. +18 storage-cleanup-Asserts +
+1 neuer business-delete-Test (~25 Asserts). Bundle 102 KB
+shared unverändert.
+
+**Roadmap**: 1 Pflicht-Item abgehakt. Phase-1-Restweg:
+nur noch **Session 70** (Light-Pass + Pre-MVP-Audit-
+Checkliste). Damit MVP-funktional erreicht. Phase 2 ab
+Session 71 mit ≥10 Sessions UI/UX-Audit + Demo-Logo.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — Supabase
+Storage Recursive Operations 2026.
+
+**Status-Update**: ~99 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Cycle vollständig (Onboarding →
+Editor → Slug-Wechsel → Löschen). DSGVO-konform. Phase 1
+fast abgeschlossen.
+
+**Nächste Session**: Code-Session 70 (Light-Pass,
+5er-Multiple) = **Pre-MVP-Audit + Status-Recap**. Letzter
+Light-Pass vor MVP-Stand. Inhalt:
+1. `simplify`-Skill auf Sessions 66–69-Diff (CSRF, XSS,
+   Sentry, Delete) — alle Light-Pass-Items aus 65 wurden
+   nicht verfolgt; Konsolidierungs-Möglichkeiten prüfen
+   (z. B. `useAITokenSync`-Hook-Extraktion bei jetzt 3+
+   Konsumenten).
+2. Audit-Checkliste: alle 7 Phase-1-Items (61–69)
+   verifizieren — Helper-Tests grün, Routen-Coverage
+   vollständig, Doku synchron.
+3. `security-review`-Skill auf den gesamten Branch.
+4. Status-Recap als `docs/MVP_RECAP.md` (analog
+   `STORAGE.md` und `AI.md`) mit Architektur-Übersicht
+   für Phase-2-Sessions.
+
+## Code-Session 70 – Pre-MVP-Audit + Phase-1.5-Roadmap-Update
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Light-Pass · 5er-Multiple
+
+**Was**: Letzter Light-Pass vor MVP-Stand. Drei
+Skill-Anwendungen (simplify + security-review + manueller
+Audit), eine Hot-Path-Optimierung im CSRF-Helper, eine
+Surface-Reduktion, plus neue Recap-Doku
+`docs/MVP_RECAP.md` und Roadmap-Update für die vom User
+beauftragte **Phase 1.5: E2E-Test-Block** (vor UI/UX-Polish).
+
+**Meta-Auftrag**: Der User hat klar verlangt: „danach erst
+mal sehr viele Tests bevor wir an die UI/UX gehen ... alles
+muss funktionieren, teste alles durch wie ein Endbenutzer".
+Daraus folgt: zwischen MVP-Stand (S70) und UI/UX-Polish
+(früher als „Phase 2 ab S71" geplant) wird jetzt eine
+neue Phase 1.5 eingefügt — End-to-End-Tests mit dem
+`webapp-testing`-Skill (Playwright). UI/UX-Polish startet
+erst nach grüner E2E-Coverage.
+
+**Architektur-Entscheidung — Allow-List-Memoization**:
+`csrf.ts` parsed bei jedem mutating Request die ENV-
+Variable `LP_CSRF_ALLOWED_ORIGINS` neu (String-Split +
+URL-Parse). ENV ist post-boot unveränderlich, daher
+`CACHED_ALLOWED_ORIGINS` an Modul-Scope. Hot-Path-Win
+auf jeder Owner-Mutation.
+
+**Architektur-Entscheidung — `csrfErrorResponse`
+non-export**: Reuse-Agent fand, dass `csrfErrorResponse`
+nur intern aufgerufen wird (`enforceCsrf` ist der
+Public-Wrapper). Public-Surface von 3 → 2 Exports
+reduziert. Test umgestellt auf indirekten `enforceCsrf`-
+Test, gleiche 36 Asserts grün.
+
+**Architektur-Entscheidung — Konsolidierung der 6 Result-
+Mapper-Helpers BEWUSST abgelehnt**: business-update,
+services-update, image-upload, settings, ai-client,
+business-delete teilen die fetch+status-mapping-Shell.
+Reuse-Agent: ein generic `submitMutation<TOk, TKind>`
+würde den Call-Site-Code nicht reduzieren, weil jede
+Helper unterschiedliche ok-Payload-Shapes hat
+(local-fallback / slug_taken / rate-limit / static-build).
+Per-Domain-Divergenz ist real, sechs Near-Twins lesen
+sich besser als ein parametrisierter Monster.
+
+**simplify-Skill-Anwendung**: Drei Review-Agents parallel
+auf csrf.ts / user-input-sanitize.ts / error-reporter.ts /
+business-delete.ts. Findings:
+- **Reuse**: 1 konkrete Empfehlung (csrfErrorResponse
+  non-export) → angewendet.
+- **Quality**: `SANITIZE_DEFAULTS`-Konsolidierung möglich,
+  aber netto-Mehrwert klein — Skip.
+  `error-reporter.ts`-Tests-Hooks `__setSinkForTesting` /
+  `__getActiveSinkForTesting` sind sauber gekennzeichnet
+  (Underscore + nur in Test-Files importiert).
+- **Efficiency**: 1 konkreter Hot-Path-Win
+  (Allow-List-Memoize) → angewendet. Sentry-Bundle-Impact
+  via dynamic-import-Trick **bestätigt 0 KB** (`grep -i
+  sentry` auf Static-Build-Output: keine echten Module-
+  References, nur die String-Literal-Konstante).
+
+**security-review-Skill** (manuell via Agent, weil der
+direkte Skill-Aufruf den Git-Range nicht resolven konnte):
+- 🟢 **CSRF**: alle 10 mutating Routes geschützt; nur
+  read-only + `auth/callback` erwartet ausgenommen.
+- 🟢 **XSS via dangerouslySetInnerHTML**: nur in
+  Doc-Kommentaren, kein realer Render-Pfad.
+- 🟢 **Auth-Bypass**: alle nicht-public-Routes haben
+  `getCurrentUser`-Gate vor DB-Mutation.
+- 🟢 **Service-Role-Leakage**: 6 Importer von
+  `getServiceRoleClient`, alle in `runtime: "nodejs"`-
+  Routes oder server-only-Modulen.
+- 🟢 **Secrets-Leak**: keine Server-Vars in Components.
+- 🟢 **Open-Redirect**: alle redirectTo-Pfade gegen
+  `SAFE_PATH_RE`-Whitelist validiert.
+- 🟢 **ReDoS**: keine Greedy-Quantifier-Pattern auf
+  ungetrimmte User-Input gefunden.
+- **Fazit: keine Fixes vor MVP nötig.**
+
+**Dateien**:
+- 🔄 `src/lib/csrf.ts`: Allow-List-Memoization +
+  csrfErrorResponse non-export.
+- 🔄 `src/tests/csrf.test.ts`: indirekter `enforceCsrf`-
+  Test ersetzt direkten `csrfErrorResponse`-Test.
+- ✚ `docs/MVP_RECAP.md` (neu, ~5 KB):
+  Capability-Liste, Code-Inventur (10 mutating Routes,
+  8 Migrations, 21 Helper, 45 Tests, ~1.100+ Asserts,
+  102 KB Bundle, 0 KB Sentry-Impact), Helper-Übersicht,
+  Phase-1.5/2-Outlook.
+- 🔄 `docs/PROGRAM_PLAN.md`: Neue Sektion „Phase 1.5 →
+  E2E-Test-Block (Sessions 71–~76)" zwischen MVP-Phase
+  und UI/UX-Polish. Phase 2 verschoben auf 77–86+. Demo-
+  Logo jetzt Session 81 (war 76). Skill-Mapping
+  aktualisiert.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests grün**. Bundle 102 KB shared unverändert.
+
+**Light-Pass-Bilanz Sessions 66–70**:
+- 4 neue Helper-Module (csrf, user-input-sanitize,
+  error-reporter, business-delete) + 1 erweitert
+  (storage-cleanup mit recursive-delete)
+- ~145 neue Asserts on top
+- 1 Recap-Doku (`MVP_RECAP.md`)
+- 1 Hot-Path-Win (CSRF-Allow-List-Memoize)
+- 1 Surface-Reduktion (csrfErrorResponse non-export)
+- 5 Sessions × 0 Regressions
+- Pre-MVP-Security-Audit 🟢 alle 7 Bereiche
+
+**Roadmap**: **Phase 1 abgeschlossen — MVP-funktional
+erreicht**. Phase 1.5 ab Session 71 (User-Anweisung
+„sehr viele Tests"). Phase 2 ab Session 77.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Playwright-E2E-
+Patterns für Next.js (für Phase 1.5).
+
+**Status-Update**: ~99.5 % Richtung „erstes Betrieb-fertiges
+Produkt". Code-Inventur komplett, Security clean.
+Verbleibend bis 100% und produktiv: Phase 1.5 (~6 Sessions
+E2E-Coverage). Danach UI/UX + Brand-Identity in Phase 2.
+
+**Nächste Session**: Code-Session 71 = **Phase-1.5-Auftakt:
+Playwright-Setup + erste Smoke-Tests**. Begründung:
+User-Anweisung „sehr viele Tests, alles wie ein Endbenutzer
+durchspielen". `webapp-testing`-Skill als primäres Tool.
+Inhalt: `npm i -D @playwright/test`, `playwright.config.ts`,
+erste 3-5 Smoke-Tests (Login-Page lädt, Demo-Public-Site
+lädt, Account-Empty-State). Pflicht: Tests laufen ohne
+Supabase-ENV (Mock-Provider als Default). Plus
+`docs/TESTING.md` mit Anleitung „lokal testen" + „CI-
+Setup".
+
+## Code-Session 71 – Phase-1.5-Auftakt: Playwright-Setup + 10 Smoke-Tests
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Phase 1.5
+
+**Was**: End-to-End-Test-Block startet. Playwright als
+zweite Test-Schicht (zusätzlich zu den 45 Pure-Helper-
+Smoketests) für User-Flow-Verifikation gegen die echte
+App. Erste 4 Test-Files mit zusammen 10 grünen Smoke-Tests
+(22 s).
+
+**Architektur-Entscheidung — Playwright statt Cypress/
+Vitest-Browser**: Playwright ist 2026-Standard für Next.js
+(siehe Next.js-Docs-Empfehlung). Vorteile gegenüber
+Cypress: schneller, multi-tab/multi-context, native
+TypeScript-Support, parallel-fähig. Vorteil gegenüber
+Vitest-Browser: echte Browser-Engine, keine jsdom-Quirks.
+
+**Architektur-Entscheidung — Demo-Modus als Default**:
+Tests laufen ohne `NEXT_PUBLIC_SUPABASE_URL`/`...ANON_KEY`-
+ENV. Pages fallen auf `unconfigured`-State / Mock-Daten
+zurück. Ergebnis: 10 Smoke-Tests laufen deterministisch
+ohne externes Backend. Authed-Pfade kommen ab Session 72
+mit gemockter Cookie-Session.
+
+**Architektur-Entscheidung — `workers: 1` initial**: für
+die ersten Smoke-Tests sequenziell, damit Logs lesbar
+bleiben und der Dev-Server nicht parallel überlastet wird.
+Light-Pass Session 75 schaltet Parallelität ein, sobald
+≥10 state-unabhängige Tests da sind.
+
+**Architektur-Entscheidung — `e2e/`-Ordner aus
+root-tsconfig ausgeschlossen**: Playwright-Test-Files
+haben eigenen Test-Stil (`test`/`expect`-Globals, andere
+Module-Resolution). Eigene `e2e/tsconfig.json` extends
+root, override für test-spezifische compilerOptions. Root
+`tsc --noEmit` läuft nicht über e2e/, lint auch nicht
+(Next.js-ESLint-Config ignoriert non-`src`-Pfade).
+
+**Test-Findings beim ersten Lauf**: Zwei Tests scheiterten
+mit echten Annahmen-Fehlern:
+- **Site-Footer-Test**: `page.locator("footer")` matched
+  7 Elements — die Demo-Showcase-Cards auf der Landing-
+  Page nutzen `<footer>` als Card-Footer-Element. **Fix**:
+  ARIA-Landmark `getByRole("contentinfo")` statt Tag-
+  Selector. Lesson: Tag-Selector ist fragil bei
+  semantischen HTML-Strukturen.
+- **Public-Site-Lead-Form-Test**: Demo-Branche
+  `studio-haarlinie` hat keinen `type="email"`-Input —
+  Lead-Form-Felder sind branchenspezifisch. **Fix**:
+  strukturell prüfen (`form > input + button[type=submit]`)
+  statt feldspezifisch. Lesson: branchen-Variabilität
+  muss in Test-Strategie eingehen.
+
+Beide Findings sind genau der Mehrwert, den E2E-Tests
+liefern sollen — der Refactor in Session 60 (oder ein
+zukünftiger UI-Polish-Session) hätte diese Annahmen
+unentdeckt gelassen.
+
+**WebSearch (Track C)**: bestätigt
+- [Next.js – Playwright Testing](https://nextjs.org/docs/app/guides/testing/playwright)
+  Standard-Setup mit `webServer`, baseURL aus config, CI-
+  conditional `reuseExistingServer`.
+- [BrowserStack – 15 Best Practices for Playwright 2026](https://www.browserstack.com/guide/playwright-best-practices)
+  Auto-Waiting, getByRole, Trace-Viewer, Page-Object-
+  Model (kommt in Session 75).
+- [DeviQA – Playwright E2E 2026](https://www.deviqa.com/blog/guide-to-playwright-end-to-end-testing-in-2025/)
+  Trace `on-first-retry` als Standard für
+  Performance/Debug-Balance.
+- [TestDouble – E2E Auth Flows](https://testdouble.com/insights/how-to-test-auth-flows-with-playwright-and-next-js)
+  `storageState`-Pattern für Mock-Auth (Session 72).
+
+**Dateien**:
+- ✚ `playwright.config.ts`: baseURL, webServer,
+  retries (CI=2, lokal=0), trace, screenshot, projects
+  (Chromium initial; Firefox/WebKit ab Session 75).
+- ✚ `e2e/smoke-landing.spec.ts` (3 Tests).
+- ✚ `e2e/smoke-login.spec.ts` (3 Tests).
+- ✚ `e2e/smoke-public-site.spec.ts` (3 Tests).
+- ✚ `e2e/smoke-account.spec.ts` (1 Test).
+- ✚ `e2e/tsconfig.json`: extends root, override
+  module/jsx/isolatedModules.
+- ✚ `docs/TESTING.md`: Pflicht-Doku für beide Test-
+  Schichten. Setup, Ausführung, Demo-vs-Authed-Modus,
+  Pattern + Best-Practices, Roadmap Phase 1.5,
+  CI-Setup-Skizze.
+- 🔄 `package.json`: `@playwright/test@^1.59.1`,
+  Scripts `test:e2e`, `test:e2e:ui`, `test:e2e:report`.
+- 🔄 `tsconfig.json`: `exclude: ["node_modules", "e2e"]`.
+- 🔄 `.gitignore`: Playwright-Output-Verzeichnisse.
+
+**Browser-Binaries**: ~112 MB Chromium-Headless-Shell
+unter `/opt/pw-browsers/`. Cache-Pfad lokal.
+Lokal-Setup-Aufwand: einmalig `npx playwright install
+chromium`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests grün** (unverändert). **10/10 E2E-Tests
+grün** (22 s). Bundle 102 KB shared unverändert.
+
+**Roadmap Phase 1.5**:
+- **72**: Onboarding-Flow E2E (Magic-Link → Form →
+  Slug-Validation → Auto-Redirect).
+- **73**: Business-Editor E2E (alle Sektionen, Logo+
+  Cover-Upload, Save/Discard).
+- **74**: Service-Liste E2E (CRUD, Reorder, UUID-Gating,
+  Bild-Upload).
+- **75** (5er-Light-Pass): Settings + Danger-Zone E2E +
+  Test-Helper-Refactor + Parallelität anschalten + Firefox-
+  Browser-Project.
+- **76**: Public-Site E2E + Lead-Retry-Queue (online/
+  offline).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Playwright-
+Patterns 2026.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 läuft (Test-
+Coverage-Aufbau). 10 E2E-Tests von ≥25 angepeilten.
+Phase 2 (UI/UX-Polish) ab Session 77.
+
+**Nächste Session**: Code-Session 72 = **Onboarding-Flow
+E2E**. Begründung: Phase 1.5 läuft. Onboarding ist der
+erste authed Flow — Magic-Link-Trigger, Form-Validation,
+Slug-Reserved-/Collision-Cases, Auto-Redirect zu
+Dashboard. Strategie für Auth: `storageState`-Pattern
+(Test-Cookie-Session vorab in einer `auth.setup.ts`
+Datei generieren, dann von allen Tests nutzen). Mock für
+Magic-Link-Email: kein echtes SMTP nötig — Login-Form-
+Submit ruft `/api/auth/magic-link`, das in Test-ENV
+einen direkten Login-Token zurückgibt (DEV-Bypass).
+

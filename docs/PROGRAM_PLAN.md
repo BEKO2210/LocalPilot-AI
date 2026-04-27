@@ -265,9 +265,218 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   `generateNewServiceId(slug)` umgestellt von Pseudo-ID auf
   echte UUID v4 (`crypto.randomUUID`), damit neu hinzugefügte
   Services sofort Bild-Upload-fähig sind.
-- 41+: Service-Bilder beim Slug-Wechsel mit-migrieren
-  (Folge-Session 59), Backup-Policy, Seed-Skript für
-  Demo-Daten.
+- 59: Service-Bilder beim Slug-Wechsel mit-migrieren ✅.
+  Pattern aus Session 57 wird für `services.image_url`
+  ausgerollt: nach erfolgreichem Slug-UPDATE (Phase 1) wird
+  pro Service-Row mit `image_url` auf unserem Bucket der
+  Storage-Move auf den neuen Slug-Prefix ausgeführt
+  (`Promise.all` parallel) und die DB-URL einzeln per
+  `update().eq("id", x)` aktualisiert (zweites
+  `Promise.all`). supabase-js v2 hat keinen native Bulk-
+  Update mit unterschiedlichen Werten pro Row; pro-Row-
+  UPDATE ist bei realistic 5–30 Services performant genug.
+  Move-Failure setzt URL auf null (kein 404-Bild).
+  Antwort um `serviceImagesMoved` + `serviceImagesFailed`.
+  Damit ist die Storage-Hygiene-Lücke aus 58 geschlossen
+  und der Storage-Stack symmetrisch über alle vier Pfade.
+- 60: Light-Pass + Storage-Hygiene-Recap ✅. Sessions 56–59
+  haben den Stack inkrementell ausgebaut — diese 5er-
+  Multiple-Session konsolidiert die zwei Slug-Move-Blöcke
+  aus 57+59 in einen einzigen pure Helper
+  `storage-slug-migration.ts` (~38 Asserts), der per
+  `Promise.all` Logo/Cover- und Service-Bilder-Migration
+  parallel ausführt. `settings/route.ts` schrumpft von
+  ~140 inline-Zeilen auf einen einzigen Helper-Aufruf. Neue
+  Recap-Doku `docs/STORAGE.md` zeigt Bucket-Layout, Pfad-
+  Konventionen und ein Diagramm aller 4 Hygiene-Pfade
+  (Upload, DELETE-Cleanup, Slug-Move Logo/Cover, Slug-Move
+  Services). Storage-Architektur ist damit production-ready
+  und vollständig dokumentiert.
+- 61: Live-Provider-Switch für Reviews-Panel ✅. Owner kann
+  pro Generate-Klick zwischen Mock-Provider und Live (OpenAI/
+  Anthropic/Gemini) umschalten. Neuer Pure-Helper
+  `src/lib/ai-client.ts` (~150 Zeilen) mit 6-Result-Kind-
+  Mapping (`server` / `not-authed` / `forbidden` /
+  `rate-limit` / `static-build` / `fail`) als zentrale,
+  getestete Browser→`/api/ai/generate`-Schnittstelle.
+  Token-localStorage-Slot ist geteilt mit AIPlayground —
+  einmal eingeben, in beiden Panels nutzbar.
+- 62: Live-Provider-Switch für Social-Panel ✅. Symmetrisch
+  zu 61 — gleicher Helper, gleicher Provider-Toggle, gleicher
+  Token-Slot. Zusätzlich neuer lokaler `parseSocialOutput`-
+  Helper für defensive Validation des `unknown`-Server-
+  Outputs. Damit sind alle drei produktiven AI-Pfade
+  (Playground, Reviews, Social) Live-fähig. Folge-Item:
+  AIPlayground-Migration auf `callAIGenerate` als Light-Pass
+  Session 65 (konsolidiert ~100 Zeilen inline-Error-Handling
+  aus Session 28).
+- 63: Default-Redirect bei einem Betrieb ✅. Owner mit
+  genau einem Betrieb landen ab sofort nach Login direkt im
+  Dashboard — Account-Übersicht ist nur noch sichtbar bei
+  0/2+ Betrieben oder explizitem `?stay=1`-Bypass. Pure
+  Helper `shouldRedirectToSingle(list, options?)` mit
+  Whitespace-Slug-Defensive; UI nutzt `router.replace`
+  statt `push` (kein Back-Button-Loop). +7 Asserts on top,
+  39/40 Smoketests grün.
+- 64: Lead-Retry-Queue ✅. Wenn das Public-Site-Formular
+  einen Lead wegen Netzwerk-Hänger / 5xx nur lokal ablegt,
+  wird er ab sofort beim nächsten `online`-Event automatisch
+  erneut versendet. Pure Helper `lead-retry-queue.ts` (~250
+  Zeilen, ~50 Asserts) mit Exponential-Backoff (5s → 5min,
+  max 8 Versuche, danach `discardedAt`-Marker). Beim Flush
+  werden 4xx als Success-Klasse behandelt (kein endloser
+  Retry-Loop auf strukturell kaputten Leads). Form zeigt
+  amber Badge „N ältere Anfragen warten …" bei nicht-leerer
+  Queue. Damit ist der Public-Site-Lead-Pfad production-
+  tauglich gegen Netzwerk-Hänger.
+- 41+: Backup-Policy, Seed-Skript für Demo-Daten,
+  „Betrieb löschen"-Flow mit rekursivem Storage-Cleanup.
+
+### Phase 1 Restweg → MVP-funktional (Sessions 65–70)
+
+Pflicht-Items, die `funktioniert alles` blockieren. Erst danach
+beginnt die UI/UX-Polish-Phase.
+
+- **65** (Light-Pass, 5er-Multiple) ✅: AIPlayground auf
+  `callAIGenerate` migriert — letzte Stelle mit inline
+  `/api/ai/generate`-Aufruf + ~100 Zeilen Error-Handling
+  konsolidiert. Plus Recap-Doku `docs/AI.md`.
+- **66** ✅: CSRF-Schutz für mutating Routes via
+  Origin-/Referer-Header-Check (`lib/csrf.ts`, ~36 Asserts,
+  10 Routen geschützt). Bearer-Token bypasst (CLI/Server-zu-
+  Server). Außerdem industry-presets-Test (Codex #11)
+  gefixt — 42/42 Tests grün.
+- **67** ✅: HTML-Sanitize-Whitelist auf User-Inputs vor dem
+  DB-Insert. Pure Helper `lib/user-input-sanitize.ts` (~250
+  Zeilen, ~45 Asserts) wrappt den existierenden
+  `sanitizeText`-Stripper aus Session 27 mit
+  Whitespace-Normalisierung + Length-Cap + 3
+  Domain-Wrappern (BusinessProfile, Service, Lead inkl.
+  extraFields). 4 mutating Routen gehärtet
+  (onboarding, business PATCH, services PUT, leads POST).
+  Defense-in-Depth-Security-Stack komplett: SameSite +
+  CSRF + HTML-Sanitize.
+- **68** ✅: Error-Tracking via Adapter-Pattern.
+  `lib/error-reporter.ts` (~190 Zeilen, ~30 Asserts) mit
+  Public-API `captureException`/`captureMessage`/
+  `reportRouteError`. Default-Sink: console (0 KB Bundle).
+  Bei `SENTRY_DSN` ENV + installiertem `@sentry/nextjs`
+  wird Sentry lazy via `await import(...)` aktiviert —
+  keine harte Dep, kein Code-Wechsel beim Upgrade. Plus
+  `app/global-error.tsx` als App-Router-ErrorBoundary für
+  RootLayout-Crashes. Routen `/api/leads` + `/api/onboarding`
+  melden 5xx-Errors. Observability-Layer eingezogen.
+- **69** ✅: „Betrieb löschen"-Flow mit rekursivem Storage-
+  Cleanup. `DELETE /api/businesses/<slug>` mit Auth + RLS
+  + Stack-basiertem Walker (`listAllPathsByPrefix` +
+  `removeAllByPrefix` in `storage-cleanup.ts`, +18 Asserts
+  → 70 gesamt). Submit-Helper `business-delete.ts` (~110
+  Zeilen, ~25 Asserts). UI mit Slug-Confirmation +
+  `window.confirm()` als zweite Stufe + Redirect auf
+  `/account?stay=1`. Lead-/Service-/Review-/FAQ-Cascade
+  via FK. Self-Service-Cycle damit vollständig.
+- **69**: „Betrieb löschen"-Flow mit rekursivem
+  Storage-Cleanup. Nutzt vorhandene Helper aus 56/57/60.
+- **70** (Light-Pass, 5er-Multiple): finaler Pre-MVP-Pass —
+  alle 7 Pflicht-Items prüfen, Audit-Checkliste schließen.
+
+### Phase 1.5 → End-to-End-Test-Block (Sessions 71–~76)
+
+**Vor** der UI/UX-Polish-Phase: alles wie ein End-User
+durchspielen. Anweisung des Auftraggebers: „Sehr viele
+Tests bevor wir an die UI/UX. Alles muss funktionieren,
+teste alles durch wie ein Endbenutzer."
+
+Pro Session ein User-Flow als Playwright-E2E-Test. Skill:
+`webapp-testing` (Playwright-Test-Generator + Runner).
+Setup-Strategie: Tests laufen gegen lokale dev-Instanz mit
+in-memory Mock-Provider (kein echtes Supabase nötig in
+CI-Umgebung).
+
+- **71** ✅: Setup-Session. `@playwright/test@^1.59.1`,
+  `playwright.config.ts`, **10 Smoke-Tests grün** in 22 s
+  (Landing, Login, Public-Site × 2 Slugs, Account). Demo-
+  Modus: alle Tests grün ohne Supabase-ENV. `docs/TESTING.md`
+  als Pflicht-Doku. 2 Annahmen-Fehler beim ersten Lauf
+  aufgedeckt + gefixt (Footer-Selector Demo-Card-Kollision,
+  Lead-Form branchenspezifische Felder) — exakt der
+  Mehrwert, den E2E-Tests liefern sollen.
+- **72**: Onboarding-Flow E2E. Magic-Link-Page → Onboarding-
+  Form → Slug-Validation (kollidieren, reserviert, ok) →
+  erster Betrieb angelegt → Auto-Redirect zu Dashboard
+  (Session-63-Logik).
+- **73**: Business-Editor-E2E. Alle Sektionen
+  (Basisdaten / Branche / Adresse / Kontakt /
+  Öffnungszeiten / Branding), Logo+Cover-Upload-UI
+  (Mock-Mode), Speichern, Verwerfen, Demo-Defaults laden.
+- **74**: Service-Liste-E2E. Neuer Service, Edit, Delete
+  mit Confirm, Reorder via Pfeile, Limit-Verhalten, Service-
+  Bild-Upload mit UUID-Gating-Hint.
+- **75** (5er-Multiple, Light-Pass + E2E): Settings-E2E
+  (Slug-Wechsel mit Storage-Move-Indikator, Publish-Toggle,
+  Locale, Danger-Zone-Löschen mit Slug-Confirm) + Light-
+  Pass auf E2E-Test-Helpers (Stable Selectors, Test-Data-
+  Builders, Page-Objects).
+- **76**: Public-Site-E2E + Lead-Retry-Queue. Lead-Form
+  ausfüllen, Hero/Services/FAQ rendern, Mobile-CTA-
+  Streifen, Theme-Wechsel, Lead-Retry-Queue-Verhalten
+  bei `online`/`offline`-Events.
+
+Erfolgskriterium Phase 1.5: ≥25 grüne E2E-Tests, alle
+kritischen User-Flows abgedeckt, `TESTING.md`-Doku mit
+Anleitung „lokal testen" + „CI-Setup".
+
+### Phase 2 → UI/UX-Polish (Sessions ~77–~86+)
+
+Nach Phase-1.5 (E2E-Coverage steht) folgt die mindestens
+10-Sessions-tiefe Polish-Phase. Pro Session ein klar
+abgegrenzter Audit-Bereich mit (a) Snapshot des Ist-Stands,
+(b) Issue-Liste, (c) Fixes, (d) E2E-Tests aus Phase 1.5
+als Regression-Schutz.
+
+- **77**: Public-Site-Audit. Hero-Section, Service-Cards,
+  Lead-Form, Theme-Anwendung, Footer. Theme-Token-
+  Konsistenz prüfen.
+- **78**: Dashboard-Shell-Audit. Header, Sidebar/Tabs,
+  Mobile-Nav, Empty-States, Auth-Card.
+- **79**: Editor-Audits — alle 5 Editoren (Business,
+  Services, Settings, Reviews, Social) auf Buttons, Spacing,
+  Validation-Hints, Banner-Konsistenz.
+- **80** (5er-Multiple, Light-Pass): Form-System-
+  Konsistenz + Component-Reuse-Pass mit `simplify`-Skill.
+- **81**: **Demo-Logo + Brand-Identity**. Aktuelles Logo
+  ist text-only (LocalPilot AI). Mit `algorithmic-art`-Skill
+  ein generatives p5.js-Mark + statische SVG-Variante
+  produzieren. Brand-Tokens (`brand-guidelines`-Skill)
+  definieren: Farben, Schriften, Spacing, Iconography.
+- **82**: Theme-Polish. `theme-factory`-Skill anwenden auf
+  alle 10 Themes — Konsistenz-Audit der Farben, Schrift-
+  Hierarchie, Buttons, Form-Surfaces. Public-Site-Theme-
+  Switcher als Demo-Tool.
+- **83**: A11y-Audit. Tab-Order, ARIA-Labels, Contrast-
+  Ratios (WCAG 2.2 AA), Focus-States, Reduced-Motion-Pfad.
+- **84**: Mobile/Tablet-Responsive-Audit. Breakpoints
+  (sm/md/lg/xl), Touch-Targets (≥44×44), Mobile-CTA-
+  Streifen, Tab-Bars.
+- **85** (5er-Multiple, Light-Pass): Type-System-Pass.
+- **86**: Finaler Polish-Pass + Lighthouse-Run + Bundle-
+  Cleanup + Production-Deploy-Doku.
+
+### Skill-Mapping (Phase 2)
+
+Verfügbare Claude-Code-Skills, die in der UI/UX-Phase zentral
+werden:
+
+| Skill                  | Einsatz in Phase 1.5/2                              |
+| ---------------------- | ----------------------------------------------- |
+| `webapp-testing`       | **Phase 1.5 (Sessions 71–76)** — Playwright-Tests pro User-Flow. Regression-Schutz für Phase 2. |
+| `simplify`             | Light-Pass-Sessions (65 ✅, 70 ✅, 75, 80, 85) — Code-Diff-Review für Reuse + Quality + Efficiency. |
+| `algorithmic-art`      | Session 81 — Demo-Logo als generatives p5.js-Artwork mit Seed (reproduzierbar). |
+| `theme-factory`        | Sessions 81+82 — Brand-Tokens auf alle Artefakte (HTML/CSS/Slides/PDF) anwenden. |
+| `brand-guidelines`     | Session 81 — Brand-Definition (Farben, Schriften, Voice, Iconography) als Single-Source-of-Truth. |
+| `systematic-debugging` | Bei Bug-Hunting in Audit-Phasen — Senior-Dev-Pipeline statt Rumprobieren. |
+| `security-review`      | Session 70 (Pre-MVP) ✅ + vor Production-Deploy — Branch-weiter Security-Scan. |
+| `review`               | PR-Reviews vor `main`-Merge. |
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant

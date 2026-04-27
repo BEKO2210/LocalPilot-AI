@@ -97,9 +97,12 @@ export type SettingsUpdateResult =
       readonly slug: string;
       /** `true`, wenn der Slug in dieser Anfrage geändert wurde. */
       readonly slugChanged: boolean;
-      /** Storage-Migrate-Counts (Code-Session 57). Optional. */
+      /** Logo+Cover-Move-Counts (Code-Session 57). Optional. */
       readonly imagesMoved?: number;
       readonly imagesFailed?: number;
+      /** Service-Image-Move-Counts (Code-Session 59). Optional. */
+      readonly serviceImagesMoved?: number;
+      readonly serviceImagesFailed?: number;
     }
   | { readonly kind: "not-authed" }
   | { readonly kind: "forbidden" }
@@ -120,6 +123,8 @@ interface ApiSuccessBody {
   readonly slugChanged?: boolean;
   readonly imagesMoved?: number;
   readonly imagesFailed?: number;
+  readonly serviceImagesMoved?: number;
+  readonly serviceImagesFailed?: number;
 }
 interface ApiErrorBody {
   readonly error?: string;
@@ -176,6 +181,8 @@ export async function submitSettingsUpdate(
       slugChanged: Boolean(body?.slugChanged),
       imagesMoved: body?.imagesMoved,
       imagesFailed: body?.imagesFailed,
+      serviceImagesMoved: body?.serviceImagesMoved,
+      serviceImagesFailed: body?.serviceImagesFailed,
     };
   }
 

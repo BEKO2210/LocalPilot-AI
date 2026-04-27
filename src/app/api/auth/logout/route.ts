@@ -7,11 +7,15 @@
 
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/core/ai/auth/check";
+import { enforceCsrf } from "@/lib/csrf";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function POST(): Promise<Response> {
+export async function POST(req: Request): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   const response = NextResponse.json({ ok: true });
   response.headers.set(
     "Set-Cookie",

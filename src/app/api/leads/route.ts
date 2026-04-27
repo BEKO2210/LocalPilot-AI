@@ -22,6 +22,9 @@ import {
   LeadRepositoryError,
   type NewLeadInput,
 } from "@/core/database/repositories";
+import { enforceCsrf } from "@/lib/csrf";
+import { reportRouteError } from "@/lib/error-reporter";
+import { sanitizeLeadStrings } from "@/lib/user-input-sanitize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +46,9 @@ function statusForKind(kind: LeadRepositoryError["kind"]): number {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   let body: unknown;
   try {
     body = await req.json();
@@ -73,9 +79,15 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
+  // XSS-Defense-in-Depth (Code-Session 67): Leads kommen
+  // direkt von der Public-Site ohne Auth. Vor dem Insert
+  // alle string-Felder + extraFields durchsanitizen — schützt
+  // Dashboard-Render, Email-Templates und Excel-Exports.
+  const sanitized = sanitizeLeadStrings(body as Record<string, unknown>) as unknown as NewLeadInput;
+
   const repo = getLeadRepository();
   try {
-    const lead = await repo.create(body as NewLeadInput);
+    const lead = await repo.create(sanitized);
     return NextResponse.json(
       {
         ok: true,
@@ -94,6 +106,7 @@ export async function POST(req: Request): Promise<Response> {
         { status: statusForKind(err.kind) },
       );
     }
+    reportRouteError(err, "/api/leads", { source: "lead-create" });
     return NextResponse.json(
       { error: "unknown", message: "Unerwarteter Fehler beim Speichern." },
       { status: 500 },

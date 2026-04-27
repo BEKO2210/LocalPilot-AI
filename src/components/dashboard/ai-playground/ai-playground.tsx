@@ -2,10 +2,14 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { AlertCircle, Ban, Clock, Loader2, Server, Sparkles, Wand2 } from "lucide-react";
-import { AIProviderError } from "@/types/ai";
 import type { AIProviderKey } from "@/types/common";
 import type { Business } from "@/types/business";
 import { sanitizeAIOutput } from "@/core/ai/sanitize";
+import {
+  AI_TOKEN_STORAGE_KEY,
+  callAIGenerate,
+  type AIGenerateRateLimit,
+} from "@/lib/ai-client";
 import { DashboardCard } from "../dashboard-card";
 import { AuthCard } from "./auth-card";
 import { HealthCard } from "./health-card";
@@ -13,19 +17,13 @@ import { ResultPanel } from "./result-panel";
 import { METHOD_CONFIGS, METHOD_ORDER, contextFromBusiness } from "./method-configs";
 import type {
   GenerationResult,
+  PlaygroundCostInfo,
   PlaygroundField,
   PlaygroundFormValues,
   PlaygroundMethodId,
 } from "./types";
 
-interface RateLimitState {
-  readonly capUsd: number;
-  readonly spentUsd: number;
-  readonly resetAtUtc: string;
-  readonly message: string;
-}
-
-const TOKEN_STORAGE_KEY = "lp:ai-api-token:v1";
+type RateLimitState = AIGenerateRateLimit;
 
 const PROVIDER_OPTIONS: readonly {
   readonly value: AIProviderKey;
@@ -89,7 +87,7 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
   // sealed ist (Privatemodus, etc.) — dann bleibt es Session-only.
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+      const stored = window.localStorage.getItem(AI_TOKEN_STORAGE_KEY);
       if (stored) setApiToken(stored);
     } catch {
       /* ignore */
@@ -99,9 +97,9 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
   useEffect(() => {
     try {
       if (apiToken.trim().length > 0) {
-        window.localStorage.setItem(TOKEN_STORAGE_KEY, apiToken.trim());
+        window.localStorage.setItem(AI_TOKEN_STORAGE_KEY, apiToken.trim());
       } else {
-        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        window.localStorage.removeItem(AI_TOKEN_STORAGE_KEY);
       }
     } catch {
       /* ignore */
@@ -124,102 +122,56 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
     setResult(null);
     setRateLimit(null);
     startTransition(async () => {
-      try {
-        if (providerKey === "mock") {
+      // Mock-Pfad: lokal, kein Server-Roundtrip. Sanitizer als
+      // Defense-in-Depth, falls künftig echte AI-Fixtures eingespielt
+      // werden.
+      if (providerKey === "mock") {
+        try {
           const out = await config.call(business, formValues);
-          // Defense-in-Depth: auch der lokale Mock-Aufruf läuft durch
-          // den Sanitizer. Mock liefert deterministische Texte, die
-          // aktuell sauber sind — aber wenn sich das Mock-Skript
-          // einmal ändert oder wir Fixtures aus echten KI-Calls
-          // einspielen, bleibt der Pfad konsistent.
           setResult({ ...out, output: sanitizeAIOutput(out.output) } as typeof out);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : String(err));
+        }
+        return;
+      }
+
+      // Live-Pfad: zentraler Helper aus `lib/ai-client.ts`
+      // (Code-Session 65). Kein try/catch nötig — `callAIGenerate`
+      // wirft nicht, alle Fehlerklassen kommen als `kind: "fail"`
+      // o. ä. zurück.
+      const input = config.buildInput(business, formValues);
+      const r = await callAIGenerate({
+        method: config.apiName,
+        providerKey,
+        input,
+        apiToken,
+      });
+
+      switch (r.kind) {
+        case "server": {
+          setResult({
+            method: config.id,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            output: r.output as any,
+            ...(r.cost ? { cost: r.cost as PlaygroundCostInfo } : {}),
+          } as GenerationResult);
           return;
         }
-        // Live-Provider via API-Route. Nur in SSR-Deploy verfügbar;
-        // im Static-Export gibt es keine `/api`-Route → 404.
-        // Auth: Cookie-Session ODER Bearer-Token (für CLI). Wenn weder
-        // ein Bearer-Token gesetzt ist noch eine aktive Cookie-Session
-        // sichtbar gewesen wäre, geht der Request trotzdem raus —
-        // wenn die Cookie-Session gültig ist, sendet der Browser sie
-        // automatisch mit. Bei 401 wird die Fehlermeldung darauf
-        // hinweisen, dass Login fehlt.
-        const headers: Record<string, string> = {
-          "content-type": "application/json",
-        };
-        if (apiToken.trim().length > 0) {
-          headers.authorization = `Bearer ${apiToken.trim()}`;
-        }
-        const input = config.buildInput(business, formValues);
-        const res = await fetch("/api/ai/generate", {
-          method: "POST",
-          headers,
-          credentials: "same-origin",
-          body: JSON.stringify({
-            method: config.apiName,
-            providerKey,
-            input,
-          }),
-        });
-        if (!res.ok) {
-          if (res.status === 404) {
-            setError(
-              "API-Route /api/ai/generate ist nicht verfügbar. Static-Export-Build (GitHub Pages) hat keine API-Routen — bitte SSR-Deploy (Vercel) oder zurück auf Mock.",
-            );
-            return;
-          }
-          let errBody: {
-            error?: string;
-            message?: string;
-            cost?: {
-              capUsd?: number;
-              spentUsd?: number;
-              resetAtUtc?: string;
-            };
-          } = {};
-          try {
-            errBody = (await res.json()) as typeof errBody;
-          } catch {
-            /* ignore */
-          }
-          // 429 hat einen eigenen UI-Pfad: Rate-Limit-Card mit
-          // Countdown bis Reset, statt generischer Fehler-Box.
-          if (res.status === 429 && errBody.cost) {
-            setRateLimit({
-              capUsd: errBody.cost.capUsd ?? 0,
-              spentUsd: errBody.cost.spentUsd ?? 0,
-              resetAtUtc:
-                errBody.cost.resetAtUtc ??
-                new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-              message: errBody.message ?? "Tages-Budget erschöpft.",
-            });
-            return;
-          }
+        case "rate-limit":
+          setRateLimit(r.limit);
+          return;
+        case "static-build":
           setError(
-            `API ${res.status}: ${errBody.error ?? "fehler"} — ${errBody.message ?? "(keine Nachricht)"}`,
+            "API-Route /api/ai/generate ist nicht verfügbar. Static-Export-Build (GitHub Pages) hat keine API-Routen — bitte SSR-Deploy (Vercel) oder zurück auf Mock.",
           );
           return;
-        }
-        const json = (await res.json()) as {
-          output: unknown;
-          cost?: import("./types").PlaygroundCostInfo;
-        };
-        // Output kommt aus der gleichen Pipeline (Mock oder Live mit
-        // gleichem Schema), wir können ihn als das jeweilige Output-Type
-        // typisieren. Validierung passierte server-seitig.
-        setResult({
-          method: config.id,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          output: json.output as any,
-          ...(json.cost ? { cost: json.cost } : {}),
-        } as GenerationResult);
-      } catch (err) {
-        if (err instanceof AIProviderError) {
-          setError(`${err.code}: ${err.message}`);
-        } else if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError(String(err));
-        }
+        case "not-authed":
+        case "forbidden":
+          setError(r.message);
+          return;
+        case "fail":
+          setError(`API ${r.status}: ${r.reason}`);
+          return;
       }
     });
   }

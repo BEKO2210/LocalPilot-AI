@@ -29,6 +29,13 @@ import {
   type BusinessProfile,
 } from "@/core/validation/business-profile.schema";
 import { profileToBusinessRow } from "@/lib/business-update";
+import { enforceCsrf } from "@/lib/csrf";
+import { reportRouteError } from "@/lib/error-reporter";
+import { getServiceRoleClient } from "@/core/database/supabase-service";
+import { removeAllByPrefix } from "@/lib/storage-cleanup";
+import { sanitizeBusinessProfileStrings } from "@/lib/user-input-sanitize";
+
+const IMAGE_BUCKET = "business-images";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +48,9 @@ export async function PATCH(
   req: Request,
   ctx: RouteContext,
 ): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   // 1) Auth-Gate
   const user = await getCurrentUser();
   if (!user) {
@@ -76,6 +86,13 @@ export async function PATCH(
   let profile: BusinessProfile;
   try {
     profile = parseSnakeRowAsProfile(body);
+    // XSS-Defense-in-Depth (Code-Session 67): User-Input vor
+    // dem DB-Insert von HTML-Tags + Control-Chars säubern.
+    // Public-Site-Render via React-`{text}` ist primär durch
+    // Auto-Escaping geschützt — sanitize hier ist Schutz gegen
+    // spätere Markdown-/HTML-Renderer und gegen
+    // Logs/Email-Templates.
+    profile = sanitizeBusinessProfileStrings(profile);
   } catch (err) {
     if (err instanceof ValidationError) {
       return NextResponse.json(
@@ -140,6 +157,118 @@ export async function PATCH(
 
   return NextResponse.json(
     { ok: true, slug: data.slug },
+    { status: 200, headers: { "Cache-Control": "no-store" } },
+  );
+}
+
+/**
+ * DELETE /api/businesses/[slug] (Code-Session 69)
+ *
+ * Owner löscht den eigenen Betrieb komplett — DSGVO-„Recht auf
+ * Löschung" + normaler Self-Service-Flow. Pfad:
+ *   1. CSRF + Auth (Cookie-Session).
+ *   2. RLS-only DB-DELETE auf `businesses`. Migration 0007
+ *      erlaubt DELETE nur dem Owner; trifft 0 Zeilen → 403.
+ *   3. Lead-Daten + Service-Rows verschwinden via FK-Cascade
+ *      (Migrations 0002/0005). Reviews/FAQs ebenfalls.
+ *   4. Storage-Cleanup: alle Files unter `<slug>/` im
+ *      `business-images`-Bucket rekursiv gelöscht
+ *      (Logo + Cover + Service-Bilder). Best-Effort — Fehler
+ *      werden geloggt, blockieren aber nicht (DB-DELETE ist
+ *      bereits committed).
+ */
+export async function DELETE(
+  req: Request,
+  ctx: RouteContext,
+): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json(
+      { error: "unauthorized", message: "Bitte zuerst einloggen." },
+      { status: 401 },
+    );
+  }
+
+  const { slug } = await ctx.params;
+  if (!slug || slug.length === 0) {
+    return NextResponse.json(
+      { error: "invalid_slug", message: "Slug fehlt im Pfad." },
+      { status: 400 },
+    );
+  }
+
+  const supabase = await createServerSupabaseClient();
+  if (!supabase) {
+    return NextResponse.json(
+      { error: "supabase_not_configured", message: "Datenbank-Backend nicht aktiv." },
+      { status: 503 },
+    );
+  }
+
+  // RLS-getriebener DELETE. Wenn der User nicht Owner ist,
+  // trifft 0 Zeilen — wir antworten 403, damit das UI
+  // zwischen „existiert nicht" und „kein Zugriff" nicht
+  // unterscheiden muss.
+  const { data, error } = await supabase
+    .from("businesses")
+    .delete()
+    .eq("slug", slug)
+    .select("id, slug")
+    .maybeSingle<{ id: string; slug: string }>();
+
+  if (error) {
+    reportRouteError(error, "/api/businesses/[slug]", { method: "DELETE", slug });
+    return NextResponse.json(
+      { error: "unknown", message: error.message ?? "Datenbank-Fehler beim Löschen." },
+      { status: 500 },
+    );
+  }
+
+  if (!data) {
+    return NextResponse.json(
+      {
+        error: "forbidden",
+        message:
+          "Du bist nicht Owner dieses Betriebs (oder der Slug existiert nicht).",
+      },
+      { status: 403 },
+    );
+  }
+
+  // Storage-Cleanup nach erfolgreichem DB-DELETE. Best-effort
+  // — Fehler hier dürfen die Antwort nicht blockieren, der
+  // Betrieb ist bereits aus der DB raus.
+  let filesRemoved = 0;
+  let filesFailed = 0;
+  try {
+    const adminClient = getServiceRoleClient();
+    const removeRes = await removeAllByPrefix(adminClient, IMAGE_BUCKET, slug);
+    filesRemoved = removeRes.removed;
+    filesFailed = removeRes.failed;
+    if (removeRes.reason) {
+      console.warn(
+        `[business-delete] Storage-Cleanup für slug=${slug}:`,
+        removeRes.reason,
+      );
+    }
+  } catch (err) {
+    reportRouteError(err, "/api/businesses/[slug]", {
+      method: "DELETE",
+      slug,
+      phase: "storage-cleanup",
+    });
+  }
+
+  return NextResponse.json(
+    {
+      ok: true,
+      slug: data.slug,
+      filesRemoved,
+      filesFailed,
+    },
     { status: 200, headers: { "Cache-Control": "no-store" } },
   );
 }

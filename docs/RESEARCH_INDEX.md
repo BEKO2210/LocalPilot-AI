@@ -105,6 +105,35 @@
 - [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
 - [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
 
+### Helper-Extraktion + Reusable Architecture (Code-Session 65)
+- [DEV – Fetch Wrapper for Next.js: A Deep Dive into Best Practices](https://dev.to/dmitrevnik/fetch-wrapper-for-nextjs-a-deep-dive-into-best-practices-53dh) — Helper-Extraktion mit explicit Result-Mapping ist 2026-Standard (65).
+- [freeCodeCamp – Reusable Architecture for Large Next.js Apps](https://www.freecodecamp.org/news/reusable-architecture-for-large-nextjs-applications/) — Custom hooks + utility functions in src/utils/src/lib für DRY (65).
+- [vercel/next.js #61759 – Fetch or import in client component](https://github.com/vercel/next.js/discussions/61759) — Client-Component-Helper-Pattern mit fetch (65).
+
+### localStorage-Retry-Queue mit Exponential-Backoff (Code-Session 64)
+- [@segment/localstorage-retry](https://github.com/segmentio/localstorage-retry) — Production-ready Pattern bei Segment.io. Default-Werte (5s Base / 5min Max / Factor 2 / max 8 Versuche) übernommen, Implementation eigen wegen Bundle-Größe (64).
+- [DEV – Queue-Based Exponential Backoff](https://dev.to/andreparis/queue-based-exponential-backoff-a-resilient-retry-pattern-for-distributed-systems-37f3) — 4xx als Success-Klasse markieren bei client-side Retries (64).
+- [AWS Builders Library – Timeouts, Retries, Backoff with Jitter](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/) — Jitter wichtig im Cluster, irrelevant in Single-Browser-Kontext (64).
+- [Advanced Web Machinery – Exponential Backoff in JS](https://advancedweb.hu/how-to-implement-an-exponential-backoff-retry-strategy-in-javascript/) — Praxis-Beispiel mit clean Math (64).
+
+### Browser→AI-API-Auth-Patterns (Code-Session 61)
+- [Next.js – Authentication](https://nextjs.org/docs/app/guides/authentication) — Bearer-Header in Client-Components ist Standard, solange Token nicht im JS-Bundle landet (61).
+- [TokenMix – AI API for React Apps 2026](https://tokenmix.ai/blog/ai-api-for-react-apps) — Sicherheits-Note: AI-Provider-Keys NIE direkt aus dem Browser; Backend-Proxy ist Pflicht (61).
+- [Auth.js – React Reference](https://authjs.dev/reference/nextjs/react) — Cookie-Session reicht für eingeloggte Owner; Bearer-Token nur für CLI / Skripte (61).
+- [Mock Service Worker (MSW)](https://www.npmjs.com/package/next-test-api-route-handler) — Empfohlen 2026 für fetch-Stubs; wir nutzen direkt einen Stub-fetch-Closure (61).
+
+### Helper-Extraktion + Promise.all in Route-Handlern (Code-Session 60)
+- [Next.js – Getting Started: Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers) — Helper-Extraktion ist Standard-Pattern für testbare Route-Handler (60).
+- [makerkit – Next.js Route Handlers Best Practices 2026](https://makerkit.dev/blog/tutorials/nextjs-api-best-practices) — Universal try-catch wrapper + DI-Tests (60).
+- [Drew Bredvick – Promise.all in App Router](https://drew.tech/posts/promise-all-in-nextjs-app-router) — `Promise.all` über independent DB-Calls als Performance-Best-Practice (60).
+- [next-test-api-route-handler](https://www.npmjs.com/package/next-test-api-route-handler) — DX-Pattern für Integration-Tests; nicht eingesetzt (Smoketest-Strategie ist Stub-Client-basiert), aber als Referenz dokumentiert (60).
+
+### Bulk-Update mit unterschiedlichen Werten pro Row (Code-Session 59)
+- [supabase/postgrest-js #174 – Support bulk update](https://github.com/supabase/postgrest-js/issues/174) — Native Bulk-Update existiert 2026 nicht; pro-Row-UPDATE oder RPC sind die zwei sauberen Wege (59).
+- [supabase Discussion #15744 – RPC to update multiple rows](https://github.com/orgs/supabase/discussions/15744) — RPC für >>100 Rows; bei kleiner Skala overkill (59).
+- [Supabase JS – update](https://supabase.com/docs/reference/javascript/update) — Standard-Update mit `.eq("id", x)` ist atomic pro Row (59).
+- [Restack – Supabase Batch Update Guide](https://www.restack.io/docs/supabase-knowledge-supabase-batch-update-guide) — Praxis-Beispiel mit `Promise.all` (59).
+
 ### File-Upload-UX-Pattern (Code-Session 58)
 - [MUI – Image List Component](https://mui.com/material-ui/react-image-list/) — Standard-Pattern „Bild pro Card" mit Vorschau-Tile + Replace-Button (58).
 - [Eleken – File Upload UI Tips](https://www.eleken.co/blog-posts/file-upload-ui) — Klare Dropzone, Format-Hint, Replace-Action im selben Modul (58).
@@ -115,6 +144,44 @@
 - [Supabase Docs – Storage Folder-Operations & Hierarchical RLS](https://supabase.com/docs/guides/troubleshooting/supabase-storage-inefficient-folder-operations-and-hierarchical-rls-challenges-b05a4d) — Storage hat keine native Folder-Move-API; pro Datei einzeln ist Standard-Pattern (57).
 - [supabase Discussion #19418 – Rename folder with supabase-js](https://github.com/orgs/supabase/discussions/19418) — bestätigt: 2026 noch keine Folder-API, Loop über Files (57).
 - [supabase storage-js Issue #49 – Bucket-Rename](https://github.com/supabase/storage-js/issues/49) — Bucket-Rename existiert noch nicht (relevant nur als Negativ-Information, 57).
+
+### Playwright-Setup + Smoke-Tests (Code-Session 71)
+- [Next.js – Playwright Testing](https://nextjs.org/docs/app/guides/testing/playwright) — offizielles Setup mit `webServer` + baseURL (71).
+- [Playwright – Web server](https://playwright.dev/docs/test-webserver) — `reuseExistingServer` lokal vs. CI, Timeout-Strategie (71).
+- [Autonoma AI – Next.js Playwright Testing 2026](https://getautonoma.com/blog/nextjs-playwright-testing-guide) — App-Router-Patterns, Auth-Setup mit `storageState` (71-Vorbereitung für 72).
+- [InfiniteTable – Best Testing Setup Playwright + NextJS](https://infinite-table.com/blog/2024/04/18/the-best-testing-setup-for-frontends-playwright-nextjs) — Workers-Strategie + Trace-Viewer-Empfehlungen (71).
+
+### Pre-MVP-Audit + E2E-Test-Strategie (Code-Session 70)
+- [Next.js – Playwright Testing](https://nextjs.org/docs/pages/guides/testing/playwright) — offizielle Setup-Doku (Session 70-Vorbereitung für 71).
+- [MakerKit – End-to-End Testing Your SaaS with Playwright](https://makerkit.dev/blog/tutorials/playwright-testing) — SaaS-Pattern mit ~25 Tests in 3 Min, Critical-Paths-Fokus (70).
+- [TestDouble – E2E Auth Flows with Playwright + Next.js](https://testdouble.com/insights/how-to-test-auth-flows-with-playwright-and-next-js) — Email-Polling für Magic-Link, programmatisches Login zur Geschwindigkeit (70).
+- [BrowserStack – 15 Best Practices for Playwright 2026](https://www.browserstack.com/guide/playwright-best-practices) — stable Selectors, Page Objects, toPass-Retries (70).
+- [DeviQA – Guide to Playwright E2E 2026](https://www.deviqa.com/blog/guide-to-playwright-end-to-end-testing-in-2025/) — Auto-Waiting reduziert Flakiness; Retry-Pattern für unreliable Operations (70).
+
+### Supabase Storage Recursive Operations (Code-Session 69)
+- [Supabase Discussion #4218 – Remove folder content](https://github.com/orgs/supabase/discussions/4218) — Native Folder-Delete-API existiert nicht; rekursiv iterieren ist Standard (69).
+- [Supabase Storage Folder-Operations Guide](https://supabase.com/docs/guides/troubleshooting/supabase-storage-inefficient-folder-operations-and-hierarchical-rls-challenges-b05a4d) — Folders sind Pseudo-Prefixes; List ist pro Ebene; rekursive Iteration vom Code (69).
+- [Fabian Fruhmann – Storage Delete Folder Fast Way](https://medium.com/@fabian.blackphoenix134/supabase-storage-delete-folder-the-fast-way-b11260b7325e) — Praxis-Beispiel mit `.list(prefix)` + Pagination (69).
+- [Supabase Storage Issue #173 – Recursive deletes](https://github.com/supabase/storage/issues/173) — Feature-Request offen; client-side Pattern bleibt notwendig (69).
+
+### Sentry-Adapter-Pattern + ErrorBoundary (Code-Session 68)
+- [Sentry – Next.js Manual Setup](https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/) — Standard-Pattern: client.config + server.config + global-error.tsx (68).
+- [Sentry – App Router Auto-Instrumentation](https://github.com/getsentry/sentry-javascript/discussions/13442) — Auto-Instrumentation via `withSentryConfig`; wir verzichten zugunsten manueller Adapter (68).
+- [Sentry – Lazy-loading Integrations](https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/integrations/) — `await import(...)` für Sub-Integrations; wir nutzen es eine Schicht höher (68).
+- [Sentry blog – Common Errors in Next.js](https://blog.sentry.io/common-errors-in-next-js-and-how-to-resolve-them/) — Liste typischer Render-/API-Errors, die Sentry fängt (68).
+
+### User-Input-XSS-Sanitize-Patterns (Code-Session 67)
+- [OneUptime – How to Sanitize User Input in React](https://oneuptime.com/blog/post/2026-01-15-sanitize-user-input-react-injection/view) — Server-side Sanitize ist Pflicht, React-Auto-Escape reicht nicht für Logs/Templates (67).
+- [Zod Discussion #1358 – Sanitize via transform](https://github.com/colinhacks/zod/discussions/1358) — Zod selbst sanitized nicht; transform() ist der Hook (67).
+- [Saud Patel – Server-Side Validation and Sanitization](https://medium.com/@saudpatel.mscit22/server-side-validation-and-sanitization-using-zod-in-node-js-55e46e126635) — Pattern: sanitize → validate → DB-Insert (67).
+- [Ahmed Adel – zod-xss-sanitizer](https://github.com/AhmedAdelFahim/zod-xss-sanitizer) — Existing-Package; wir verzichten wegen Dep-Bloat, übernehmen die Idee (67).
+
+### CSRF-Schutz für mutating API-Routen (Code-Session 66)
+- [Next.js – Data Security Guide](https://nextjs.org/docs/app/guides/data-security) — Server Actions haben automatischen Origin-Check; Custom-API-Routes müssen ihn selbst implementieren (66).
+- [Authgear – Next.js Security Best Practices 2026](https://www.authgear.com/post/nextjs-security-best-practices) — Defense-in-Depth: SameSite + Origin + optional Token (66).
+- [LogRocket – Protecting Next.js Apps from CSRF](https://blog.logrocket.com/protecting-next-js-apps-csrf-attacks/) — Origin-Check ist 2026-Standard (66).
+- [DEV – CSRF Protection in Next.js](https://dev.to/adelhamad/csrf-protection-in-nextjs-1g1m) — OWASP-empfohlener Pattern (66).
+- [Telerik – Protecting Next.js Apps Against CSRF](https://www.telerik.com/blogs/protecting-nextjs-applications-cross-site-request-forgery-csrf-attacks) — RFC 6454 Origin-Header (66).
 
 ### Storage-Cleanup-Patterns + Dependabot-Vulns (Code-Session 56)
 - [Supabase Docs – Delete Objects](https://supabase.com/docs/guides/storage/management/delete-objects) — Storage-API für DELETE; SQL-only-DELETE produziert orphans (56).

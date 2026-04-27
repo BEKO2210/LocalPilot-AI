@@ -32,6 +32,7 @@ import {
 } from "@/core/database/supabase-server";
 import { getServiceRoleClient } from "@/core/database/supabase-service";
 import { buildStoragePath, type ImageKind } from "@/lib/business-image-upload";
+import { enforceCsrf } from "@/lib/csrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +51,9 @@ export async function POST(
   req: Request,
   ctx: RouteContext,
 ): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   // 1) Auth
   const user = await getCurrentUser();
   if (!user) {

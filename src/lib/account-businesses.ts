@@ -162,3 +162,30 @@ export function roleLabel(role: MembershipRole): string {
 export function tierLabel(tier: PackageTier): string {
   return TIER_LABELS[tier] ?? tier;
 }
+
+/**
+ * Single-Business-Redirect-Logik (Code-Session 63).
+ *
+ * Wenn ein Owner nur einen Betrieb hat, ist die Account-Liste ein
+ * unnötiger Klick — wir schicken ihn direkt aufs Dashboard. Der
+ * `stay`-Bypass lässt den User aber bewusst zur Liste, falls er
+ * später einen zweiten Betrieb anlegen oder den ersten löschen
+ * will.
+ *
+ * Pure: kein React/Next.js — der Aufrufer baut sich daraus den
+ * `router.replace(...)`-Call. Tests stubben nur das Input.
+ */
+export function shouldRedirectToSingle(
+  list: readonly BusinessMembership[],
+  options: { readonly stay?: boolean } = {},
+): string | null {
+  if (options.stay) return null;
+  if (list.length !== 1) return null;
+  const only = list[0];
+  if (!only) return null;
+  // Defensive: leere/whitespace-Slugs nicht redirecten — wären
+  // ein Daten-Inkonsistenz, die wir nicht kaschieren wollen.
+  const slug = only.slug.trim();
+  if (slug.length === 0) return null;
+  return `/dashboard/${slug}`;
+}

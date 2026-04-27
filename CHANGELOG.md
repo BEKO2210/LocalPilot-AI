@@ -6,16 +6,923 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant
-- Code-Sessions 59+: Service-Bilder beim Slug-Wechsel mit-
-  migrieren (analog Session 57, aber für `services.image_url`
-  pro Row), Live-Provider-Variante für Reviews/Social-Panels
-  (Auth-Bearer + `/api/ai/generate`), Direkt-Posten zu
-  Buffer/Hootsuite/Meta-Graph, Multi-Member-Verwaltung,
-  Default-Redirect bei einem Betrieb, Retry-Queue für Lead-
-  `local-fallback`, Edge-Runtime-Migration, CSRF-Schutz,
-  HTML-Sanitize-Whitelist, Impressum-Editor pro Betrieb,
-  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test.
+### Phase 1.5 → End-to-End-Tests (Sessions 72–~76)
+- **72**: Onboarding-Flow E2E.
+- **73**: Business-Editor-E2E.
+- **74**: Service-Liste-E2E.
+- **75** (5er-Light-Pass): Settings + Danger-Zone E2E +
+  Test-Helper-Refactor.
+- **76**: Public-Site + Lead-Retry-Queue E2E.
+- Erfolgskriterium: ≥25 grüne E2E-Tests.
+
+### Phase 2 → UI/UX-Polish (Sessions ~77–~86+)
+Demo-Logo via `algorithmic-art`-Skill in Session 81. Details
+in `docs/PROGRAM_PLAN.md`.
+
+## [0.16.45] – Code-Session 71 – 2026-04-27 (Phase-1.5-Auftakt)
+
+Phase 1.5 startet — End-to-End-Test-Block mit Playwright.
+User-Anweisung „sehr viele Tests bevor wir an die UI/UX,
+alles wie ein Endbenutzer durchspielen". Erste 10 Smoke-
+Tests laufen grün gegen die echte Next.js-App.
+
+- ✚ `playwright.config.ts`: baseURL aus ENV (Default
+  `http://localhost:3000`), webServer startet `npm run dev`
+  automatisch (90 s Timeout, `reuseExistingServer` lokal),
+  trace `on-first-retry`, screenshot `only-on-failure`,
+  navigation-/action-Timeouts auf 10 s/5 s, workers=1
+  (sequenziell für deterministische Logs in der
+  Etablierungs-Phase).
+- ✚ `e2e/smoke-landing.spec.ts` (3 Tests): Hero rendert,
+  Header-Login-Link, Site-Footer mit Impressum + Datenschutz.
+- ✚ `e2e/smoke-login.spec.ts` (3 Tests): Form-Render,
+  Submit-Button-Aktivierung nach Email-Eingabe, Demo-Link.
+- ✚ `e2e/smoke-public-site.spec.ts` (3 Tests): Hero +
+  Services + Footer rendern, Lead-Form mit Pflichtfeldern,
+  zweiter Demo-Slug.
+- ✚ `e2e/smoke-account.spec.ts` (1 Test): Demo-Modus-Card
+  oder Guest-Card (je nach Backend-State).
+- ✚ `e2e/tsconfig.json`: separate Type-Check für E2E-
+  Tests; root-`tsconfig.json` schließt `e2e/` aus.
+- ✚ `docs/TESTING.md`: Pflicht-Doku für beide Test-
+  Schichten (Smoketests + E2E). Setup, Ausführung,
+  Konfiguration, Demo-vs-Authed-Modus, Pattern + Best-
+  Practices, Roadmap Phase 1.5, CI-Setup-Skizze.
+- 🔄 `package.json`: `@playwright/test@^1.59.1` als
+  devDep. Neue Scripts: `test:e2e`, `test:e2e:ui`,
+  `test:e2e:report`.
+- 🔄 `.gitignore`: `playwright-report/`, `test-results/`,
+  `blob-report/`, `playwright/.cache/`.
+
+**Erstes Lauf-Ergebnis**: 10/10 Tests grün in 22 s. Zwei
+Tests deckten beim ersten Versuch echte Annahmen-Fehler
+auf (Footer-Selector kollidierte mit `<footer>`-Tags in
+Demo-Cards; Lead-Form-Felder sind branchenspezifisch
+statt fest). Beide gefixt — exakt der Mehrwert, den E2E-
+Tests liefern sollen.
+
+45/45 Smoketests grün (unverändert). typecheck ✅, lint
+✅, beide Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: Phase 1.5 Sessions 72–76 mit User-Flow-Tests:
+Onboarding, Business-Editor, Services, Settings+Danger-
+Zone, Public-Site+Lead-Retry. Erfolgskriterium ≥25 grüne
+E2E-Tests, dann Phase 2.
+
+**Status-Update**: Phase 1 abgeschlossen ✅. Phase 1.5
+gestartet (Test-Coverage-Aufbau). Phase 2 (UI/UX-Polish +
+Demo-Logo) ab Session 77.
+
+**Manueller Test**: `npm run test:e2e` startet automatisch
+einen Dev-Server, läuft 10 Tests durch, beendet den Server.
+Bei Failure: `npm run test:e2e:report` öffnet den HTML-
+Report mit Trace-Viewer.
+
+## [0.16.44] – Code-Session 70 – 2026-04-27 (Light-Pass + Pre-MVP-Audit)
+
+## [0.16.44] – Code-Session 70 – 2026-04-27 (Light-Pass + Pre-MVP-Audit)
+
+5er-Multiple. Letzter Phase-1-Light-Pass vor MVP-Stand. Drei
+Skill-Anwendungen: `simplify` auf Sessions 66–69-Helper,
+`security-review` auf den Branch, manueller Audit aller
+Pflicht-Items 61–69. Plus neue Recap-Doku
+[`docs/MVP_RECAP.md`](docs/MVP_RECAP.md) und Phase-1.5-
+Roadmap-Update (E2E-Test-Block vor UI/UX-Polish).
+
+- 🔄 `src/lib/csrf.ts`:
+  - `parseAllowedOrigins(process.env...)` an Modul-Scope
+    gehoben (`CACHED_ALLOWED_ORIGINS`). ENV ist post-boot
+    unveränderlich; früher lief der String-Split + URL-
+    Parse auf jedem mutating Request — jetzt einmalig beim
+    Modul-Init. Hot-Path-Win für jede Auth-Route.
+  - `csrfErrorResponse` non-export gemacht (war nur
+    intern genutzt; Public-Surface von 3 auf 2 Exports
+    reduziert).
+- 🔄 `src/tests/csrf.test.ts`: `csrfErrorResponse`-Test
+  durch indirekten `enforceCsrf`-Test mit Cross-Origin-
+  Stub ersetzt — gleiche 36 Asserts grün.
+- ✚ `docs/MVP_RECAP.md`:
+  - MVP-Capability-Liste (Auth, Self-Service-Cycle, AI,
+    Storage, Lead-System, Security-Stack mit
+    Pre-MVP-Audit-Status).
+  - Code-Inventur: 10 mutating Routes (alle CSRF-protected),
+    8 Migrations, 21 Pure-Helper-Module, 45 Smoketest-Files,
+    ~1.100+ Asserts, 102 KB shared Bundle, 0 KB
+    Sentry-Impact.
+  - Helper-Module-Übersicht (21 Files mit Zweck +
+    Sessions).
+  - Phase-1.5- + Phase-2-Outlook.
+- 🔄 `docs/PROGRAM_PLAN.md`:
+  - **Neue Sektion „Phase 1.5 → End-to-End-Test-Block
+    (Sessions 71–~76)"** zwischen MVP und UI/UX-Polish.
+    Pro Session ein User-Flow als Playwright-Test.
+    Erfolgskriterium ≥25 E2E-Tests.
+  - Phase 2 (UI/UX-Polish) verschoben auf Sessions
+    77–86+. Demo-Logo jetzt Session 81 (war 76).
+  - Skill-Mapping aktualisiert: `webapp-testing` ist
+    primärer Skill für Phase 1.5.
+
+**simplify-Skill-Anwendung am Diff**: Drei Review-Agents
+parallel auf csrf/sanitize/error-reporter/business-delete.
+Findings:
+- **Reuse**: Konsolidierung der 6 result-mapper-Helpers
+  (business-update / services-update / image-upload /
+  settings / ai-client / business-delete) bewusst
+  abgelehnt — die Per-Domain-Divergenz ist real, ein
+  generic `submitMutation<TOk, TKind>` würde den
+  Call-Site-Code nicht reduzieren.
+- **Quality**: `SANITIZE_DEFAULTS` und Sentry-Sample-Rate-
+  Defaults sind aktuell scattered, aber Refactor jetzt nicht
+  netto-positiv.
+- **Efficiency**: Eine konkrete Empfehlung umgesetzt:
+  Allow-List-Memoization in csrf.ts.
+
+**security-review-Skill (manuell als Agent ausgeführt, da
+der Skill den Git-Range nicht resolven konnte):**
+- **🟢 alle 7 Bereiche clean**: CSRF, XSS,
+  Auth-Bypass, Service-Role-Leakage, Secrets-Leak,
+  Open-Redirect, ReDoS. **Keine Fixes vor MVP nötig.**
+
+45/45 Smoketests grün (industry-presets seit Session 66
+gefixt). typecheck ✅, lint ✅, beide Builds ✅. Bundle
+102 KB shared unverändert.
+
+🛣️ Roadmap: **Phase 1 abgeschlossen — MVP-funktional
+erreicht**. Phase 1.5 startet mit Session 71 (Playwright-
+Setup + E2E-Tests pro User-Flow). Phase 2 ab Session 77.
+
+**Status-Update**: ~99.5 % Richtung „erstes Betrieb-fertiges
+Produkt". Code-Inventur:
+- **Self-Service-Cycle**: Onboarding → Editor → Slug-Wechsel
+  → Löschen
+- **AI-Pipeline**: 7 Methoden × 4 Provider × 1 Helper
+- **Storage-Stack**: Upload + DELETE-Cleanup + Slug-Move
+  + Recursive-Delete
+- **Security-Stack**: SameSite + CSRF + XSS-Sanitize +
+  Auth-Gate + Error-Tracking
+- **Lead-Pipeline**: Public-Form → DB → Retry-Queue →
+  Dashboard
+
+Verbleibend bis 100%: Phase-1.5-E2E-Coverage (User
+„sehr viele Tests"-Anweisung). Phase 2 dann UI/UX-Polish +
+Demo-Logo.
+
+## [0.16.43] – Code-Session 69 – 2026-04-27
+
+## [0.16.43] – Code-Session 69 – 2026-04-27
+
+„Betrieb löschen"-Flow mit rekursivem Storage-Cleanup. Owner
+kann den eigenen Betrieb dauerhaft entfernen — Self-Service-
+Recht + DSGVO-Recht auf Löschung. UI mit Slug-Confirmation
+gegen versehentliches Klicken; Server-Pfad mit Auth + RLS +
+rekursivem Bucket-Cleanup. Lead-/Service-/Review-/FAQ-Daten
+verschwinden via FK-Cascade.
+
+- 🔄 `src/lib/storage-cleanup.ts` erweitert um:
+  - `listAllPathsByPrefix(client, bucket, prefix)`:
+    Stack-basierter rekursiver Walker. Supabase hat keine
+    native rekursive List-API; wir paginiren pro Folder
+    (`.list(prefix, {limit:1000, offset})`) und stack-pushen
+    Pseudo-Folder (id===null). Hard-Cap auf 10.000 Files
+    als Safety-Net.
+  - `removeAllByPrefix(client, bucket, prefix)`: list +
+    batched remove (max 1000 paths pro Aufruf). Graceful —
+    bei Batch-Fehler werden die übrigen versucht; Counts
+    kumulieren.
+- 🔄 `src/tests/storage-cleanup.test.ts`: ~52 → ~70 Asserts.
+  Neue Stub-Tree-Tests für 5 Files in 3 Ebenen, Trailing-
+  Slash-Normalisierung, leerer Prefix, null-Client,
+  removeAllByPrefix-Integration mit Empty-Tree und
+  Service-Role-Fehlt-Pfad.
+- 🔄 `src/app/api/businesses/[slug]/route.ts`: neue
+  `DELETE`-Function. CSRF + Auth-Gate, RLS-getriebener
+  DB-DELETE auf `businesses` (0 Zeilen → 403, RLS-Policy
+  aus Migration 0007). Lead-/Service-/Review-/FAQ-Cascade
+  via FK (Migrations 0002/0005). Storage-Cleanup nach
+  DB-DELETE: `removeAllByPrefix(adminClient, "business-
+  images", slug)` — Best-Effort, Fehler werden via
+  `reportRouteError` (Session 68) gemeldet, blockieren
+  aber nicht. Antwort: `{slug, filesRemoved, filesFailed}`.
+- ✚ `src/lib/business-delete.ts` (~110 Zeilen):
+  `submitBusinessDelete(slug, deps?)` mit 4-Result-Kind-
+  Mapping (server / not-authed / forbidden / fail).
+  `userMessageForResult` mit Partial-Failure-Handling
+  („3 entfernt, 2 nicht aufgeräumt — Betrieb ist
+  trotzdem weg").
+- ✚ `src/tests/business-delete.test.ts` (~25 Asserts):
+  alle 4 Result-Kinds, URL-Encoding bei Slugs mit Spaces,
+  Default-Messages, Throw-Handling, Credentials-Check.
+- 🔄 `src/components/dashboard/settings/settings-form.tsx`:
+  Neue `<DangerZone>`-Sub-Komponente nach dem Settings-
+  Formular. Rote Card mit Slug-Confirmation-Input
+  („Tippe zur Bestätigung den Slug `xxx` ein"); Delete-
+  Button erst aktiv bei exaktem Match. Bei Click:
+  `window.confirm()` als zweite Stufe, dann
+  `submitBusinessDelete`. Bei Erfolg redirect auf
+  `/account?stay=1` (umgeht Auto-Redirect aus Session 63,
+  damit auch Solo-Owner die Account-Liste sehen, falls
+  sie einen neuen Betrieb anlegen wollen).
+
+45/45 Smoketests grün. typecheck ✅, lint ✅, beide Builds
+✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 Pflicht-Item abgehakt (Betrieb-löschen).
+Phase-1-Restweg: nur noch Session 70 (Light-Pass +
+Audit-Checkliste).
+
+**Status-Update**: ~99 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Cycle vollständig: Onboarding (S38) →
+Editor (S50–58) → Slug-Wechsel (S52+57) → Löschung (S69).
+DSGVO-konform.
+
+**Manueller Test**: Dashboard → Einstellungen → Danger-Zone
+→ Slug eintippen → Delete-Button aktiv → Klick → confirm-
+Dialog → DB+Storage gelöscht → Redirect auf
+`/account?stay=1`. Alte Public-Site-URL liefert 404.
+
+## [0.16.42] – Code-Session 68 – 2026-04-27
+
+## [0.16.42] – Code-Session 68 – 2026-04-27
+
+Error-Tracking via Adapter-Pattern. Sentry-fähig **ohne**
+harte Dep — Default ist console-Sink (0 KB Bundle-Impact),
+bei `SENTRY_DSN` ENV + installiertem `@sentry/nextjs` wird
+Sentry lazy via `await import(...)` aktiviert. ErrorBoundary
+in `app/global-error.tsx` für Render-Fehler. Kritische API-
+Routen melden 5xx-Errors via `reportRouteError`.
+
+- ✚ `src/lib/error-reporter.ts` — Adapter-Modul (~190 Zeilen):
+  - `captureException(err, ctx?)`, `captureMessage(msg,
+    level, ctx?)`, `setUser`, `flushErrorReporter` als
+    Public-API.
+  - `initErrorReporter()`: idempotent, lazy. Liest
+    `SENTRY_DSN` (Server) bzw. `NEXT_PUBLIC_SENTRY_DSN`
+    (Browser). Bei DSN versucht `await import("@sentry/nextjs")`
+    in try/catch — Module-Not-Found → silent fallback auf
+    Console-Sink.
+  - Sample-Rate aus `SENTRY_TRACES_SAMPLE_RATE` ENV
+    (default 0.1 — konservativ).
+  - `__setSinkForTesting` / `__getActiveSinkForTesting`
+    für Stub-basierte Tests.
+  - `reportRouteError(err, route, extra?)` als Convenience
+    für API-Catch-Blöcke.
+- ✚ `src/tests/error-reporter.test.ts` (~30 Asserts):
+  Recording-Sink-Pattern. captureException mit/ohne Context,
+  Error-/String-/Object-Inputs, alle 4 Levels, Default-
+  Level=info, reportRouteError, flush mit/ohne Sink-flush,
+  init ohne DSN, init mit DSN aber fehlendem Paket
+  (fallback), Idempotenz, Console-Sink Smoke.
+- ✚ `src/app/global-error.tsx` — App-Router-Konvention:
+  fängt RootLayout-Render-Fehler ab. Inline-Styles als
+  Letztanker (Tailwind/Theme könnten gerade kaputt sein).
+  `useEffect` ruft `initErrorReporter().then(() =>
+  captureException(error, { tags: { source:
+  "global-error-boundary", digest } }))`. UI: Reset-Button
+  + Link zur Startseite + optional Error-Digest-ID.
+- 🔄 `/api/leads` (POST): `reportRouteError(err,
+  "/api/leads", { source: "lead-create" })` im 500er-
+  catch-Block (vor return).
+- 🔄 `/api/onboarding` (POST): `reportRouteError(err,
+  "/api/onboarding", { userId })` im 500er-catch.
+
+44/44 Smoketests grün. typecheck ✅, lint ✅, beide Builds
+✅. Bundle 102 KB shared unverändert (kein Sentry-Paket
+installiert; lazy-import wird zur Laufzeit gefangen).
+
+🛣️ Roadmap: 1 Pflicht-Item abgehakt (Error-Tracking).
+Phase-1-Restweg: „Betrieb löschen"-Flow (69), Pre-MVP-Pass
+(70).
+
+**Status-Update**: ~98 % Richtung „erstes Betrieb-fertiges
+Produkt". Observability-Layer eingezogen — bei aktivem
+Sentry-Setup landen Errors in der Inbox; ohne Sentry läuft
+alles über Server-Console-Logs (Vercel/Cloudflare
+zeigt sie an).
+
+**Manueller Test**: Ohne `SENTRY_DSN`-ENV: Console-Logs
+in Server-/Browser-Konsole. Mit `SENTRY_DSN` ENV +
+`npm i @sentry/nextjs` (optional, separat zu installieren):
+Errors landen in Sentry-Inbox mit `route`-Tag. ErrorBoundary
+zeigt Reset-/Home-Buttons bei React-Render-Crash.
+
+## [0.16.41] – Code-Session 67 – 2026-04-27
+
+## [0.16.41] – Code-Session 67 – 2026-04-27
+
+XSS-Defense-in-Depth: User-Input wird vor dem DB-Insert durch
+einen Whitelist-Sanitizer geschickt. React's `{text}`-Rendering
+schützt primär; Sanitize-Layer schützt zusätzlich gegen
+zukünftige Markdown-/HTML-Renderer, Email-Templates,
+Logs/Analytics. 4 mutating Routen gehärtet, 1 Pure Helper
+mit 3 Domain-Wrappern + ~45 Asserts.
+
+- ✚ `src/lib/user-input-sanitize.ts` — pure Helper
+  (~250 Zeilen):
+  - `sanitizeUserText(input, options?)` als Hauptfunktion
+    mit Pipeline: Non-string → "", `sanitizeText` (HTML-
+    Strip + Entity-Decode + Control-Char-Cleanup),
+    Whitespace-Normalisierung (single/multi-line),
+    Length-Cap (Default 50 KB).
+  - `sanitizeUserSingleLine(input, maxLength?)` und
+    `sanitizeUserMultiLine(input, maxLength?)` als
+    Convenience-Wrapper.
+  - **Multi-Line-Logik**: CRLF/CR → LF; pro Zeile
+    Trailing/Leading-Whitespace-Trim; mehr als 2
+    aufeinanderfolgende Newlines → 2; Block-Trim.
+  - **Single-Line-Logik**: alle Whitespace-Sequenzen
+    (inkl. Tab + Newline) → 1 Space, dann Trim.
+  - 3 Domain-Wrapper:
+    - `sanitizeBusinessProfileStrings(profile)`: name,
+      tagline, description, contact.* (phone/whatsapp/
+      email/website/google*Url), address.*
+      (street/postalCode/city/country) — pro Feld passender
+      Modus + Length-Limit.
+    - `sanitizeServiceStrings(service)`: title, short/long-
+      Description, category, priceLabel, durationLabel.
+    - `sanitizeLeadStrings(lead)`: name, phone, email,
+      message, preferredDate/Time, **plus extraFields**
+      (Keys auch sanitized + leere Keys gefiltert,
+      Number/Boolean bleiben bestehen).
+- ✚ `src/tests/user-input-sanitize.test.ts` (~45 Asserts):
+  defensive Inputs, HTML-Strip-Bypass-Versuche
+  (Entity-encoded + numeric), Single-/Multi-Line-Whitespace,
+  Length-Limit, alle Domain-Wrapper inkl. extraFields-
+  Edge-Cases, Idempotenz, doppelt-encoded Entity-Schutz.
+- 🔄 4 mutating Routen gepatcht:
+  - `/api/onboarding`: `name` + `tagline` single-line,
+    `description` multi-line.
+  - `/api/businesses/[slug]` (PATCH):
+    `sanitizeBusinessProfileStrings` nach Body-Parse, vor
+    Schema-Validation.
+  - `/api/businesses/[slug]/services` (PUT):
+    `sanitizeServiceStrings` pro Service-Row im Re-Map-
+    Block.
+  - `/api/leads`: `sanitizeLeadStrings` direkt vor
+    `repo.create()`.
+
+43/43 Smoketests grün. typecheck ✅, lint ✅, beide Builds
+✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 Pflicht-Item abgehakt (HTML-Sanitize). Phase 1
+Restweg: Sentry (68), „Betrieb löschen" (69), Pre-MVP-Pass
+(70).
+
+**Status-Update**: ~97.5 % Richtung „erstes Betrieb-fertiges
+Produkt". Security-Layer 2/2 (XSS) live. Defense-in-Depth-
+Stack: SameSite-Cookies + CSRF-Origin-Check (S66) +
+HTML-Sanitize (S67). Verbleibend: Sentry, „Betrieb löschen",
+Pre-MVP-Pass.
+
+**Manueller Test**: Onboarding-Form mit `<script>alert(1)
+</script>` als Tagline → DB enthält nur "alert(1)" (Tag
+gestrippt). Service-Beschreibung mit `&lt;img src=x
+onerror=foo&gt;` → DB enthält "foo" (Entity-decoded, dann
+strippt). Lead-Form mit doppelt-encoded
+`&amp;lt;script&amp;gt;` → DB enthält nichts ge­fährliches
+(Stripper läuft iterativ).
+
+## [0.16.40] – Code-Session 66 – 2026-04-27
+
+## [0.16.40] – Code-Session 66 – 2026-04-27
+
+CSRF-Schutz für alle mutating API-Routen + Codex-#11-Fix
+(industry-presets-Test grün). Browser-CSRF-Vektoren werden
+durch Origin-/Referer-Header-Check geblockt; Bearer-Token-
+Calls bypassen den Check (CLI / Server-zu-Server). 10 Routen
+gehärtet, ein zentraler Helper (~36 Asserts) — kein Drift
+möglich.
+
+- ✚ `src/lib/csrf.ts` — pure Helper (~150 Zeilen):
+  - `verifyCsrfOrigin(req, options?)` mit
+    `{ok: true} | {ok: false, reason}`-Result.
+  - GET/HEAD/OPTIONS bypass (kein CSRF-Vektor).
+  - Bearer-Token-Header bypass (Token unmöglich von
+    fremder Site zu erraten).
+  - Origin-Header primär, `Referer` als Fallback (mit
+    URL-Parse).
+  - `Origin: null` (sandboxed iframes / file://) wird
+    explizit abgelehnt.
+  - `X-Forwarded-Host` + `X-Forwarded-Proto` für
+    Reverse-Proxy-Setups.
+  - Localhost-Heuristik: `localhost` / `127.0.0.1` werden
+    als http behandelt, falls kein `X-Forwarded-Proto`.
+  - `parseAllowedOrigins(env)`: comma-separated, normalisiert
+    Trailing-Slash, malformed wird durchgereicht (defensiv).
+  - `csrfErrorResponse(reason)`: einheitliche 403-Response
+    mit `error: "csrf_blocked"`.
+  - `enforceCsrf(req)`: Route-Level-Wrapper, liest
+    `LP_CSRF_ALLOWED_ORIGINS` aus ENV.
+- ✚ `src/tests/csrf.test.ts` (~36 Asserts):
+  parseAllowedOrigins (5 Cases), GET/HEAD/OPTIONS, Bearer-
+  Bypass (case-insensitive), Same-Origin, Cross-Origin,
+  Allow-List, Referer-Fallback, Origin=null, kein
+  Origin/Referer (mit + ohne `allowEmptyOrigin`),
+  X-Forwarded-Host/Proto, Localhost-Heuristik,
+  csrfErrorResponse, PUT/PATCH/DELETE.
+- 🔄 Alle 10 mutating Routes gepatcht — `enforceCsrf(req)`
+  als erste Zeile, vor Auth/Validation:
+  - `/api/leads` (POST)
+  - `/api/onboarding` (POST)
+  - `/api/ai/generate` (POST)
+  - `/api/businesses/[slug]` (PATCH)
+  - `/api/businesses/[slug]/services` (PUT)
+  - `/api/businesses/[slug]/image` (POST)
+  - `/api/businesses/[slug]/settings` (PATCH)
+  - `/api/auth/login` (POST)
+  - `/api/auth/logout` (POST) — `req`-Parameter
+    nachgereicht.
+  - `/api/auth/magic-link` (POST)
+- 🐛 `src/tests/industry-presets.test.ts` (Codex #11 fix):
+  Test parsed bewusst-invaliden `getFallbackPreset`-Output
+  durchs `IndustryPresetSchema` — schlug seit Sessions ~35
+  rot, weil das Schema den invaliden `key` ablehnt. Fix:
+  Schema-Parse durch direkte Feld-Asserts ersetzt
+  (`label`, `defaultServices`, `toneOfVoice`, `defaultFaqs`).
+  Verhalten unverändert, nur der Test ist jetzt korrekt
+  konstruiert.
+
+42/42 Smoketests grün — **erstmals seit Session 11 keine
+roten Tests mehr**. typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 Pflicht-Item abgehakt (CSRF) + 1 Bug-Fix
+(industry-presets). Phase 1 Restweg verkürzt: HTML-Sanitize
+(67), Sentry (68), „Betrieb löschen" (69), Pre-MVP-Pass (70).
+
+**Status-Update**: ~97 % Richtung „erstes Betrieb-fertiges
+Produkt". Security-Hardening greift: Defense-in-Depth gegen
+CSRF zusätzlich zur SameSite-Lax-Cookie-Default. Verbleibend:
+HTML-Sanitize, Sentry, Betrieb-löschen, Pre-MVP-Pass.
+
+**Manueller Test**: ohne `Origin`-Header (`curl -X POST
+http://localhost:3000/api/leads -d '{}'`) → 403 mit
+`csrf_blocked`. Mit `Origin: https://evil.example` → 403.
+Mit `Origin: http://localhost:3000` (Same-Origin) → normaler
+Request-Pfad. Mit `Authorization: Bearer …` → bypass, kein
+Origin-Check.
+
+## [0.16.39] – Code-Session 65 – 2026-04-27 (Light-Pass)
+
+### Phase 2 → UI/UX-Polish (Sessions 71–80+)
+Mindestens 10 Sessions Audit + Polish über alle Seiten,
+Buttons, Schriften, Themes. Skills `webapp-testing`,
+`algorithmic-art`, `theme-factory`, `brand-guidelines`,
+`simplify`, `systematic-debugging`. Demo-Logo als
+generatives p5.js-Artwork (Session 76). Details siehe
+`docs/PROGRAM_PLAN.md` „Phase 2 Restweg".
+
+## [0.16.39] – Code-Session 65 – 2026-04-27 (Light-Pass)
+
+5er-Multiple. AIPlayground-Migration auf `callAIGenerate`-
+Helper aus `ai-client.ts`. ~100 Zeilen inline-Error-Handling
+aus Session 28 konsolidiert. Damit ist `ai-client.ts` der
+**einzige** Browser→`/api/ai/generate`-Pfad (3 Konsumenten:
+Playground / Reviews / Social). Plus neue Recap-Doku
+`docs/AI.md` mit Pipeline-Diagramm.
+
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx`:
+  - Imports: `AIProviderError` + `TOKEN_STORAGE_KEY`-Konstante
+    weg, dafür `AI_TOKEN_STORAGE_KEY` + `callAIGenerate` +
+    `AIGenerateRateLimit` aus `ai-client.ts`.
+  - `RateLimitState` als Type-Alias für `AIGenerateRateLimit`
+    (vorher inline-Interface).
+  - `handleGenerate` von ~95 Zeilen inline-fetch + 7-stufige
+    Error-Branch-Logic auf ~30 Zeilen Switch-über-Result-
+    Kinds reduziert. Mock-Pfad bleibt weiterhin direkt
+    (lokal, kein Server).
+  - `PlaygroundCostInfo` als top-of-file Import (vorher
+    inline `import("./types")`-Cast).
+  - Kommentar dokumentiert: `callAIGenerate` wirft nicht,
+    daher kein try/catch um den Live-Pfad.
+- ✚ `docs/AI.md` — neue Recap-Doku:
+  - ASCII-Pipeline-Diagramm Browser → Server → Provider.
+  - Tabelle der 7 Methoden mit Konsumenten-Mapping.
+  - Result-Kind-Tabelle mit HTTP-Status + UI-Aktion.
+  - Provider-Tabelle (Mock / OpenAI / Anthropic / Gemini)
+    mit Default-Modellen.
+  - Code-Sessions-Historie 14 → 65.
+  - Test-Coverage-Tabelle (~184 Asserts).
+- 🔄 `docs/PROGRAM_PLAN.md`: Neue Phase-2-Roadmap-Sektion
+  „UI/UX-Polish (Sessions 71–80+)" mit konkretem 10-
+  Sessions-Plan + Skill-Mapping (`webapp-testing`,
+  `algorithmic-art`, `theme-factory`, `brand-guidelines`,
+  `simplify`, `systematic-debugging`, `security-review`,
+  `review`).
+
+**simplify-Skill-Anwendung am Diff**: 3 Review-Agents
+(Reuse / Quality / Efficiency) parallel. Findings:
+- 3+ identischer `useAITokenSync`-Pattern in Playground +
+  Reviews + Social → Light-Pass-Item für später.
+- `output: unknown` + `cost: unknown` im `AIGenerateResult.server`
+  zwingen zu `as any`/`as PlaygroundCostInfo`-Casts → könnte
+  durch Generic im Helper getightened werden, Light-Pass-Item.
+- Switch-Exhaustiveness korrekt (alle 5 Kinds gedeckt, kein
+  `validation`-Kind im Helper).
+- Effizienz: Migration ist neutral, keine Hot-Path-Bloat,
+  keine Leaks.
+
+40/41 Smoketests grün (industry-presets pre-existing red,
+Codex #11). typecheck ✅, lint ✅, beide Builds ✅. Bundle
+102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (AIPlayground-Migration). AI-Schicht
+ist konsolidiert. Phase 1 Restweg: CSRF (66), HTML-Sanitize
+(67), Sentry (68), „Betrieb löschen" (69), Pre-MVP-Pass (70).
+Phase 2 ab 71: UI/UX-Polish + Demo-Logo.
+
+**Status-Update**: ~96.5 % Richtung „erstes Betrieb-fertiges
+Produkt" (MVP). AI-Pipeline production-clean. Verbleibend
+Phase 1: 5 Sessions. Phase 2 startet danach mit ≥10 Sessions
+UI/UX-Audit + Brand-Identity.
+
+**Manueller Test**: Playground/Reviews/Social → alle drei
+Provider-Toggles funktionieren wie zuvor. Bei Live-Provider
++ ungültigem Token: einheitlicher 401-Hinweis aus dem Helper.
+Bei Static-Build: einheitlicher „nur SSR-Deploy"-Hint.
+
+## [0.16.38] – Code-Session 64 – 2026-04-27
+
+## [0.16.38] – Code-Session 64 – 2026-04-27
+
+Lead-Retry-Queue für `local-fallback`. Wenn das
+Public-Site-Formular einen Lead wegen Server-Fehler / Offline
+nur lokal ablegen konnte, wird er ab sofort beim nächsten
+`online`-Event automatisch erneut versendet. Vorher blieben
+solche Leads dauerhaft in localStorage stecken.
+
+- ✚ `src/lib/lead-retry-queue.ts` — pure Helper (~250
+  Zeilen):
+  - localStorage-basierte Queue unter
+    `lp:lead-retry-queue:v2`.
+  - `enqueue` (idempotent über `id`),
+    `getDueItems(now)`,
+    `markRetried(id, {success, now})`,
+    `getQueueStats(now)`,
+    `clearQueue`,
+    `computeNextRetryAt(attempts, now)` (Exponential-
+    Backoff: 5s → 10s → 20s → … → cap 5min, max 8 attempts,
+    danach `discardedAt`-Marker).
+  - `StorageLike`-Interface mit `null`-Defensive (SSR/
+    Privacy-Modus → silent no-op).
+  - Korrupter JSON / Non-Array / fehlende Felder im
+    Storage → leere Queue zurückliefern (kein Throw).
+- ✚ `src/tests/lead-retry-queue.test.ts` (~50 Asserts):
+  Memory-Storage-Stub. Backoff-Berechnung, FIFO-Reihenfolge,
+  Idempotenz, Discard nach maxAttempts, Stats,
+  null-Storage-Defensive, korrupter Storage.
+- 🔄 `src/components/public-site/public-lead-form.tsx`:
+  - Beim Mount: `getQueueStats` → Badge anzeigen, dann
+    `flushRetryQueue` einmal ausführen.
+  - `online`-Event-Listener: bei Verbindungs-Wiederkehr
+    flushen.
+  - Bei `submitLead`-Result `local-fallback`: Lead via
+    `enqueueRetry` in die Queue.
+  - `flushRetryQueue` läuft sequentiell (kein
+    Server-Bombing): pro Item ein `POST /api/leads`. 2xx
+    + 4xx (kein Re-Try-sinnvoll) → markRetried(success);
+    5xx + Throw → markRetried(fail) mit Backoff.
+  - Neuer `flushingRef` verhindert parallele Doppelflushes
+    bei kombinierten mount + online-Events.
+  - Amber Badge oben im Form: „N ältere Anfragen warten
+    noch auf den Versand …"
+
+40/41 Smoketests grün (industry-presets pre-existing red,
+Codex #11). +1 lead-retry-queue grün. typecheck ✅, lint ✅,
+beide Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Lead-Retry-Queue). Damit ist der
+Public-Site-Lead-Pfad production-tauglich gegen
+Netzwerk-Hänger und temporäre Server-Ausfälle. Verbleibend
+Pflicht-Items für „funktioniert alles": Light-Pass 65
+(AIPlayground), CSRF/Sanitize-Hardening, Sentry,
+„Betrieb löschen"-Flow.
+
+**Status-Update**: ~96 % Richtung „erstes Betrieb-fertiges
+Produkt". Lead-System ist produktiv robust. Verbleibend:
+Light-Pass 65, Security-Hardening (CSRF/HTML-Sanitize),
+Sentry, „Betrieb löschen", Multi-Member, Custom-Domain.
+
+**Manueller Test**: Public-Site → Anfrageformular → bei
+unterbrochener Verbindung absenden (DevTools → Network →
+Offline) → Erfolgs-State erscheint trotzdem („wird
+versendet sobald online"). Zurück zu Online-Modus +
+Reload → Form lädt mit „1 ältere Anfrage wartet …"-Badge
+→ Queue wird automatisch geflushed → Badge verschwindet.
+
+## [0.16.37] – Code-Session 63 – 2026-04-27
+
+## [0.16.37] – Code-Session 63 – 2026-04-27
+
+Default-Redirect bei einem Betrieb. Owner mit nur einem
+Betrieb landen ab sofort nach dem Login direkt im
+Dashboard — die Account-Übersicht ist nur noch sichtbar,
+wenn explizit angefragt (`?stay=1`) oder bei 0/2+ Betrieben.
+Ein Klick weniger im Standard-Onboarding-Flow.
+
+- 🔄 `src/lib/account-businesses.ts`: neuer pure Helper
+  `shouldRedirectToSingle(list, options?) → string | null`.
+  Liefert `/dashboard/<slug>` nur wenn:
+  - genau 1 Membership in der Liste
+  - `options.stay !== true`
+  - Slug nicht-leer (Whitespace-Slug → null als Daten-
+    Inkonsistenz-Schutz, kaschiert nichts).
+- 🔄 `src/tests/account-businesses.test.ts`: ~33 → ~40
+  Asserts. Tests für 1/0/2+ Betriebe, `stay`-Bypass,
+  Whitespace-Slug, lange Slugs.
+- 🔄 `src/app/account/page.tsx`:
+  - Neuer `useEffect` nach Liste-Lade-Effekt: wenn
+    `shouldRedirectToSingle(list, {stay})` einen Pfad
+    liefert, `router.replace(target)` (statt `push`,
+    damit Account nicht im Verlauf landet → keine
+    Back-Button-Schleife).
+  - `stay` wird aus `window.location.search` gelesen
+    (`?stay=1`); kein `useSearchParams`-Hook, weil das
+    Static-Export-Suspense-Wrapping bräuchte.
+  - Neuer `redirecting`-State zeigt während des Redirects
+    einen Loader-Block („Du hast nur einen Betrieb — wir
+    öffnen direkt das Dashboard …") statt der Liste, damit
+    keine Karten kurz aufblitzen.
+
+39/40 Smoketests grün (industry-presets pre-existing red,
+Codex #11). +7 Asserts in account-businesses.test.ts.
+typecheck ✅, lint ✅, beide Builds ✅. Bundle 102 KB
+shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Default-Redirect). UX-Polish-Stack
+ist auf der ersten produktiven Schwelle. Nächste mögliche
+UX-Items: Header-Link „Account" mit `?stay=1` aus dem
+Dashboard zur Liste, Back-Link aus Account zum Dashboard,
+„Betrieb wechseln"-Selector im Dashboard-Header. Alle drei
+sind klein und können in einer kombinierten Polish-Session
+ausgerollt werden.
+
+**Status-Update**: ~95.5 % Richtung „erstes Betrieb-fertiges
+Produkt". UX-First-Click-Distance ist minimiert. Verbleibend:
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member-Verwaltung,
+„Betrieb löschen"-Flow, AIPlayground-Konsolidierung,
+Direkt-Posten.
+
+**Manueller Test**: Login → wenn 1 Betrieb → direkt im
+Dashboard. Wenn 0 Betriebe → Empty-State auf `/account`.
+Wenn 2+ Betriebe → Liste auf `/account`. Manuelles Auflisten
+der Betriebe (für späteren Multi-Business-Owner): URL
+`/account?stay=1`.
+
+## [0.16.36] – Code-Session 62 – 2026-04-27
+
+## [0.16.36] – Code-Session 62 – 2026-04-27
+
+Live-Provider-Switch für Social-Panel. Symmetrisch zu Session
+61 (Reviews-Panel) — derselbe `callAIGenerate`-Helper, derselbe
+Provider-Toggle-Block, derselbe geteilte Token-Slot. Damit
+sind beide produktiven Mock-Pfade live-fähig.
+
+- 🔄 `src/components/dashboard/social/social-post-panel.tsx`:
+  - Provider-Toggle (ARIA-radiogroup, 4 Optionen: Mock /
+    OpenAI / Anthropic / Gemini) zwischen Goal-Pills und
+    Topic-Input.
+  - Bei Non-Mock: Token-Input-Feld mit Hint-Text
+    („geteilt mit Reviews + Playground").
+  - `handleGenerate` async-Flow: Mock weiterhin direkt; Live
+    via `callAIGenerate({method: "generateSocialPost", ...})`.
+  - Neuer lokaler `parseSocialOutput`-Helper validiert das
+    `unknown`-Server-Output defensiv und liefert ein
+    `SocialPostOutput | null` — bei `null` zeigt das Panel
+    einen Fallback-Hinweis.
+  - Token-localStorage-Hydration symmetrisch zu Reviews +
+    AIPlayground (gleicher `AI_TOKEN_STORAGE_KEY`).
+  - Error-State über `userMessageForAIResult` für rate-
+    limit / static-build / forbidden / fail.
+
+39/40 Smoketests grün (industry-presets pre-existing red,
+Codex #11). typecheck ✅, lint ✅, beide Builds ✅. Bundle
+102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Social-Live). Damit sind beide
+produktiven Owner-Panels (Reviews, Social) Live-Provider-
+fähig. 1 Folge-Item: AIPlayground-Migration auf
+`callAIGenerate` (Light-Pass Session 65), die ~100 Zeilen
+inline Error-Handling konsolidieren würde.
+
+**Status-Update**: ~95 % Richtung „erstes Betrieb-fertiges
+Produkt". Live-AI ist auf allen drei Owner-Panels (Playground,
+Reviews, Social) verfügbar. Verbleibend: Custom-Domain,
+Sentry, Lighthouse-CI, Multi-Member-Verwaltung,
+„Betrieb löschen"-Flow, AIPlayground-Konsolidierung.
+
+**Manueller Test**: Dashboard → „Social-Media-Generator" →
+Plattform/Goal/Length wählen → Provider auf „OpenAI" → Token
+eingeben → Thema eintragen → „Post generieren". Mit aktivem
+SSR-Deploy zeigt der Server echte AI-Posts mit Plattform-
+spezifischen Char-Counter-Warnungen. Mit Mock-Provider
+sofort funktional ohne Token. Static-Build-Hint bei 404.
+
+## [0.16.35] – Code-Session 61 – 2026-04-27
+
+## [0.16.35] – Code-Session 61 – 2026-04-27
+
+Live-Provider-Switch für Reviews-Panel. Owner kann ab sofort
+zwischen Mock- und Live-Generierung (OpenAI / Anthropic /
+Gemini) umschalten. Neuer pure Helper `ai-client.ts` als
+zentrale Browser-Schnittstelle zur API-Route `/api/ai/generate`
+— testbar, mit klarem 6-Result-Kind-Mapping.
+
+- ✚ `src/lib/ai-client.ts` — pure Helper:
+  - `callAIGenerate({method, providerKey, input, apiToken?},
+    deps?)` ruft `POST /api/ai/generate` mit Bearer-Header
+    (falls Token gesetzt) + `credentials: same-origin`
+    (Cookie-Session-Pfad).
+  - 6-Result-Kinds: `server` (output + cost) /
+    `not-authed` (401) / `forbidden` (403) /
+    `rate-limit` (429 mit cost-Body, Reset-Zeit) /
+    `static-build` (404 — Pages-Build hat keine API) /
+    `fail` (5xx + Throw, mit Status-Code).
+  - `userMessageForResult(result)` für deutsche User-Hinweise
+    inkl. „Tages-Budget erschöpft (0.50 / 1.00 USD)"-Format.
+  - `AI_TOKEN_STORAGE_KEY` (`lp:ai-api-token:v1`) — geteilt
+    mit AIPlayground, sodass das Token einmal eingegeben in
+    beiden Panels funktioniert.
+- ✚ `src/tests/ai-client.test.ts` (~38 Asserts):
+  Storage-Key-Konsistenz, 200/401/403/404/429/500/Throw,
+  Bearer-Header-Setting (auch Whitespace-Token = kein
+  Header), Body-Forwarding, Header-Forwarding, alle
+  `userMessageForResult`-Pfade.
+- 🔄 `src/components/dashboard/reviews/reviews-request-panel.tsx`:
+  - Neuer Provider-Toggle (Mock/OpenAI/Anthropic/Gemini)
+    als ARIA-radiogroup zwischen Tone-Tabs und Eingaben.
+  - Bei Non-Mock: Token-Input-Feld mit Hint-Text
+    („/api/ai/generate, geteilt mit Playground, Static-
+    Export hat keine API").
+  - `handleGenerate` async-Flow: Mock weiterhin direkt;
+    Live geht über `callAIGenerate(...)` mit
+    `method: "generateReviewRequest"`. Output-Variants
+    werden gleich wie beim Mock durch
+    `substitutePlaceholders` veredelt — UI-Code unverändert.
+  - Error-Banner zeigt jetzt auch
+    rate-limit-/static-build-Hinweise (über
+    `userMessageForAIResult`).
+  - Token-localStorage-Hydration + -Persistenz (gleicher
+    Key wie AIPlayground).
+
+39/40 Smoketests grün (industry-presets pre-existing red,
+Codex #11). +1 ai-client grün. typecheck ✅, lint ✅, beide
+Builds ✅. Bundle 102 KB shared unverändert; Reviews-Page
++ Live-Toggle bleibt als Static-prerenderable —
+`callAIGenerate` ist client-only und tree-shakeable im
+Static-Export.
+
+🛣️ Roadmap: 1 abgehakt (Reviews-Live). 2 neue Folge-Items:
+- Social-Panel symmetrisch auf `ai-client.ts` umstellen
+  (Code-Session 62, klein und scharf).
+- AIPlayground auf den neuen Helper migrieren — sein inline
+  Aufruf ist seit Session 28 da, mit ~100 Zeilen
+  Error-Handling-Logik die jetzt im Helper konsolidiert ist
+  (Refactor-Light-Pass-Item).
+
+**Status-Update**: ~94 % Richtung „erstes Betrieb-fertiges
+Produkt". Live-AI ist auf einem produktiven Owner-Pfad
+verfügbar. Verbleibend: Social-Live-Pfad, Custom-Domain,
+Sentry, Lighthouse-CI, Multi-Member-Verwaltung,
+„Betrieb löschen"-Flow.
+
+**Manueller Test**: Dashboard → „Bewertungen" → „Provider:
+OpenAI" auswählen → Token-Feld erscheint → Bearer-Token
+eingeben (oder leer lassen, wenn man als Owner eingeloggt
+ist) → „Vorlagen generieren". Mit aktivem SSR-Deploy +
+gültigem Token zeigt der Server echte AI-Vorlagen, mit
+Mock-Provider sofort ohne Token. Beim Static-Export-Build
+(GitHub Pages) wechselt automatisch der Hint zum
+Mock-Switch.
+
+## [0.16.34] – Code-Session 60 – 2026-04-27 (Light-Pass)
+
+## [0.16.34] – Code-Session 60 – 2026-04-27 (Light-Pass)
+
+5er-Multiple. Light-Pass über die Storage-Hygiene-Stack
+(Sessions 56–59): die zwei nahezu identischen Slug-Move-
+Blöcke in `settings/route.ts` (Logo/Cover aus 57 + Service-
+Bilder aus 59) werden in einen **einzigen** stub-bar
+testbaren Helper extrahiert; neue Recap-Doku
+[`docs/STORAGE.md`](docs/STORAGE.md) mit Diagramm aller vier
+Hygiene-Pfade.
+
+- ✚ `src/lib/storage-slug-migration.ts` — neuer pure
+  Helper:
+  - `migrateBusinessImagesOnSlugChange(deps, input)`
+    konsolidiert Logo/Cover-Move (ein gesammeltes UPDATE)
+    und Service-Image-Move (per-Row-UPDATE in `Promise.all`)
+    in einer einzigen Top-Level-Funktion. Beide Sub-Aufgaben
+    laufen parallel via `Promise.all`.
+  - Liefert `{ logoCover: {moved, failed}, services:
+    {moved, failed} }`.
+  - Optional injectable `warn`-Logger (Default `console.warn`)
+    für Tests.
+  - Graceful für alle Fehlerklassen: `null`-adminClient
+    (Service-Role fehlt), Move-Failure, DB-Lookup-Fehler,
+    DB-Update-Fehler. Kein Throw.
+- ✚ `src/tests/storage-slug-migration.test.ts` (~38
+  Asserts): Stub-Client-basiert. No-op (oldSlug=newSlug),
+  Logo+Cover-Happy-Path, externe URL skip, Move-Failure
+  setzt URL=null, Service-Bilder-Happy-Path (3 Rows),
+  Service-Bilder-Mixed (1 von 3 failed),
+  Service-Lookup-Error, null-Admin-Client, DB-Update-Error.
+  Alle Asserts gegen die Mocks (Move-Calls, DB-Update-Patches,
+  Warning-Strings).
+- 🔄 `src/app/api/businesses/[slug]/settings/route.ts`:
+  Imports von `extractStoragePath`/`moveStoragePath`/
+  `rewritePathPrefix`/`buildPublicUrl` weg, stattdessen
+  einziger Import `migrateBusinessImagesOnSlugChange`. Die
+  zwei Migrations-Blöcke (~140 Zeilen) → einziger Helper-
+  Aufruf (~20 Zeilen). Antwort-Mapping unverändert
+  (`imagesMoved`/`imagesFailed`/`serviceImagesMoved`/
+  `serviceImagesFailed`).
+- ✚ `docs/STORAGE.md` — neue Recap-Doku:
+  - Bucket-Layout + Pfad-Konventionen.
+  - ASCII-Diagramm der vier Hygiene-Pfade
+    (Upload / DELETE-Cleanup / Slug-Move).
+  - Helper-Übersicht mit Zuständigkeiten.
+  - Test-Coverage-Tabelle (~130 Asserts auf der
+    Storage-Schicht).
+  - Bekannte Lücken (Business-DELETE-Flow,
+    Race-Conditions).
+
+38/39 Smoketests grün (industry-presets pre-existing red,
+Codex #11). +1 storage-slug-migration grün. typecheck ✅,
+lint ✅, beide Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 Light-Pass abgehakt. Storage-Hygiene-Stack ist
+jetzt **vollständig konsolidiert** (vier Pfade × ein
+Helper-Modul). Zukünftige Storage-Operationen (Business-
+DELETE, Bucket-Migrationen, Multi-Bucket-Setups) können
+direkt auf den drei pure Helpers `business-image-upload.ts`,
+`storage-cleanup.ts`, `storage-slug-migration.ts` aufsetzen.
+
+**Status-Update**: ~93 % Richtung „erstes Betrieb-fertiges
+Produkt". Storage-Architektur ist Production-ready.
+Verbleibend: Live-Provider-Switch (Reviews/Social),
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member-
+Verwaltung, „Betrieb löschen"-Flow.
+
+**Manueller Test**: Identisch zu Session 59 (Slug-Wechsel mit
+Logo+Cover+Service-Bildern) — User sollte keinen Verhaltens-
+Unterschied sehen. Refactor ist verhaltens-neutral.
+
+## [0.16.33] – Code-Session 59 – 2026-04-27
+
+## [0.16.33] – Code-Session 59 – 2026-04-27
+
+Service-Bilder beim Slug-Wechsel mit-migrieren. Pattern aus
+Session 57 (`storage.move()` + URL-Update) wird jetzt auch
+auf `services.image_url` pro Row angewendet. Damit ist die
+Storage-Hygiene-Lücke aus Session 58 geschlossen — Slug-
+Rename behält **alle** Public-Site-relevanten Bilder
+(Logo, Cover, Service-Bilder) intakt.
+
+- 🔄 `src/app/api/businesses/[slug]/settings/route.ts`:
+  Nach dem Logo/Cover-Move-Block (Session 57) ein zweiter
+  Block. SELECT `id, image_url` aus `services` WHERE
+  `business_id = X AND image_url IS NOT NULL`. Pro Row
+  parallel via `Promise.all`:
+  `extractStoragePath` → `rewritePathPrefix` →
+  `moveStoragePath` → `buildPublicUrl`. URL-Patches
+  anschließend in einem zweiten parallel `Promise.all`-
+  Block einzeln per `UPDATE services SET image_url=? WHERE
+  id=?` zurück in die DB. supabase-js v2 hat keinen native
+  Bulk-Update mit unterschiedlichen Werten pro Row — pro-
+  Row-UPDATE ist bei realistic 5–30 Services pro Business
+  akzeptabel und vermeidet Raw-SQL/RPC-Komplexität. Move-
+  Failure setzt `image_url` auf `null` (kein 404-Bild).
+  DB-Errors werden geloggt, blockieren aber nicht (Slug-
+  Wechsel selbst ist bereits committed). Antwort um
+  `serviceImagesMoved` + `serviceImagesFailed` erweitert.
+- 🔄 `src/lib/business-settings.ts`: `SettingsUpdateResult.server`
+  um optionale `serviceImagesMoved`/`serviceImagesFailed`
+  ergänzt; `ApiSuccessBody` parst die Counts. Rückwärts-
+  kompatibel — kein Bestandstest betroffen.
+
+37/38 Smoketests grün (industry-presets pre-existing red,
+Codex #11). typecheck ✅, lint ✅, beide Builds ✅. Bundle
+102 KB shared unverändert.
+
+🛣️ Roadmap: Storage-Hygiene-Stack ist jetzt **vollständig
+symmetrisch**: Upload (51 + 58), DELETE-Cleanup (56),
+Slug-Wechsel-Move für Logo/Cover (57) und Service-Bilder
+(59). Nächster sinnvoller Block ist Session 60 als 5er-
+Multiple mit Light-Pass + Recap.
+
+**Status-Update**: ~92 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Editor + Storage-Hygiene komplett.
+Verbleibend: Live-Provider-Switch, Custom-Domain, Sentry,
+Lighthouse-CI, Multi-Member-Verwaltung.
+
+**Manueller Test**: Dashboard → „Einstellungen" → Slug
+ändern (Service-Liste enthält 1+ Service mit hochgeladenem
+Bild) → Speichern. Mit aktivem Supabase + Service-Role:
+Response zeigt `imagesMoved` (Logo+Cover) +
+`serviceImagesMoved` (pro Service mit Bild). Public-Site
+unter neuem Slug zeigt **alle** Bilder unverändert.
+
+## [0.16.32] – Code-Session 58 – 2026-04-27
 
 ## [0.16.32] – Code-Session 58 – 2026-04-27
 

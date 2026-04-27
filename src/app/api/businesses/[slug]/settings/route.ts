@@ -28,12 +28,8 @@ import {
 } from "@/core/database/supabase-server";
 import { getServiceRoleClient } from "@/core/database/supabase-service";
 import { isReservedSlug } from "@/lib/onboarding-validate";
-import {
-  buildPublicUrl,
-  extractStoragePath,
-  moveStoragePath,
-  rewritePathPrefix,
-} from "@/lib/storage-cleanup";
+import { migrateBusinessImagesOnSlugChange } from "@/lib/storage-slug-migration";
+import { enforceCsrf } from "@/lib/csrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,6 +52,9 @@ export async function PATCH(
   req: Request,
   ctx: RouteContext,
 ): Promise<Response> {
+  const csrfFail = enforceCsrf(req);
+  if (csrfFail) return csrfFail;
+
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json(
@@ -182,78 +181,41 @@ export async function PATCH(
     );
   }
 
-  // Slug-Wechsel-Storage-Migration (Code-Session 57).
-  //
-  // Wenn der Slug erfolgreich aktualisiert wurde und der Betrieb
-  // ein Logo/Cover-Bild auf unserem Storage-Bucket hat, müssen
-  // wir die Storage-Objekte vom alten Slug-Prefix auf den neuen
-  // moven — sonst zeigen die DB-URLs ins Leere und die
-  // Public-Site rendert broken-image-Tags.
-  //
-  // Zwei-Phasen-Pattern: erst DB-UPDATE (atomisch, fängt 23505),
-  // dann Storage-Move + zweites DB-UPDATE für die neuen URLs.
-  // Move-Failure ist graceful — wir setzen die jeweilige URL
-  // auf null, damit die Public-Site kein 404-Bild zeigt; der
-  // User muss dann neu hochladen.
-  let imagesMoved = 0;
-  let imagesFailed = 0;
+  // Slug-Wechsel-Storage-Migration (Code-Session 57+59,
+  // konsolidiert in Session 60). Logo/Cover und Service-Bilder
+  // werden parallel auf den neuen Slug-Prefix gemoved; betroffene
+  // DB-Spalten werden in einem Logo/Cover-UPDATE und N
+  // Service-UPDATEs eingespielt. Move-/DB-Fehler sind graceful
+  // (kein Throw — Slug-Wechsel selbst ist bereits committed).
   const slugChanged = data.slug !== slug;
-  if (slugChanged) {
-    const adminClient = getServiceRoleClient();
-    const urlPatch: Record<string, string | null> = {};
-
-    const fields = [
-      ["logo_url", data.logo_url],
-      ["cover_image_url", data.cover_image_url],
-    ] as const;
-
-    for (const [field, currentUrl] of fields) {
-      if (!currentUrl) continue;
-      const oldPath = extractStoragePath(currentUrl, IMAGE_BUCKET);
-      if (!oldPath) continue; // externe URL → in Ruhe lassen
-      const newPath = rewritePathPrefix(oldPath, slug, data.slug);
-      if (!newPath) continue; // unerwartete Pfad-Konvention → skip
-
-      const moveRes = await moveStoragePath(
-        adminClient,
-        IMAGE_BUCKET,
-        oldPath,
-        newPath,
-      );
-      if (moveRes.ok) {
-        urlPatch[field] = buildPublicUrl(adminClient, IMAGE_BUCKET, newPath);
-        imagesMoved++;
-      } else {
-        urlPatch[field] = null;
-        imagesFailed++;
-        console.warn(
-          `[slug-cleanup] Storage-Move ${oldPath}→${newPath} fehlgeschlagen:`,
-          moveRes.reason,
-        );
-      }
-    }
-
-    if (Object.keys(urlPatch).length > 0) {
-      const { error: urlErr } = await supabase
-        .from("businesses")
-        .update(urlPatch)
-        .eq("slug", data.slug);
-      if (urlErr) {
-        console.warn(
-          "[slug-cleanup] URL-Patch fehlgeschlagen:",
-          urlErr.message,
-        );
-      }
-    }
-  }
+  const migration = slugChanged
+    ? await migrateBusinessImagesOnSlugChange(
+        { supabase, adminClient: getServiceRoleClient() },
+        {
+          oldSlug: slug,
+          newSlug: data.slug,
+          bucket: IMAGE_BUCKET,
+          business: {
+            id: data.id,
+            logo_url: data.logo_url,
+            cover_image_url: data.cover_image_url,
+          },
+        },
+      )
+    : {
+        logoCover: { moved: 0, failed: 0 },
+        services: { moved: 0, failed: 0 },
+      };
 
   return NextResponse.json(
     {
       ok: true,
       slug: data.slug,
       slugChanged,
-      imagesMoved,
-      imagesFailed,
+      imagesMoved: migration.logoCover.moved,
+      imagesFailed: migration.logoCover.failed,
+      serviceImagesMoved: migration.services.moved,
+      serviceImagesFailed: migration.services.failed,
     },
     {
       status: 200,

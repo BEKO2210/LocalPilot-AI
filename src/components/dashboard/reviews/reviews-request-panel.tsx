@@ -5,15 +5,22 @@ import {
   AlertTriangle,
   Check,
   Copy,
+  KeyRound,
   Loader2,
   MessageSquare,
   Phone,
   Send,
+  Server,
   Sparkles,
   User,
 } from "lucide-react";
 import { mockProvider } from "@/core/ai/providers/mock-provider";
 import { getPresetOrFallback } from "@/core/industries";
+import {
+  AI_TOKEN_STORAGE_KEY,
+  callAIGenerate,
+  userMessageForResult as userMessageForAIResult,
+} from "@/lib/ai-client";
 import {
   buildChannelSendUrl,
   channelLabel,
@@ -21,29 +28,43 @@ import {
   toneLabel,
 } from "@/lib/review-request-template";
 import type { Business } from "@/types/business";
-import type { ReviewRequestChannel } from "@/types/common";
+import type { AIProviderKey, ReviewRequestChannel } from "@/types/common";
 
 /**
- * Reviews-Request-Panel (Code-Session 53).
+ * Reviews-Request-Panel (Code-Session 53, Live-Provider in 61).
  *
  * Zielgerichteter Bewertungs-Booster:
  *   1. Owner gibt Kunden-Name + Empfänger (Telefon/E-Mail) ein.
- *   2. Wählt Kanal (WhatsApp/SMS/E-Mail/Persönlich) und Tonalität
- *      (Kurz/Freundlich/Follow-Up).
- *   3. Klick auf „Vorlagen generieren" → Mock-Provider liefert 1–3
- *      Varianten. Platzhalter werden client-side substituiert.
+ *   2. Wählt Kanal (WhatsApp/SMS/E-Mail/Persönlich), Tonalität
+ *      (Kurz/Freundlich/Follow-Up) und Provider (Mock / OpenAI /
+ *      Anthropic / Gemini).
+ *   3. Klick auf „Vorlagen generieren" → Mock-Provider direkt
+ *      im Browser oder Live-Provider via `/api/ai/generate`
+ *      mit Auth-Bearer / Cookie-Session.
  *   4. Pro Variante: Copy-Button + (außer in_person) Direkt-Send-
  *      Button mit `wa.me`/`sms:`/`mailto:`.
  *
- * Live-Provider (OpenAI/Anthropic/Gemini) bleibt aktuell dem
- * AIPlayground vorbehalten — der hat schon Auth-Bearer-Pfad.
- * Reviews-Panel nutzt den Mock direkt im Browser, damit sofort
- * funktional ohne ENV-Setup.
- *
- * Substituiert wird **nach** der KI-Generierung — der Mock
- * ersetzt selbst nicht alles, und der User soll die Substitution
- * im UI live sehen, wenn er den Namen tippt.
+ * Substituiert wird **nach** der KI-Generierung — der Provider
+ * (egal ob Mock oder Live) liefert Templates mit `{{...}}`-
+ * Platzhaltern, der User sieht die Substitution im UI live,
+ * wenn er den Namen tippt.
  */
+
+const PROVIDER_OPTIONS: readonly {
+  readonly value: AIProviderKey;
+  readonly label: string;
+}[] = [
+  { value: "mock", label: "Mock" },
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "gemini", label: "Gemini" },
+];
+
+interface ResolvedVariant {
+  readonly channel: Channel;
+  readonly tone: Tone;
+  readonly body: string;
+}
 
 type Channel = ReviewRequestChannel;
 type Tone = "short" | "friendly" | "follow_up";
@@ -74,8 +95,33 @@ export function ReviewsRequestPanel({
   const [tone, setTone] = useState<Tone>("friendly");
   const [customerName, setCustomerName] = useState("");
   const [recipient, setRecipient] = useState("");
+  const [providerKey, setProviderKey] = useState<AIProviderKey>("mock");
+  const [apiToken, setApiToken] = useState("");
   const [state, setState] = useState<GenerateState>({ kind: "idle" });
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+
+  // Token aus localStorage hydrieren — geteilt mit AIPlayground,
+  // damit der Owner ihn nur einmal eingeben muss. Privat-Modus /
+  // gesperrtes localStorage → bleibt Session-only.
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(AI_TOKEN_STORAGE_KEY);
+      if (stored) setApiToken(stored);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      if (apiToken.trim().length > 0) {
+        window.localStorage.setItem(AI_TOKEN_STORAGE_KEY, apiToken.trim());
+      } else {
+        window.localStorage.removeItem(AI_TOKEN_STORAGE_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [apiToken]);
 
   const reviewLink = business.contact.googleReviewUrl?.trim() ?? "";
   const linkMissing = reviewLink.length === 0;
@@ -112,43 +158,93 @@ export function ReviewsRequestPanel({
   async function handleGenerate() {
     setState({ kind: "loading" });
     setCopiedIdx(null);
-    try {
-      const output = await mockProvider.generateReviewRequest({
-        context: {
+
+    const input = {
+      context: {
+        businessName: business.name,
+        industryKey: business.industryKey,
+        packageTier: business.packageTier,
+        language: (business.locale === "en" ? "en" : "de") as "de" | "en",
+        city: business.address.city,
+        toneOfVoice: [...(preset.toneOfVoice ?? [])],
+        uniqueSellingPoints: [] as string[],
+      },
+      channel,
+      tone,
+      ...(customerName.trim() ? { customerName: customerName.trim() } : {}),
+      ...(reviewLink ? { reviewLink } : {}),
+    };
+
+    const finalize = (
+      rawVariants: ReadonlyArray<{
+        channel?: string;
+        tone?: string;
+        body?: string;
+      }>,
+    ): readonly ResolvedVariant[] =>
+      rawVariants.map((v) => ({
+        channel: ((v.channel as Channel | undefined) ?? channel) as Channel,
+        tone: ((v.tone as Tone | undefined) ?? tone) as Tone,
+        body: substitutePlaceholders(v.body ?? "", {
+          customerName,
+          reviewLink,
           businessName: business.name,
-          industryKey: business.industryKey,
-          packageTier: business.packageTier,
-          language: business.locale === "en" ? "en" : "de",
-          city: business.address.city,
-          toneOfVoice: preset.toneOfVoice ?? [],
-          uniqueSellingPoints: [],
-        },
-        channel,
-        tone,
-        ...(customerName.trim() ? { customerName: customerName.trim() } : {}),
-        ...(reviewLink ? { reviewLink } : {}),
-      });
-      setState({
-        kind: "ready",
-        variants: output.variants.map((v) => ({
-          channel: v.channel as Channel,
-          tone: v.tone as Tone,
-          body: substitutePlaceholders(v.body, {
-            customerName,
-            reviewLink,
-            businessName: business.name,
-          }),
-        })),
-      });
-    } catch (err) {
-      setState({
-        kind: "error",
-        message:
-          err instanceof Error
-            ? err.message
-            : "Konnte keine Vorlage generieren.",
-      });
+        }),
+      }));
+
+    if (providerKey === "mock") {
+      try {
+        const output = await mockProvider.generateReviewRequest(input);
+        setState({ kind: "ready", variants: finalize(output.variants) });
+      } catch (err) {
+        setState({
+          kind: "error",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Konnte keine Vorlage generieren.",
+        });
+      }
+      return;
     }
+
+    // Live-Provider: Aufruf via API-Route. Auth über Bearer-Token
+    // (in Token-Feld eingegeben) oder die Cookie-Session des
+    // eingeloggten Owners. Static-Build hat keine API-Route → 404
+    // → Helper liefert `static-build`-Result, UI-Hint bittet zum
+    // Mock-Switch.
+    const result = await callAIGenerate({
+      method: "generateReviewRequest",
+      providerKey,
+      input,
+      apiToken,
+    });
+    if (result.kind === "server") {
+      const output = result.output as {
+        variants?: ReadonlyArray<{
+          channel?: string;
+          tone?: string;
+          body?: string;
+        }>;
+      } | null;
+      const variants = finalize(output?.variants ?? []);
+      if (variants.length === 0) {
+        setState({
+          kind: "error",
+          message: "Server hat keine Varianten geliefert. Bitte erneut versuchen oder Mock nutzen.",
+        });
+        return;
+      }
+      setState({ kind: "ready", variants });
+      return;
+    }
+
+    setState({
+      kind: "error",
+      message:
+        userMessageForAIResult(result) ??
+        "Live-Generierung fehlgeschlagen. Bitte erneut versuchen oder Mock nutzen.",
+    });
   }
 
   async function copyToClipboard(text: string, idx: number) {
@@ -204,6 +300,47 @@ export function ReviewsRequestPanel({
       <section className="space-y-5 rounded-2xl border border-ink-200 bg-white p-5 shadow-soft">
         <ChannelTabs channel={channel} onChange={setChannel} />
         <ToneTabs tone={tone} onChange={setTone} />
+        <ProviderTabs
+          provider={providerKey}
+          onChange={(v) => {
+            setProviderKey(v);
+            // Bei Wechsel auf Live: alten Idle-State behalten,
+            // damit kein veraltetes Mock-Result stehen bleibt.
+            if (v !== "mock" && state.kind === "ready") {
+              setState({ kind: "idle" });
+            }
+          }}
+        />
+        {providerKey !== "mock" ? (
+          <div className="rounded-xl border border-ink-200 bg-ink-50 p-3">
+            <label
+              htmlFor="ai-api-token"
+              className="mb-1 flex items-center gap-1.5 text-sm font-medium text-ink-800"
+            >
+              <KeyRound className="h-3.5 w-3.5 text-ink-500" aria-hidden />
+              API-Token (optional)
+            </label>
+            <input
+              id="ai-api-token"
+              type="password"
+              autoComplete="off"
+              value={apiToken}
+              onChange={(e) => setApiToken(e.target.value)}
+              placeholder="Bearer-Token oder leer lassen (Cookie-Session reicht)"
+              className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm shadow-soft outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            />
+            <p className="mt-1 inline-flex items-center gap-1 text-xs text-ink-500">
+              <Server className="h-3 w-3" aria-hidden />
+              Live-Provider laufen über{" "}
+              <code className="rounded bg-white px-1 py-0.5 text-[10.5px] text-ink-700">
+                /api/ai/generate
+              </code>
+              . Token wird in deinem Browser gespeichert (geteilt mit
+              Playground). Im Static-Export-Build (GitHub Pages)
+              gibt es keine API-Route — dort bleibt nur Mock.
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <FieldWithIcon
@@ -368,6 +505,38 @@ function ChannelTabs({
             }`}
           >
             {channelLabel(c)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProviderTabs({
+  provider,
+  onChange,
+}: {
+  provider: AIProviderKey;
+  onChange: (next: AIProviderKey) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label="Provider" className="flex flex-wrap gap-2">
+      {PROVIDER_OPTIONS.map((opt) => {
+        const active = opt.value === provider;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(opt.value)}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              active
+                ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                : "border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
+            }`}
+          >
+            {opt.label}
           </button>
         );
       })}

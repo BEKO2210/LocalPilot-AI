@@ -1,18 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Check,
   Copy,
   Hash,
   Image as ImageIcon,
+  KeyRound,
   Loader2,
   Megaphone,
+  Server,
   Sparkles,
 } from "lucide-react";
 import { mockProvider } from "@/core/ai/providers/mock-provider";
 import { getPresetOrFallback } from "@/core/industries";
+import {
+  AI_TOKEN_STORAGE_KEY,
+  callAIGenerate,
+  userMessageForResult as userMessageForAIResult,
+} from "@/lib/ai-client";
 import {
   adviseHashtagCount,
   assessLength,
@@ -25,6 +32,7 @@ import {
 } from "@/lib/social-post-format";
 import type { Business } from "@/types/business";
 import type {
+  AIProviderKey,
   PostLength,
   SocialPlatform,
   SocialPostGoal,
@@ -68,6 +76,39 @@ const GOALS: readonly SocialPostGoal[] = [
 ];
 const LENGTHS: readonly PostLength[] = ["short", "medium", "long"];
 
+const PROVIDER_OPTIONS: readonly {
+  readonly value: AIProviderKey;
+  readonly label: string;
+}[] = [
+  { value: "mock", label: "Mock" },
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "gemini", label: "Gemini" },
+];
+
+/**
+ * Defensive Validation des Live-Provider-Output. Server schickt
+ * SocialPostOutput zurück, aber `unknown` typisiert — wir prüfen
+ * die Pflichtfelder und liefern einen Fallback-Default für jedes
+ * fehlende Feld.
+ */
+function parseSocialOutput(raw: unknown): SocialPostOutput | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Partial<SocialPostOutput>;
+  const shortPost = typeof r.shortPost === "string" ? r.shortPost : "";
+  const longPost = typeof r.longPost === "string" ? r.longPost : "";
+  if (shortPost.length === 0 && longPost.length === 0) return null;
+  return {
+    shortPost,
+    longPost,
+    hashtags: Array.isArray(r.hashtags)
+      ? r.hashtags.filter((t): t is string => typeof t === "string")
+      : [],
+    imageIdea: typeof r.imageIdea === "string" ? r.imageIdea : "",
+    cta: typeof r.cta === "string" ? r.cta : "",
+  };
+}
+
 type GenState =
   | { kind: "idle" }
   | { kind: "loading" }
@@ -84,8 +125,32 @@ export function SocialPostPanel({
   const [length, setLength] = useState<PostLength>("medium");
   const [topic, setTopic] = useState("");
   const [includeHashtags, setIncludeHashtags] = useState(true);
+  const [providerKey, setProviderKey] = useState<AIProviderKey>("mock");
+  const [apiToken, setApiToken] = useState("");
   const [state, setState] = useState<GenState>({ kind: "idle" });
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Token aus localStorage hydrieren — geteilt mit
+  // Reviews-Panel (Session 61) und AIPlayground (Session 28).
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(AI_TOKEN_STORAGE_KEY);
+      if (stored) setApiToken(stored);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      if (apiToken.trim().length > 0) {
+        window.localStorage.setItem(AI_TOKEN_STORAGE_KEY, apiToken.trim());
+      } else {
+        window.localStorage.removeItem(AI_TOKEN_STORAGE_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [apiToken]);
 
   const preset = useMemo(
     () => getPresetOrFallback(business.industryKey),
@@ -105,33 +170,68 @@ export function SocialPostPanel({
     }
     setState({ kind: "loading" });
     setCopiedKey(null);
-    try {
-      const output = await mockProvider.generateSocialPost({
-        context: {
-          businessName: business.name,
-          industryKey: business.industryKey,
-          packageTier: business.packageTier,
-          language: business.locale === "en" ? "en" : "de",
-          city: business.address.city,
-          toneOfVoice: preset.toneOfVoice ?? [],
-          uniqueSellingPoints: [],
-        },
-        platform,
-        goal,
-        topic: topic.trim(),
-        length,
-        includeHashtags,
-      });
-      setState({ kind: "ready", output });
-    } catch (err) {
-      setState({
-        kind: "error",
-        message:
-          err instanceof Error
-            ? err.message
-            : "Konnte keinen Post generieren.",
-      });
+
+    const input = {
+      context: {
+        businessName: business.name,
+        industryKey: business.industryKey,
+        packageTier: business.packageTier,
+        language: (business.locale === "en" ? "en" : "de") as "de" | "en",
+        city: business.address.city,
+        toneOfVoice: [...(preset.toneOfVoice ?? [])],
+        uniqueSellingPoints: [] as string[],
+      },
+      platform,
+      goal,
+      topic: topic.trim(),
+      length,
+      includeHashtags,
+    };
+
+    if (providerKey === "mock") {
+      try {
+        const output = await mockProvider.generateSocialPost(input);
+        setState({ kind: "ready", output });
+      } catch (err) {
+        setState({
+          kind: "error",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Konnte keinen Post generieren.",
+        });
+      }
+      return;
     }
+
+    // Live-Provider via /api/ai/generate (Session 61-Pattern).
+    // Auth: Bearer-Token (falls eingegeben) oder Cookie-Session.
+    // Static-Build → 404 → static-build-Hint mit Mock-Switch-Tipp.
+    const result = await callAIGenerate({
+      method: "generateSocialPost",
+      providerKey,
+      input,
+      apiToken,
+    });
+    if (result.kind === "server") {
+      const parsed = parseSocialOutput(result.output);
+      if (!parsed) {
+        setState({
+          kind: "error",
+          message: "Server hat keinen Post geliefert. Bitte erneut versuchen oder Mock nutzen.",
+        });
+        return;
+      }
+      setState({ kind: "ready", output: parsed });
+      return;
+    }
+
+    setState({
+      kind: "error",
+      message:
+        userMessageForAIResult(result) ??
+        "Live-Generierung fehlgeschlagen. Bitte erneut versuchen oder Mock nutzen.",
+    });
   }
 
   async function copyToClipboard(text: string, key: string) {
@@ -174,6 +274,45 @@ export function SocialPostPanel({
       <section className="space-y-5 rounded-2xl border border-ink-200 bg-white p-5 shadow-soft">
         <PlatformTabs platform={platform} onChange={setPlatform} />
         <GoalPills goal={goal} onChange={setGoal} />
+        <ProviderTabs
+          provider={providerKey}
+          onChange={(v) => {
+            setProviderKey(v);
+            if (v !== "mock" && state.kind === "ready") {
+              setState({ kind: "idle" });
+            }
+          }}
+        />
+        {providerKey !== "mock" ? (
+          <div className="rounded-xl border border-ink-200 bg-ink-50 p-3">
+            <label
+              htmlFor="ai-api-token-social"
+              className="mb-1 flex items-center gap-1.5 text-sm font-medium text-ink-800"
+            >
+              <KeyRound className="h-3.5 w-3.5 text-ink-500" aria-hidden />
+              API-Token (optional)
+            </label>
+            <input
+              id="ai-api-token-social"
+              type="password"
+              autoComplete="off"
+              value={apiToken}
+              onChange={(e) => setApiToken(e.target.value)}
+              placeholder="Bearer-Token oder leer lassen (Cookie-Session reicht)"
+              className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm shadow-soft outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            />
+            <p className="mt-1 inline-flex items-center gap-1 text-xs text-ink-500">
+              <Server className="h-3 w-3" aria-hidden />
+              Live-Provider laufen über{" "}
+              <code className="rounded bg-white px-1 py-0.5 text-[10.5px] text-ink-700">
+                /api/ai/generate
+              </code>
+              . Token wird in deinem Browser gespeichert (geteilt mit
+              Reviews + Playground). Im Static-Export-Build (GitHub
+              Pages) gibt es keine API-Route — dort bleibt nur Mock.
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
           <Field
@@ -395,6 +534,38 @@ function PlatformTabs({
             }`}
           >
             {platformLabel(p)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProviderTabs({
+  provider,
+  onChange,
+}: {
+  provider: AIProviderKey;
+  onChange: (next: AIProviderKey) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label="Provider" className="flex flex-wrap gap-2">
+      {PROVIDER_OPTIONS.map((opt) => {
+        const active = opt.value === provider;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(opt.value)}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              active
+                ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                : "border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
+            }`}
+          >
+            {opt.label}
           </button>
         );
       })}
