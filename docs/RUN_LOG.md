@@ -8151,3 +8151,132 @@ Supabase-ENV (Mock-Provider als Default). Plus
 `docs/TESTING.md` mit Anleitung „lokal testen" + „CI-
 Setup".
 
+## Code-Session 71 – Phase-1.5-Auftakt: Playwright-Setup + 10 Smoke-Tests
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Phase 1.5
+
+**Was**: End-to-End-Test-Block startet. Playwright als
+zweite Test-Schicht (zusätzlich zu den 45 Pure-Helper-
+Smoketests) für User-Flow-Verifikation gegen die echte
+App. Erste 4 Test-Files mit zusammen 10 grünen Smoke-Tests
+(22 s).
+
+**Architektur-Entscheidung — Playwright statt Cypress/
+Vitest-Browser**: Playwright ist 2026-Standard für Next.js
+(siehe Next.js-Docs-Empfehlung). Vorteile gegenüber
+Cypress: schneller, multi-tab/multi-context, native
+TypeScript-Support, parallel-fähig. Vorteil gegenüber
+Vitest-Browser: echte Browser-Engine, keine jsdom-Quirks.
+
+**Architektur-Entscheidung — Demo-Modus als Default**:
+Tests laufen ohne `NEXT_PUBLIC_SUPABASE_URL`/`...ANON_KEY`-
+ENV. Pages fallen auf `unconfigured`-State / Mock-Daten
+zurück. Ergebnis: 10 Smoke-Tests laufen deterministisch
+ohne externes Backend. Authed-Pfade kommen ab Session 72
+mit gemockter Cookie-Session.
+
+**Architektur-Entscheidung — `workers: 1` initial**: für
+die ersten Smoke-Tests sequenziell, damit Logs lesbar
+bleiben und der Dev-Server nicht parallel überlastet wird.
+Light-Pass Session 75 schaltet Parallelität ein, sobald
+≥10 state-unabhängige Tests da sind.
+
+**Architektur-Entscheidung — `e2e/`-Ordner aus
+root-tsconfig ausgeschlossen**: Playwright-Test-Files
+haben eigenen Test-Stil (`test`/`expect`-Globals, andere
+Module-Resolution). Eigene `e2e/tsconfig.json` extends
+root, override für test-spezifische compilerOptions. Root
+`tsc --noEmit` läuft nicht über e2e/, lint auch nicht
+(Next.js-ESLint-Config ignoriert non-`src`-Pfade).
+
+**Test-Findings beim ersten Lauf**: Zwei Tests scheiterten
+mit echten Annahmen-Fehlern:
+- **Site-Footer-Test**: `page.locator("footer")` matched
+  7 Elements — die Demo-Showcase-Cards auf der Landing-
+  Page nutzen `<footer>` als Card-Footer-Element. **Fix**:
+  ARIA-Landmark `getByRole("contentinfo")` statt Tag-
+  Selector. Lesson: Tag-Selector ist fragil bei
+  semantischen HTML-Strukturen.
+- **Public-Site-Lead-Form-Test**: Demo-Branche
+  `studio-haarlinie` hat keinen `type="email"`-Input —
+  Lead-Form-Felder sind branchenspezifisch. **Fix**:
+  strukturell prüfen (`form > input + button[type=submit]`)
+  statt feldspezifisch. Lesson: branchen-Variabilität
+  muss in Test-Strategie eingehen.
+
+Beide Findings sind genau der Mehrwert, den E2E-Tests
+liefern sollen — der Refactor in Session 60 (oder ein
+zukünftiger UI-Polish-Session) hätte diese Annahmen
+unentdeckt gelassen.
+
+**WebSearch (Track C)**: bestätigt
+- [Next.js – Playwright Testing](https://nextjs.org/docs/app/guides/testing/playwright)
+  Standard-Setup mit `webServer`, baseURL aus config, CI-
+  conditional `reuseExistingServer`.
+- [BrowserStack – 15 Best Practices for Playwright 2026](https://www.browserstack.com/guide/playwright-best-practices)
+  Auto-Waiting, getByRole, Trace-Viewer, Page-Object-
+  Model (kommt in Session 75).
+- [DeviQA – Playwright E2E 2026](https://www.deviqa.com/blog/guide-to-playwright-end-to-end-testing-in-2025/)
+  Trace `on-first-retry` als Standard für
+  Performance/Debug-Balance.
+- [TestDouble – E2E Auth Flows](https://testdouble.com/insights/how-to-test-auth-flows-with-playwright-and-next-js)
+  `storageState`-Pattern für Mock-Auth (Session 72).
+
+**Dateien**:
+- ✚ `playwright.config.ts`: baseURL, webServer,
+  retries (CI=2, lokal=0), trace, screenshot, projects
+  (Chromium initial; Firefox/WebKit ab Session 75).
+- ✚ `e2e/smoke-landing.spec.ts` (3 Tests).
+- ✚ `e2e/smoke-login.spec.ts` (3 Tests).
+- ✚ `e2e/smoke-public-site.spec.ts` (3 Tests).
+- ✚ `e2e/smoke-account.spec.ts` (1 Test).
+- ✚ `e2e/tsconfig.json`: extends root, override
+  module/jsx/isolatedModules.
+- ✚ `docs/TESTING.md`: Pflicht-Doku für beide Test-
+  Schichten. Setup, Ausführung, Demo-vs-Authed-Modus,
+  Pattern + Best-Practices, Roadmap Phase 1.5,
+  CI-Setup-Skizze.
+- 🔄 `package.json`: `@playwright/test@^1.59.1`,
+  Scripts `test:e2e`, `test:e2e:ui`, `test:e2e:report`.
+- 🔄 `tsconfig.json`: `exclude: ["node_modules", "e2e"]`.
+- 🔄 `.gitignore`: Playwright-Output-Verzeichnisse.
+
+**Browser-Binaries**: ~112 MB Chromium-Headless-Shell
+unter `/opt/pw-browsers/`. Cache-Pfad lokal.
+Lokal-Setup-Aufwand: einmalig `npx playwright install
+chromium`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests grün** (unverändert). **10/10 E2E-Tests
+grün** (22 s). Bundle 102 KB shared unverändert.
+
+**Roadmap Phase 1.5**:
+- **72**: Onboarding-Flow E2E (Magic-Link → Form →
+  Slug-Validation → Auto-Redirect).
+- **73**: Business-Editor E2E (alle Sektionen, Logo+
+  Cover-Upload, Save/Discard).
+- **74**: Service-Liste E2E (CRUD, Reorder, UUID-Gating,
+  Bild-Upload).
+- **75** (5er-Light-Pass): Settings + Danger-Zone E2E +
+  Test-Helper-Refactor + Parallelität anschalten + Firefox-
+  Browser-Project.
+- **76**: Public-Site E2E + Lead-Retry-Queue (online/
+  offline).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Playwright-
+Patterns 2026.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 läuft (Test-
+Coverage-Aufbau). 10 E2E-Tests von ≥25 angepeilten.
+Phase 2 (UI/UX-Polish) ab Session 77.
+
+**Nächste Session**: Code-Session 72 = **Onboarding-Flow
+E2E**. Begründung: Phase 1.5 läuft. Onboarding ist der
+erste authed Flow — Magic-Link-Trigger, Form-Validation,
+Slug-Reserved-/Collision-Cases, Auto-Redirect zu
+Dashboard. Strategie für Auth: `storageState`-Pattern
+(Test-Cookie-Session vorab in einer `auth.setup.ts`
+Datei generieren, dann von allen Tests nutzen). Mock für
+Magic-Link-Email: kein echtes SMTP nötig — Login-Form-
+Submit ruft `/api/auth/magic-link`, das in Test-ENV
+einen direkten Login-Token zurückgibt (DEV-Bypass).
+

@@ -393,10 +393,14 @@ Setup-Strategie: Tests laufen gegen lokale dev-Instanz mit
 in-memory Mock-Provider (kein echtes Supabase nötig in
 CI-Umgebung).
 
-- **71**: Setup-Session. `npm i -D @playwright/test`,
-  `playwright.config.ts`, erste Smoke-Tests: Login-Page lädt,
-  Public-Demo-Site lädt, Account-Page lädt mit Empty-State.
-  Kein-Backend-Mode: alle Tests grün ohne Supabase-ENV.
+- **71** ✅: Setup-Session. `@playwright/test@^1.59.1`,
+  `playwright.config.ts`, **10 Smoke-Tests grün** in 22 s
+  (Landing, Login, Public-Site × 2 Slugs, Account). Demo-
+  Modus: alle Tests grün ohne Supabase-ENV. `docs/TESTING.md`
+  als Pflicht-Doku. 2 Annahmen-Fehler beim ersten Lauf
+  aufgedeckt + gefixt (Footer-Selector Demo-Card-Kollision,
+  Lead-Form branchenspezifische Felder) — exakt der
+  Mehrwert, den E2E-Tests liefern sollen.
 - **72**: Onboarding-Flow E2E. Magic-Link-Page → Onboarding-
   Form → Slug-Validation (kollidieren, reserviert, ok) →
   erster Betrieb angelegt → Auto-Redirect zu Dashboard

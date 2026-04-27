@@ -6,22 +6,79 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1.5 → End-to-End-Tests (Sessions 71–~76)
-**Vor** Phase 2 (UI/UX-Polish): User-Pflicht-Anweisung
-„sehr viele Tests, alles wie ein Endbenutzer durchspielen".
-- 71: Playwright-Setup + erste Smoke-Tests.
-- 72: Onboarding-Flow E2E.
-- 73: Business-Editor-E2E.
-- 74: Service-Liste-E2E.
-- 75: Settings + Danger-Zone E2E (5er-Multiple Light-Pass
-  auf E2E-Helpers).
-- 76: Public-Site + Lead-Retry-Queue E2E.
-- Erfolgskriterium: ≥25 grüne E2E-Tests +
-  `docs/TESTING.md`-Doku.
+### Phase 1.5 → End-to-End-Tests (Sessions 72–~76)
+- **72**: Onboarding-Flow E2E.
+- **73**: Business-Editor-E2E.
+- **74**: Service-Liste-E2E.
+- **75** (5er-Light-Pass): Settings + Danger-Zone E2E +
+  Test-Helper-Refactor.
+- **76**: Public-Site + Lead-Retry-Queue E2E.
+- Erfolgskriterium: ≥25 grüne E2E-Tests.
 
 ### Phase 2 → UI/UX-Polish (Sessions ~77–~86+)
 Demo-Logo via `algorithmic-art`-Skill in Session 81. Details
 in `docs/PROGRAM_PLAN.md`.
+
+## [0.16.45] – Code-Session 71 – 2026-04-27 (Phase-1.5-Auftakt)
+
+Phase 1.5 startet — End-to-End-Test-Block mit Playwright.
+User-Anweisung „sehr viele Tests bevor wir an die UI/UX,
+alles wie ein Endbenutzer durchspielen". Erste 10 Smoke-
+Tests laufen grün gegen die echte Next.js-App.
+
+- ✚ `playwright.config.ts`: baseURL aus ENV (Default
+  `http://localhost:3000`), webServer startet `npm run dev`
+  automatisch (90 s Timeout, `reuseExistingServer` lokal),
+  trace `on-first-retry`, screenshot `only-on-failure`,
+  navigation-/action-Timeouts auf 10 s/5 s, workers=1
+  (sequenziell für deterministische Logs in der
+  Etablierungs-Phase).
+- ✚ `e2e/smoke-landing.spec.ts` (3 Tests): Hero rendert,
+  Header-Login-Link, Site-Footer mit Impressum + Datenschutz.
+- ✚ `e2e/smoke-login.spec.ts` (3 Tests): Form-Render,
+  Submit-Button-Aktivierung nach Email-Eingabe, Demo-Link.
+- ✚ `e2e/smoke-public-site.spec.ts` (3 Tests): Hero +
+  Services + Footer rendern, Lead-Form mit Pflichtfeldern,
+  zweiter Demo-Slug.
+- ✚ `e2e/smoke-account.spec.ts` (1 Test): Demo-Modus-Card
+  oder Guest-Card (je nach Backend-State).
+- ✚ `e2e/tsconfig.json`: separate Type-Check für E2E-
+  Tests; root-`tsconfig.json` schließt `e2e/` aus.
+- ✚ `docs/TESTING.md`: Pflicht-Doku für beide Test-
+  Schichten (Smoketests + E2E). Setup, Ausführung,
+  Konfiguration, Demo-vs-Authed-Modus, Pattern + Best-
+  Practices, Roadmap Phase 1.5, CI-Setup-Skizze.
+- 🔄 `package.json`: `@playwright/test@^1.59.1` als
+  devDep. Neue Scripts: `test:e2e`, `test:e2e:ui`,
+  `test:e2e:report`.
+- 🔄 `.gitignore`: `playwright-report/`, `test-results/`,
+  `blob-report/`, `playwright/.cache/`.
+
+**Erstes Lauf-Ergebnis**: 10/10 Tests grün in 22 s. Zwei
+Tests deckten beim ersten Versuch echte Annahmen-Fehler
+auf (Footer-Selector kollidierte mit `<footer>`-Tags in
+Demo-Cards; Lead-Form-Felder sind branchenspezifisch
+statt fest). Beide gefixt — exakt der Mehrwert, den E2E-
+Tests liefern sollen.
+
+45/45 Smoketests grün (unverändert). typecheck ✅, lint
+✅, beide Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: Phase 1.5 Sessions 72–76 mit User-Flow-Tests:
+Onboarding, Business-Editor, Services, Settings+Danger-
+Zone, Public-Site+Lead-Retry. Erfolgskriterium ≥25 grüne
+E2E-Tests, dann Phase 2.
+
+**Status-Update**: Phase 1 abgeschlossen ✅. Phase 1.5
+gestartet (Test-Coverage-Aufbau). Phase 2 (UI/UX-Polish +
+Demo-Logo) ab Session 77.
+
+**Manueller Test**: `npm run test:e2e` startet automatisch
+einen Dev-Server, läuft 10 Tests durch, beendet den Server.
+Bei Failure: `npm run test:e2e:report` öffnet den HTML-
+Report mit Trace-Viewer.
+
+## [0.16.44] – Code-Session 70 – 2026-04-27 (Light-Pass + Pre-MVP-Audit)
 
 ## [0.16.44] – Code-Session 70 – 2026-04-27 (Light-Pass + Pre-MVP-Audit)
 
