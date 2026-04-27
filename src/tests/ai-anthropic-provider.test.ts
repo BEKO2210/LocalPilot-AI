@@ -23,7 +23,10 @@ import { anthropicProvider } from "@/core/ai/providers/anthropic-provider";
 import { getAIProvider } from "@/core/ai";
 import { AIProviderError } from "@/types/ai";
 import type { AIBusinessContext, WebsiteCopyInput } from "@/types/ai";
-import { WebsiteCopyOutputSchema } from "@/core/validation/ai.schema";
+import {
+  ServiceDescriptionOutputSchema,
+  WebsiteCopyOutputSchema,
+} from "@/core/validation/ai.schema";
 
 function assert(condition: boolean, message: string): asserts condition {
   if (!condition) {
@@ -93,13 +96,24 @@ async function run(): Promise<void> {
     typeof anthropicProvider.generateOfferCampaign === "function";
   assert(allMethods, "alle 7 Anthropic-Provider-Methoden sind Funktionen");
 
-  // 1c. Ohne API-Key wirft generateWebsiteCopy 'no_api_key'.
+  // 1c. Ohne API-Key werfen die scharfen Methoden 'no_api_key'.
   const savedKey = process.env["ANTHROPIC_API_KEY"];
   delete process.env["ANTHROPIC_API_KEY"];
   try {
     await expectThrowsWithCode(
       "no key → generateWebsiteCopy",
       () => anthropicProvider.generateWebsiteCopy(heroInput),
+      "no_api_key",
+    );
+    await expectThrowsWithCode(
+      "no key → improveServiceDescription",
+      () =>
+        anthropicProvider.improveServiceDescription({
+          context: baseContext,
+          serviceTitle: "Damenhaarschnitt",
+          currentDescription: "",
+          targetLength: "medium",
+        }),
       "no_api_key",
     );
   } finally {
@@ -117,6 +131,17 @@ async function run(): Promise<void> {
       }),
     "invalid_input",
   );
+  await expectThrowsWithCode(
+    "invalid input → improveServiceDescription",
+    () =>
+      anthropicProvider.improveServiceDescription({
+        context: baseContext,
+        serviceTitle: "X", // zu kurz, Schema verlangt min(2)
+        currentDescription: "",
+        targetLength: "medium",
+      }),
+    "invalid_input",
+  );
 
   // 1e. Resolver mit AI_PROVIDER=anthropic + Key → anthropic.
   const resolved = getAIProvider({
@@ -130,18 +155,8 @@ async function run(): Promise<void> {
     "Resolver routet auf anthropic mit Key",
   );
 
-  // 1f. Übrige 6 Methoden werfen weiterhin 'provider_unavailable'.
-  await expectThrowsWithCode(
-    "improveServiceDescription stub",
-    () =>
-      anthropicProvider.improveServiceDescription({
-        context: baseContext,
-        serviceTitle: "Damenhaarschnitt",
-        currentDescription: "",
-        targetLength: "medium",
-      }),
-    "provider_unavailable",
-  );
+  // 1f. Übrige 5 Methoden werfen weiterhin 'provider_unavailable'.
+  //     (improveServiceDescription ist mit Code-Session 25 scharf.)
   await expectThrowsWithCode(
     "generateFaqs stub",
     () =>
@@ -210,15 +225,32 @@ async function run(): Promise<void> {
       validated.heroTitle.length > 0 &&
         validated.heroSubtitle.length > 0 &&
         validated.aboutText.length > 0,
-      "Live-Anthropic-Call: alle drei Felder befüllt",
+      "Live-Anthropic-Call generateWebsiteCopy: alle drei Felder befüllt",
     );
     console.log("✓ Live-Anthropic-Call (generateWebsiteCopy) erfolgreich.");
+
+    const sd = await anthropicProvider.improveServiceDescription({
+      context: baseContext,
+      serviceTitle: "Damenhaarschnitt mit Tiefenpflege",
+      currentDescription:
+        "Wäsche, Schnitt, Föhn-Finish — Termine auch samstags möglich.",
+      targetLength: "long",
+    });
+    const sdValidated = ServiceDescriptionOutputSchema.parse(sd);
+    assert(
+      sdValidated.shortDescription.length > 0 &&
+        sdValidated.longDescription.length > 0,
+      "Live-Anthropic-Call improveServiceDescription: beide Felder befüllt",
+    );
+    console.log(
+      "✓ Live-Anthropic-Call (improveServiceDescription) erfolgreich.",
+    );
   }
 }
 
 void run();
 
 export const __AI_ANTHROPIC_PROVIDER_SMOKETEST__ = {
-  structuralAssertions: 12,
+  structuralAssertions: 14,
   liveOptInVar: "LP_TEST_ANTHROPIC_LIVE",
 };

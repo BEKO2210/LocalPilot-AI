@@ -195,7 +195,19 @@ aktiven Session.
   jede Variant-Kombination wird das mühsam. Ein
   `zodToToolInputSchema(WebsiteCopyOutputSchema)`-Helper
   (oder via `zod-to-json-schema`-Lib) würde die Wartung
-  drastisch vereinfachen.
+  drastisch vereinfachen. Mit Code-Session 25 sind es **zwei**
+  hand-geschriebene Tool-Schemas (`emit_website_copy`,
+  `emit_service_description`) — Drift-Risiko wächst.
+- **Anthropic Structured-Outputs migration prüfen** (aus
+  Code-Session 25): Anthropic hat in 2026 ein offizielles
+  `output_config.format` (Constrained Sampling) eingeführt, das
+  Tool-Use als Strukturierungs-Workaround ersetzt. Tool-Use bleibt
+  weiter unterstützt, ist aber redundant für reine Struktur.
+  Lohnt sich, wenn 4–5 Anthropic-Methoden scharf sind: Migration
+  auf `output_config.format` reduziert Boilerplate (kein Pseudo-
+  Tool nötig) und setzt direkt auf compiled Grammar Constraints.
+  Risk: ältere Modelle unterstützen es nicht — pinning auf
+  Sonnet-4.5+ erforderlich.
 
 ### Track B · Security & Compliance
 - DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen

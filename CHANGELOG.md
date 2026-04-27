@@ -7,17 +7,64 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht, Live-Provider-Phase)
-- Code-Session 25: Anthropic-Provider, zweite Live-Methode
-  (`improveServiceDescription`).
-- Code-Sessions 26–27: Gemini-Provider scharf.
+- Code-Session 26: Gemini-Provider scharf, erste Live-Methode
+  (`generateWebsiteCopy`).
+- Code-Session 27: Gemini-Provider, zweite Live-Methode.
 - Code-Sessions 28+: Cost-Tracking + Rate-Limit-UI, AI-API-Route
   hinter Auth, Dashboard-UI je Capability, DOMPurify-Sanitizer.
 
 ### Self-Extending Backlog
-Code-Session 24 hat 2 neue Items in `docs/PROGRAM_PLAN.md` ergänzt
-(Track C: Provider-Parity-Suite — gleicher Input gegen beide
-Live-Provider; Track D: `zodToToolInputSchema`-Helper für
-Anthropic-Tool-Use).
+Code-Session 25 hat 1 neues Item in `docs/PROGRAM_PLAN.md` ergänzt
+und einen bestehenden Punkt verschärft:
+- (verschärft) `zodToToolInputSchema`-Helper für Anthropic — jetzt
+  zwei hand-geschriebene Tool-Schemas, Drift-Risiko wächst.
+- (neu) Anthropic Structured-Outputs (`output_config.format`)
+  migration prüfen — ersetzt Tool-Use als Strukturierungs-
+  Workaround, lohnt sich nach 4–5 Anthropic-Methoden.
+
+## [0.15.4] – Code-Session 25 – 2026-04-27
+
+### Added
+- **Anthropic-Provider zweite Live-Methode**: `improveServiceDescription`
+  ist jetzt scharf. Gleiches Tool-Use-Muster wie
+  `generateWebsiteCopy` aus Code-Session 24:
+  - `src/core/ai/providers/anthropic/service-description.ts` (neu)
+    nutzt den gemeinsamen Client-Builder aus `_client.ts`.
+  - **Tool Use** über pseudo-Tool `emit_service_description` mit
+    `input_schema` für `shortDescription` (≤ 240) und
+    `longDescription` (≤ 2000).
+  - **System-Prompt** ist inhaltlich kompatibel mit dem OpenAI-
+    Pendant (gleiche Stilrichtlinien, gleiche Längen-Logik pro
+    `targetLength`, gleiche `currentDescription`-Polish-Anweisung).
+    Ein Provider-Wechsel mitten in der Session-Pipeline erzeugt
+    daher keinen Tonalitäts-Bruch.
+  - **Prompt-Caching** über `cache_control: { type: "ephemeral" }`
+    auf System-Prompt **und** Tool-Definition (5 min TTL,
+    ~90 % Token-Rabatt bei Hit).
+  - **Doppelte Validierung** durch
+    `ServiceDescriptionOutputSchema.parse` auf `tool_use.input`.
+- `src/core/ai/providers/anthropic-provider.ts` komponiert jetzt
+  zwei Live-Methoden + Stub für die übrigen 5.
+- Smoketest `src/tests/ai-anthropic-provider.test.ts` erweitert
+  (~14 strukturelle Asserts, +2 vs. Session 24, Stub-Assert für
+  `improveServiceDescription` entfernt):
+  - `improveServiceDescription` ohne Key → `no_api_key`.
+  - `improveServiceDescription` mit zu kurzem `serviceTitle` →
+    `invalid_input`.
+  - Live-Block ergänzt einen zweiten Live-Call gegen
+    `improveServiceDescription` mit `targetLength=long`.
+
+### Notes
+- **Recherche** (Session-Protokoll): Quellen zu Anthropic
+  Multi-Field Tool Use und Polish-existing-Text-Patterns im
+  RUN_LOG-Eintrag „Code-Session 25". Auch dokumentiert: Anthropic
+  hat 2026 `output_config.format` (Constrained Sampling) als
+  natives Strukturierungs-Pattern eingeführt — Tool-Use bleibt
+  unterstützt, eine Migration kommt auf den Backlog (Track D).
+- **Kein UI-Diff**, keine neuen Dependencies. Bundle bleibt 102 KB.
+- Diff ~12 KB Code, ~2 KB Test, ~3 KB Doku. 1 neue Datei, 3
+  geänderte. Alle Verifikationen grün (typecheck, lint,
+  build:static, alle 5 Smoketests).
 
 ## [0.15.3] – Code-Session 24 – 2026-04-27
 

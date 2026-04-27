@@ -3896,3 +3896,178 @@ Klein zugeschnitten:
 - [Anthropic – TypeScript SDK on GitHub](https://github.com/anthropics/anthropic-sdk-typescript)
 - [Anthropic – Models overview (Claude API Docs)](https://platform.claude.com/docs/en/about-claude/models/overview)
 - [Anthropic – TypeScript SDK on npm](https://www.npmjs.com/package/@anthropic-ai/sdk)
+
+---
+
+## Code-Session 25 – Anthropic scharf (`improveServiceDescription`)
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein)
+Meilenstein: 2 (KI-Schicht — Live-Provider-Phase)
+
+### 1. Was wurde umgesetzt?
+
+Zweite scharfe Anthropic-Methode. Das Muster aus Code-Session 24
+trägt: gemeinsamer `_client.ts`-Helper, isolierte Methoden-Datei,
+Stub-Compose-Pattern, struktureller + Live-Smoketest-Modus.
+
+- `src/core/ai/providers/anthropic/service-description.ts` (neu)
+  implementiert `anthropicImproveServiceDescription(input)`:
+  - Eingabevalidierung über `ServiceDescriptionInputSchema.safeParse`
+    **vor** der Key-Prüfung (kein Cost bei invalidem Input).
+  - **Tool Use**: pseudo-Tool `emit_service_description` mit
+    `input_schema` (JSON Schema, von Hand geschrieben), Properties
+    `shortDescription` (≤ 240) und `longDescription` (≤ 2000).
+    `tool_choice: { type: "tool", name: TOOL_NAME }` zwingt das
+    Modell, das Tool aufzurufen.
+  - **System-Prompt** inhaltlich kompatibel mit dem OpenAI-
+    Pendant aus Code-Session 22:
+    - Role-Prompting (deutscher Texter für lokale Dienstleister).
+    - Stilrichtlinien (keine Superlative, konkrete Vorteile).
+    - Aufbau-Regeln pro `targetLength`:
+      - `short` → 1 Absatz (Saat + optional Preis/Dauer).
+      - `medium` → 2 Absätze (Inhalt + Ablauf in 3 Schritten).
+      - `long` → 3 Absätze (Inhalt + Ablauf + USP-Trust-Block).
+    - `currentDescription`-Polish-Anweisung („polieren, nicht
+      komplett neu schreiben").
+    - Fallback-Verhalten bei sinnlosem Input.
+    - Anthropic-spezifischer Schluss: „Antworte ausschließlich
+      über das Tool. Kein Free-Text."
+  - **User-Prompt** baut Branchen-Kontext, Service-Titel,
+    `targetLength`-Hinweis und optional die bestehende
+    Beschreibung.
+  - **Prompt-Caching** via `cache_control: { type: "ephemeral" }`
+    auf System-Prompt **und** Tool-Definition (5 min TTL).
+  - **`max_tokens: 2048`** statt 1024 — der `longDescription`-Slot
+    kann bis zu ~2000 Zeichen ≈ ~1500 Tokens benötigen, plus
+    `shortDescription` und Tool-Use-Boilerplate.
+  - **Doppelte Validierung** durch `.parse(toolUse.input)`.
+  - Fehlerpfade über den gemeinsamen `mapAnthropicError`-Helper.
+- `src/core/ai/providers/anthropic-provider.ts` komponiert jetzt
+  zwei Live-Methoden:
+  ```ts
+  export const anthropicProvider: AIProvider = {
+    ...stub,
+    generateWebsiteCopy: anthropicGenerateWebsiteCopy,
+    improveServiceDescription: anthropicImproveServiceDescription,
+  };
+  ```
+  Status-Header von 24 → 25.
+- `src/tests/ai-anthropic-provider.test.ts` ergänzt:
+  - 1c: zwei `no_api_key`-Asserts (vorher nur 1).
+  - 1d: zwei `invalid_input`-Asserts (vorher nur 1) — der
+    `serviceTitle="X"` testet die Schema-Untergrenze (min 2).
+  - 1f: Stub-Assert für `improveServiceDescription` entfernt
+    (nicht mehr Stub).
+  - Live-Block: zweiter Call mit `targetLength=long` gegen
+    `improveServiceDescription`, polished die mitgegebene
+    `currentDescription` „Wäsche, Schnitt, Föhn-Finish — Termine
+    auch samstags möglich.".
+  - `__AI_ANTHROPIC_PROVIDER_SMOKETEST__.structuralAssertions`
+    von 12 → 14.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (1 Datei):
+- `src/core/ai/providers/anthropic/service-description.ts`
+
+Geändert:
+- `src/core/ai/providers/anthropic-provider.ts`
+- `src/tests/ai-anthropic-provider.test.ts`
+- `docs/PROGRAM_PLAN.md` (Roadmap-Selbstaktualisierung, +1 Item, +1 verschärft)
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~17 KB. Klar im Session-Limit.
+
+### 3. Wie teste ich es lokal?
+
+Ohne API-Key (CI-Pfad):
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün, Bundle 102 KB
+npx tsx src/tests/ai-mock-provider.test.ts            # ~380 Asserts
+npx tsx src/tests/ai-provider-resolver.test.ts        # 22 Asserts
+npx tsx src/tests/ai-openai-provider.test.ts          # 14 Asserts
+npx tsx src/tests/ai-anthropic-provider.test.ts       # 14 Asserts
+npx tsx src/tests/themes.test.ts                      # incl. Hex-Asserts
+```
+
+Mit API-Key (Live-Smoketest opt-in):
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+export LP_TEST_ANTHROPIC_LIVE=1
+npx tsx src/tests/ai-anthropic-provider.test.ts
+# → "✓ Live-Anthropic-Call (generateWebsiteCopy) erfolgreich."
+# → "✓ Live-Anthropic-Call (improveServiceDescription) erfolgreich."
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                          | Status |
+| ------------------------------------------------------------------ | ------ |
+| `improveServiceDescription` ruft echte Anthropic-API mit Tool Use  | ✅      |
+| Defensiver `no_api_key`-Vor-Check vor Netzwerk-Call                | ✅      |
+| Caching: System + Tool mit `cache_control: ephemeral`              | ✅      |
+| `currentDescription` wird als Saat poliert (nicht überschrieben)   | ✅      |
+| Längen-Logik nach `targetLength` im System-Prompt expliziert       | ✅      |
+| Doppelte Validierung über `ServiceDescriptionOutputSchema`         | ✅      |
+| Übrige 5 Anthropic-Methoden bleiben Stub (`provider_unavailable`)  | ✅      |
+| Strukturelle Smoketest (14 Asserts) ohne Netzwerk grün             | ✅      |
+| Live-Smoketest deckt beide scharfe Anthropic-Methoden ab           | ✅      |
+| Bundle bleibt 102 KB (Tree-Shaking funktioniert)                   | ✅      |
+| Build/Typecheck/Lint grün                                          | ✅      |
+| Recherche-Step + Quellen zitiert                                   | ✅      |
+| Roadmap-Selbstaktualisierung: 1 neu + 1 verschärft                 | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 26**: Gemini-Provider scharf, erste Live-Methode
+  (`generateWebsiteCopy`). Eigener `_client.ts`-Helper für
+  `@google/generative-ai` — Gemini hat eigene Strukturierungs-
+  Mechaniken (`responseMimeType: "application/json"` mit
+  `responseSchema`).
+- **Codex**: 9 Backlog-Tasks warten weiterhin (alle aus Session 20).
+- **Self-Extending Backlog**: Anthropic Structured-Outputs-
+  Migration auf `output_config.format` als Folge-Item; bestehender
+  Tool-Schema-Generator-Punkt verschärft.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 26 — Gemini-Provider scharf (`generateWebsiteCopy`).**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „Google Generative AI SDK 2026 structured output
+   responseSchema responseMimeType TypeScript best practices".
+2. Dependency `@google/generative-ai` (Peer-Dep-Check vorher).
+3. `src/core/ai/providers/gemini/_client.ts` neu, analog zu
+   OpenAI/Anthropic. Gemini hat **kein** ephemeres Caching-Pattern
+   wie Anthropic — stattdessen **Context Caching** als separate
+   API für lange wiederholte Prefixe (lohnt sich erst ab größeren
+   Volumen). Erstes Setup ohne Caching, Caching kommt in einer
+   späteren Session.
+4. `src/core/ai/providers/gemini/website-copy.ts` neu — gleiches
+   Output-Schema. `responseMimeType: "application/json"` +
+   `responseSchema` für strict JSON-Output. Manuelles
+   `JSON.parse` + `WebsiteCopyOutputSchema.parse`.
+5. `gemini-provider.ts` Stub → komponiert.
+6. `ai-gemini-provider.test.ts` neu, gleiche zwei Modi
+   (strukturell + live opt-in via `LP_TEST_GEMINI_LIVE=1`).
+7. PROGRAM_PLAN.md +1 Item, CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere Methoden, UI, API-Route — pro Session
+nur eine scharfe Methode.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [Anthropic – Structured outputs (Claude API Docs)](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
+- [Anthropic – Tool use with Claude (Overview)](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview)
+- [Anthropic – Get structured output from agents (Agent SDK Docs)](https://platform.claude.com/docs/en/agent-sdk/structured-outputs)
+- [Anthropic – Claude Platform Release Notes](https://platform.claude.com/docs/en/release-notes/overview)
+- [Towards Data Science – A Hands-On Guide to Anthropic's New Structured Output Capabilities](https://towardsdatascience.com/hands-on-with-anthropics-new-structured-output-capabilities/)
+- [Tessl – Anthropic boosts Claude API with Structured Outputs](https://tessl.io/blog/anthropic-brings-structured-outputs-to-claude-developer-platform-making-api-responses-more-reliable/)
+- [Hacker News – Structured outputs on the Claude Developer Platform](https://news.ycombinator.com/item?id=45930598)
+- [Instructor – Anthropic Claude Tutorial: Structured Outputs](https://python.useinstructor.com/integrations/anthropic/)
