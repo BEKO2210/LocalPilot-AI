@@ -192,6 +192,16 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   aus Session 32 ersetzt. README + Homepage angepasst
   (Header zeigt jetzt „Login" + „Jetzt starten",
   OnboardingPromise hat Magic-Link-Schritt + Login-CTA).
+- 53: Reviews-UI scharf ✅. Bewertungs-Booster ist nicht mehr
+  ComingSoon-Stub, sondern zielgerichtete UI:
+  Channel-Tabs (WhatsApp/SMS/E-Mail/Persönlich), Tone-Pills
+  (Kurz/Freundlich/Follow-Up), Mock-Provider liefert 1–3
+  Varianten pro Klick, Platzhalter-Substitution
+  (`{{customerName}}`/`{{reviewLink}}`/`{{businessName}}`)
+  client-side, Direkt-Send-Buttons mit `wa.me`/`sms:`/`mailto:`,
+  Copy-to-Clipboard pro Variante. Pure Template-Helper mit
+  ~46 Asserts (Substitution, Phone-Cleaning für Kanäle,
+  URL-Bau für 4 Channel-Typen, Subject/Body-Encoding).
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 

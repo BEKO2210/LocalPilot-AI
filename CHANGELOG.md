@@ -7,16 +7,48 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 53: Reviews-UI scharf** — Bewertungs-Booster
-  als zielgerichtete UI (aktuell Status-Stub). Backend ist seit
-  Session 26 live. Höchster ROI nach Live-Schaltung.
-- Code-Sessions 54+: Social-Media-UI, Schreibpfad
-  ServicesEditForm, Multi-Member-Verwaltung, Default-Redirect
-  bei einem Betrieb, Retry-Queue für Lead-`local-fallback`,
-  Storage-Cleanup-Job für Slug-Wechsel-Waisen, Edge-Runtime-
-  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist, Impressum-
-  Editor pro Betrieb, Seed-Skript für Demo-Daten,
-  Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+- **Code-Session 54: Social-Media-UI scharf** — symmetrisch zu
+  Reviews (Plattform + Goal + Tonalität → KI-Post → Copy /
+  Direkt-Posten-Link). Backend seit Session 19 fertig.
+- Code-Sessions 55+: Live-Provider-Variante für Reviews-Panel,
+  Schreibpfad ServicesEditForm, Multi-Member-Verwaltung,
+  Default-Redirect bei einem Betrieb, Retry-Queue für Lead-
+  `local-fallback`, Storage-Cleanup-Job für Slug-Wechsel-
+  Waisen, Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-
+  Whitelist, Impressum-Editor pro Betrieb, Seed-Skript für
+  Demo-Daten, Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+
+## [0.16.27] – Code-Session 53 – 2026-04-27
+
+Reviews-UI scharf: Bewertungs-Booster ist nicht mehr ComingSoon-
+Stub, sondern zielgerichtetes UI für Bewertungs-Anfragen.
+
+- ✚ `src/lib/review-request-template.ts` — pure Helper:
+  `substitutePlaceholders` (Whitespace-tolerant), `cleanPhoneForChannel`
+  (DE-lokal + international), `buildChannelSendUrl` (mailto/sms/
+  wa.me/null für in_person), `channelLabel` + `toneLabel` deutsch.
+- ✚ `src/tests/review-request-template.test.ts` (~46 Asserts):
+  alle Substitutions-Pfade, Phone-Cleaning, alle Channel-URL-
+  Builder, Subject-Encoding, End-to-End-Test.
+- ✚ `src/components/dashboard/reviews/reviews-request-panel.tsx`
+  — Client Component. ChannelTabs + ToneTabs (ARIA-Rollen),
+  Auto-Recipient-Default aus Business-Kontakt je Channel,
+  Mock-Provider direkt im Browser, Copy-to-Clipboard + Direkt-
+  Send-Buttons pro Variante.
+- 🔄 `src/app/dashboard/[slug]/reviews/page.tsx` — Stub
+  durch Panel ersetzt.
+
+34/35 Smoketests grün (industry-presets pre-existing red,
+Codex #11). Reviews-Page als ●-SSG-prerendered. Bundle 102 KB
+shared unverändert; `/dashboard/[slug]/reviews` 4 kB page-spezifisch.
+
+🛣️ Roadmap: 1 abgehakt. 1 neu (Live-Provider-Variante für
+Reviews-Panel mit Auth-Bearer-Pfad).
+
+**Manueller Test**: Dashboard → „Bewertungen" → Channel +
+Tonalität wählen → „Vorlagen generieren" → Mock-Output mit
+gefüllten Platzhaltern → „Per WhatsApp senden" öffnet `wa.me/
+<nummer>?text=…`.
 
 ## [0.16.26] – Code-Session 52 – 2026-04-27
 
