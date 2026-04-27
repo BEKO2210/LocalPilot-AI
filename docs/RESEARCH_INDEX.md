@@ -12,6 +12,12 @@
 
 ## Track A · AI-Provider & Strukturierte Outputs
 
+### Rate-Limit-UX (Code-Session 30)
+- [UptimeSignal – HTTP 429: How to Handle Rate Limiting (2026)](https://uptimesignal.io/http-status/429) — Standard-Headers `X-RateLimit-*` + `Retry-After` (30).
+- [GetKnit – API Rate Limiting Best Practices (2026)](https://www.getknit.dev/blog/10-best-practices-for-api-rate-limiting-and-throttling) (30).
+- [NousResearch hermes-agent #1826 – User-friendly 429 message](https://github.com/NousResearch/hermes-agent/issues/1826) — Countdown-Pattern (30).
+- [LaoZhang – Gemini API Rate Limits 2026](https://blog.laozhang.ai/en/posts/gemini-api-rate-limits-guide) (30).
+
 ### Token-Pricing (Code-Session 29)
 - [LLM API Pricing 2026: OpenAI vs Anthropic vs Gemini Live Comparison](https://www.cloudidr.com/llm-pricing) — aktueller Preisvergleich (29).
 - [IntuitionLabs – AI API Pricing Comparison 2026](https://intuitionlabs.ai/articles/ai-api-pricing-comparison-grok-gemini-openai-claude) (29).

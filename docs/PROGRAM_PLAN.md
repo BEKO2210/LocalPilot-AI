@@ -273,6 +273,13 @@ aktiven Session.
   „Smoketest-via-tsx"-Ansatz, sobald die Test-Tiefe wächst.
 - Visual-Regression-Tests (Playwright) für die kritischen Public-Site-
   Sektionen.
+- **Health-Snapshot-Endpoint** (aus Code-Session 30): aktuell
+  Auth-gated und nur über die Dashboard-UI sichtbar. Folge-Items:
+  - Public-Status-Page (`/status`) mit subset-Snapshot ohne
+    sensitive Felder, geeignet für Status-Pages-Ähnliche Anzeige.
+  - Status-History (letzte 7 Tage Budget-Verbrauch) für
+    Auftraggeber-Reports.
+  - Slack-/Email-Alert wenn `percentUsed > 80 %` an einem Tag.
 
 ### Track D · DX & Refactor
 - Gemeinsamen `clamp`/`polish`/`substituteCity`-Helper in

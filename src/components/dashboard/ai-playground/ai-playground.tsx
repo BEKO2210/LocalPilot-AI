@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { AlertCircle, Loader2, Server, Sparkles, Wand2 } from "lucide-react";
+import { AlertCircle, Ban, Clock, Loader2, Server, Sparkles, Wand2 } from "lucide-react";
 import { AIProviderError } from "@/types/ai";
 import type { AIProviderKey } from "@/types/common";
 import type { Business } from "@/types/business";
 import { DashboardCard } from "../dashboard-card";
+import { HealthCard } from "./health-card";
 import { ResultPanel } from "./result-panel";
 import { METHOD_CONFIGS, METHOD_ORDER, contextFromBusiness } from "./method-configs";
 import type {
@@ -14,6 +15,13 @@ import type {
   PlaygroundFormValues,
   PlaygroundMethodId,
 } from "./types";
+
+interface RateLimitState {
+  readonly capUsd: number;
+  readonly spentUsd: number;
+  readonly resetAtUtc: string;
+  readonly message: string;
+}
 
 const TOKEN_STORAGE_KEY = "lp:ai-api-token:v1";
 
@@ -71,6 +79,7 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
   const [apiToken, setApiToken] = useState("");
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rateLimit, setRateLimit] = useState<RateLimitState | null>(null);
   const [pending, startTransition] = useTransition();
 
   // Token aus localStorage hydrieren, damit der Auftraggeber ihn nur
@@ -111,6 +120,7 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
   function handleGenerate() {
     setError(null);
     setResult(null);
+    setRateLimit(null);
     startTransition(async () => {
       try {
         if (providerKey === "mock") {
@@ -146,11 +156,32 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
             );
             return;
           }
-          let errBody: { error?: string; message?: string } = {};
+          let errBody: {
+            error?: string;
+            message?: string;
+            cost?: {
+              capUsd?: number;
+              spentUsd?: number;
+              resetAtUtc?: string;
+            };
+          } = {};
           try {
             errBody = (await res.json()) as typeof errBody;
           } catch {
             /* ignore */
+          }
+          // 429 hat einen eigenen UI-Pfad: Rate-Limit-Card mit
+          // Countdown bis Reset, statt generischer Fehler-Box.
+          if (res.status === 429 && errBody.cost) {
+            setRateLimit({
+              capUsd: errBody.cost.capUsd ?? 0,
+              spentUsd: errBody.cost.spentUsd ?? 0,
+              resetAtUtc:
+                errBody.cost.resetAtUtc ??
+                new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+              message: errBody.message ?? "Tages-Budget erschöpft.",
+            });
+            return;
           }
           setError(
             `API ${res.status}: ${errBody.error ?? "fehler"} — ${errBody.message ?? "(keine Nachricht)"}`,
@@ -215,6 +246,9 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
           {PROVIDER_OPTIONS.find((o) => o.value === providerKey)?.label ?? providerKey}
         </span>
       </header>
+
+      {/* Health-Status (System) */}
+      <HealthCard apiToken={apiToken} />
 
       {/* Provider-Auswahl */}
       <DashboardCard
@@ -407,8 +441,90 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
         </div>
       </DashboardCard>
 
+      {/* Rate-Limit-Card (statt Result, wenn 429) */}
+      {rateLimit ? (
+        <RateLimitCard
+          state={rateLimit}
+          onSwitchToMock={() => {
+            setProviderKey("mock");
+            setRateLimit(null);
+            setError(null);
+          }}
+        />
+      ) : null}
+
       {/* Ergebnis */}
-      {result ? <ResultPanel result={result} /> : null}
+      {result && !rateLimit ? <ResultPanel result={result} /> : null}
+    </div>
+  );
+}
+
+/**
+ * Eigenes UI für 429-Antworten. Statt generischer Fehlerbox: klare
+ * Aussage, Countdown, CTA.
+ */
+function RateLimitCard({
+  state,
+  onSwitchToMock,
+}: {
+  state: RateLimitState;
+  onSwitchToMock: () => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const resetTime = new Date(state.resetAtUtc).getTime();
+  const remainingMs = Math.max(0, resetTime - now);
+  const hours = Math.floor(remainingMs / 3_600_000);
+  const minutes = Math.floor((remainingMs % 3_600_000) / 60_000);
+  const seconds = Math.floor((remainingMs % 60_000) / 1000);
+  const countdown = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  const pct = state.capUsd > 0 ? Math.min(100, (state.spentUsd / state.capUsd) * 100) : 100;
+
+  return (
+    <div
+      role="alert"
+      className="space-y-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 shadow-soft"
+    >
+      <div className="flex items-start gap-3">
+        <Ban className="mt-0.5 h-5 w-5 flex-none text-amber-700" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-semibold text-amber-900">
+            Tages-Budget erreicht
+          </h3>
+          <p className="mt-1 text-sm text-amber-800">{state.message}</p>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-amber-200 bg-white/60 p-3">
+        <div className="flex items-center justify-between gap-2 text-xs text-amber-900">
+          <span className="font-medium">
+            ${state.spentUsd.toFixed(4)} von ${state.capUsd.toFixed(2)} verbraucht
+          </span>
+          <span>{pct.toFixed(0)} %</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-amber-200">
+          <div className="h-full bg-amber-700" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white/60 p-3 text-sm text-amber-900">
+        <span className="inline-flex items-center gap-1.5">
+          <Clock className="h-4 w-4" aria-hidden />
+          Reset in <strong className="font-mono tabular-nums">{countdown}</strong>{" "}
+          (UTC-Mitternacht)
+        </span>
+        <button
+          type="button"
+          onClick={onSwitchToMock}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800"
+        >
+          Auf Mock wechseln
+        </button>
+      </div>
     </div>
   );
 }

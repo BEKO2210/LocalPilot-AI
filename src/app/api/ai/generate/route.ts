@@ -168,6 +168,24 @@ export async function POST(req: Request): Promise<Response> {
   const inputOnlyEstimate = estimateCost(provider.key, model, inputText, "");
   const preview = previewBudget(inputOnlyEstimate.costUsd);
   if (preview.exceeded) {
+    // Reset um nächste UTC-Mitternacht — gleiche Logik wie im
+    // Health-Endpoint.
+    const now = new Date();
+    const reset = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1,
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.floor((reset.getTime() - now.getTime()) / 1000),
+    );
     return NextResponse.json(
       {
         error: "rate_limited",
@@ -176,9 +194,19 @@ export async function POST(req: Request): Promise<Response> {
           capUsd: preview.capUsd,
           spentUsd: preview.spentUsd,
           remainingUsd: preview.remainingUsd,
+          resetAtUtc: reset.toISOString(),
         },
       },
-      { status: 429 },
+      {
+        status: 429,
+        headers: {
+          // 2026-Best-Practice: rate-limit-Header für Clients.
+          "X-RateLimit-Limit": String(preview.capUsd),
+          "X-RateLimit-Remaining": String(preview.remainingUsd),
+          "X-RateLimit-Reset": String(Math.floor(reset.getTime() / 1000)),
+          "Retry-After": String(retryAfterSeconds),
+        },
+      },
     );
   }
 

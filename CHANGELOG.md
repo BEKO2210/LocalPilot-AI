@@ -6,12 +6,48 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant (Meilenstein 2 – KI-Schicht)
-- **Code-Session 30: Rate-Limit-UI im Playground** + Provider-Health-
-  Indicator (zeigen, ob `LP_AI_API_KEY` + Provider-Keys gesetzt sind).
-- Code-Sessions 31+: DOMPurify-Sanitizer für übernommene KI-Outputs,
-  echte Cookie/JWT-Auth, Edge-Runtime-Migration, Vercel-SSR-Deploy
-  (Vorbedingung für Live-Provider im Browser).
+### Geplant (Meilenstein 2 – KI-Schicht / Track B Security)
+- **Code-Session 31: DOMPurify-Sanitizer** für übernommene KI-Outputs.
+  Bevor ein Mock-/Live-Text in den Public-Site-Block wandert,
+  sanitizen — Schutz gegen XSS aus generierten Inhalten.
+- Code-Sessions 32+: echte Cookie/JWT-Auth, Edge-Runtime-Migration
+  der API-Routen, Vercel-SSR-Deploy (Vorbedingung für Live-Provider
+  im Browser), Status-History.
+
+## [0.16.4] – Code-Session 30 – 2026-04-27
+
+Rate-Limit-UI + Provider-Health-Indicator. Erste Cadence-getriggerte
+State-Refresh-Light parallel im selben Commit (N=30, N % 5 === 0).
+
+- ✚ `src/core/ai/health.ts` — `getHealthSnapshot(env)` als pure
+  Funktion. Privacy-by-Design: Key-Werte tauchen nirgends im
+  Snapshot auf, nur `keyPresent: boolean`.
+- ✚ `src/app/api/ai/health/route.ts` — GET-Endpunkt mit gleicher
+  Bearer-Auth wie POST `/api/ai/generate`.
+- ✚ `src/components/dashboard/ai-playground/health-card.tsx` —
+  Client-Side-Fetch beim Mount + Refresh-Button. Zeigt pro Provider
+  Check/Warning + aktuelles Modell + Tagesbudget-Status mit
+  UTC-Reset-Zeit. Fallback bei 404 (Static-Build) ohne Crash.
+- ✚ `src/tests/ai-health.test.ts` (18 Asserts).
+- 🔄 `/api/ai/generate` 429-Antwort mit 2026-Standard-Headers
+  (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`,
+  `Retry-After`) plus `resetAtUtc` im Cost-Block.
+- 🔄 Playground: getrenntes UI für 429 — `<RateLimitCard>` mit
+  Live-Countdown bis Reset (sekündliches Update via `setInterval`)
+  und „Auf Mock wechseln"-CTA.
+- 🛣️ Roadmap +3 Folge-Items in Track C: Public-Status-Page,
+  Status-History 7-Tage, Slack-/Email-Alert bei > 80 % Budget.
+
+**State-Refresh-Light (N=30)**:
+- Alle 8 Smoketests grün (Mock ~380, Resolver 22, OpenAI 14,
+  Anthropic 14, Gemini 12, Themes, Cost 24, **Health 18**).
+- 3 Stub-Audit-Treffer geprüft, alle intentional (Bronze-Gating
+  bei services/leads + echtes Future bei settings).
+- Codex-Backlog: 9 pre-approved, 1 blocked, 0 done.
+
+Bundle: shared 102 KB unverändert.
+
+## [0.16.3] – Code-Session 29 – 2026-04-27
 
 ## [0.16.3] – Code-Session 29 – 2026-04-27
 

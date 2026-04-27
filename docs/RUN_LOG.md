@@ -4496,3 +4496,63 @@ Cap, Cost-Audit-Log, echte Provider-Usage statt Heuristik).
 **Nächste Session**: Code-Session 30 — Rate-Limit-UI im Playground
 (`429`-Antwort sichtbar als „Limit erreicht — wann reset?"-Karte)
 und Provider-Health-Indicator.
+
+---
+
+## Code-Session 30 – Rate-Limit-UI + Provider-Health + State-Refresh
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Zweite API-Route (`GET /api/ai/health`) liefert Auth-gated
+Snapshot aller 4 Provider (`available`, `keyPresent`, `model`,
+optional `reason`) plus Tagesbudget-Status und nächste UTC-Reset-
+Zeit. Im Playground neue `<HealthCard>` zeigt das auf Mount/Refresh.
+Bei 429-Antworten von `/api/ai/generate` blendet der Playground
+statt einer generischen Fehlerbox eine `<RateLimitCard>` mit Live-
+Countdown bis Reset und „auf Mock wechseln"-CTA ein. 429-Antworten
+tragen jetzt 2026-Standard-Header `X-RateLimit-Limit`,
+`X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`.
+
+**Plus State-Refresh-Light** (Cadence-Trigger N % 5 === 0): alle 8
+Smoketests grün, Stale-Stub-Audit clean (nur Bronze-Tier-Gating-
+Treffer in services/leads — beabsichtigt), Codex-Backlog ohne
+`[done]`-Items, README-Matrix passt.
+
+**Dateien**:
+- ✚ `src/core/ai/health.ts` (`getHealthSnapshot(env)` pure-function;
+  Privacy-by-Design, Key-Wert tauchen nirgends im Snapshot auf)
+- ✚ `src/app/api/ai/health/route.ts` (GET-Handler mit gleicher Auth
+  wie POST `/api/ai/generate`)
+- ✚ `src/components/dashboard/ai-playground/health-card.tsx`
+  (Client-Side Fetch + Refresh-Button + Provider-Liste mit
+  Check/Warning-Icons)
+- ✚ `src/tests/ai-health.test.ts` (18 Asserts: empty-env, apiAuth-
+  Spiegel, Privacy, Modell-Override, Budget-Block, Cap-Override,
+  resetAtUtc-Logik)
+- 🔄 `src/app/api/ai/generate/route.ts` (429 mit Standard-Headers
+  + `resetAtUtc` im Cost-Block)
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx`
+  (HealthCard eingehängt, `<RateLimitCard>` mit Live-Countdown
+  und „Auf Mock wechseln"-CTA, Rate-Limit-Status getrennt von
+  generischen Errors)
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅ — beide API-Routen `/api/ai/generate` und `/api/ai/health` als
+`ƒ` sichtbar. Alle 8 Smoketests ✅ (Mock ~380, Resolver 22, OpenAI 14,
+Anthropic 14, Gemini 12, Themes inkl. Hex, Cost 24, **Health 18 NEU**).
+
+**State-Refresh-Light** (N=30):
+- Smoketest-Regression: 8/8 grün.
+- Stale-Stub-Audit: 3 Treffer, alle intentional (Tier-Gating + echtes Future).
+- Codex-Backlog: 9 `[pre-approved]`, 1 `[blocked]`, 0 `[done]` zum Archivieren.
+- README rolling-status: unverändert ok.
+
+**Roadmap**: PROGRAM_PLAN +3 Folge-Items in Track C
+(Public-Status-Page, Status-History 7-Tage, Slack-/Email-Alert
+bei >80 % Budget).
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — neue Quellen aus dem
+Rate-Limit-UX-Suchlauf (UptimeSignal, GetKnit, NousResearch-Issue).
+
+**Nächste Session**: Code-Session 31 — DOMPurify-Sanitizer für
+übernommene KI-Outputs (Track B Security: bevor ein Mock/Live-
+Text in den Public-Site-Block wandert, sanitizen).
