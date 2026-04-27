@@ -30,21 +30,38 @@ function expandShortHex(hex: string): string {
     .join("");
 }
 
+/** Fallback, falls eine Hex-Farbe (z. B. aus User-Input) ungültig ist. */
+const FALLBACK_RGB_TRIPLET = "0 0 0";
+
 /**
  * Konvertiert "#1f47d6" → "31 71 214" für die Tailwind-`<alpha-value>`-Syntax
  * `rgb(var(--theme-primary) / <alpha-value>)`.
+ *
+ * Defensiv: wirft **nicht** mehr bei kaputten Eingaben. Eine fehlende oder
+ * ungültige Hex-Farbe würde sonst die Live-Vorschau im Business-Editor
+ * crashen, sobald ein Nutzer „mitten im Tippen" eine unvollständige Farbe
+ * stehen hat. Stattdessen geben wir einen neutralen Fallback zurück und
+ * warnen einmalig im Browser-Console (im Dev-Mode hilfreich, in Produktion
+ * unauffällig).
  */
 export function hexToRgbTriplet(hex: string): string {
+  if (typeof hex !== "string") return FALLBACK_RGB_TRIPLET;
   const cleaned = hex.replace(/^#/, "");
   const full = cleaned.length === 3 ? expandShortHex(hex) : cleaned;
   if (full.length !== 6) {
-    throw new Error(`hexToRgbTriplet: ungültige Hex-Farbe "${hex}"`);
+    if (typeof console !== "undefined") {
+      console.warn(`hexToRgbTriplet: ungültige Hex-Farbe "${hex}" – Fallback wird verwendet.`);
+    }
+    return FALLBACK_RGB_TRIPLET;
   }
   const r = parseInt(full.slice(0, 2), 16);
   const g = parseInt(full.slice(2, 4), 16);
   const b = parseInt(full.slice(4, 6), 16);
   if ([r, g, b].some((n) => Number.isNaN(n))) {
-    throw new Error(`hexToRgbTriplet: ungültige Hex-Farbe "${hex}"`);
+    if (typeof console !== "undefined") {
+      console.warn(`hexToRgbTriplet: ungültige Hex-Farbe "${hex}" – Fallback wird verwendet.`);
+    }
+    return FALLBACK_RGB_TRIPLET;
   }
   return `${r} ${g} ${b}`;
 }

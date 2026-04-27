@@ -88,13 +88,31 @@ assert(hexToRgbTriplet("#ffffff") === "255 255 255", "weiß → 255 255 255");
 assert(hexToRgbTriplet("#1f47d6") === "31 71 214", "Brand-Blau korrekt");
 assert(hexToRgbTriplet("#abc") === "170 187 204", "3-stelliges Hex erweitert");
 
-let invalidThrew = false;
+// Defensive: ungültige Hex-Eingaben werfen seit Code-Session 23
+// nicht mehr (die Live-Vorschau im Business-Editor reicht Form-Werte
+// während des Tippens durch — ein Throw an dieser Stelle würde React
+// crashen lassen). Stattdessen kommt ein Fallback-Triplet "0 0 0"
+// zurück und eine console.warn-Meldung.
+const originalWarn = console.warn;
+let warnCalls = 0;
+console.warn = () => { warnCalls += 1; };
 try {
-  hexToRgbTriplet("not-a-hex");
-} catch {
-  invalidThrew = true;
+  assert(
+    hexToRgbTriplet("not-a-hex") === "0 0 0",
+    "ungültige Hex-Eingabe → Fallback-Triplet",
+  );
+  assert(
+    hexToRgbTriplet("#") === "0 0 0",
+    "leeres Hex (\"#\") → Fallback-Triplet",
+  );
+  assert(
+    hexToRgbTriplet("#1f") === "0 0 0",
+    "halb-eingegebenes Hex → Fallback-Triplet",
+  );
+  assert(warnCalls === 3, "drei Fallback-Warnungen wurden geloggt");
+} finally {
+  console.warn = originalWarn;
 }
-assert(invalidThrew, "ungültige Hex-Eingabe wirft");
 
 // ---------------------------------------------------------------------------
 // Resolver: Theme → CSS-Variablen

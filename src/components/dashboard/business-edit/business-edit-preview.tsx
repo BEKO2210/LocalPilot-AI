@@ -10,6 +10,17 @@ import type { Theme } from "@/types/theme";
 import type { CSSProperties } from "react";
 
 /**
+ * Strenge Validierung für Hex-Farben (gleiches Muster wie
+ * `ColorHexSchema`). Wir müssen das hier inline prüfen, weil die
+ * Live-Vorschau auf jeden Tastendruck reagiert — der Form-Wert
+ * durchläuft also kein Zod-Schema, bevor er ins Theme wandert.
+ */
+const HEX_PATTERN = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
+function isValidHex(input: string | undefined | null): input is string {
+  return typeof input === "string" && HEX_PATTERN.test(input);
+}
+
+/**
  * Live-Vorschau: zeigt Hero + zwei Kontakt-Buttons mit den aktuellen
  * Form-Werten. Reagiert auf jede Änderung von Name, Tagline,
  * Theme oder Farb-Override.
@@ -110,7 +121,17 @@ export function BusinessEditPreview() {
 
 /**
  * Wendet (optionale) Farb-Override aus dem Profil auf das Theme an.
- * Originale Theme-Variante bleibt unangetastet.
+ *
+ * Die Vorschau reagiert live auf Form-Eingaben. Während der Nutzer
+ * eine Farbe tippt (`#`, `#1`, `#1f`, …), durchlaufen die Zwischen-
+ * werte **kein** Zod-Schema. Würden wir sie ungeprüft an
+ * `themeToCssVars` reichen, würde `hexToRgbTriplet` werfen und die
+ * Vorschau crasht beim nächsten Rerender mit „Application error".
+ *
+ * Lösung: Override nur übernehmen, wenn die Eingabe ein vollständig
+ * gültiges Hex-Format hat. Sonst bleibt die Basis-Farbe stehen — die
+ * Vorschau sieht dann eben „eine Tippstelle lang" unverändert aus,
+ * statt komplett zu sterben.
  */
 function applyColorOverrides(
   base: Theme,
@@ -120,9 +141,15 @@ function applyColorOverrides(
     ...base,
     colors: {
       ...base.colors,
-      primary: profile.primaryColor ?? base.colors.primary,
-      secondary: profile.secondaryColor ?? base.colors.secondary,
-      accent: profile.accentColor ?? base.colors.accent,
+      primary: isValidHex(profile.primaryColor)
+        ? profile.primaryColor
+        : base.colors.primary,
+      secondary: isValidHex(profile.secondaryColor)
+        ? profile.secondaryColor
+        : base.colors.secondary,
+      accent: isValidHex(profile.accentColor)
+        ? profile.accentColor
+        : base.colors.accent,
     },
   };
 }
