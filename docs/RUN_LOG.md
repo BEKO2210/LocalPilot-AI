@@ -4306,3 +4306,53 @@ Klein zugeschnitten:
 - [APIDog – How to Use the Google Gen AI TypeScript/JavaScript SDK](https://apidog.com/blog/how-to-use-the-google-gen-ai/)
 - [Google AI Developers Forum – Structured output from API using responseSchema](https://discuss.ai.google.dev/t/structured-output-from-api-using-responseschema-need-help/50297)
 - [GitHub – googleapis/js-genai](https://github.com/googleapis/js-genai)
+
+---
+
+## State-Refresh nach Session 26 + Methodik-Update — 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE` · Typ: Maintenance + Methodik
+
+**Was**: Erste komplette State-Refresh-Runde nach dem neuen
+Programm-Konzept. Auslöser: Auftraggeber hat „Bewertungen Vorschau /
+Social Media Vorschau / Einstellungen Vorschau" auf der Webseite gesehen
+(stale ComingSoon-Stubs). Gleichzeitig Methodik um wiederkehrenden
+Refresh-Rhythmus + Token-Effizienz erweitert, sodass solche Driften
+automatisch gefangen werden.
+
+**Dateien**:
+- ✚ `src/components/dashboard/backend-ready-status.tsx` (wiederverwendbare
+  Status-Karte für „Backend bereit · UI in Session N")
+- 🔄 `src/components/dashboard/index.ts` (Re-Export)
+- 🔄 `src/app/dashboard/[slug]/reviews/page.tsx` (BackendReadyStatus
+  statt ComingSoon, da generateReviewRequest scharf ist)
+- 🔄 `src/app/dashboard/[slug]/social/page.tsx` (BackendReadyStatus,
+  da generateSocialPost scharf ist)
+- 🔄 `src/app/dashboard/[slug]/settings/page.tsx` (Session-Nummer
+  von 18 auf realistische 32 korrigiert; bleibt ComingSoon, da
+  Settings echtes Backend braucht)
+- ✚ `docs/RESEARCH_INDEX.md` (zentraler Quellen-Speicher; spart
+  Tokens bei zukünftigen RUN_LOG-Einträgen)
+- ✚ `docs/STATE_REFRESH_CHECKLIST.md` (Light-Pass alle 5 Sessions,
+  Deep-Pass alle 20)
+- 🔄 `Claude.md` (Programm-Philosophie Punkte 8 + 9: Refresh-Cadence
+  und Token-Effizienz-Logging-Regeln)
+- 🔄 `docs/SESSION_PROTOCOL.md` (Schritt 5 Doku: Compact-Format ab
+  Session 27; Schritt 7 neu: State-Refresh-Cadence)
+- 🔄 `docs/CODEX_BACKLOG.md` (+1 Item: deutsche Anführungszeichen
+  in JSX-Prop-Strings escapen — von Claude zweimal getroffen,
+  typischer Codex-Sweep)
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, alle 6
+Smoketests ✅ (Mock ~380, Resolver 22, OpenAI 14, Anthropic 14,
+Gemini 12, Themes inkl. Hex-Asserts). Bundle 102 KB unverändert.
+
+**Roadmap**: Keine neuen PROGRAM_PLAN-Items; das Methodik-Update
+ist selbst Track G (Mitwirkende-Koordination).
+
+**Quellen**: keine neue Recherche — kompositorisch aus Beobachtungen
+des Auftraggebers + Token-Beobachtung der eigenen Doku-Praxis.
+
+**Nächste Session**: Code-Session 27 — KI-Assistent-Playground-UI
+(Tab-Picker für 7 Methoden, clientseitiger Mock-Aufruf,
+Copy-to-Clipboard). Diese Session demonstriert dann erstmals den
+neuen Compact-Log-Format-Eintrag.

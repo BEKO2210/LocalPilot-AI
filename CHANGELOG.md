@@ -15,11 +15,31 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
   hinter Auth (für echte Live-Provider-Calls aus dem UI),
   DOMPurify-Sanitizer auf übernommene KI-Outputs.
 
-### Self-Extending Backlog
-Code-Session 26 hat 1 neues Item in `docs/PROGRAM_PLAN.md` ergänzt
-(Track A: Gemini Context Caching aktivieren — eigene
-`caches.create(...)`-API mit TTL-Tracking + Cost-Bucket pro
-Branche/Variant, lohnt sich ab größerem Volumen).
+## [0.16.0] – State-Refresh + Methodik-Update – 2026-04-27
+
+Maintenance: stale Dashboard-Stubs gepatcht, wiederkehrender
+Refresh-Rhythmus + token-effiziente Logging-Regeln verankert.
+
+- ✚ `<BackendReadyStatus>`-Komponente (wiederverwendbar für
+  Bereiche, deren Backend scharf ist, deren UI noch fehlt).
+- 🔄 `/dashboard/[slug]/reviews` und `/social`: ehrliche Status-
+  Seite statt „Folgt in Session 16/17".
+- 🔄 `/dashboard/[slug]/settings`: Session-Nummer auf 32
+  korrigiert (echtes Backend mit Settings-Schema fehlt).
+- ✚ `docs/RESEARCH_INDEX.md`: zentraler Quellen-Speicher,
+  künftige RUN_LOG-Einträge zitieren nur noch per Pointer.
+- ✚ `docs/STATE_REFRESH_CHECKLIST.md`: Light-Pass alle 5
+  Sessions, Deep-Pass alle 20.
+- 🔄 `Claude.md` Programm-Philosophie: Punkte 8 (Refresh-Cadence)
+  und 9 (Token-Effizienz-Logging-Regeln) ergänzt.
+- 🔄 `docs/SESSION_PROTOCOL.md`: Schritt 5 Doku auf Compact-Format
+  umgestellt (ab Code-Session 27); Schritt 7 neu: Cadence-Hooks.
+- 🔄 `docs/CODEX_BACKLOG.md` +1 Item (#10): deutsche
+  Anführungszeichen in JSX-Prop-Strings escapen.
+
+Bundle 102 KB unverändert. Alle 6 Smoketests grün.
+
+## [0.15.6] – Code-Session 26 – 2026-04-27
 
 ## [0.15.6] – Code-Session 26 – 2026-04-27
 

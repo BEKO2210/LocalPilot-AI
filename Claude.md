@@ -49,6 +49,34 @@ Konkret:
    wenn ein Punkt erledigt ist, wandert er aus dem Plan in den
    RUN_LOG. Es gibt kein „Plan zu Ende" — kommt das vor, wurden
    nicht genug Innovations-Punkte aufgenommen.
+8. **Wiederkehrende State-Refresh-Pflicht** — verbindlich ab
+   Code-Session 27. Die Webseite (Dashboard-Stub-Pages, README-
+   Status-Tabelle, Provider-Matrix) muss rhythmisch zum
+   Backend-Stand gezogen werden, sonst entsteht Drift wie der
+   „Folgt in Session 13"-Stub, den der Auftraggeber im Pages-
+   Deploy gefunden hat. Cadence:
+   - **Nach jeder 5. Session** (5, 10, 15, …): **Light-Pass**
+     (alle Smoketests, Stale-Stub-Audit, README-Matrix prüfen,
+     Codex-Backlog sichten, Mini-Log).
+   - **Nach jeder 20. Session** (20, 40, …): **Deep-Pass**
+     (Light + Webseiten-Walkthrough, Dependency-`outdated`,
+     Bundle-Größen-Check, RESEARCH_INDEX-Konsolidierung).
+   Volle Recipe in `docs/STATE_REFRESH_CHECKLIST.md`. Wenn die
+   fällige Refresh-Session mit einer regulären Code-Session
+   zusammenfällt, verschmelzen sie zu einer einzigen Maintenance-
+   Session.
+9. **Token-Effizienz beim Logging** — verbindlich ab Code-Session 27:
+   - **RUN_LOG-Einträge sind kompakt** (Compact-Format aus
+     `docs/SESSION_PROTOCOL.md` Schritt 5). Status-Bullets statt
+     Prosa, eine Zeile pro Verifikation, „Wie teste ich es lokal"
+     entfällt (Repo hat ohnehin Smoketests).
+   - **Quellen werden nicht mehr per Session zitiert**. Stattdessen
+     zentral in `docs/RESEARCH_INDEX.md`. Im RUN_LOG steht nur
+     `Quellen: RESEARCH_INDEX.md Track A (OpenAI), Track B
+     (Marketing)`.
+   - **CHANGELOG = Release-Notes (kurz)**, RUN_LOG = chronologischer
+     Technical-Log. Keine Doppelung; CHANGELOG-Einträge bleiben
+     auf 5–10 Bullets pro Session.
 
 Diese Philosophie hat Vorrang vor jeder Detail-Anweisung weiter unten,
 wenn es Konflikte gibt.
