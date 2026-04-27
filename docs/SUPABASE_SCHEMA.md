@@ -404,24 +404,28 @@ mit `mapMembershipRow`, das defensiv beide Embed-Formen normalisiert:
 
 `unwrapEmbed` greift in beiden Fällen das erste Objekt heraus.
 
-### Page-Loader (Code-Session 47)
+### Page-Loader (Code-Session 47/48)
 
 `src/lib/page-business.ts` ist die zentrale Server-Side-Brücke
 zwischen Page-Komponenten und `BusinessRepository`:
 
-- `loadBusinessOrNotFound(slug)` — wirft `notFound()` aus
-  `next/navigation`, wenn der Repository-Pfad nichts liefert.
-  Für Server-Component-`page.tsx`-Hauptpfade.
+- `loadBusinessOrNotFound(slug)` — `React.cache()`-gewrappt,
+  wirft `notFound()` aus `next/navigation`, wenn der
+  Repository-Pfad nichts liefert. Pro Render-Pass max. ein
+  Roundtrip pro Slug (Layout + Page sind dedupliziert).
+- `loadBusinessOrNotFoundWith(slug, repo)` — Test-Variante
+  mit injizierbarem Repository (kein Cache).
 - `listSlugParams()` — direkt verwendbar in
   `generateStaticParams`. Liefert `[{slug:"…"}, …]` aus dem
   konfigurierten Repository.
 
-Die Public-Site `/site/[slug]/*` (Hauptseite, Datenschutz,
-Impressum) ist seit Session 47 vollständig auf diesen Pfad
-umgestellt. Dashboard-Pages folgen in Session 48.
+Public-Site `/site/[slug]/*` und Dashboard `/dashboard/[slug]/*`
+sind seit Session 48 vollständig auf diesen Pfad umgestellt.
+`generateMetadata`-Funktionen rufen das Repository direkt auf
+(statt `loadBusinessOrNotFound`) — Metadata darf bei unbekanntem
+Slug nicht 404'en, sonst kollidiert das mit dem Page-404-Pfad.
 
 ### Roadmap
 
-- **Session 48** — `/dashboard/[slug]/*` (9 Pages: layout, page, business, services, leads, ai, reviews, social, settings) auf den Repository-Pfad umstellen.
-- **Session 49+** — Onboarding-Wizard mehrstufig, Member-Verwaltung, Slug-Live-Check, Default-Redirect bei einem Betrieb.
+- **Session 49+** — Onboarding-Wizard mehrstufig (Adresse + Logo), Member-Verwaltung, Slug-Live-Check, Default-Redirect bei einem Betrieb, Lead-`leadsByBusiness`-Read aus DB (aktuell noch Mock-Direktzugriff im Dashboard).
 - **0008+** — Storage-Buckets für Logos und Hero-Bilder, Backup-Policy.

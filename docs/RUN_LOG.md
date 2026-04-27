@@ -5707,3 +5707,82 @@ Repository umstellen**. Symmetrisch zu 47, aber für die 9
 das Dashboard aus DB. Eine atomare Refactor-Session ohne
 Logik-Änderung — nur konsistente Anwendung des Loader-Patterns.
 
+---
+
+## Code-Session 48 – Dashboard-Pages auf Repository (2/2)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Refactor
+
+**Was**: Schluss der Repository-Migration. Alle 9
+`/dashboard/[slug]/*`-Files (Layout + 8 Pages) lesen jetzt
+einheitlich über `loadBusinessOrNotFound`. End-to-End-Schleife
+für einen eingeloggten User ist damit vollständig: Login →
+Onboarding → Account → echte Public-Site UND echtes Dashboard
+aus DB (sobald `LP_DATA_SOURCE=supabase`).
+
+**Befund aus Recherche**: Next.js 15 cached default nichts,
+und Layout + Page rufen unabhängig — Layout würde im
+Supabase-Modus pro Request einen zusätzlichen DB-Roundtrip
+machen. Lösung: `loadBusinessOrNotFound` mit `React.cache()`
+gewrappt → pro Render-Pass max. ein Roundtrip pro Slug. Das
+Test-Pfad-Helper `loadBusinessOrNotFoundWith(slug, repo)` ist
+ungecacht, damit Smoketest-Injektionen sauber bleiben.
+
+**Dateien**:
+- 🔄 `src/lib/page-business.ts` — Aufteilung in
+  `loadBusinessOrNotFound` (cached, Default-Repo aus Resolver)
+  und `loadBusinessOrNotFoundWith` (plain, Test-Pfad mit
+  injizierbarem Repository).
+- 🔄 `src/tests/page-business.test.ts` — Tests rufen jetzt
+  die `…With`-Variante (Cache wäre für die Test-Setup-
+  Szenarien Hinderlich).
+- 🔄 `src/app/dashboard/[slug]/layout.tsx` — `getMockBusinessBySlug
+  + notFound` → `loadBusinessOrNotFound`. Kommentar dokumentiert
+  Layout↔Page-Dedup.
+- 🔄 `src/app/dashboard/[slug]/page.tsx` — Dashboard-Hauptseite.
+  `generateMetadata` nutzt das Repository direkt (kein 404 für
+  Metadata, gleiche Logik wie /site/[slug] in Session 47).
+  `leadsByBusiness` bleibt Mock-Direktzugriff — folgt in
+  späterer Session.
+- 🔄 `src/app/dashboard/[slug]/business/page.tsx`
+- 🔄 `src/app/dashboard/[slug]/services/page.tsx`
+- 🔄 `src/app/dashboard/[slug]/leads/page.tsx` — `leadsByBusiness`-
+  Import bleibt, der Rest fliegt raus.
+- 🔄 `src/app/dashboard/[slug]/ai/page.tsx`
+- 🔄 `src/app/dashboard/[slug]/reviews/page.tsx`
+- 🔄 `src/app/dashboard/[slug]/social/page.tsx`
+- 🔄 `src/app/dashboard/[slug]/settings/page.tsx`
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **30/31 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Alle 6 Mock-Slugs werden in beiden Builds über alle
+Dashboard-Sub-Routen weiterhin als ●-SSG-Pfade prerendered
+(Pages-kompatibel). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Dashboard-Read). 1 neues Folge-
+Item: `leadsByBusiness`-Read im Dashboard auf Repository
+umstellen (aktuell noch Mock-Direktzugriff in `/dashboard/[slug]/
+page.tsx` und `/dashboard/[slug]/leads/page.tsx`).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Layout/Page-Dedup
+mit React.cache.
+
+**Manueller Test** (mit Auth + Service-Role + Migrationen + ENVs):
+- Static-Pages-Vorschau: identisches Verhalten wie vorher,
+  Mock-Daten auf allen 9 Dashboard-Routen.
+- Vercel + `LP_DATA_SOURCE=supabase`: Login → Onboarding →
+  Account zeigt eigenen Betrieb → Klick „Dashboard öffnen" →
+  alle 9 Routen zeigen die DB-Daten. Im Supabase-Modus läuft
+  pro Page-Render genau **ein** Roundtrip (Layout+Page
+  dedupliziert).
+
+**Nächste Session**: ich nehme **Code-Session 49 = Lead-Read
+aus Repository**. Begründung: das Dashboard liest jetzt zwar
+das Business aus DB, aber `leadsByBusiness` ist noch immer
+der Mock-Direktzugriff aus `src/data`. Der vorhandene
+`LeadRepository` hat seit Session 40 nur `create` — wir
+ergänzen `listForBusiness(businessId)` und ziehen die zwei
+betroffenen Dashboard-Pages auf den Repo-Pfad. Damit ist auch
+die Leads-Seite ein durchgängiger End-to-End-Pfad. Vor
+Onboarding-Wizard und Storage, weil Lead-Read der direkte
+Folge-Schritt aus 48 ist.
+

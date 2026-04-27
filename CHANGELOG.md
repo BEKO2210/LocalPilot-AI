@@ -7,10 +7,12 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 48: Dashboard-Pages auf Repository umstellen**
-  — symmetrisch zu 47, aber für die 9 `/dashboard/[slug]/*`-
-  Pages + Layout. Damit liest auch das Dashboard aus DB.
-- Code-Sessions 49+: Slug-Live-Check, Onboarding-Wizard
+- **Code-Session 49: Lead-Read aus Repository**
+  — `LeadRepository.listForBusiness(businessId)` ergänzen +
+  Dashboard-Hauptseite und Lead-Liste vom Mock-Direktzugriff
+  (`leadsByBusiness`) auf den Repo-Pfad ziehen. Letzter offener
+  Mock-Direktzugriff in der Pages-Schicht.
+- Code-Sessions 50+: Slug-Live-Check, Onboarding-Wizard
   mehrstufig (Adresse + Logo), Multi-Member-Verwaltung,
   Default-Redirect bei einem Betrieb, Retry-Queue für Lead-
   `local-fallback`, Storage-Bucket für Logos, Edge-Runtime-
@@ -18,6 +20,43 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
   Editor mit Legal-Sektion, Impressum-Editor pro Betrieb,
   Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test,
   **Dependency-Sweep**.
+
+## [0.16.22] – Code-Session 48 – 2026-04-27
+
+Dashboard-Migration komplett. Alle 9 `/dashboard/[slug]/*`-Files
+lesen einheitlich aus dem `BusinessRepository`. End-to-End-Schleife
+für einen eingeloggten User ist damit vollständig: Login →
+Onboarding → Account → echte Public-Site UND echtes Dashboard
+aus DB (sobald `LP_DATA_SOURCE=supabase`).
+
+- 🔄 `src/lib/page-business.ts` — Loader mit `React.cache()`
+  gewrappt für Layout↔Page-Dedup pro Render-Pass. Test-Variante
+  `loadBusinessOrNotFoundWith(slug, repo)` plain, damit
+  Smoketest-Injektionen sauber bleiben.
+- 🔄 9 Dashboard-Files migriert: `layout.tsx`, `page.tsx`,
+  `business/page.tsx`, `services/page.tsx`, `leads/page.tsx`,
+  `ai/page.tsx`, `reviews/page.tsx`, `social/page.tsx`,
+  `settings/page.tsx`. Pattern überall identisch:
+  `getMockBusinessBySlug + notFound()` → `loadBusinessOrNotFound`,
+  `listMockBusinessSlugs().map(...)` → `listSlugParams()`.
+  `generateMetadata` nutzt das Repository direkt (kein 404 für
+  Metadata).
+
+30/31 Smoketests grün (industry-presets pre-existing red,
+Codex #11). Alle 6 Mock-Slugs werden in beiden Builds über alle
+Dashboard-Sub-Routen weiterhin als ●-SSG-Pfade prerendered.
+Bundle 102 KB shared unverändert.
+
+**Manueller Test** (mit ENVs + Migrationen):
+- Static-Pages-Vorschau: identisches Verhalten, Mock-Daten.
+- Vercel + `LP_DATA_SOURCE=supabase`: Login → Onboarding →
+  Account zeigt eigenen Betrieb → Dashboard zeigt die DB-Daten.
+  Im Supabase-Modus läuft pro Page-Render **ein** Roundtrip
+  (Layout+Page dedupliziert via React.cache).
+
+🛣️ Roadmap: 1 abgehakt. 1 neu (`leadsByBusiness`-Read auf
+Repository umstellen, letzter offener Mock-Direktzugriff im
+Dashboard).
 
 ## [0.16.21] – Code-Session 47 – 2026-04-27
 

@@ -146,6 +146,14 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   `dynamicParams=true` (Default) werden neue Slugs nach
   Build-Zeit on-demand gerendert. Dashboard-Migration folgt in
   Session 48 (9 Pages).
+- 48: Dashboard auf Repository umgestellt ✅. Alle 9
+  `/dashboard/[slug]/*`-Pages (layout, page, business,
+  services, leads, ai, reviews, social, settings) lesen
+  einheitlich über `loadBusinessOrNotFound`. Loader mit
+  `React.cache()` gewrappt → Layout + Page deduplizieren den
+  DB-Roundtrip pro Render-Pass. End-to-End-Schleife
+  vollständig: Login → Onboarding → Account → echte
+  Public-Site UND echtes Dashboard.
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 

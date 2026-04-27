@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import {
   DashboardShell,
   LeadsSummaryCard,
@@ -8,26 +7,30 @@ import {
   QuickActionsCard,
   RecentLeadsList,
 } from "@/components/dashboard";
+import { leadsByBusiness } from "@/data";
 import {
-  getMockBusinessBySlug,
-  leadsByBusiness,
-  listMockBusinessSlugs,
-} from "@/data";
+  listSlugParams,
+  loadBusinessOrNotFound,
+} from "@/lib/page-business";
+import { getBusinessRepository } from "@/core/database/repositories";
 import { getPresetOrFallback } from "@/core/industries";
 
 type Params = { slug: string };
 type PageProps = { params: Promise<Params> };
 
-/** Statisch prerendete Übersicht pro Demo-Slug. */
-export function generateStaticParams(): Params[] {
-  return listMockBusinessSlugs().map((slug) => ({ slug }));
+/** Statisch prerendete Übersicht pro bekanntem Slug — Repository-Pfad. */
+export async function generateStaticParams(): Promise<Params[]> {
+  return listSlugParams();
 }
 
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const business = getMockBusinessBySlug(slug);
+  // Metadata darf bei unbekanntem Slug NICHT 404'en (sonst kollidiert
+  // das mit dem 404-Pfad der Page). Direkt-Repository-Aufruf statt
+  // `loadBusinessOrNotFound`.
+  const business = await getBusinessRepository().findBySlug(slug);
   if (!business) return {};
   return {
     title: `Dashboard – ${business.name}`,
@@ -38,8 +41,7 @@ export async function generateMetadata({
 
 export default async function DashboardOverviewPage({ params }: PageProps) {
   const { slug } = await params;
-  const business = getMockBusinessBySlug(slug);
-  if (!business) notFound();
+  const business = await loadBusinessOrNotFound(slug);
 
   const leads = leadsByBusiness[business.id] ?? [];
   const preset = getPresetOrFallback(business.industryKey);

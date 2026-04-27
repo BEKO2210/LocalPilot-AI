@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import {
   getBusinessRepository,
@@ -20,6 +21,21 @@ import type { Business } from "@/types/business";
  */
 
 /**
+ * Test-Pfad: erlaubt, ein konkretes Repository zu injizieren,
+ * z. B. `createMockBusinessRepository(...)` mit einer bestimmten
+ * Liste. Wird im Production-Code NICHT direkt benutzt — das macht
+ * `loadBusinessOrNotFound` mit React-Cache.
+ */
+export async function loadBusinessOrNotFoundWith(
+  slug: string,
+  repo: BusinessRepository,
+): Promise<Business> {
+  const business = await repo.findBySlug(slug);
+  if (!business) notFound();
+  return business;
+}
+
+/**
  * Lädt einen Betrieb anhand des Slugs. Falls nicht vorhanden,
  * wirft `notFound()` (Next.js Server-Convention) — der Pfad
  * landet automatisch auf der 404-Page.
@@ -29,15 +45,18 @@ import type { Business } from "@/types/business";
  * supabase` (und gesetzten ENVs) liest er aus der Tabelle
  * `public.businesses`. RLS aus Migrationen 0001/0007 sorgt
  * dafür, dass anon-Aufrufer nur veröffentlichte Betriebe sehen.
+ *
+ * **Request-Scope-Dedup**: Mit `React.cache()` wird jeder Slug
+ * pro Render-Pass nur einmal geladen — entscheidend, weil das
+ * Dashboard layout.tsx + page.tsx beide aufrufen. Im Supabase-
+ * Modus spart das pro Page-Render genau einen Roundtrip. Der
+ * Cache-Key ist `slug` (single argument) — stabil pro Request.
  */
-export async function loadBusinessOrNotFound(
-  slug: string,
-  repo: BusinessRepository = getBusinessRepository(),
-): Promise<Business> {
-  const business = await repo.findBySlug(slug);
-  if (!business) notFound();
-  return business;
-}
+export const loadBusinessOrNotFound = cache(
+  async (slug: string): Promise<Business> => {
+    return loadBusinessOrNotFoundWith(slug, getBusinessRepository());
+  },
+);
 
 /**
  * Liefert die Liste aller bekannten Slugs — für

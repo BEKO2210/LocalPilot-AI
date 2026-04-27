@@ -90,6 +90,13 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Layout/Page-Dedup mit React.cache (Code-Session 48)
+- [Next.js – Getting Started: Fetching Data](https://nextjs.org/docs/app/getting-started/fetching-data) — Default-no-Cache in 15+, Memoization-Patterns (48).
+- [DEV – Reducing Network Overhead with Layout Deduplication](https://dev.to/mericcintosun/reducing-network-overhead-with-layout-deduplication-in-the-nextjs-app-router-m7b) — Praxis-Beispiel für Layout↔Page-Dedup (48).
+- [Next.js – Caching (Previous Model)](https://nextjs.org/docs/app/guides/caching-without-cache-components) — `React.cache()`-Pattern für Request-Scope-Memoization (48).
+- [Next.js – Directives: use cache](https://nextjs.org/docs/app/api-reference/directives/use-cache) — alternative cache-Directive für Cross-Request-Caching (48).
+- [Roboto Studio – Optimized data fetching in Next.js 15](https://robotostudio.com/blog/optimized-data-fetching-in-nextjs-15) — Best-Practice-Round-up (48).
+
 ### generateStaticParams + dynamicParams (Code-Session 47)
 - [Next.js – generateStaticParams Functions Reference](https://nextjs.org/docs/app/api-reference/functions/generate-static-params) — partielles Prerendern, Memoization (47).
 - [Next.js – Dynamic Routes (file-conventions)](https://nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes) — `dynamicParams=true`-Default-Verhalten (47).

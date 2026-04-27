@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Lock } from "lucide-react";
 import {
   ComingSoonSection,
@@ -7,16 +6,16 @@ import {
 } from "@/components/dashboard";
 import { ServicesEditForm } from "@/components/dashboard/services-edit";
 import {
-  getMockBusinessBySlug,
-  listMockBusinessSlugs,
-} from "@/data";
+  listSlugParams,
+  loadBusinessOrNotFound,
+} from "@/lib/page-business";
 import { hasFeature } from "@/core/pricing";
 
 type Params = { slug: string };
 type PageProps = { params: Promise<Params> };
 
-export function generateStaticParams(): Params[] {
-  return listMockBusinessSlugs().map((slug) => ({ slug }));
+export async function generateStaticParams(): Promise<Params[]> {
+  return listSlugParams();
 }
 
 export const metadata = {
@@ -26,8 +25,7 @@ export const metadata = {
 
 export default async function DashboardServicesPage({ params }: PageProps) {
   const { slug } = await params;
-  const business = getMockBusinessBySlug(slug);
-  if (!business) notFound();
+  const business = await loadBusinessOrNotFound(slug);
 
   // Bronze: kein Service-Management. Statt einer kaputten UI zeigen wir
   // den Coming-Soon-Block mit Upgrade-Hinweis – die Liste auf der

@@ -1,21 +1,20 @@
-import { notFound } from "next/navigation";
 import {
   ComingSoonSection,
   DashboardShell,
 } from "@/components/dashboard";
 import { LeadsView } from "@/components/dashboard/leads-view";
+import { leadsByBusiness } from "@/data";
 import {
-  getMockBusinessBySlug,
-  leadsByBusiness,
-  listMockBusinessSlugs,
-} from "@/data";
+  listSlugParams,
+  loadBusinessOrNotFound,
+} from "@/lib/page-business";
 import { hasFeature } from "@/core/pricing";
 
 type Params = { slug: string };
 type PageProps = { params: Promise<Params> };
 
-export function generateStaticParams(): Params[] {
-  return listMockBusinessSlugs().map((slug) => ({ slug }));
+export async function generateStaticParams(): Promise<Params[]> {
+  return listSlugParams();
 }
 
 export const metadata = {
@@ -25,8 +24,7 @@ export const metadata = {
 
 export default async function DashboardLeadsPage({ params }: PageProps) {
   const { slug } = await params;
-  const business = getMockBusinessBySlug(slug);
-  if (!business) notFound();
+  const business = await loadBusinessOrNotFound(slug);
 
   // Bronze: kein lead_management → ComingSoon mit Hinweis. Demo-Anfragen
   // bleiben sichtbar, nur die volle Verwaltung ist gesperrt.

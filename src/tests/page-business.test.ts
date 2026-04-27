@@ -23,7 +23,7 @@ import { mockBusinesses } from "@/data/mock-businesses";
 import {
   listBusinessSlugsForPages,
   listSlugParams,
-  loadBusinessOrNotFound,
+  loadBusinessOrNotFoundWith,
 } from "@/lib/page-business";
 
 function assert(condition: boolean, message: string): asserts condition {
@@ -40,7 +40,7 @@ async function main() {
   // ---------------------------------------------------------------------
   // 1. Vorhandener Slug → Business
   // ---------------------------------------------------------------------
-  const business = await loadBusinessOrNotFound(VALID_SLUG, repo);
+  const business = await loadBusinessOrNotFoundWith(VALID_SLUG, repo);
   assert(business.slug === VALID_SLUG, "Business mit Slug zurück");
   assert(typeof business.name === "string" && business.name.length > 0, "Name vorhanden");
 
@@ -49,7 +49,7 @@ async function main() {
   // ---------------------------------------------------------------------
   let caught: unknown = null;
   try {
-    await loadBusinessOrNotFound("does-not-exist-zzz", repo);
+    await loadBusinessOrNotFoundWith("does-not-exist-zzz", repo);
   } catch (err) {
     caught = err;
   }
