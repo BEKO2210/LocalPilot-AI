@@ -664,16 +664,129 @@ In Komponenten:
 
 ### 6. Was ist der nächste empfohlene Run?
 
-**Session 6 – Mock-Daten und Demo-Betriebe.**
+**Session 6 – Mock-Daten und Demo-Betriebe.** (s. u.)
 
-Mindestens 5 Demo-Betriebe in `src/data/`:
-- `Studio Haarlinie` (Friseur, Silber, beauty_luxury)
-- `AutoService Müller` (Autowerkstatt, Gold, automotive_strong)
-- `Glanzwerk Reinigung` (Reinigungsfirma, Silber, medical_clean)
-- `Beauty Atelier` (Kosmetik, Gold, beauty_luxury)
-- `Meisterbau Schneider` (Handwerker, Bronze, craftsman_solid)
+---
 
-Jeder Betrieb mit eigenem Slug, Adresse, Öffnungszeiten, 5–8 Leistungen
-(aus dem Preset abgeleitet), 3–6 Reviews und 3–10 Beispiel-Leads. Alles
-über `MockDatasetSchema` validiert. Damit ist die Vorarbeit für Session 7
-(Public Site Generator) komplett.
+## Session 6 – Mock-Daten und Demo-Betriebe
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- **6 vollständige Demo-Betriebe** in `src/data/businesses/`:
+  - `studio-haarlinie` (Friseur, Silber, warm_local) – Musterstadt
+  - `autoservice-mueller` (Werkstatt, Gold, automotive_strong) – Beispielstadt
+  - `glanzwerk-reinigung` (Reinigung, Silber, medical_clean) – Demostadt
+  - `beauty-atelier` (Kosmetik, Gold, beauty_luxury) – Musterstadt
+  - `meisterbau-schneider` (Handwerk, Bronze, craftsman_solid) – Beispieldorf
+  - `fahrschule-stadtmitte` (Fahrschule, Silber, education_calm) – Demostadt
+
+  Jeder Datensatz ist ein „fat aggregate" mit Services, Reviews, FAQs
+  und TeamMembers, gerahmt von `BusinessSchema.parse(...)`.
+- **`mock-helpers.ts`**: stabile ID-Generatoren, `MOCK_NOW`,
+  `daysAgo()`, `buildOpeningHours()` mit kompakter Schreibweise.
+- **`mock-businesses.ts`** aggregiert + Slug-Index + Konsistenz-Check;
+  exportiert `getMockBusinessBySlug` und `listMockBusinessSlugs`
+  (für `generateStaticParams` in Session 7).
+- **`mock-services.ts`/`mock-reviews.ts`** mit flachen Listen,
+  Group-by-Business und `averageRatingByBusiness` (gerundet auf 0,1).
+  37 Services, 25 Reviews insgesamt.
+- **`mock-leads.ts`**: 25 realistische Beispiel-Leads (4–5 pro Betrieb)
+  mit branchenspezifischen `extraFields` (`vehicleModel`, `objectType`,
+  `drivingClass`, …) und Status-Mix `new`/`contacted`/`qualified`/`won`/
+  `lost`. Validiert via `LeadSchema.parse(...)`.
+- **`mock-dataset.ts`**: `MockDataset` über `MockDatasetSchema`
+  validiert, Konsistenz-Check (Lead → existierender Betrieb).
+- **`/demo`-Übersichtsseite**: pro Betrieb eine Karte mit
+  Themed-Vorschau (über `<ThemeProvider>`), Branchen-Etikett,
+  Paket-Badge, Counts (Leistungen / FAQs / Anfragen) und
+  Public-Site-Slug. Statisch prerendert, kein Client-JS.
+  Nav-Link „Demo" im Header.
+- **Smoketest** `src/tests/mock-data.test.ts` mit 30+ Assertions:
+  Diversität (Branchen / Themes / Pakete), eindeutige IDs,
+  Service-/Review-Konsistenz, Paket-Limits, Lead-Status-Mix,
+  Verbot echter Mail-Provider (gmail.com etc.), Lookup-Verhalten.
+- **`docs/MOCK_DATA.md`** mit Tabellen, Architektur,
+  Daten-Hygiene-Regeln, Erweiterungsanleitung.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (15 Dateien):
+- `src/data/mock-helpers.ts`
+- `src/data/mock-{businesses,services,reviews,leads,dataset}.ts`
+- `src/data/index.ts`
+- `src/data/businesses/{studio-haarlinie,autoservice-mueller,
+  glanzwerk-reinigung,beauty-atelier,meisterbau-schneider,
+  fahrschule-stadtmitte}.ts` (6 Dateien)
+- `src/app/demo/page.tsx`
+- `src/tests/mock-data.test.ts`
+- `docs/MOCK_DATA.md`
+
+Geändert:
+- `src/components/layout/site-header.tsx` (Nav-Link „Demo")
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck       # tsc --noEmit + Smoketest werden geprüft
+npm run lint            # 0 warnings/errors
+npm run build           # SSR-Build
+npm run build:static    # Static Export, alle Mocks beim Build validiert
+npm run dev             # http://localhost:3000/demo
+```
+
+Live-Smoketest:
+
+```bash
+curl -s http://localhost:3000/demo | grep -oE 'data-theme="[^"]+"' | sort -u
+# erwartet: 6 unterschiedliche Themes
+```
+
+API:
+
+```ts
+import { getMockBusinessBySlug, mockDataset } from "@/data";
+mockDataset.businesses.length;                    // 6
+getMockBusinessBySlug("beauty-atelier")?.themeKey; // "beauty_luxury"
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                           | Status                                                                  |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| Demo-Betriebe wirken realistisch    | ✅ vollständige Datensätze, plausible Reviews/FAQs                      |
+| Keine echten Firmen                 | ✅ alle Namen frei erfunden                                              |
+| Keine echten privaten Daten         | ✅ Demo-Telefon-Muster, Mails auf `*-demo.de`/`example.org`, Smoketest blockt reale Mail-Provider |
+| Mehrere Branchen sichtbar           | ✅ 6 unterschiedliche Branchen                                           |
+| Pakete testbar                      | ✅ Bronze (×1), Silber (×3), Gold (×2)                                   |
+| Mind. 5 Demo-Betriebe               | ✅ 6 Betriebe                                                            |
+| Anderes Theme pro Betrieb           | ✅ 6 unterschiedliche Themes                                             |
+| Demo-Daten professionell formuliert | ✅ klare, sachliche, branchen-passende Texte                             |
+
+### 5. Was ist offen?
+
+- **Session 7** – Public Site Generator unter `/site/[slug]` mit
+  `generateStaticParams(listMockBusinessSlugs())`, `<ThemeProvider>` pro
+  Betrieb und allen Sektionen aus dem Preset.
+- **Session 8** – Marketing-Subseiten / -Erweiterungen.
+- **Session 9+** – Dashboard nutzt `leadsByBusiness` und
+  `averageRatingByBusiness`.
+- **Session 12** – echtes Lead-Erfassungssystem; Mock-Status zeigt
+  bereits, wie das aussieht.
+- **Sessions 13–17** – KI-Provider mit Mock-Daten als Kontext.
+- **Session 19** – Repository-Layer (Mock vs. Supabase). Mock-Aufrufe
+  (`getMockBusinessBySlug`, `leadsByBusiness`) sind bereits so kapselbar.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 7 – Public Site Generator.**
+
+Route `/site/[slug]/page.tsx` mit
+`generateStaticParams(listMockBusinessSlugs())`. Sektionen: Header, Hero,
+Services, Benefits, Process, Reviews, FAQ, Contact, OpeningHours, Footer
++ Mobile-CTA-Bar. Inhalte aus `Business`-Aggregat +
+`getPresetOrFallback()`, Theme via `<ThemeProvider>`. Auf GitHub Pages
+werden alle 6 Slugs zur Build-Zeit prerendered.

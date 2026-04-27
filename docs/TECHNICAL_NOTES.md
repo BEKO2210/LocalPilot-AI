@@ -220,33 +220,60 @@ Konvention für ein neues Theme:
 3. In `THEME_REGISTRY` (`registry.ts`) eintragen.
 4. Smoketest und `docs/THEMES.md` aktualisieren.
 
-## Stand nach Session 5
+## Mock-Daten (ab Session 6)
 
-- App Router läuft, `/` rendert Marketing-Landingpage.
-- `/themes` rendert die Theme-Galerie statisch.
+- Architektur „fat aggregate": pro Demo-Betrieb eine Datei unter
+  `src/data/businesses/<slug>.ts`, validiert beim Module-Load via
+  `BusinessSchema.parse(...)`.
+- `mock-helpers.ts`: stabile ID-Generatoren (`makeBusinessId`,
+  `makeServiceId`, …), `MOCK_NOW`-Konstante (reproduzierbare Builds),
+  `daysAgo()`, `buildOpeningHours()` (kompakte Schreibweise).
+- `mock-businesses.ts` aggregiert + Slug-Index + Konsistenz-Check.
+- `mock-services.ts`/`mock-reviews.ts` ziehen flache Listen aus den
+  Aggregaten (keine Duplizierung).
+- `mock-leads.ts` enthält 25 Leads, jeder validiert.
+- `mock-dataset.ts` validiert das gesamte `MockDataset` und prüft
+  Lead → existierender Betrieb.
+- `/demo`-Page importiert `@/data` – Validierung läuft beim Build, nicht
+  erst zur Laufzeit.
+- Smoketest `src/tests/mock-data.test.ts` mit 30+ Assertions
+  (Diversität, eindeutige IDs, Paket-Limits, Status-Mix, Daten-Hygiene).
+
+Konvention für einen neuen Demo-Betrieb:
+
+1. `src/data/businesses/<slug>.ts` mit `BusinessSchema.parse(...)` umrahmen.
+2. Import + Eintrag in `mock-businesses.ts`.
+3. Optional: 3–5 Leads in `mock-leads.ts`.
+4. `npm run typecheck` / `npm run build` führen die Validierung automatisch aus.
+
+## Stand nach Session 6
+
+- App Router läuft, `/`, `/themes` und `/demo` rendern statisch.
 - Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber
   (Static und SSR).
 - Tailwind & Brand-Tokens stehen, Theme-Tokens als CSS-Variablen verfügbar.
 - Datenmodelle vollständig, Pricing-System produktiv.
-- **13 Branchen-Presets** registriert und validiert.
-- **10 Themes** registriert, mit Resolver, Provider und Live-Galerie.
-- **GitHub-Pages-Deployment** automatisiert; lokal über `build:static`.
+- 13 Branchen-Presets, 10 Themes registriert und validiert.
+- **6 Demo-Betriebe** vollständig validiert (via Build), 25 Leads,
+  37 Services, 25 Reviews, 22 FAQs.
+- GitHub-Pages-Deployment automatisiert; lokal über `build:static`.
 - `<LinkButton>` ist basePath-aware (interne Pfade via `next/link`).
 - Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
   `npm run build:static`.
 
 ## Offene technische Punkte
 
-- Mock-Inhalte für Demo-Betriebe (Session 6).
-- Public Site Generator unter `/site/[slug]` (Session 7) – wird
-  `generateStaticParams` aus den Mock-Daten nutzen, damit Static Export
-  weiter funktioniert.
+- Public Site Generator unter `/site/[slug]` (Session 7) –
+  `generateStaticParams(listMockBusinessSlugs())` für statisch
+  prerendete Slugs.
 - Dashboard (Session 9+) – sobald Interaktivität nötig, prüfen ob als
   Client-SPA innerhalb des Static Exports ausreichend.
 - AI-Provider-Adapter (Session 13). Interface steht.
-- Repository-Layer / Mock vs. Supabase (Session 19).
+- Repository-Layer / Mock vs. Supabase (Session 19) – Mock-Layer ist
+  bereits so gekapselt (`getMockBusinessBySlug` usw.), dass ein
+  späterer Tausch gegen Supabase ohne UI-Änderungen möglich bleibt.
 - Vitest-Setup (Session 20). Bis dahin tragen `tsc --noEmit` plus die
-  `src/tests/*-helpers.test.ts`-Smoketests die Sicherheit.
+  `src/tests/*.test.ts`-Smoketests die Sicherheit.
 - Image-Hosting/-Optimierung (Session 7+).
 - Sobald API-Routen oder Server Actions kommen: Vercel als
   Production-Target ergänzen, GitHub Pages bleibt als Showcase.

@@ -7,7 +7,62 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 6+: Mock-Daten, Public Site Generator, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+- Session 7+: Public Site Generator, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.6.0] – Session 6 – 2026-04-27
+
+### Added
+- **6 vollständig validierte Demo-Betriebe** unter
+  `src/data/businesses/`:
+  Studio Haarlinie (Friseur, Silber, warm_local),
+  AutoService Müller (Werkstatt, Gold, automotive_strong),
+  Glanzwerk Reinigung (Reinigung, Silber, medical_clean),
+  Beauty Atelier (Kosmetik, Gold, beauty_luxury),
+  Meisterbau Schneider (Handwerk, Bronze, craftsman_solid),
+  Fahrschule Stadtmitte (Fahrschule, Silber, education_calm).
+  Jeder Betrieb mit eigener Branche, eigenem Theme; alle drei aktiv
+  vermarkteten Pakete vertreten. Insgesamt: 37 Services, 25 Reviews,
+  22 FAQs, 5 TeamMembers, 25 Beispiel-Leads.
+- `src/data/mock-helpers.ts`: `makeBusinessId`/`makeServiceId`/etc.
+  für stabile Slug-prefixed-IDs, `MOCK_NOW`-Konstante für reproduzierbare
+  Builds, `daysAgo()`, `buildOpeningHours()` (kompakte Schreibweise:
+  `{ tuesday: "09:00-18:00", thursday: ["09:00-12:30", "13:30-20:00"] }`).
+- `src/data/mock-businesses.ts`: Aggregation, `businessesBySlug`-Index,
+  `getMockBusinessBySlug()`, `listMockBusinessSlugs()`,
+  Konsistenz-Check (eindeutige Slugs).
+- `src/data/mock-services.ts`: flache `mockServices`-Liste,
+  `servicesByBusiness`, `getMockServiceById()`.
+- `src/data/mock-reviews.ts`: flache `mockReviews`-Liste,
+  `reviewsByBusiness`, `averageRatingByBusiness` (gerundet auf 0,1).
+- `src/data/mock-leads.ts`: 25 realistische Beispiel-Leads mit
+  branchenspezifischen `extraFields` (`vehicleModel`, `objectType`,
+  `drivingClass`, …) und Status-Mix (`new`/`contacted`/`qualified`/`won`/
+  `lost`). Validiert via `LeadSchema.parse(...)`.
+- `src/data/mock-dataset.ts`: validiertes `MockDataset` über
+  `validateMockDataset()` (`MockDatasetSchema`), `leadsByBusiness`,
+  Konsistenz-Check (Lead → existierender Betrieb).
+- `src/data/index.ts` Barrel.
+- **`/demo`-Übersichtsseite**: rendert pro Betrieb eine Karte mit
+  Themed-Vorschau (über `<ThemeProvider>`), Branchen-Etikett, Paket-Badge,
+  Counts (Services/FAQs/Anfragen) und einem Hinweis auf die Public Site
+  (folgt Session 7). Statisch prerendert, kein Client-JS.
+- Nav-Eintrag „Demo" in `<SiteHeader>`.
+- Smoketest `src/tests/mock-data.test.ts` mit 30+ Assertions
+  (Mindestabdeckung, eindeutige IDs, Branchen-/Theme-/Paket-Diversität,
+  Service-/Review-Konsistenz, Paket-Limits, Lead-Status-Mix,
+  Verbot echter Mail-Provider, Lookup-Verhalten).
+- `docs/MOCK_DATA.md` mit Tabellen, Architektur, Compliance-Regeln und
+  Erweiterungsanleitung.
+
+### Notes
+- Stabile, demoerkennbare Daten: Telefon `+49 XX 9000 XXXX`-Muster,
+  Mails auf `@<slug>-demo.de` oder `@example.org`, Städte
+  *Musterstadt*/*Beispielstadt*/*Demostadt*/*Beispieldorf*. Smoketest
+  blockt aktiv `gmail.com`, `gmx.de`, `web.de`, `hotmail.com`, `yahoo.com`.
+- Stabile Zeitstempel via `MOCK_NOW = "2026-04-27T09:00:00Z"` und
+  `daysAgo()` – Builds bleiben reproduzierbar.
+- Kein Betrieb überschreitet sein Paket-Limit (Bronze 10, Silber 30,
+  Gold 100 Services). Smoketest greift auf `isLimitExceeded()` zurück.
 
 ## [0.5.0] – Session 5 – 2026-04-27
 
