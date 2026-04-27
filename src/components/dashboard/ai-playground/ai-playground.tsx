@@ -1,0 +1,360 @@
+"use client";
+
+import { useMemo, useState, useTransition } from "react";
+import { AlertCircle, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { AIProviderError } from "@/types/ai";
+import type { Business } from "@/types/business";
+import { DashboardCard } from "../dashboard-card";
+import { ResultPanel } from "./result-panel";
+import { METHOD_CONFIGS, METHOD_ORDER, contextFromBusiness } from "./method-configs";
+import type {
+  GenerationResult,
+  PlaygroundField,
+  PlaygroundFormValues,
+  PlaygroundMethodId,
+} from "./types";
+
+interface AIPlaygroundProps {
+  readonly business: Business;
+}
+
+/**
+ * KI-Assistent-Playground (Code-Session 27).
+ *
+ * Spielt die 7 Mock-Methoden clientseitig an. Provider-Auswahl ist
+ * fest auf Mock — Live-Provider folgen mit der API-Route hinter Auth.
+ * Alle Inputs werden methodenspezifisch über `methodConfigs` validiert,
+ * bevor sie an den Mock-Provider gehen.
+ */
+export function AIPlayground({ business }: AIPlaygroundProps) {
+  const [methodId, setMethodId] = useState<PlaygroundMethodId>("website-copy");
+  const [valuesByMethod, setValuesByMethod] = useState<
+    Record<PlaygroundMethodId, PlaygroundFormValues>
+  >(() => {
+    const initial = {} as Record<PlaygroundMethodId, PlaygroundFormValues>;
+    for (const id of METHOD_ORDER) {
+      initial[id] = METHOD_CONFIGS[id].defaults;
+    }
+    return initial;
+  });
+  const [result, setResult] = useState<GenerationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const config = METHOD_CONFIGS[methodId];
+  const formValues = valuesByMethod[methodId];
+  const context = useMemo(() => contextFromBusiness(business), [business]);
+
+  function setField(name: string, value: string | number | boolean | undefined) {
+    setValuesByMethod((prev) => ({
+      ...prev,
+      [methodId]: { ...prev[methodId], [name]: value },
+    }));
+  }
+
+  function handleGenerate() {
+    setError(null);
+    setResult(null);
+    startTransition(async () => {
+      try {
+        const out = await config.call(business, formValues);
+        setResult(out);
+      } catch (err) {
+        if (err instanceof AIProviderError) {
+          setError(`${err.code}: ${err.message}`);
+        } else if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError(String(err));
+        }
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-500">
+            Playground
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink-900">
+            KI-Assistent
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-ink-600">
+            Spielt alle 7 Methoden mit dem Mock-Provider an — deterministisch,
+            ohne API-Key, ohne Kosten. Live-Provider (OpenAI / Anthropic /
+            Gemini) sind backend-seitig scharf, brauchen für den Browser-
+            Aufruf aber eine API-Route mit Auth (Code-Session 28+).
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
+          <Sparkles className="h-3 w-3" aria-hidden />
+          Provider: Mock (deterministisch)
+        </span>
+      </header>
+
+      {/* Methoden-Picker */}
+      <DashboardCard
+        title="Methode wählen"
+        description="Sieben Capabilities — alle clientseitig anspielbar."
+      >
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {METHOD_ORDER.map((id) => {
+            const c = METHOD_CONFIGS[id];
+            const Icon = c.icon;
+            const isActive = id === methodId;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setMethodId(id);
+                  setResult(null);
+                  setError(null);
+                }}
+                className={`flex flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                  isActive
+                    ? "border-brand-500 bg-brand-50 ring-2 ring-brand-200"
+                    : "border-ink-200 bg-white hover:border-ink-300 hover:bg-ink-50"
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Icon
+                    className={`h-4 w-4 ${
+                      isActive ? "text-brand-700" : "text-ink-500"
+                    }`}
+                    aria-hidden
+                  />
+                  <span
+                    className={`text-sm font-semibold ${
+                      isActive ? "text-brand-900" : "text-ink-900"
+                    }`}
+                  >
+                    {c.label}
+                  </span>
+                </span>
+                <span className="line-clamp-2 text-xs text-ink-600">
+                  {c.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </DashboardCard>
+
+      {/* Kontext-Hinweis (read-only) */}
+      <DashboardCard
+        title="Kontext für diesen Aufruf"
+        description="Branchen-Kontext kommt aus dem Demo-Business und wird automatisch eingebettet."
+      >
+        <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <ContextItem label="Betrieb" value={context.businessName} />
+          <ContextItem label="Branche" value={context.industryKey} />
+          <ContextItem label="Stadt" value={context.city ?? "—"} />
+          <ContextItem label="Paket" value={context.packageTier} />
+          <ContextItem
+            label="Tonalität"
+            value={
+              context.toneOfVoice.length > 0
+                ? context.toneOfVoice.join(", ")
+                : "(neutral)"
+            }
+          />
+          <ContextItem
+            label="USPs"
+            value={
+              context.uniqueSellingPoints.length > 0
+                ? context.uniqueSellingPoints.join(" · ")
+                : "(noch nicht hinterlegt)"
+            }
+          />
+        </dl>
+      </DashboardCard>
+
+      {/* Dynamisches Formular */}
+      <DashboardCard
+        title={`Eingaben für „${config.label}"`}
+        description={config.description}
+      >
+        <div className="space-y-4">
+          {config.fields.map((field) => (
+            <FieldRenderer
+              key={field.name}
+              field={field}
+              value={formValues[field.name]}
+              onChange={(v) => setField(field.name, v)}
+            />
+          ))}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <p className="text-xs text-ink-500">
+              Alle Aufrufe sind deterministisch — gleiche Eingaben liefern
+              denselben Output.
+            </p>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={pending}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {pending ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <Wand2 className="h-4 w-4" aria-hidden />
+              )}
+              {pending ? "Generiere…" : "Generieren"}
+            </button>
+          </div>
+
+          {error ? (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-none" aria-hidden />
+              <div>
+                <p className="font-semibold">Fehler beim Generieren</p>
+                <p className="mt-0.5 text-xs">{error}</p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </DashboardCard>
+
+      {/* Ergebnis */}
+      {result ? <ResultPanel result={result} /> : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
+function ContextItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-ink-100 bg-ink-50 px-3 py-2">
+      <dt className="text-[10px] font-medium uppercase tracking-wide text-ink-500">
+        {label}
+      </dt>
+      <dd className="mt-0.5 truncate text-sm font-medium text-ink-900">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+interface FieldRendererProps {
+  readonly field: PlaygroundField;
+  readonly value: string | number | boolean | undefined;
+  readonly onChange: (v: string | number | boolean | undefined) => void;
+}
+
+function FieldRenderer({ field, value, onChange }: FieldRendererProps) {
+  const labelEl = (
+    <label
+      htmlFor={field.name}
+      className="block text-sm font-medium text-ink-900"
+    >
+      {field.label}
+      {"required" in field && field.required ? (
+        <span className="ml-1 text-rose-600" aria-label="Pflichtfeld">
+          *
+        </span>
+      ) : null}
+    </label>
+  );
+  const hintEl =
+    "hint" in field && field.hint ? (
+      <p className="mt-1 text-xs text-ink-500">{field.hint}</p>
+    ) : null;
+
+  const baseInputClass =
+    "w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200";
+
+  switch (field.kind) {
+    case "text":
+      return (
+        <div>
+          {labelEl}
+          <input
+            id={field.name}
+            type="text"
+            placeholder={field.placeholder}
+            value={typeof value === "string" ? value : ""}
+            onChange={(e) => onChange(e.target.value)}
+            className={baseInputClass}
+          />
+          {hintEl}
+        </div>
+      );
+    case "textarea":
+      return (
+        <div>
+          {labelEl}
+          <textarea
+            id={field.name}
+            rows={field.rows ?? 3}
+            placeholder={field.placeholder}
+            value={typeof value === "string" ? value : ""}
+            onChange={(e) => onChange(e.target.value)}
+            className={baseInputClass}
+          />
+          {hintEl}
+        </div>
+      );
+    case "select":
+      return (
+        <div>
+          {labelEl}
+          <select
+            id={field.name}
+            value={typeof value === "string" ? value : field.options[0]?.value}
+            onChange={(e) => onChange(e.target.value)}
+            className={baseInputClass}
+          >
+            {field.options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {hintEl}
+        </div>
+      );
+    case "number":
+      return (
+        <div>
+          {labelEl}
+          <input
+            id={field.name}
+            type="number"
+            min={field.min}
+            max={field.max}
+            step={field.step ?? 1}
+            value={typeof value === "number" ? value : ""}
+            onChange={(e) => onChange(parseInt(e.target.value, 10))}
+            className={baseInputClass}
+          />
+          {hintEl}
+        </div>
+      );
+    case "switch":
+      return (
+        <div className="flex items-center gap-2">
+          <input
+            id={field.name}
+            type="checkbox"
+            checked={Boolean(value)}
+            onChange={(e) => onChange(e.target.checked)}
+            className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+          />
+          <label htmlFor={field.name} className="text-sm text-ink-900">
+            {field.label}
+          </label>
+          {hintEl}
+        </div>
+      );
+  }
+}

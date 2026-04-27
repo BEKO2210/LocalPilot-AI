@@ -215,6 +215,18 @@ aktiven Session.
   hat es bewusst weggelassen, weil ohne Volumen kein Effekt.
   Folge-Session: Cache-Layer mit TTL-Tracking, getrennte Cost-
   Bucket pro Branche/Variant.
+- **AI-API-Route mit Auth + Live-Provider-Aufruf aus Browser**
+  (aus Code-Session 27): Der Playground ist aktuell auf Mock
+  beschränkt, weil ein Live-API-Key im Bundle fahrlässig wäre.
+  Folge-Session: `/api/ai/generate` als Edge-Function mit Auth
+  (Cookie/JWT), Provider-Auswahl-Dropdown im Playground (Mock /
+  OpenAI / Anthropic / Gemini). Vorbedingung für Cost-Tracking
+  und Rate-Limiting (Track B-Items).
+- **USP-Editor pro Betrieb** (aus Code-Session 27): Die
+  Kontext-Box zeigt aktuell „USPs: (noch nicht hinterlegt)".
+  Schema und Repository-Layer fehlen — kommt zusammen mit dem
+  Settings-Editor in Meilenstein 4. Bis dahin Werte aus
+  `business.json` als Mock-Daten ergänzen reicht für die Demos.
 
 ### Track B · Security & Compliance
 - DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen
