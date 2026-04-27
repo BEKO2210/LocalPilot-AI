@@ -16,9 +16,12 @@ import {
   FormInput,
   FormTextarea,
 } from "@/components/forms";
+import { ImageUploadField } from "@/components/dashboard/business-edit/image-upload-field";
+import { looksLikeDbUuid } from "@/lib/services-update";
 import type { ServicesFormValues } from "./services-edit-form";
 
 type ServiceCardProps = {
+  slug: string;
   index: number;
   total: number;
   onMoveUp: () => void;
@@ -27,13 +30,15 @@ type ServiceCardProps = {
 };
 
 export function ServiceCard({
+  slug,
   index,
   total,
   onMoveUp,
   onMoveDown,
   onRemove,
 }: ServiceCardProps) {
-  const { register, watch, formState } = useFormContext<ServicesFormValues>();
+  const { register, setValue, watch, formState } =
+    useFormContext<ServicesFormValues>();
   const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const errors = formState.errors.services?.[index];
@@ -42,6 +47,9 @@ export function ServiceCard({
   const isFeatured = watch(`services.${index}.isFeatured`);
   const category = watch(`services.${index}.category`);
   const priceLabel = watch(`services.${index}.priceLabel`);
+  const serviceId = watch(`services.${index}.id`);
+  const imageUrl = watch(`services.${index}.imageUrl`);
+  const hasRealUuid = looksLikeDbUuid(serviceId ?? "");
 
   const hasError = Boolean(errors);
   const displayTitle = (title ?? "").trim() || "(noch ohne Titel)";
@@ -199,6 +207,42 @@ export function ServiceCard({
             {...register(`services.${index}.shortDescription`)}
           />
         </FormField>
+
+        <ImageUploadField
+          slug={slug}
+          kind="service"
+          serviceId={hasRealUuid ? serviceId : undefined}
+          currentUrl={imageUrl ?? undefined}
+          onUploaded={(url) =>
+            setValue(`services.${index}.imageUrl`, url, {
+              shouldDirty: true,
+            })
+          }
+          onCleared={() =>
+            setValue(`services.${index}.imageUrl`, undefined, {
+              shouldDirty: true,
+            })
+          }
+          label="Bild"
+          description="Optional. Erscheint groß auf der Service-Karte der Public Site."
+          disabled={!hasRealUuid}
+          disabledHint={
+            !hasRealUuid
+              ? "Bild kannst du hochladen, sobald die Leistung einmal gespeichert ist."
+              : undefined
+          }
+          compact
+        />
+
+        <input
+          type="hidden"
+          {...register(`services.${index}.imageUrl`)}
+        />
+        {errors?.imageUrl ? (
+          <p className="text-xs font-medium text-rose-600">
+            Bild-URL: {errors.imageUrl.message}
+          </p>
+        ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-200 bg-ink-50/50 p-3">
           <div className="flex flex-wrap gap-4 text-sm">

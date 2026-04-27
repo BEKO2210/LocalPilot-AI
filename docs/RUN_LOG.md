@@ -6186,3 +6186,543 @@ Plattformen) seit Session 19 fertig. UI-Pattern ist symmetrisch
 zu Reviews: Plattform + Goal + Tonalität → KI generiert Post →
 Copy / Direkt-Posten-Link (Buffer/Hootsuite kommt später).
 
+---
+
+## Code-Session 54 – Social-Media-UI scharf
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: `/dashboard/[slug]/social` ist nicht mehr Status-Stub.
+Owner wählt Plattform (5), Ziel (8), Länge (3), trägt ein Thema
+ein, schaltet Hashtags an/aus → Mock-Provider liefert kurzen Post,
+langen Post, Hashtags, Bildidee und CTA. Plattform-spezifische
+Char-Counter mit Truncation-Warnung, Hashtag-Empfehlung pro
+Kanal. Pattern ist symmetrisch zu Reviews-UI aus Session 53.
+
+**Architektur-Konsistenz**: gleiche Entscheidung wie bei Reviews —
+Mock-Provider direkt im Browser, kein Auth-Bearer-Pfad. Live-
+Provider-Variante kommt später (Plan-Item).
+
+**Dateien**:
+- ✚ `src/lib/social-post-format.ts` — pure Helper:
+  `platformLabel` / `goalLabel` / `lengthLabel` (deutsch),
+  `platformLimits(p)` mit `hardChar` + `truncationChar` +
+  `recommendedHashtags`-Bereich aus 2026-Recherche,
+  `assessLength(text, platform)` → `"ok" | "truncated" | "over"`
+  mit user-sichtbarem Hint, `composeFinalPost` mit Tag-
+  Normalisierung (führendes `#`, Whitespace-Trim, case-
+  insensitive Dedupe), `adviseHashtagCount` mit
+  `discouraged`-Status für GBP/WA-Status.
+- ✚ `src/tests/social-post-format.test.ts` (~40 Asserts):
+  alle Labels, alle 5 Plattform-Limits, assessLength für
+  ok/truncated/over (auf 3 Plattformen), composeFinalPost
+  inklusive Tag-Normalisierung („FRISEUR" + „#friseur" wird
+  als Duplikat erkannt), adviseHashtagCount für
+  ok/below/above/discouraged.
+- ✚ `src/components/dashboard/social/social-post-panel.tsx` —
+  Client Component. PlatformTabs + GoalPills + LengthPicker
+  als ARIA-getaggte Sub-Komponenten. PostCard rendert
+  shortPost und longPost mit Char-Status-Farbe (emerald/amber/
+  rose) und Truncation-Hint. Separate Karten für Hashtags,
+  Bildidee, CTA — alle mit eigenem Copy-Button.
+- 🔄 `src/app/dashboard/[slug]/social/page.tsx` — Stub
+  durch Panel ersetzt. Bleibt static-prerenderable.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **35/36 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Social-Page als ●-SSG-prerendered (Pages-kompatibel).
+Bundle: shared 102 KB unverändert; `/dashboard/[slug]/social`
+4 kB page-spezifisch.
+
+**Roadmap**: 1 Item abgehakt (Social-UI). 1 neues Folge-Item:
+Live-Provider-Variante für Social-Panel (analog zu AIPlayground
+mit Auth-Bearer + `/api/ai/generate`). Direkt-Posten zu Buffer/
+Hootsuite/Meta-Graph als separates Plan-Item für Track A
+Innovation.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Social-Media-Char-
+Limits + Hashtag-Counts 2026.
+
+**Status-Update**: ~85 % Richtung „erstes Betrieb-fertiges
+Produkt". Mit Reviews + Social ist auch der Engagement-Hebel
+(Meilenstein 3) erreichbar. Verbleibend für Vollausbau:
+Schreibpfad ServicesEditForm (nice-to-have), Storage-Cleanup-
+Job, Live-Provider-Switch in Reviews/Social, Custom-Domain,
+Sentry, Lighthouse-CI.
+
+**Nächste Session**: Code-Session 55 = **Schreibpfad
+ServicesEditForm**. Begründung: nach 54 sind alle
+End-User-UI-Capabilities (Stamm-, Bild-, Slug-, Review-,
+Social-Pfad) live. Was fehlt für vollständigen
+Self-Service-Betrieb: ServicesEditForm schreibt aktuell nur in
+einen Mock-State. Owner kann seine Leistungen also nicht
+persistent ändern — und Leistungen sind in Friseur, Werkstatt,
+Reinigung der **Hauptinhalt** der Public-Site. Pattern ist
+symmetrisch zu Session 50 (PATCH `/api/businesses/[slug]/
+services` mit Bulk-Update + RLS), nur etwas größer wegen der
+Array-Form.
+
+## Code-Session 55 – Schreibpfad ServicesEditForm
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature · 5er-Multiple
+
+**Was**: `ServicesEditForm` schreibt nicht mehr nur in
+localStorage, sondern echt in die DB. Owner editiert die
+gesamte Leistungsliste (add/edit/delete/reorder) und drückt
+„Speichern" → Server berechnet Diff (UPDATE / INSERT / DELETE)
+in einer Transaktion-light (3 Statements ohne expliziten
+BEGIN, durch RLS abgesichert). Damit ist der **Hauptinhalt**
+der Public-Site (Friseur-Leistungen, Werkstatt-Pakete) endgültig
+self-service-fähig.
+
+**Architektur-Entscheidung — Bulk-Sync statt Item-CRUD**:
+Symmetrisch zu Session 50 (BusinessEdit). Alternative wäre
+Item-CRUD-API (POST/PATCH/DELETE pro Service), das hätte aber
+Locking-Probleme (zwei Owner editieren gleichzeitig dasselbe
+Item) und einen schwierigeren Reorder-Pfad. Bulk-Sync mit der
+gesamten Liste als Wahrheits-Snapshot ist deterministisch,
+race-frei und 1:1 zur RHF-`useFieldArray`-State-Form.
+
+**Pseudo-IDs vs DB-UUIDs**: Demo-Daten und neu hinzugefügte
+Services tragen `svc-<slug>-<random>`-IDs. Postgres lehnt das
+als ungültiges UUID ab. Lösung: `looksLikeDbUuid` (UUID-v1-5-
+Regex) trennt UPDATE-Kandidaten (echte UUID) von INSERT-Kandi-
+daten. Server ersetzt Pseudo-IDs durch `crypto.randomUUID()`
+vor dem Upsert.
+
+**Lead-FK-Cascade**: Wenn ein Service gelöscht wird, kann
+Migration 0005 die `lead.requested_service_id` auf `null`
+setzen — Lead-Datensatz bleibt erhalten, nur die Service-
+Referenz fällt weg. Daten gehen nicht verloren.
+
+**Dateien**:
+- ✚ `src/lib/services-update.ts` — pure Logic-Helper:
+  - `looksLikeDbUuid(id)` — UUID-v1-5-Regex (Variant `[89ab]`,
+    Version `[1-5]`).
+  - `splitServices(list)` → `{toUpdate, toInsert}`.
+  - `serviceToWireRow(s, businessId, {keepId})` — camelCase →
+    snake_case + alle nullable Felder explizit auf `null`.
+  - `buildServicesPayload(list, businessId)` — kombiniert
+    UPDATE-Rows (mit ID) und INSERT-Rows (ohne ID) zu einem
+    `{services: [...]}`-Body.
+  - `submitServicesUpdate(slug, list, businessId, deps)` —
+    PUT `/api/businesses/<slug>/services`. 6 Result-Kinds:
+    `server` (mit inserted/updated/deleted-Counts) /
+    `not-authed` / `forbidden` / `validation` (fieldErrors) /
+    `local-fallback` (404 / Throw → Form fällt auf
+    localStorage) / `fail` (5xx).
+  - `userMessageForResult(r)` — deutscher User-Hinweis je
+    Kind. Server-Result formatiert Counts: „Gespeichert: 1
+    neu, 2 aktualisiert, 0 entfernt."
+- ✚ `src/tests/services-update.test.ts` — ~40 Asserts:
+  UUID-Detection (inkl. v1-Variant-Char-Validierung,
+  Großbuchstaben, leerer String), Splitting, Wire-Row mit
+  `keepId` true/false, alle 6 Submit-Pfade (200, 404, 401,
+  403, 400-validation, 500, throw), Body-Capture (Pseudo-IDs
+  raus, echte UUIDs durch), URL-Pfad-Encoding.
+- ✚ `src/app/api/businesses/[slug]/services/route.ts` (PUT):
+  Auth-Gate via `getCurrentUser()` → 401. Business-Lookup
+  über Server-Auth-Client (RLS): RLS lehnt 0 Zeilen ab → 403.
+  Pro Body-Row: snake → camel → `ServiceSchema.safeParse()`
+  → snake. Aggregierte fieldErrors → 400. UPSERT via
+  `onConflict: "id"` (Bulk in einem Statement). DELETE-Diff
+  via `existingIds - incomingIds`. Antwort:
+  `{ ok, inserted, updated, deleted }`. **RLS-getrieben**, kein
+  Service-Role-Client — `is_business_owner(business_id)`
+  prüft INSERT/UPDATE/DELETE-Permissions automatisch.
+- 🔄 `src/components/dashboard/services-edit/services-edit-form.tsx`:
+  - Neue Hooks: `submitting`, `savedTo: "server"|"local"|null`,
+    `submitMessage`, `serverNote`.
+  - `onSubmit` async: ruft `submitServicesUpdate`, mappt
+    Result auf UI-State. `server`-Pfad löscht localStorage-
+    Override (DB ist Wahrheit), `local-fallback`-Pfad
+    schreibt Override wie bisher.
+  - `validation`-fieldErrors mit Pfad `services.<i>.<feld>`
+    werden direkt via `methods.setError(path as
+    FieldPath<...>)` ins RHF-Form gemappt — RHF versteht den
+    Pfad-Syntax 1:1.
+  - 3 differenzierte Banner: emerald „in der DB gespeichert"
+    mit Counts, amber „lokal gespeichert (Demo)", rose
+    „Bitte prüfen / Speichern fehlgeschlagen".
+  - Submit-Button mit `submitting`-Spinner-Text
+    („Speichere …").
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅. **36/37
+Smoketests grün** (industry-presets pre-existing red, Codex
+#11). Services-Update-Test = +1 grün.
+
+**Roadmap**: 1 Item abgehakt (Schreibpfad ServicesEditForm —
+damit alle End-User-UI-Capabilities persistent). 1 Folge-Item:
+Storage-Cleanup-Job auch für Service-`imageUrl`-Waisen erweitern,
+analog zu Slug-Wechsel-Bucket-Job.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — Supabase JS v2.104
+Bulk-Upsert mit `onConflict`, Delete-Diff-Pattern, RLS für
+INSERT/UPDATE/DELETE auf gleicher Policy via
+`is_business_owner(NEW.business_id)`.
+
+**Status-Update**: ~88 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Editor (Meilenstein 2) ist
+abgeschlossen — Owner kann jetzt **alles**, was auf der
+Public-Site sichtbar ist, ohne Code-Eingriff ändern. Verbleibend
+für Vollausbau: Live-Provider-Switch (Reviews/Social),
+Storage-Cleanup-Job, Custom-Domain, Sentry, Lighthouse-CI,
+Multi-Member-Verwaltung.
+
+**Manueller Test**: Dashboard → „Leistungen" → existierende
+Karte editieren oder neue „Leistung anlegen" → Speichern → bei
+aktivem Supabase-Backend erscheint emerald-Banner mit Counts;
+Reload zeigt DB-Werte. Bei fehlendem Backend (Static-Build /
+404) erscheint amber-Banner; Werte sind in localStorage
+persistiert.
+
+**Nächste Session**: Code-Session 56 = **Storage-Cleanup-Job
+Erweiterung**. Begründung: Mit Schreibpfad ServicesEditForm
+können Owner Bilder zu Services hochladen und Services dann
+wieder löschen — die Bilder-Bucket-Einträge bleiben dabei
+zurück (Waisen). Analog zum Slug-Wechsel-Cleanup-Job aus
+Session 47, aber für Service-`imageUrl`. Alternative wäre
+Live-Provider-Switch in Reviews/Social — der ist aber kein
+Self-Service-Blocker, sondern Quality-Layer; daher danach.
+
+## Code-Session 56 – Storage-Cleanup für Service-Bilder + Dependabot-Patch
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Hygiene + Security
+
+**Was**: Beim Bulk-DELETE von Services (Session 55) blieben
+hochgeladene `image_url`-Werte als Waisen im
+`business-images`-Bucket zurück. Diese Session führt einen
+generischen, parametrisierten Storage-Cleanup-Helper ein und
+verdrahtet ihn mit dem DELETE-Pfad. Zusätzlich: Dependabot
+moderate (postcss XSS) + 2 npm-audit low (eslint ReDoS) als
+separater Commit gefixt.
+
+**Architektur-Entscheidung — generisch statt service-only**:
+Cleanup-Helper ist auf `(urls, bucket)` parametrisiert, nicht
+auf Services hartcodiert. Damit können später Slug-Wechsel
+(logo/cover-Cleanup beim Slug-Rename) und ein Service-
+Image-Upload-UI denselben Helper nutzen — keine
+Re-Implementierung. Der Slug-Wechsel-Cleanup ist explizit
+NICHT in dieser Session (kein UI-Pfad existiert noch, der
+Service-Bilder hochlädt, also keine echten Waisen).
+
+**Architektur-Entscheidung — graceful failure**: Storage-Errors
+**dürfen den DB-DELETE nicht blockieren**. Wenn der
+Service-Role-Key fehlt oder das Storage-Backend gerade hängt,
+würde sonst der User aus seiner UI gesperrt (Karte nicht
+löschbar → Service kommt nicht weg). Daher: `console.warn` +
+`imagesFailed`-Count im Response, aber DB-DELETE läuft.
+
+**WebSearch (Track A)**: bestätigt
+- „Storage hat keinen native DELETE-Trigger auf
+  `storage.objects` — Cleanup ist Application-Pflicht"
+  ([GitHub-Discussion #36755](https://github.com/orgs/supabase/discussions/36755),
+  Feature Request 2025/26 noch offen).
+- „Wenn man storage.objects per SQL löscht, bleibt das File in
+  S3 stehen — nur Storage-API ruft cleanup an"
+  ([Supabase Docs – Delete Objects](https://supabase.com/docs/guides/storage/management/delete-objects)).
+
+**Dateien**:
+- ✚ `src/lib/storage-cleanup.ts` — pure Helper:
+  - `extractStoragePath(publicUrl, bucket)` — URL-Parsing
+    für `/storage/v1/object/public/<bucket>/<path>` und
+    `/storage/v1/render/image/public/<bucket>/<path>`.
+    `decodeURIComponent` für Umlaut-Slugs. Externe CDNs +
+    falscher Bucket → `null`.
+  - `collectStoragePaths(urls, bucket)` — Liste-zu-Set mit
+    Dedupe und Skip externer URLs.
+  - `removeStoragePaths(client, bucket, paths)` — Wrapper
+    um `.storage.from(bucket).remove([])` mit
+    try/catch + `null`-Client-Handling. Liefert
+    `{ removed, failed, reason }`. **Keine Throws.**
+- ✚ `src/tests/storage-cleanup.test.ts` (~30 Asserts):
+  Standard-URL, Render-Image-URL, Query-String-Trim,
+  URL-Encoding, falscher Bucket, Custom-CDN, defensive
+  null/empty/malformed-Inputs, Dedupe, Stub-Client für
+  Empty/null-Client/Happy-Path/Storage-Error/Throw.
+- 🔄 `src/app/api/businesses/[slug]/services/route.ts`:
+  - Existing-SELECT von `id` auf `id, image_url` erweitert.
+  - Vor DB-DELETE: orphan-image_urls aus `existingRows`
+    filtern (per `toDeleteSet`), via `collectStoragePaths`
+    auf den Bucket reduzieren, mit Service-Role-Client
+    `removeStoragePaths` aufrufen.
+  - Storage-Fehler nur `console.warn`, nicht fatal.
+  - Response um `imagesRemoved` + `imagesFailed` erweitert.
+- 🔄 `src/lib/services-update.ts`: `ServicesUpdateResult.server`
+  um optionale `imagesRemoved`/`imagesFailed` ergänzt
+  (rückwärtskompatibel, alte Tests bleiben grün).
+
+**Dependabot-Patches** (separater Commit `ee0cc37`):
+- postcss 8.5.1 → 8.5.12 (XSS GHSA-qx2v-qp2m-jg93).
+- eslint 9.18.0 → 9.39.4 (transitive @eslint/plugin-kit
+  ReDoS GHSA-xffm-g5w8-qvg7).
+- `overrides: { "postcss": "$postcss" }` hebt
+  Next-bundled postcss@8.4.31 auf Top-Level.
+- `npm audit`: **0 vulnerabilities** post-Patch.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**37/38 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +1 storage-cleanup grün. Bundle unverändert.
+
+**Roadmap**: 1 abgehakt (Service-Image-Cleanup). 2 neue
+Folge-Items, die jetzt direkt anschließbar sind:
+1. **Slug-Wechsel-Cleanup**: bei Slug-Rename die alten
+   `<old-slug>/logo.<ext>` + `<old-slug>/cover.<ext>`
+   entfernen (`extractStoragePath`+`removeStoragePaths`
+   nutzbar ohne Anpassung).
+2. **Service-Image-Upload-UI**: ServiceCard bekommt einen
+   `ImageUploadField`-Slot wie BusinessEdit; dahinter wird
+   die Upload-Route von `kind: "logo"|"cover"` auf
+   `kind: "service"` mit `serviceId`-Pfadbestandteil
+   erweitert. Cleanup ist bereits da, sobald Owner Bilder
+   wieder entfernt.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — Supabase Storage
+Cleanup-Patterns 2026.
+
+**Status-Update**: ~89 % Richtung „erstes Betrieb-fertiges
+Produkt". Storage-Hygiene + Security-Hygiene sind eingezogen.
+Verbleibend: Slug-Wechsel-Storage-Cleanup, Service-Image-
+Upload-UI, Live-Provider-Switch (Reviews/Social),
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member-Verwaltung.
+
+**Nächste Session**: Code-Session 57 = **Slug-Wechsel-
+Storage-Cleanup**. Begründung: Pattern aus Session 56 ist
+direkt wiederverwendbar (`extractStoragePath` +
+`removeStoragePaths`). Bei Slug-Rename via
+`/api/businesses/[slug]/settings` muss `<old-slug>/logo.<ext>`
+und `<old-slug>/cover.<ext>` entfernt werden — sonst bleiben
+sie als Waisen, und die Public-Site zeigt sie nirgends mehr
+an. Klein, scharf, abgrenzbar — gute Folge-Session ohne
+Speedrun-Charakter.
+
+## Code-Session 57 – Slug-Wechsel-Storage-Migration
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Hygiene
+
+**Was**: Beim Slug-Rename via `PATCH /api/businesses/<slug>/
+settings` zeigten `logo_url`/`cover_image_url` weiter auf den
+**alten** Slug-Pfad (`<old-slug>/logo.png`) — das Bild lag
+also im Storage unter dem alten Pfad, die Public-Site fragt
+es aber nicht mehr ab (sie generiert ihre URLs aus dem neuen
+Slug-Kontext nicht; aber DB-URL ist hardcoded auf den alten
+Pfad). Fazit war: Slug-Wechsel ließ Bilder als Waisen liegen,
+und auf der Public-Site sah es zwar visuell richtig aus,
+aber nach `clearOverride()` oder Reload waren es weiterhin
+URLs zum alten Slug-Storage-Pfad — wenn später jemand den
+alten Slug neu vergibt, würde dieser Bilder erben.
+
+**Architektur-Entscheidung — Move statt Delete+Reupload**:
+`storage.from(bucket).move(from, to)` ist eine atomare
+Server-Operation: bei Erfolg ist die Datei unter `to` und
+unter `from` weg. Damit bleibt der Bild-Inhalt erhalten und
+der User muss nichts neu hochladen. Alternative wäre
+„DELETE + User muss neu hochladen" — schlechte UX und
+inkonsistent zur Session-50-Erwartung „Settings-Update
+ändert Profil-Daten, nicht Inhalte".
+
+**Architektur-Entscheidung — Zwei-Phasen-DB-Update**:
+1. UPDATE 1: Slug + isPublished + locale. Atomar, fängt
+   23505-Conflict, liefert die alten URLs zurück.
+2. Storage-Move auf den neuen Slug-Prefix.
+3. UPDATE 2 (nur falls Slug gewechselt UND Bilder migriert):
+   neue URLs in `logo_url`/`cover_image_url` einspielen.
+
+Phase 2 ist best-effort. Wenn Move fehlschlägt, setzen wir
+die URL auf `null` — die Public-Site zeigt dann nichts
+(statt 404), und der User merkt im Dashboard sofort, dass
+er das Bild neu hochladen muss.
+
+**Architektur-Entscheidung — strikter Prefix-Match**:
+`rewritePathPrefix` prüft `oldPath.startsWith(oldSlug + "/")`.
+Damit greift es bei `studio-haarlinie-old/logo.png` mit
+`oldSlug=studio-haarlinie` korrekt **nicht** — verhindert
+versehentliche Kollision bei verwandten Slugs.
+
+**WebSearch (Track A)**: bestätigt
+- [Supabase JS – storage-from-move](https://supabase.com/docs/reference/javascript/storage-from-move)
+  Move ist die offizielle API für Rename/Path-Change.
+- [Storage Troubleshooting – Inefficient folder operations](https://supabase.com/docs/guides/troubleshooting/supabase-storage-inefficient-folder-operations-and-hierarchical-rls-challenges-b05a4d):
+  Storage hat keine native Folder-Move-API; pro Datei einzeln
+  moven ist der Standard-Pattern.
+
+**Dateien**:
+- 🔄 `src/lib/storage-cleanup.ts` erweitert:
+  - `rewritePathPrefix(oldPath, oldPrefix, newPrefix)` —
+    pure, schreibt nur Top-Level-Folder um, mit strikter
+    `/`-Boundary-Prüfung.
+  - `moveStoragePath(client, bucket, from, to)` — Wrapper
+    um `.move()` mit no-op bei identischen Pfaden,
+    null-Client-Handling, try/catch um Throws.
+  - `buildPublicUrl(client, bucket, path)` — kapselt
+    `getPublicUrl` (Sync, baut URL ohne Server-Call).
+- 🔄 `src/tests/storage-cleanup.test.ts` von ~30 → ~52
+  Asserts. Neue Asserts für Path-Rewrite (Standard-Fall,
+  Subfolder, Boundary-Schutz, defensive Inputs), Move
+  (null-Client, identische Pfade, Happy-Path, Error, Throw),
+  buildPublicUrl (null-Client, Stub-Match).
+- 🔄 `src/app/api/businesses/[slug]/settings/route.ts`:
+  - SELECT um `logo_url, cover_image_url` erweitert (war
+    vorher nur `id, slug`).
+  - Nach UPDATE 1: bei `slugChanged` für jedes der zwei
+    Bild-Felder den alten Pfad extrahieren, neuen Pfad
+    bauen, Service-Role-Move, URL-Patch sammeln.
+  - UPDATE 2 mit dem URL-Patch (nur bei Bedarf).
+  - Antwort um `imagesMoved` + `imagesFailed`.
+- 🔄 `src/lib/business-settings.ts`: `SettingsUpdateResult.server`
+  um optionale `imagesMoved`/`imagesFailed`. Bestehende
+  Tests bleiben grün (Optional-Felder).
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**37/38 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +22 storage-cleanup-Asserts.
+
+**Roadmap**: 1 abgehakt (Slug-Wechsel-Migration). Storage-
+Hygiene ist jetzt **vollständig**: DELETE räumt auf (56),
+Slug-Wechsel migriert (57). Was bleibt für Storage-Komplettheit:
+Service-Image-Upload-UI — das ist aber **Feature**, nicht
+Hygiene.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — Supabase Storage
+Move + Folder-Operations 2026.
+
+**Status-Update**: ~90 % Richtung „erstes Betrieb-fertiges
+Produkt". Storage- + Security-Hygiene sind komplett.
+Verbleibend: Service-Image-Upload-UI (Feature), Live-Provider-
+Switch (Quality), Custom-Domain (Ops), Sentry (Observability),
+Lighthouse-CI (CI/CD), Multi-Member-Verwaltung (Skalierung).
+
+**Nächste Session**: Code-Session 58 = **Service-Image-Upload-
+UI**. Begründung: Mit Session 56 (Cleanup) + 57 (Slug-Move)
+ist die Storage-Hygiene fertig — der Cleanup-Pfad existiert,
+bevor das Feature gebaut wird, das ihn produziert. Genau die
+richtige Reihenfolge: zuerst Aufräum-Pflicht erfüllt, dann
+Feature, das Müll erzeugen kann. ServiceCard bekommt einen
+`ImageUploadField`-Slot symmetrisch zum Logo/Cover-Pattern
+aus Session 51, die Upload-Route von `kind: "logo"|"cover"`
+auf `kind: "service"` mit `serviceId`-Pfadbestandteil
+erweitert. Storage-Cleanup beim Service-DELETE läuft bereits
+(Session 56), und die DB hat die `image_url`-Spalte schon
+seit Migration 0002.
+
+## Code-Session 58 – Service-Image-Upload-UI
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Owner kann pro Service ein Bild hochladen — direkt
+in der ServiceCard, identisches Pattern wie Logo/Cover beim
+Business-Editor. Schema (`services.image_url`), DB-Spalte
+(Migration 0002), Bulk-Update-Roundtrip (Session 55),
+Storage-Cleanup beim DELETE (Session 56) waren alle bereits
+da; mit dieser Session ist auch der Upload-Schreibweg
+verdrahtet.
+
+**Architektur-Entscheidung — UUID v4 ab Erstellung**:
+Bisher erzeugte `generateNewServiceId(slug)` Pseudo-IDs vom
+Format `svc-<slug>-<8-Zeichen>`, die der Server-PUT beim
+Save zur echten UUID promotierte. Das funktioniert für
+Stamm-Daten, aber nicht für Service-Bild-Uploads: das Bild
+muss unter seiner endgültigen UUID liegen, sonst wird es
+beim ersten Save zur Storage-Waise. Ich stelle die Funktion
+auf `crypto.randomUUID()` um — das ist a) eine echte
+UUID v4, b) wird vom Server akzeptiert (passes
+`looksLikeDbUuid`-Check), c) der Bild-Upload ist sofort
+möglich für neu hinzugefügte Services. Demo-Daten mit
+Pseudo-IDs aus mock-data behalten ihre IDs bis zum ersten
+Save; dort wird ein UI-Hint angezeigt.
+
+**Architektur-Entscheidung — UUID-Gating in der UI**:
+Wenn die Service-ID keine echte UUID ist (Demo-Daten), sperrt
+das Image-Field mit einem amber Hint („Bild kannst du
+hochladen, sobald die Leistung einmal gespeichert ist."). Das
+verhindert Storage-Waisen unter Pseudo-Pfaden und macht den
+Workflow explizit. Server-seitig ist die UUID-Pflicht via
+strengem Regex am Route-Handler abgesichert (Path-Injection-
+Schutz).
+
+**Architektur-Entscheidung — gleicher Bucket, neuer
+Sub-Folder**: `<slug>/services/<serviceId>.<ext>` statt eines
+zweiten Buckets. Vorteile: bestehende RLS-Policies +
+Storage-Cleanup-Logik (Session 56) + Slug-Move (Session 57)
+funktionieren ohne Anpassung. Der Slug-Move-Pfad migriert
+allerdings aktuell nur `logo`/`cover` — Service-Bilder
+beim Slug-Wechsel zu mit-moven ist Folge-Session 59.
+
+**WebSearch (Track C)**: bestätigt
+- [MUI – Image List Component](https://mui.com/material-ui/react-image-list/)
+  Standard-Pattern für „Bild pro Karte" ist Vorschau-Tile +
+  Replace/Remove neben Card-Content.
+- [Eleken – File Upload UI Tips](https://www.eleken.co/blog-posts/file-upload-ui)
+  Klares Dropzone-Tile, kurzer Hint mit Format-Anforderungen,
+  Replace-Button — alles im selben Modul gehalten.
+- [ReactScript – React File Upload Components](https://reactscript.com/best-file-upload/)
+  Render-Props-Pattern für UI-Wiederverwendung; wir
+  re-use'n stattdessen die existierende `ImageUploadField`-
+  Komponente mit zwei neuen Props (`disabled`, `compact`).
+
+**Dateien**:
+- 🔄 `src/lib/business-image-upload.ts`:
+  - `ImageKind` += `"service"`.
+  - `buildStoragePath(slug, kind, mime, options?)`: bei
+    `kind="service"` braucht `options.serviceId`. Throw bei
+    Verstoß. Pfad: `<slug>/services/<serviceId>.<ext>`.
+  - `submitImageUpload(slug, kind, file, deps, options?)`:
+    `options.serviceId` ins FormData. Client-Pre-Validation
+    blockt `service`-Upload ohne `serviceId` — kein
+    fetch-Roundtrip.
+- 🔄 `src/tests/business-image-upload.test.ts`: ~35 → ~40
+  Asserts. Service-Pfad mit serviceId, Throw ohne, Client-
+  Validation, FormData-Capture für `serviceId`.
+- 🔄 `src/app/api/businesses/[slug]/image/route.ts`:
+  - `kind`-Validation erweitert um `"service"`.
+  - `UUID_RE` (v1-5, Variant `[89ab]`) als
+    Path-Injection-Schutz.
+  - `serviceId` wird aus FormData gezogen und an
+    `buildStoragePath(..., { serviceId })` übergeben.
+- 🔄 `src/components/dashboard/business-edit/image-upload-field.tsx`:
+  Drei neue optionale Props (`serviceId`, `disabled`,
+  `disabledHint`, `compact`). `submitImageUpload(..., {
+  serviceId })` wird durchgereicht. `compact` schaltet das
+  Vorschau-Tile auf `h-14 w-14` (für In-Card-Layout).
+  `disabledHint` als amber-Text unter den Buttons, wenn
+  gesperrt.
+- 🔄 `src/components/dashboard/services-edit/service-card.tsx`:
+  - `slug`-Prop hinzugefügt (vom Form durchgereicht).
+  - `serviceId = watch(...id)`, `imageUrl = watch(...imageUrl)`,
+    `hasRealUuid = looksLikeDbUuid(serviceId)`.
+  - `ImageUploadField` mit `kind="service"`, `compact`,
+    UUID-Gating, hidden `imageUrl`-Input, optionaler
+    Error-Anzeige.
+- 🔄 `src/components/dashboard/services-edit/services-edit-form.tsx`:
+  - `generateNewServiceId(slug)` → `crypto.randomUUID()`.
+  - `slug={business.slug}` durchgereicht an `<ServiceCard>`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**37/38 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +5 image-upload-Asserts. Bundle 102 KB shared
+unverändert.
+
+**Roadmap**: 1 abgehakt (Service-Image-Upload-UI). Storage-
+Hygiene-Stack ist symmetrisch nutzbar: Upload (51 + 58),
+DELETE-Cleanup (56), Slug-Wechsel-Move (57). 1 Folge-Item:
+**Service-Bilder beim Slug-Wechsel mit-migrieren** — aktuell
+moved Session 57 nur `logo_url` und `cover_image_url`. Mit
+58 gibt's `services.image_url` pro Row, die bei Slug-Rename
+auch von `<old-slug>/services/<id>.<ext>` →
+`<new-slug>/services/<id>.<ext>` gemoved werden muss.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — File-Upload-UX-
+Patterns 2026.
+
+**Status-Update**: ~91 % Richtung „erstes Betrieb-fertiges
+Produkt". Self-Service-Editor ist auf allen Public-Site-
+sichtbaren Pfaden fertig (Stamm, Logo, Cover, Slug, Service-
+Liste, Service-Bilder). Verbleibend: Service-Bilder-Slug-
+Migration (klein), Live-Provider-Switch, Custom-Domain,
+Sentry, Lighthouse-CI, Multi-Member-Verwaltung.
+
+**Nächste Session**: Code-Session 59 = **Service-Bilder beim
+Slug-Wechsel mit-migrieren**. Begründung: Session 57 hat den
+Move-Pattern und die Pfad-Rewrite-Logik etabliert; jetzt
+rollen wir ihn auf `services.image_url` aus. Pro Row im
+`services`-Table mit `image_url` zum alten Slug-Prefix wird
+`storage.move()` ausgeführt und das URL-Feld in einem Bulk-
+Update aktualisiert. Klein (~30 Zeilen Settings-Route +
+~5 Asserts), aber sauber abgrenzbar — schließt die
+Storage-Hygiene-Lücke aus 58.
+

@@ -35,19 +35,31 @@ import {
 export function ImageUploadField({
   slug,
   kind,
+  serviceId,
   currentUrl,
   onUploaded,
   onCleared,
   label,
   description,
+  disabled,
+  disabledHint,
+  compact,
 }: {
   readonly slug: string;
   readonly kind: ImageKind;
+  /** Pflicht für kind='service'. */
+  readonly serviceId?: string;
   readonly currentUrl: string | undefined;
   readonly onUploaded: (publicUrl: string) => void;
   readonly onCleared: () => void;
   readonly label: string;
   readonly description?: string;
+  /** Sperrt den Upload-Button (z.B. solange ein Service noch eine Pseudo-ID hat). */
+  readonly disabled?: boolean;
+  /** Optionaler Hinweistext, wenn `disabled` true ist. */
+  readonly disabledHint?: string;
+  /** Kompaktere Darstellung für In-Card-Verwendung. */
+  readonly compact?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,7 +81,7 @@ export function ImageUploadField({
 
     setBusy(true);
     try {
-      const result = await submitImageUpload(slug, kind, file);
+      const result = await submitImageUpload(slug, kind, file, {}, { serviceId });
       if (result.kind === "server") {
         onUploaded(result.publicUrl);
         setFeedback({ kind: "ok", message: "Bild hochgeladen." });
@@ -89,6 +101,8 @@ export function ImageUploadField({
     onCleared();
   }
 
+  const previewBox = compact ? "h-14 w-14" : "h-20 w-20";
+
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium text-ink-800">{label}</p>
@@ -96,7 +110,7 @@ export function ImageUploadField({
         <p className="text-xs text-ink-500">{description}</p>
       ) : null}
       <div className="flex flex-wrap items-start gap-3 rounded-xl border border-ink-200 bg-white p-3">
-        <div className="flex h-20 w-20 flex-none items-center justify-center overflow-hidden rounded-lg border border-ink-200 bg-ink-50">
+        <div className={`flex flex-none items-center justify-center overflow-hidden rounded-lg border border-ink-200 bg-ink-50 ${previewBox}`}>
           {currentUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -113,7 +127,7 @@ export function ImageUploadField({
             <button
               type="button"
               onClick={pickFile}
-              disabled={busy}
+              disabled={busy || disabled}
               className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {busy ? (
@@ -132,7 +146,7 @@ export function ImageUploadField({
               <button
                 type="button"
                 onClick={handleClear}
-                disabled={busy}
+                disabled={busy || disabled}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-50"
               >
                 <X className="h-3.5 w-3.5" aria-hidden />
@@ -144,6 +158,11 @@ export function ImageUploadField({
             PNG, JPEG oder WebP — maximal 5 MB. SVG ist aus
             Sicherheitsgründen nicht erlaubt.
           </p>
+          {disabled && disabledHint ? (
+            <p className="mt-1 text-[11px] font-medium text-amber-700">
+              {disabledHint}
+            </p>
+          ) : null}
           {feedback ? (
             <p
               role={feedback.kind === "err" ? "alert" : "status"}

@@ -90,12 +90,48 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Social-Media-Char-Limits + Hashtag-Counts 2026 (Code-Session 54)
+- [Sociality.io – Social Media Character Limits 2025](https://sociality.io/blog/social-media-character-limits/) — IG 2200 hard / 125 truncation, FB 63206 / 480, LinkedIn 3000 / 210 (54).
+- [thedebuggers – March 2026 Guide to Social Media Character Limits](https://thedebuggersitsolutions.com/blog/social-media-character-limits-2026) — aktuelle 2026-Werte (54).
+- [HubSpot – How Long Should Your Social Media Posts Be?](https://blog.hubspot.com/marketing/character-count-guide) — Engagement vs. Hard-Limit, Truncation-vor-„Mehr lesen" entscheidet (54).
+- [SproutSocial – Social Media Character Counter](https://sproutsocial.com/insights/social-media-character-counter/) — Tool + Best-Practice-Tabelle (54).
+- [PickBlend – Character Limits 2026 Complete Guide](https://pickblend.com/blog/character-limits-for-every-platform-2026) — Plattform-Übersicht inklusive Stories (54).
+- Kontext aus Session 19: Hashtag-Counts: IG 3–5, FB 1–2, GBP 0, LinkedIn 3–5, WhatsApp-Status 0 — auch hier wieder bestätigt.
+
 ### Review-Request-Best-Practices (Code-Session 53)
 - [Apptoto – SMS Review Requests: 18 Templates That Get Results](https://www.apptoto.com/best-practices/sms-review-requests) — SMS 34 % Antwortrate vs. 4,2 % E-Mail (53).
 - [Embed My Reviews – How to Get More Google Reviews](https://www.embedmyreviews.com/resources/how-to-get-more-google-reviews/) — Timing-Faustregeln (innerhalb 24 h, mid-morning/early-evening) (53).
 - [Birdeye – Google review templates](https://birdeye.com/blog/google-review-template/) — Tonalitäts-Best-Practice + Direkt-Link-Pflicht (53).
 - [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
 - [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
+
+### File-Upload-UX-Pattern (Code-Session 58)
+- [MUI – Image List Component](https://mui.com/material-ui/react-image-list/) — Standard-Pattern „Bild pro Card" mit Vorschau-Tile + Replace-Button (58).
+- [Eleken – File Upload UI Tips](https://www.eleken.co/blog-posts/file-upload-ui) — Klare Dropzone, Format-Hint, Replace-Action im selben Modul (58).
+- [ReactScript – React File Upload Components 2026](https://reactscript.com/best-file-upload/) — Render-Props-Pattern für UI-Wiederverwendung (58).
+
+### Storage-Move für Slug-Wechsel (Code-Session 57)
+- [Supabase JS – storage-from-move](https://supabase.com/docs/reference/javascript/storage-from-move) — `move(fromPath, toPath)` ist offizielle Rename-API; atomar, gleiche Bucket-Restriktion (57).
+- [Supabase Docs – Storage Folder-Operations & Hierarchical RLS](https://supabase.com/docs/guides/troubleshooting/supabase-storage-inefficient-folder-operations-and-hierarchical-rls-challenges-b05a4d) — Storage hat keine native Folder-Move-API; pro Datei einzeln ist Standard-Pattern (57).
+- [supabase Discussion #19418 – Rename folder with supabase-js](https://github.com/orgs/supabase/discussions/19418) — bestätigt: 2026 noch keine Folder-API, Loop über Files (57).
+- [supabase storage-js Issue #49 – Bucket-Rename](https://github.com/supabase/storage-js/issues/49) — Bucket-Rename existiert noch nicht (relevant nur als Negativ-Information, 57).
+
+### Storage-Cleanup-Patterns + Dependabot-Vulns (Code-Session 56)
+- [Supabase Docs – Delete Objects](https://supabase.com/docs/guides/storage/management/delete-objects) — Storage-API für DELETE; SQL-only-DELETE produziert orphans (56).
+- [supabase Discussion #36755 – Feature Request: Native Storage File Deletion Trigger on Row Delete](https://github.com/orgs/supabase/discussions/36755) — bestätigt: native DB→Storage-Trigger existiert 2026 noch nicht, Application-Cleanup ist Pflicht (56).
+- [supabase Discussion #34254 – What to do when storage objects are orphaned](https://github.com/orgs/supabase/discussions/34254) — Best-Effort-Cleanup-Pattern (56).
+- [Supabase JS – storage.from.remove](https://supabase.com/docs/reference/javascript/storage-from-remove) — Bulk-Remove via `.remove([paths])` (56).
+- [GHSA-qx2v-qp2m-jg93 – PostCSS XSS via Unescaped `</style>`](https://github.com/advisories/GHSA-qx2v-qp2m-jg93) — Dependabot moderate, CVSS 6.1, fix in postcss 8.5.10+ (56).
+- [GHSA-xffm-g5w8-qvg7 – @eslint/plugin-kit ReDoS](https://github.com/advisories/GHSA-xffm-g5w8-qvg7) — fix transitive in eslint 9.39.4+ (56).
+- npm `overrides` mit `"$dep"`-Self-Reference: Hebt transitive Versionen auf die direkte Top-Level-Version, ohne separate Version-Pinnung (npm-Cli-Doku, 56).
+
+### Bulk-Sync Services + RLS-driven Diff (Code-Session 55)
+- [Supabase JS – upsert with onConflict](https://supabase.com/docs/reference/javascript/upsert) — `onConflict: "id"` für UPDATE-bei-Match-INSERT-sonst (55).
+- [Supabase Docs – Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security) — Policy mit USING + WITH CHECK; gleiche Policy deckt UPDATE OLD + NEW row (55).
+- [PostgREST – Bulk Operations](https://docs.postgrest.org/en/stable/references/api/tables_views.html#bulk-operations) — UPSERT als Bulk-INSERT mit ON CONFLICT, kein BEGIN/COMMIT erforderlich (55).
+- [GitHub Discussion supabase/supabase-js #1574 – No transactions in supabase-js v2](https://github.com/supabase/supabase-js/discussions/1574) — Bestätigt: keine Transaktionen, deshalb 2-Statement-Strategie (UPSERT + DELETE) (55).
+- [RFC 4122 – UUID v4 specification](https://datatracker.ietf.org/doc/html/rfc4122#section-4.4) — Variant-Bits `[89ab]`, Version-Bits `[1-5]` für `looksLikeDbUuid`-Regex (55).
+- [Postgres Docs – gen_random_uuid()](https://www.postgresql.org/docs/current/functions-uuid.html) — Server-side UUID-Generierung (55).
 
 ### Slug-Wechsel + Publish-Toggle (Code-Session 52)
 - [Supabase Docs – Use Supabase with Next.js](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs) — Standard-Update-Pattern via `.update().eq()` (52).

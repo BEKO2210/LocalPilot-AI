@@ -202,8 +202,72 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Copy-to-Clipboard pro Variante. Pure Template-Helper mit
   ~46 Asserts (Substitution, Phone-Cleaning für Kanäle,
   URL-Bau für 4 Channel-Typen, Subject/Body-Encoding).
-- 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
-  durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
+- 54: Social-Media-UI scharf ✅. Symmetrisch zu Reviews:
+  Plattform-Tabs (5: IG/FB/GBP/LinkedIn/WhatsApp-Status), 8
+  Goal-Pills (more_appointments, promote_offer, new_service,
+  collect_review, seasonal, before_after, trust_building,
+  team_intro), Length-Picker (Kurz/Mittel/Lang), Topic-Input
+  + Hashtags-On/Off. Mock-Provider liefert shortPost +
+  longPost + hashtags + imageIdea + cta — alles mit
+  Copy-Buttons. Plattform-spezifische Char-Counter mit
+  Truncation-Warnung (IG 125, FB 480, LinkedIn 210, GBP 250)
+  und Hashtag-Empfehlungs-Status (IG/LI 3–5, FB 1–2, GBP/WA 0).
+  Pure Format-Helper mit ~40 Asserts (Labels, Limits,
+  assessLength, composeFinalPost mit Tag-Normalisierung +
+  case-insensitive Dedupe, adviseHashtagCount).
+- 55: Schreibpfad in DB für `ServicesEditForm` ✅.
+  Symmetrisch zu Session 50, aber Bulk-Sync statt flat-PATCH.
+  `PUT /api/businesses/[slug]/services` mit Auth-Gate +
+  RLS-only. Pseudo-IDs (`svc-<slug>-<random>`) werden
+  serverseitig durch `crypto.randomUUID()` ersetzt; echte
+  UUIDs (Migration 0007 RLS-Variant `[89ab]`, Version `[1-5]`)
+  per `looksLikeDbUuid` erkannt → UPDATE-Pfad. Server berechnet
+  Diff: `existingIds - incomingIds → DELETE`, Rest → UPSERT
+  (`onConflict: "id"`). Lead-FK-Cascade auf `null` bewahrt
+  Lead-Daten. Pure Submit-Helper `services-update.ts` mit
+  6-stufigem Result + ~40 Asserts. Form mit drei differenzierten
+  Bannern (server/local/error) + `submitting`-State. **Damit
+  ist der Hauptinhalt der Public-Site (Friseur-Leistungen,
+  Werkstatt-Pakete) endgültig self-service-fähig.**
+- 56: Storage-Cleanup für Service-Bilder ✅. Beim Bulk-DELETE
+  von Services werden orphan `image_url`-Werte aus dem
+  `business-images`-Bucket entfernt. Pure Helper
+  `storage-cleanup.ts` (parametrisiert auf `(urls, bucket)`,
+  ~30 Asserts) ist generisch wiederverwendbar — Slug-Wechsel-
+  Cleanup und ein zukünftiges Service-Image-Upload-UI nutzen
+  ihn ohne Anpassung. Storage-Errors sind graceful: DB-DELETE
+  läuft trotzdem (`console.warn` + `imagesFailed`-Count im
+  Response). Außerdem als separater Commit: postcss-XSS-Fix
+  (Dependabot moderate) + eslint-ReDoS-Fix (low) durch
+  semver-minor-Bumps; `npm audit` ist nach diesem Commit auf
+  0 Vulnerabilities.
+- 57: Slug-Wechsel-Storage-Migration ✅. Pattern aus Session 56
+  weitergedreht: bei `PATCH /api/businesses/<slug>/settings`
+  mit `newSlug` werden Logo + Hero im `business-images`-Bucket
+  von `<old-slug>/...` auf `<new-slug>/...` per atomarem
+  `storage.move()` umbenannt; neue Public-URLs werden in
+  einem zweiten DB-UPDATE eingespielt. Two-Phase-Pattern:
+  UPDATE 1 (Slug, fängt 23505 → 409) → Move → UPDATE 2 (URLs).
+  Move-Failure setzt URL auf null (kein 404-Bild auf der
+  Public-Site). `storage-cleanup.ts` erweitert um
+  `rewritePathPrefix` (mit strikter `/`-Boundary), `moveStoragePath`,
+  `buildPublicUrl` (~22 neue Asserts on top, gesamt 52).
+  Damit ist Storage-Hygiene **vollständig**: DELETE räumt
+  auf (56), Slug-Wechsel migriert (57).
+- 58: Service-Image-Upload-UI ✅. ServiceCard bekommt einen
+  `ImageUploadField`-Slot mit UUID-Gating (Pseudo-IDs
+  blockiert, echte UUID v4 sofort funktional). Upload-Route
+  akzeptiert `kind="service"` mit Pflicht-`serviceId`
+  (Path-Injection-Schutz via UUID-Regex). Pfad-Konvention
+  `<slug>/services/<serviceId>.<ext>` im selben
+  `business-images`-Bucket — Storage-Cleanup beim DELETE
+  (56) und Slug-Wechsel-Move (57) sind bereits zuständig.
+  `generateNewServiceId(slug)` umgestellt von Pseudo-ID auf
+  echte UUID v4 (`crypto.randomUUID`), damit neu hinzugefügte
+  Services sofort Bild-Upload-fähig sind.
+- 41+: Service-Bilder beim Slug-Wechsel mit-migrieren
+  (Folge-Session 59), Backup-Policy, Seed-Skript für
+  Demo-Daten.
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant

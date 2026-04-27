@@ -18,7 +18,7 @@
  * brauchen, kommt der Pfad mit zusätzlicher Sanitize-Schicht.
  */
 
-export type ImageKind = "logo" | "cover";
+export type ImageKind = "logo" | "cover" | "service";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_MIMES = ["image/png", "image/jpeg", "image/webp"] as const;
@@ -69,13 +69,31 @@ export function extensionForMime(mime: string): string {
  * Baut den Storage-Pfad relativ zum Bucket. Slug-basiert für
  * lesbare CDN-URLs; Re-Uploads gleicher Slug+Kind überschreiben
  * dieselbe Datei (Server nutzt `upsert: true`).
+ *
+ * Konventionen:
+ *   - `logo` / `cover` → `<slug>/<kind>.<ext>` (eine Datei pro Betrieb)
+ *   - `service`        → `<slug>/services/<serviceId>.<ext>`
+ *     (eine Datei pro Service; `serviceId` muss eine echte UUID
+ *     sein, sonst landet die Datei unter einem Pseudo-Pfad und
+ *     wird beim ersten Speichern zur Waise — UI gated den Upload
+ *     entsprechend).
  */
 export function buildStoragePath(
   slug: string,
   kind: ImageKind,
   mime: string,
+  options: { readonly serviceId?: string } = {},
 ): string {
-  return `${slug}/${kind}.${extensionForMime(mime)}`;
+  const ext = extensionForMime(mime);
+  if (kind === "service") {
+    if (!options.serviceId) {
+      throw new Error(
+        "buildStoragePath: serviceId ist Pflicht für kind='service'.",
+      );
+    }
+    return `${slug}/services/${options.serviceId}.${ext}`;
+  }
+  return `${slug}/${kind}.${ext}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,21 +125,37 @@ interface ApiErrorBody {
   readonly message?: string;
 }
 
+export interface UploadOptions {
+  /** Pflicht für kind="service" — UUID des Service-Datensatzes. */
+  readonly serviceId?: string;
+}
+
 export async function submitImageUpload(
   slug: string,
   kind: ImageKind,
   file: File,
   deps: SubmitDeps = {},
+  options: UploadOptions = {},
 ): Promise<ImageUploadResult> {
   // Client-side Pre-Check — spart einen Roundtrip bei offensichtlich
   // ungültigen Dateien. Server validiert authoritative.
   const v = validateImageFile(file);
   if (!v.ok) return { kind: "validation", message: v.message };
 
+  if (kind === "service" && !options.serviceId) {
+    return {
+      kind: "validation",
+      message: "serviceId fehlt für Service-Bild-Upload.",
+    };
+  }
+
   const fetchImpl = deps.fetchImpl ?? fetch;
   const formData = new FormData();
   formData.append("kind", kind);
   formData.append("file", file);
+  if (options.serviceId) {
+    formData.append("serviceId", options.serviceId);
+  }
 
   let response: Response;
   try {

@@ -118,6 +118,28 @@ async function main() {
   const webpPath = buildStoragePath("xyz", "logo", "image/webp");
   assert(webpPath === "xyz/logo.webp", "WebP-Pfad");
 
+  // Service-Pfad mit serviceId (Code-Session 58)
+  const servicePath = buildStoragePath(
+    "studio-haarlinie",
+    "service",
+    "image/png",
+    { serviceId: "22222222-2222-4222-8222-222222222222" },
+  );
+  assert(
+    servicePath ===
+      "studio-haarlinie/services/22222222-2222-4222-8222-222222222222.png",
+    "Service-Pfad mit serviceId",
+  );
+
+  // Service-Kind ohne serviceId → Throw
+  let threw = false;
+  try {
+    buildStoragePath("xyz", "service", "image/png");
+  } catch {
+    threw = true;
+  }
+  assert(threw, "service ohne serviceId → Throw");
+
   // ---------------------------------------------------------------------
   // 4. Submit: 200 → server
   // ---------------------------------------------------------------------
@@ -278,7 +300,63 @@ async function main() {
   const dump = JSON.stringify(rThrow);
   assert(!dump.includes("supabase.co"), "kein zufälliger URL-Leak im fail-Pfad");
 
-  console.log("business-image-upload smoketest ✅ (~35 Asserts)");
+  // ---------------------------------------------------------------------
+  // 13. Service-Kind: serviceId fehlt → client-validation
+  // ---------------------------------------------------------------------
+  let svcServerHit = false;
+  const svcSentinel: typeof fetch = async () => {
+    svcServerHit = true;
+    return new Response("{}", { status: 200 });
+  };
+  const rNoServiceId = await submitImageUpload(
+    "x",
+    "service",
+    validFile,
+    { fetchImpl: svcSentinel },
+  );
+  assert(
+    rNoServiceId.kind === "validation",
+    "service ohne serviceId → client-validation",
+  );
+  assert(!svcServerHit, "kein fetch ohne serviceId");
+
+  // ---------------------------------------------------------------------
+  // 14. Service-Kind: serviceId wird ins FormData gepackt
+  // ---------------------------------------------------------------------
+  let svcFormDataKeys: string[] = [];
+  let svcServiceIdValue: FormDataEntryValue | null = null;
+  const svcFetch: typeof fetch = async (_input, init) => {
+    if (init?.body instanceof FormData) {
+      svcFormDataKeys = Array.from(init.body.keys());
+      svcServiceIdValue = init.body.get("serviceId");
+    }
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        publicUrl: "https://test/storage/v1/object/public/business-images/x/services/uuid.png",
+        path: "x/services/uuid.png",
+      }),
+      { status: 200 },
+    );
+  };
+  const rWithSvc = await submitImageUpload(
+    "x",
+    "service",
+    validFile,
+    { fetchImpl: svcFetch },
+    { serviceId: "22222222-2222-4222-8222-222222222222" },
+  );
+  assert(rWithSvc.kind === "server", "service mit serviceId → server");
+  assert(
+    svcFormDataKeys.includes("serviceId"),
+    "FormData enthält serviceId-Feld",
+  );
+  assert(
+    svcServiceIdValue === "22222222-2222-4222-8222-222222222222",
+    "serviceId-Wert korrekt durchgereicht",
+  );
+
+  console.log("business-image-upload smoketest ✅ (~40 Asserts)");
 }
 
 void main().catch((err) => {
@@ -286,4 +364,4 @@ void main().catch((err) => {
   process.exit(1);
 });
 
-export const __BUSINESS_IMAGE_UPLOAD_SMOKETEST__ = { totalAssertions: 35 };
+export const __BUSINESS_IMAGE_UPLOAD_SMOKETEST__ = { totalAssertions: 40 };

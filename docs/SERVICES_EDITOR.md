@@ -156,3 +156,24 @@ produktive Sektionen (Übersicht, Betriebsdaten, Leistungen).
 - **Session 19** – Repository-Layer ersetzt
   `services-overrides.ts` transparent (Supabase-Tabelle pro Service).
   Der Editor selbst bleibt unverändert.
+- **Session 55** – Schreibpfad in DB: Form ruft beim Speichern
+  jetzt `PUT /api/businesses/<slug>/services` mit der gesamten
+  Liste auf. Server berechnet Diff (UPDATE / INSERT / DELETE)
+  über RLS-only Server-Auth-Client. Bei 404 / Offline /
+  Static-Build fällt das Form transparent auf den
+  localStorage-Pfad zurück. Differenzierte Banner zeigen
+  „in der DB gespeichert" (emerald, mit Counts) vs. „lokal
+  gespeichert (Demo)" (amber).
+- **Session 56** – Storage-Cleanup beim Bulk-DELETE: orphan
+  `image_url`-Werte werden aus dem `business-images`-Bucket
+  entfernt. Best-effort, blockiert den DB-DELETE nicht.
+- **Session 58** – Service-Image-Upload-UI: ServiceCard
+  rendert `ImageUploadField` (Vorschau-Tile + Hochladen/
+  Ersetzen/Entfernen). Pfad-Konvention
+  `<slug>/services/<serviceId>.<ext>`. Mit UUID-Gating:
+  Bild-Upload nur möglich, wenn die Service-ID eine echte
+  UUID v4 ist; bei Demo-Daten (Pseudo-IDs) zeigt das Feld
+  einen amber-Hint, der zum ersten Save auffordert. Neu
+  angelegte Services bekommen ab Session 58 sofort eine
+  echte UUID via `crypto.randomUUID()` und sind direkt
+  Bild-Upload-fähig.
