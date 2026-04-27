@@ -4,10 +4,9 @@ import { LinkButton } from "@/components/ui/button";
 
 const NAV = [
   { href: "/#loesung", label: "Lösung" },
-  { href: "/#branchen", label: "Branchen" },
-  { href: "/#pakete", label: "Pakete" },
+  { href: "/demo", label: "Demos" },
+  { href: "/pricing", label: "Pakete" },
   { href: "/themes", label: "Designs" },
-  { href: "/demo", label: "Demo" },
   { href: "/#faq", label: "FAQ" },
 ];
 
@@ -35,11 +34,11 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <LinkButton href="/#kontakt" variant="outline" size="sm" className="hidden sm:inline-flex">
-            Beratung anfragen
+          <LinkButton href="/demo" variant="outline" size="sm" className="hidden sm:inline-flex">
+            Live-Demos
           </LinkButton>
-          <LinkButton href="/#pakete" size="sm">
-            Pakete ansehen
+          <LinkButton href="/pricing" size="sm">
+            Pakete
           </LinkButton>
         </div>
       </Container>

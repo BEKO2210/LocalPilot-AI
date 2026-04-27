@@ -7,7 +7,67 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 8+: Marketing-Erweiterungen, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+- Session 9+: Dashboard-Grundstruktur, Betriebsdaten, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.8.0] – Session 8 – 2026-04-27
+
+### Added
+- **Eigene `/pricing`-Seite** mit:
+  - PricingGrid (Bronze/Silber/Gold-Karten),
+  - **`<LimitsTable>`** – numerische Limits Bronze/Silber/Gold im Vergleich,
+    nutzt `formatLimit()` für „unbegrenzt"-Werte,
+  - **`<FeatureComparisonMatrix>`** – 31 Capabilities × 3 Tiers, gruppiert
+    nach `FeatureGroup` (Website / Design / Anfragen / Bewertungen / KI /
+    Social / Verwaltung). Reihen aus `FEATURE_LABELS`, Werte über
+    `hasFeature()` – keine Doppelpflege, keine Drift.
+  - Pricing-spezifische FAQ (Mindestlaufzeit, Upgrade/Downgrade, MwSt.,
+    Kündigung, KI-Pflicht, Platin-Status),
+  - Schluss-CTA mit Beratung-Mail + Demo-Link + 4-Schritte-Onboarding-Karte.
+- **Live-Demo-Showcase** auf der Startseite (`<DemoShowcase>`) –
+  6 Mini-Karten mit `<ThemeProvider>`-Vorschau, jede als aktiver Link
+  zur Public Site.
+- **`<ValueRoi>`** – 4 ROI-Karten mit Mini-„Proof-Label" (z. B. „Eingebaut:
+  Bewertungs-Booster ab Bronze"), gibt jedem Nutzen einen technischen Beleg.
+- **`<Testimonials>`** – Beispiel-Stimmen aus den Demo-Personas (Lena H.,
+  Stefan M., Sophie L., Petra W.). Footnote macht klar: keine echten
+  Kund:innen.
+- **`<OnboardingPromise>`** – „In 4 Schritten startklar" mit zwei finalen
+  CTAs (Pakete vergleichen / Demos ansehen).
+- `docs/MARKETING.md` mit Funnel-Tabelle, Komponenten-Übersicht,
+  Sprache- & Compliance-Regeln und Erweiterungs-Checkliste.
+
+### Changed
+- **Hero** zeigt jetzt zwei aktive CTAs: „Live-Demos ansehen" (primary)
+  und „Pakete vergleichen" (outline) statt der bisherigen Anker-Links.
+- **PricingTeaser** verlinkt unten zentral auf `/pricing` für die
+  vollständige Funktions-Vergleichsliste; CTA der Karten geht ebenfalls
+  nach `/pricing`.
+- **IndustriesGrid**: Branchenkarten mit Demo-Preset werden zu aktiven
+  Links auf die jeweilige Public Site (Friseur, Werkstatt, Reinigung,
+  Kosmetik, Handwerk, Fahrschule). Restliche Karten bleiben statisch
+  (Demos noch nicht hinterlegt).
+- **CtaContact** ist konversionsstärker formuliert: „Sehen Sie es live
+  oder schreiben Sie uns direkt" + zwei Direkt-Kontaktwege (E-Mail,
+  Demo-Telefonnummer) statt der vorigen Onboarding-Liste, die jetzt in
+  die eigene `<OnboardingPromise>`-Sektion gewandert ist.
+- **Site-Header-Nav** vereinfacht: Lösung / Demos / Pakete / Designs /
+  FAQ. Header-CTAs zeigen „Live-Demos" + „Pakete" und führen zu
+  `/demo` bzw. `/pricing`.
+- **Startseite** als 11-Schritt-Funnel komponiert (Hero → Problem/Lösung →
+  ROI → Branchen → Demo-Showcase → Pakete-Teaser → Onboarding → Vorteile →
+  Stimmen → FAQ → Schluss-CTA).
+
+### Notes
+- Build:static produziert jetzt **13 statisch prerenderte Routen**:
+  `/`, `/_not-found`, `/demo`, `/pricing`, `/themes`,
+  `/site/<6 slugs>`. Die neuen Sektionen sind reine Server Components,
+  kein Client-JS.
+- Branchenneutralität gewahrt: Pricing-Tabellen lesen `FEATURE_KEYS` /
+  `FEATURE_LABELS`, kein Branchen-Hardcoding. Demo-Showcase nutzt
+  vorhandene Mock-Businesses.
+- Klar gekennzeichnete Demo-Inhalte: Telefon `+49 30 9000 9999`
+  (Demo-Nummer), Testimonials als „Beispiel-Stimmen aus der Demo-Welt"
+  ausgezeichnet.
 
 ## [0.7.0] – Session 7 – 2026-04-27
 

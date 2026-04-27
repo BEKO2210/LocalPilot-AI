@@ -278,40 +278,58 @@ Konvention für eine neue Sektion:
 3. switch-Case in `src/app/site/[slug]/page.tsx` ergänzen.
 4. ggf. `RECOMMENDED_SECTIONS` in `src/types/common.ts` erweitern.
 
-## Stand nach Session 7
+## Marketing-Funnel (ab Session 8)
 
-- App Router läuft, `/`, `/themes`, `/demo` und `/site/<6 slugs>`
-  rendern statisch.
+- **`/` als 11-Schritt-Funnel**: Hero → Problem/Lösung → ROI → Branchen
+  (mit Demo-Links) → Demo-Showcase → Pakete-Teaser → Onboarding → Vorteile
+  → Stimmen → FAQ → Schluss-CTA. Jede Sektion ist eine eigene Komponente
+  unter `src/components/marketing/`.
+- **`/pricing`** als eigene Tiefen-Seite mit `<PricingGrid>`,
+  `<LimitsTable>`, `<FeatureComparisonMatrix>` (alle aus
+  `@/components/pricing`). Tabellen lesen aus `FEATURE_KEYS`/
+  `FEATURE_LABELS`/`hasFeature()` – keine Doppelpflege.
+- Header-Nav vereinfacht: Lösung / Demos / Pakete / Designs / FAQ.
+  Header-CTAs gehen zu `/demo` und `/pricing`.
+- Demo-Daten werden im Marketing wiederverwendet:
+  `<DemoShowcase>` rendert pro Mock-Business eine Themed-Vorschau,
+  `<IndustriesGrid>` verlinkt vorhandene Demos.
+- Compliance: Telefon `+49 30 9000 9999` als Demo-Nummer markiert,
+  Testimonials klar als Beispiel-Stimmen aus der Demo-Welt ausgewiesen.
+
+## Stand nach Session 8
+
+- App Router läuft, `/`, `/pricing`, `/themes`, `/demo` und
+  `/site/<6 slugs>` rendern statisch (**13 prerendete Routen**).
 - Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber
   (Static und SSR).
 - Tailwind & Brand-Tokens stehen, Theme-Tokens als CSS-Variablen verfügbar.
-- Datenmodelle vollständig, Pricing-System produktiv.
+- Datenmodelle vollständig, Pricing-System produktiv – Marketing-Tabellen
+  greifen direkt auf die Code-Konfiguration zu.
 - 13 Branchen-Presets, 10 Themes registriert und validiert.
 - 6 Demo-Betriebe vollständig validiert; jeder hat eine eigene
-  Public Site mit individuellem Theme.
+  Public Site mit individuellem Theme und ist im Marketing als Live-Demo
+  verlinkt.
 - GitHub-Pages-Deployment automatisiert; lokal über `build:static`.
 - `<LinkButton>` ist basePath-aware (interne Pfade via `next/link`).
 - Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
-  `npm run build:static`. Build:static erzeugt aktuell **12 prerenderte
-  Routen**.
+  `npm run build:static`.
 
 ## Offene technische Punkte
 
-- Marketing-Erweiterungen (Session 8) – tiefere Verkaufstexte,
-  Testimonials der Beta-Kund:innen, ggf. /pricing als eigene Seite.
 - Dashboard (Session 9+) – sobald Interaktivität nötig, prüfen ob als
   Client-SPA innerhalb des Static Exports ausreichend.
 - Lead-System (Session 12) – ersetzt die Formular-Vorschau in
-  `<PublicContact>` durch eine echte Erfassung.
+  `<PublicContact>` und die Demo-Telefonnummer im `<CtaContact>` durch
+  eine echte Erfassung (Server Action / API).
 - AI-Provider-Adapter (Session 13). Interface steht.
 - Repository-Layer / Mock vs. Supabase (Session 19) – Mock-Layer ist
   bereits so gekapselt (`getMockBusinessBySlug` usw.), dass ein
   späterer Tausch gegen Supabase ohne UI-Änderungen möglich bleibt.
 - Vitest-Setup (Session 20). Bis dahin tragen `tsc --noEmit` plus die
   `src/tests/*.test.ts`-Smoketests die Sicherheit.
-- Image-Hosting/-Optimierung – aktuell stehen `logoUrl`/`coverImageUrl`
-  optional im Schema, werden aber noch nicht gerendert. Sobald sie kommen,
-  müssen sie via `next/image` mit `unoptimized: true` für Static Export
-  laufen.
+- Image-Hosting/-Optimierung – `logoUrl`/`coverImageUrl` optional im
+  Schema, werden aber noch nicht gerendert. Sobald sie kommen, via
+  `next/image` mit `unoptimized: true` für Static Export.
+- Analytics/Tracking für den Marketing-Funnel (Session 19+).
 - Sobald API-Routen oder Server Actions kommen: Vercel als
   Production-Target ergänzen, GitHub Pages bleibt als Showcase.

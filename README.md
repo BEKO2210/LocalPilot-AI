@@ -23,8 +23,8 @@ Autowerkstatt bis zur Reinigungsfirma – und ist im Kern bewusst branchenneutra
 - Bronze/Silber/Gold-Pakete als echte Produktlogik (Feature-Locks im UI)
 - Branchen-Presets (Friseur, Werkstatt, Reinigung, Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop, …)
 
-Aktueller Stand: **Session 7** – Public Site Generator unter `/site/[slug]`, alle 6 Demo-Betriebe als statisch prerendierte Sites mit Theme-Provider, Mobile-CTA-Bar und SEO pro Betrieb.
-Weitere Funktionen folgen in den Sessions 8–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
+Aktueller Stand: **Session 8** – Marketing-Funnel ausgebaut, eigene `/pricing`-Seite mit Feature-Vergleichsmatrix, Live-Demo-Showcase auf der Startseite.
+Weitere Funktionen folgen in den Sessions 9–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
 
 ---
 
@@ -190,6 +190,7 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - [`docs/THEMES.md`](./docs/THEMES.md) – Theme-System, CSS-Variablen, Tailwind-Integration
 - [`docs/MOCK_DATA.md`](./docs/MOCK_DATA.md) – Demo-Betriebe, Aggregation, Daten-Hygiene
 - [`docs/PUBLIC_SITE.md`](./docs/PUBLIC_SITE.md) – Public Site Generator, Sektionen, SEO
+- [`docs/MARKETING.md`](./docs/MARKETING.md) – Marketing-Funnel, /pricing-Aufbau, Konversionspfad
 - [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) – GitHub Pages und Vercel
 - [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) – Was wurde in welcher Session gebaut?
 - [`CHANGELOG.md`](./CHANGELOG.md) – Versionshistorie
@@ -218,7 +219,10 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
   Live-Übersicht unter `/demo`
 - ✅ **Public Site Generator** unter `/site/[slug]` mit 13 themed Sektionen,
   Mobile-CTA-Bar, business-spezifischer SEO und 6 statisch prerenderten Slugs
+- ✅ **Marketing-Funnel** auf der Startseite (11-Schritt-Funnel), eigene
+  `/pricing`-Seite mit Feature-Vergleichsmatrix und Limits-Tabelle,
+  Live-Demo-Showcase, Beispiel-Stimmen, ROI-Sektion
 - ✅ **GitHub-Pages-Deployment** über Workflow `.github/workflows/deploy.yml`
   mit konditionellem Static-Export
 - ⏳ Dashboard, KI-System –
-  folgen in Sessions 8 bis 22
+  folgen in Sessions 9 bis 22

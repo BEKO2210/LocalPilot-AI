@@ -907,12 +907,139 @@ des Telefons; WhatsApp öffnet die App.
 
 ### 6. Was ist der nächste empfohlene Run?
 
-**Session 8 – Marketing-Landingpage erweitern.**
+**Session 8 – Marketing-Landingpage erweitern.** (s. u.)
 
-Die Marketing-Seite (`/`) hat aktuell die wichtigsten Verkaufselemente.
-Session 8 vertieft das: prominentere Demo-Verlinkung (z. B. Karten zu
-allen 6 Public Sites), eigene `/pricing`-Seite, Branchenkarten mit
-direktem Sprung zur Demo, echte Pakete-Vergleichs-Matrix und
-verkaufsorientierte Texte (Problem-/Lösung-Tiefe, ROI-Argumente,
-Onboarding-Versprechen). Optional: erste Testimonials und ein
-„So sieht es bei Ihnen aus"-Wechsler.
+---
+
+## Session 8 – Marketing-Landingpage erweitern
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- **Eigene `/pricing`-Seite** mit:
+  - PricingGrid (Bronze/Silber/Gold-Karten),
+  - **`<LimitsTable>`** – numerische Limits Bronze/Silber/Gold im
+    Vergleich, nutzt `formatLimit()` für „unbegrenzt"-Werte,
+  - **`<FeatureComparisonMatrix>`** – 31 Capabilities × 3 Tiers,
+    gruppiert nach `FeatureGroup` (Website / Design / Anfragen /
+    Bewertungen / KI / Social / Verwaltung). Reihen aus
+    `FEATURE_LABELS`, Werte über `hasFeature()` – Single Source of Truth.
+  - Pricing-spezifische FAQ (Mindestlaufzeit, Upgrade/Downgrade, MwSt.,
+    Kündigung, KI-Pflicht, Platin-Status),
+  - Schluss-CTA mit Beratung-Mail + Demo-Link + 4-Schritte-Onboarding-Karte.
+- **`<DemoShowcase>`** auf der Startseite – 6 Mini-Karten mit
+  `<ThemeProvider>`-Vorschau, jede aktiv als Link zur Public Site.
+- **`<ValueRoi>`** – 4 ROI-Karten mit „Proof-Label" (z. B. „Eingebaut:
+  Bewertungs-Booster ab Bronze").
+- **`<Testimonials>`** – Beispiel-Stimmen aus den Demo-Personas
+  (Lena H., Stefan M., Sophie L., Petra W.). Footnote macht klar:
+  keine echten Kund:innen.
+- **`<OnboardingPromise>`** – „In 4 Schritten startklar" mit zwei
+  finalen CTAs (Pakete vergleichen / Demos ansehen).
+- **Hero** mit zwei aktiven CTAs („Live-Demos ansehen" + „Pakete
+  vergleichen").
+- **PricingTeaser** verlinkt zentral auf `/pricing`.
+- **IndustriesGrid** – Branchen-Karten mit Demo-Preset werden zu aktiven
+  Links auf die jeweilige Public Site (Friseur → studio-haarlinie,
+  Werkstatt → autoservice-mueller, Reinigung → glanzwerk-reinigung,
+  Kosmetik → beauty-atelier, Handwerk → meisterbau-schneider,
+  Fahrschule → fahrschule-stadtmitte).
+- **CtaContact** ist konversionsstärker formuliert: zwei Direkt-Kontakte
+  (E-Mail, Demo-Telefonnummer) + Demo/Pakete-Buttons.
+- **Site-Header-Nav** vereinfacht: Lösung / Demos / Pakete / Designs /
+  FAQ. Header-CTAs zeigen „Live-Demos" + „Pakete".
+- **Startseite** als 11-Schritt-Funnel komponiert (Hero → Problem/Lösung
+  → ROI → Branchen → Demo-Showcase → Pakete-Teaser → Onboarding →
+  Vorteile → Stimmen → FAQ → Schluss-CTA).
+- `docs/MARKETING.md` mit Funnel-Tabelle, Komponenten-Übersicht,
+  Sprache- & Compliance-Regeln und Erweiterungs-Checkliste.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (8 Dateien):
+- `src/app/pricing/page.tsx`
+- `src/components/pricing/feature-comparison-matrix.tsx`
+- `src/components/pricing/limits-table.tsx`
+- `src/components/marketing/demo-showcase.tsx`
+- `src/components/marketing/value-roi.tsx`
+- `src/components/marketing/testimonials.tsx`
+- `src/components/marketing/onboarding-promise.tsx`
+- `docs/MARKETING.md`
+
+Geändert:
+- `src/components/marketing/{hero,pricing-teaser,industries,cta-contact}.tsx`
+- `src/components/layout/site-header.tsx` (Nav + Header-CTAs)
+- `src/components/pricing/index.ts` (neue Barrel-Exporte)
+- `src/app/page.tsx` (11-Schritt-Funnel-Reassembly)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck       # tsc --noEmit + Smoketests
+npm run lint            # 0 warnings/errors
+npm run build           # SSR-Build
+npm run build:static    # Static Export, jetzt 13 prerendete Routen
+npm run dev             # http://localhost:3000 + /pricing
+```
+
+Live-Smoketest:
+
+```bash
+# Startseite – muss alle neuen Funnel-Sektionen enthalten:
+curl -s http://localhost:3000/ | grep -oE '(Live-Demos ansehen|Was bringt das|Sehen Sie, wie|In 4 Schritten startklar|Stimmen)' | sort -u
+
+# Pricing-Seite – muss Matrix und Limits enthalten:
+curl -s http://localhost:3000/pricing | grep -oE '(Wie viel ist enthalten|Was kann welches Paket|KI-Texte für die Website|Premium-Designs|Kampagnen-Generator)' | sort -u
+```
+
+Auf dem Handy: Hero-CTAs sind groß und übersichtlich. Demo-Karten der
+Showcase scrollen vertikal sauber. `/pricing`-Tabellen scrollen
+horizontal mit `overflow-x-auto`, Erste-Spalte ist sticky.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                    | Status                                                  |
+| -------------------------------------------- | ------------------------------------------------------- |
+| Produkt ist in 5 Minuten verständlich        | ✅ Hero → ROI → Demo-Showcase → Pakete – jeder Schritt klar |
+| Pakete sind klar                             | ✅ `/pricing` mit Matrix + Limits + Pricing-FAQ          |
+| Nutzen ist klar                              | ✅ `<ValueRoi>` mit Proof-Labels, `<Benefits>`           |
+| Zielgruppe versteht das Angebot              | ✅ `<IndustriesGrid>` mit Demo-Links + `<DemoShowcase>`  |
+| CTA sichtbar                                 | ✅ Hero, Pricing-Teaser, Onboarding, CtaContact – konsistent |
+| Marketing Hero                               | ✅ aktive CTAs, klare Headline                           |
+| Problem/Solution                             | ✅ vorhanden + ROI ergänzt                               |
+| Branchenübersicht                            | ✅ jetzt mit Demo-Links                                  |
+| Paketpreise Bronze/Silber/Gold               | ✅ Teaser + eigene `/pricing`-Seite                      |
+| Demo-Links                                   | ✅ Showcase, Industries, Header, Hero, CTA – überall    |
+| Vorteile                                     | ✅ `<ValueRoi>` + `<Benefits>` doppeln das Argument     |
+| FAQ                                          | ✅ Marketing-FAQ + Pricing-FAQ                          |
+| Kontaktformular                              | ✅ CTA-Sektion mit Mail + Telefon (Demo-Nummer)         |
+| Verkaufsorientierte Texte                    | ✅ ohne Buzzwords, mit Proof-Labels                     |
+| Seriöse Sprache                              | ✅ keine Garantien, keine Heilversprechen               |
+| Mobile Optimierung                           | ✅ Hero/Cards mobile-first, Tabellen scrollen horizontal |
+
+### 5. Was ist offen?
+
+- **Session 9** – Dashboard-Grundstruktur (`/dashboard`, Sidebar/Mobile
+  Nav, Übersicht, Paketstatus, offene Leads, Vorschau-Link).
+- **Session 12** – ersetzt die Demo-Telefonnummer im CtaContact durch
+  ein echtes Lead-System mit Server Action.
+- **Sessions 13–17** – KI-Texte können später Hero-Versionen für A/B-Tests
+  generieren.
+- **Session 22** – `docs/SALES.md` mit Vertriebsskripten, die auf den
+  Marketing-Sektionen basieren.
+- Optional: Tracking/Analytics einbauen (Session 19+), um den Funnel zu
+  messen.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 9 – Dashboard-Grundstruktur.**
+
+Route `/dashboard` mit Sidebar/Mobile-Navigation, Übersicht-Page (Paketstatus,
+offene Leads, Vorschau-Link auf eigene Public Site, Schnellaktionen,
+leere Zustände, Dashboard-Karten). Branchenneutrale Sprache („Anfragen"
+statt „Leads", „Inhalte" statt „Entities"). Static-Export-tauglich
+durch Server Components – falls später Interaktivität gebraucht wird,
+gezielt Client-Komponenten an die richtigen Stellen.
