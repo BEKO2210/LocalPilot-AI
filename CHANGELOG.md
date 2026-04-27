@@ -7,13 +7,73 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht)
-- Code-Session 17: Mock für `generateCustomerReply`.
 - Code-Session 18: Mock für `generateReviewRequest`.
 - Code-Session 19: Mock für `generateSocialPost`.
 - Code-Session 20: Mock für `generateOfferCampaign` (schließt Mock-Phase ab).
 - Code-Sessions 21–22: OpenAI-Provider scharf (mit Caching).
 - Code-Sessions 23–24: Anthropic-Provider scharf.
 - Code-Session 25: Cost-Tracking + Rate-Limit-UI.
+
+## [0.13.5] – Code-Session 17 – 2026-04-27
+
+### Added
+- **Mock-Provider `generateCustomerReply` ist scharf** (vierte von
+  sieben Mock-Methoden — atomarer Schritt unter dem
+  Session-Protokoll):
+  - `src/core/ai/providers/mock/customer-reply.ts` –
+    deterministische Implementierung mit drei Tonalitäten:
+    - **`short`** (1–2 Sätze, formelles „Sie"): „Guten Tag" +
+      Themen-Spiegel + nächster Schritt + „Beste Grüße,
+      {{businessName}}".
+    - **`friendly`** (3–4 Sätze, persönlich, „Sie"): „Hallo" +
+      Dank für Mirror + city-Bezug („wir freuen uns, dass Sie sich
+      an uns in {{city}} wenden") + nächster Schritt + Einladung
+      zur Rückfrage + „Herzliche Grüße, {{businessName}}".
+    - **`professional`** (3–4 Sätze, sachlich, „Sie"):
+      „Sehr geehrte Damen und Herren" + ausführlicher Dank mit
+      Branchenlabel-Bezug + nächster Schritt + Hinweis auf
+      Footer-Kontaktwege + „Mit freundlichen Grüßen,
+      {{businessName}}".
+  - **Themen-Erkennung** über Wortstamm-Regex, Reihenfolge nach
+    Häufigkeit und Priorität (Reklamation vor allgemeinem Problem,
+    Stornierung vor Termin):
+    - Reklamation/Beschwerde → „faire Lösung" zugesagt.
+    - Stornierung/Absage → Änderung übernommen.
+    - Termin/Buchung → Slots werden geprüft.
+    - Angebot/KVA → nachvollziehbares Angebot zugesagt.
+    - Preis/Kost → transparente Preisübersicht zugesagt.
+    - Öffnung/Sprechzeit → Verweis auf Startseite.
+    - Sonst: generischer Fallback („wir melden uns innerhalb eines
+      Werktags").
+  - **Spiegel-Phrasen** (z. B. „Ihre Terminanfrage", „Ihre
+    Frage zu den Preisen") werden in jede Anrede eingewoben, damit
+    die Antwort nachweislich auf die Nachricht reagiert.
+  - **Positive Sprache** ohne „leider"/„nicht" – entspricht
+    aktuellen 2026-Customer-Service-Best-Practices.
+  - Output gegen `CustomerReplyOutputSchema` validiert; `clamp`
+    schneidet bei überraschend langen Texten auf Wortgrenze.
+- `mock-provider.ts` komponiert die vierte Methode dazu
+  (`{ ...stub, generateWebsiteCopy, improveServiceDescription,
+  generateFaqs, generateCustomerReply }`). Die übrigen 3 Methoden
+  bleiben Stubs.
+- Smoketest `src/tests/ai-mock-provider.test.ts` um einen
+  Block 9a–9k erweitert (~18 zusätzliche Assertions, ~78 gesamt):
+  3 Tonalitäten × 2 Branchen mit Längen-Checks, Anreden-Match
+  („Guten Tag" / „Hallo" / „Sehr geehrte"), Themen-Tests
+  (Preis, Termin, Reklamation vor Termin, Stornierung vor Termin,
+  generischer Fallback), city erscheint im friendly-Anschreiben,
+  Branchenlabel im professional-Text, Signatur enthält
+  `businessName`, Determinismus, leere Nachricht → `invalid_input`.
+  Block 10 zählt jetzt nur noch 3 Stub-Methoden.
+
+### Notes
+- **Recherche** (Session-Protokoll): Quellen zu 2026-Customer-Service-
+  Tone-Mustern und Mirror-/Keyword-Strategien im RUN_LOG-Eintrag
+  „Code-Session 17".
+- **Bewusst klein gehalten**: nur eine zusätzliche Mock-Methode.
+  Keine UI-Änderung, keine neuen Dependencies, kein Bundle-Zuwachs.
+  Diff ~14 KB, 1 neue Datei, 2 geänderte. Alle Verifikationen grün
+  (`typecheck`, `lint`, `build:static`, beide Smoketests).
 
 ## [0.13.4] – Code-Session 16 – 2026-04-27
 

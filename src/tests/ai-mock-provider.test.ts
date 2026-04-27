@@ -516,7 +516,167 @@ async function run(): Promise<void> {
   );
 
   // -----------------------------------------------------------------------
-  // 9. Übrige 4 Methoden müssen weiterhin provider_unavailable werfen.
+  // 9. generateCustomerReply (Code-Session 17)
+  // -----------------------------------------------------------------------
+  // 9a. 3 Tonalitäten × 2 Branchen → vollständige Outputs im Limit
+  //     (≥ 2, ≤ 2000 Zeichen).
+  // -----------------------------------------------------------------------
+
+  const TONES = ["short", "friendly", "professional"] as const;
+
+  async function checkReplyLengths(
+    context: AIBusinessContext,
+    label: string,
+  ): Promise<void> {
+    for (const tone of TONES) {
+      const out = await mockProvider.generateCustomerReply({
+        context,
+        customerMessage:
+          "Hallo, ich hätte gerne einen Termin in der nächsten Woche. Ist da etwas frei?",
+        tone,
+      });
+      assert(
+        out.reply.length >= 2 && out.reply.length <= 2000,
+        `${label}/${tone}: reply im Limit`,
+      );
+    }
+  }
+
+  await checkReplyLengths(baseContextHairdresser, "hairdresser");
+  await checkReplyLengths(baseContextAutoWorkshop, "auto_workshop");
+
+  // 9b. Anrede passt zur Tonalität.
+  const rShort = await mockProvider.generateCustomerReply({
+    context: baseContextHairdresser,
+    customerMessage: "Was kostet ein Damenhaarschnitt bei Ihnen?",
+    tone: "short",
+  });
+  assert(rShort.reply.startsWith("Guten Tag"), "short startet mit 'Guten Tag'");
+
+  const rFriendly = await mockProvider.generateCustomerReply({
+    context: baseContextHairdresser,
+    customerMessage: "Was kostet ein Damenhaarschnitt bei Ihnen?",
+    tone: "friendly",
+  });
+  assert(rFriendly.reply.startsWith("Hallo"), "friendly startet mit 'Hallo'");
+
+  const rProfessional = await mockProvider.generateCustomerReply({
+    context: baseContextHairdresser,
+    customerMessage: "Was kostet ein Damenhaarschnitt bei Ihnen?",
+    tone: "professional",
+  });
+  assert(
+    rProfessional.reply.startsWith("Sehr geehrte"),
+    "professional startet mit 'Sehr geehrte'",
+  );
+
+  // 9c. Themen-Erkennung: Preis-Anfrage spiegelt Preis-Mirror und
+  //     löst die Preis-Antwort aus.
+  assert(
+    rShort.reply.includes("Frage zu den Preisen") &&
+      rShort.reply.includes("Preisübersicht"),
+    "Preis-Topic erkannt: Mirror + nächster Schritt",
+  );
+
+  // 9d. Termin-Anfrage löst Termin-Antwort aus.
+  const rAppt = await mockProvider.generateCustomerReply({
+    context: baseContextAutoWorkshop,
+    customerMessage:
+      "Bekomme ich kommende Woche einen Termin für eine Inspektion?",
+    tone: "short",
+  });
+  assert(
+    rAppt.reply.includes("Terminanfrage") && rAppt.reply.includes("Slots"),
+    "Termin-Topic erkannt",
+  );
+
+  // 9e. Reklamation hat Vorrang vor allgemeinem „Problem".
+  const rComplaint = await mockProvider.generateCustomerReply({
+    context: baseContextAutoWorkshop,
+    customerMessage:
+      "Ich bin mit der Reparatur leider unzufrieden, da ist nach wie vor ein Geräusch.",
+    tone: "friendly",
+  });
+  assert(
+    rComplaint.reply.includes("Rückmeldung") &&
+      rComplaint.reply.includes("faire Lösung"),
+    "Reklamations-Topic erkannt",
+  );
+
+  // 9f. Stornierung greift vor Termin-Regex.
+  const rCancel = await mockProvider.generateCustomerReply({
+    context: baseContextHairdresser,
+    customerMessage:
+      "Ich muss meinen Termin am Donnerstag leider absagen oder verschieben.",
+    tone: "short",
+  });
+  assert(
+    rCancel.reply.includes("Terminänderung"),
+    "Stornierungs-Topic vor Termin-Topic",
+  );
+
+  // 9g. Generischer Fallback bei nicht-erkanntem Anliegen.
+  const rGeneric = await mockProvider.generateCustomerReply({
+    context: baseContextHairdresser,
+    customerMessage: "Wie ist Ihr Vertragspartner für Geschenkgutscheine?",
+    tone: "short",
+  });
+  assert(
+    rGeneric.reply.includes("Ihre Nachricht") &&
+      rGeneric.reply.includes("innerhalb eines Werktags"),
+    "Generischer Fallback greift",
+  );
+
+  // 9h. Friendly nutzt city im Anschreiben, professional zeigt
+  //     Branchenlabel.
+  assert(
+    rFriendly.reply.includes("Bremen"),
+    "friendly: city erscheint im Anschreiben",
+  );
+  assert(
+    rProfessional.reply.toLowerCase().includes("friseur"),
+    "professional: industryLabel im Text",
+  );
+
+  // 9i. Signatur enthält den businessName.
+  assert(
+    rShort.reply.includes("Salon Sophia") &&
+      rFriendly.reply.includes("Salon Sophia") &&
+      rProfessional.reply.includes("Salon Sophia"),
+    "Signatur enthält businessName",
+  );
+
+  // 9j. Determinismus.
+  const r1 = await mockProvider.generateCustomerReply({
+    context: baseContextHairdresser,
+    customerMessage: "Wann haben Sie geöffnet?",
+    tone: "friendly",
+  });
+  const r2 = await mockProvider.generateCustomerReply({
+    context: baseContextHairdresser,
+    customerMessage: "Wann haben Sie geöffnet?",
+    tone: "friendly",
+  });
+  assert(r1.reply === r2.reply, "generateCustomerReply deterministisch");
+
+  // 9k. Defensive: leere customerMessage → invalid_input.
+  let rCaught: unknown = null;
+  try {
+    await mockProvider.generateCustomerReply({
+      context: baseContextHairdresser,
+      customerMessage: "",
+      tone: "short",
+    });
+  } catch (err) {
+    rCaught = err;
+  }
+  assert(
+    rCaught instanceof AIProviderError && rCaught.code === "invalid_input",
+    "leere customerMessage → invalid_input",
+  );
+
+  // -----------------------------------------------------------------------
+  // 10. Übrige 3 Methoden müssen weiterhin provider_unavailable werfen.
   // -----------------------------------------------------------------------
   const placeholderContext = baseContextHairdresser;
   await expectUnavailable("generateReviewRequest", () =>
@@ -536,13 +696,6 @@ async function run(): Promise<void> {
       includeHashtags: true,
     }),
   );
-  await expectUnavailable("generateCustomerReply", () =>
-    mockProvider.generateCustomerReply({
-      context: placeholderContext,
-      customerMessage: "Wann habt ihr morgen offen?",
-      tone: "friendly",
-    }),
-  );
   await expectUnavailable("generateOfferCampaign", () =>
     mockProvider.generateOfferCampaign({
       context: placeholderContext,
@@ -551,7 +704,7 @@ async function run(): Promise<void> {
     }),
   );
 
-  // 10. Provider-Key
+  // 11. Provider-Key
   assert(mockProvider.key === "mock", "mockProvider.key === 'mock'");
 }
 
@@ -562,5 +715,6 @@ export const __AI_MOCK_PROVIDER_SMOKETEST__ = {
   variants: VARIANTS.length,
   serviceLengths: 3,
   faqCounts: 3,
-  totalAssertions: 60,
+  replyTones: 3,
+  totalAssertions: 78,
 };

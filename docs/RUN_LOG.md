@@ -2354,3 +2354,208 @@ Bewusst NICHT: andere 3 Methoden, UI, echte Provider.
 - [Passionfruit – FAQ Schema for AI Answers: Setup Guide & Examples](https://www.getpassionfruit.com/blog/faq-schema-for-ai-answers)
 - [WeWeb – Top 10 FAQ Templates for SEO & UX in 2026](https://www.weweb.io/blog/faq-templates-seo-ux-examples)
 - [Inogic – CRM Data Deduplication: 2026 FAQ Guide (fuzzy matching, phonetic similarity)](https://www.inogic.com/blog/2026/02/beyond-deduplication-a-2026-faq-guide-to-clean-unified-ai-ready-crm-data/)
+
+---
+
+## Code-Session 17 – Mock-Provider: `generateCustomerReply`
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar)
+Meilenstein: 2 (KI-Schicht)
+
+### 1. Was wurde umgesetzt?
+
+Vierte von sieben Mock-Methoden ist scharf. Die übrigen 3 bleiben
+Stubs und folgen einzeln in den nächsten Sessions.
+
+- `src/core/ai/providers/mock/customer-reply.ts` (neu) implementiert
+  `mockGenerateCustomerReply(input): Promise<CustomerReplyOutput>`:
+  - Validierung des Inputs via `CustomerReplyInputSchema.safeParse`
+    → bei Fehler `AIProviderError("invalid_input", …)`.
+  - **Themen-Erkennung** (`detectTopic`) über Wortstamm-Regex,
+    erste passende Regel gewinnt. Reihenfolge ist nach Häufigkeit
+    und Priorität gewählt:
+    1. **Reklamation/Beschwerde** → Mirror „Ihre Rückmeldung",
+       Schritt: „faire Lösung".
+    2. **Stornierung/Absage/Verschiebung** → Mirror „Ihre
+       Terminänderung", Schritt: Änderung übernommen.
+    3. **Termin/Buchung/Reservierung** → Mirror „Ihre
+       Terminanfrage", Schritt: Slots prüfen.
+    4. **Angebot/KVA** → Mirror „Ihre Angebotsanfrage",
+       Schritt: nachvollziehbares Angebot.
+    5. **Preis/Kost/Tarif** → Mirror „Ihre Frage zu den Preisen",
+       Schritt: transparente Preisübersicht.
+    6. **Öffnungszeiten/Sprechzeit** → Mirror „Ihre Frage zu den
+       Öffnungszeiten", Schritt: Verweis auf Startseite.
+    7. Sonst: Mirror „Ihre Nachricht", generischer Fallback
+       („innerhalb eines Werktags").
+    Die Reihenfolge stellt sicher, dass eine Reklamation nicht
+    fälschlich als „Termin" landet und eine Stornierung nicht
+    als neue Terminanfrage.
+  - **Drei Tonalitäten** (alle mit formellem „Sie"):
+    - **`short`** (1–2 inhaltliche Sätze): „Guten Tag," + Dank
+      mit Mirror + nächster Schritt + „Beste Grüße,
+      {{businessName}}".
+    - **`friendly`** (3–4 inhaltliche Sätze, persönlich): „Hallo,"
+      + Dank für Mirror + city-Bezug („wir freuen uns, dass Sie
+      sich an uns in {{city}} wenden") + nächster Schritt +
+      Einladung zur Rückfrage + „Herzliche Grüße,
+      {{businessName}}".
+    - **`professional`** (3–4 inhaltliche Sätze, sachlich): „Sehr
+      geehrte Damen und Herren," + ausführlicher Dank mit
+      Branchen-Label-Bezug + nächster Schritt + Hinweis auf
+      Footer-Kontaktwege + „Mit freundlichen Grüßen,
+      {{businessName}}".
+  - **Positive Sprache**: keine „leider"-/„nicht"-Konstrukte in
+    den Vorlagen, alle nächsten Schritte aktiv und konkret –
+    entspricht aktuellen 2026-Customer-Service-Best-Practices.
+  - **Sicherheitsnetze**: `clamp` (Wortgrenze) gegen das
+    2000-Zeichen-Limit, `CustomerReplyOutputSchema.parse` als
+    letzte Hürde.
+- `src/core/ai/providers/mock-provider.ts` komponiert die vierte
+  Methode dazu:
+  ```ts
+  export const mockProvider: AIProvider = {
+    ...stub,
+    generateWebsiteCopy: mockGenerateWebsiteCopy,
+    improveServiceDescription: mockImproveServiceDescription,
+    generateFaqs: mockGenerateFaqs,
+    generateCustomerReply: mockGenerateCustomerReply,
+  };
+  ```
+  Status-Header im Datei-Kommentar von 16 → 17 hochgezogen.
+- `src/tests/ai-mock-provider.test.ts` um Block 9a–9k erweitert
+  (~18 zusätzliche Assertions, ~78 gesamt):
+  - 9a: 3 Tonalitäten × 2 Branchen → Längen im Limit.
+  - 9b: Anrede passt („Guten Tag" / „Hallo" / „Sehr geehrte").
+  - 9c: Preis-Anfrage → Mirror + „Preisübersicht".
+  - 9d: Termin-Anfrage → Mirror + „Slots".
+  - 9e: Reklamation hat Vorrang vor allgemeinem Problem
+    („Rückmeldung" + „faire Lösung").
+  - 9f: Stornierung greift vor Termin-Regex
+    („Terminänderung").
+  - 9g: Generischer Fallback bei nicht-erkanntem Anliegen
+    („Ihre Nachricht" + „innerhalb eines Werktags").
+  - 9h: friendly enthält city, professional enthält Branchen-Label.
+  - 9i: Signatur enthält `businessName`.
+  - 9j: Determinismus.
+  - 9k: leere `customerMessage` → `invalid_input`.
+- Block 10 zählt jetzt nur noch 3 weitere Methoden, die
+  `provider_unavailable` werfen müssen (`generateCustomerReply`
+  wurde aus diesem Block entfernt).
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (1 Datei):
+- `src/core/ai/providers/mock/customer-reply.ts`
+
+Geändert:
+- `src/core/ai/providers/mock-provider.ts`
+- `src/tests/ai-mock-provider.test.ts`
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~14 KB. Klar im Session-Limit (30–80 KB).
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → ~78 Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.generateCustomerReply({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich"],
+    uniqueSellingPoints: [],
+  },
+  customerMessage:
+    "Hallo, ich hätte gern einen Termin in der nächsten Woche.",
+  tone: "friendly",
+});
+// → { reply: "Hallo,\n\nvielen Dank für Ihre Terminanfrage – wir haben sie eben
+//             in Ruhe gelesen.\n\nWir freuen uns, dass Sie sich an uns in Bremen
+//             wenden. Wir prüfen die nächsten freien Slots …" }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit. Eine
+Dashboard-Karte „KI-Antwort vorschlagen" (im Lead-Detail) kommt in
+einer späteren Session, sobald genug Mock-Methoden für ein
+gemeinsames KI-Panel verfügbar sind.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                          | Status |
+| ------------------------------------------------------------------ | ------ |
+| `generateCustomerReply` deterministisch, branchenneutral           | ✅      |
+| 7 Themen-Templates über Wortstamm-Regex, korrekt priorisiert       | ✅      |
+| 3 Tonalitäten mit eigener Anrede & eigener Schluss-Floskel         | ✅      |
+| Mirror-Phrasen spiegeln Anliegen sichtbar                          | ✅      |
+| Positive Sprache (keine „leider"/„nicht"-Floskeln in Templates)    | ✅      |
+| city im friendly-Text, Branchen-Label im professional-Text         | ✅      |
+| Defensive Input-Validierung → `invalid_input`                      | ✅      |
+| Output gegen `CustomerReplyOutputSchema` validiert                 | ✅      |
+| Übrige 3 Methoden bleiben Stubs (`provider_unavailable`)           | ✅      |
+| Smoketest +18 Assertions (~78 gesamt)                              | ✅      |
+| Build/Typecheck/Lint grün                                          | ✅      |
+| Session-Größe im Limit                                             | ✅ (~14 KB) |
+| Recherche-Step durchgeführt + Quellen zitiert                      | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 18**: `generateReviewRequest`-Mock — Templates aus
+  `preset.reviewRequestTemplates` als Saat, kanal-/tone-spezifisch
+  (whatsapp/sms/email/in_person × short/friendly/follow_up),
+  `{{customerName}}`/`{{reviewLink}}`-Substitution.
+- **Code-Session 19**: `generateSocialPost`-Mock —
+  short-/long-Post + Hashtags + Image-Idea + CTA, plattform-bewusst
+  (instagram/facebook/google_business/linkedin/whatsapp_status).
+- **Code-Session 20**: `generateOfferCampaign`-Mock — schließt die
+  Mock-Phase ab (alle 7 Methoden scharf).
+- **Später**: API-Route, Dashboard-UI, echte Provider mit Caching,
+  Cost-Tracking.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 18 – Mock-Provider: `generateReviewRequest`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 review request templates conversion rate
+   small business" + „WhatsApp business review template German".
+2. `src/core/ai/providers/mock/review-request.ts` neu, analog zu
+   den bisherigen Mock-Methoden: nutzt `preset.reviewRequestTemplates`
+   als Saat (sind kanal+tone-getaggt), filtert nach Input-`channel`/
+   `tone`, ergänzt fehlende Kombinationen aus generischen Vorlagen.
+   Substituiert `{{customerName}}` und `{{reviewLink}}`.
+3. `mock-provider.ts` um die fünfte Methode erweitern
+   (Status-Header 17 → 18).
+4. `src/tests/ai-mock-provider.test.ts` um Review-Request-Block
+   ergänzt (alle 4 Kanäle × 3 Tones, Substitution, Determinismus,
+   `invalid_input` bei kaputtem `reviewLink`).
+5. CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: andere 2 Methoden, UI, echte Provider.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [Time To Reply – A complete guide to writing customer service emails in 2026](https://timetoreply.com/blog/customer-service-emails/)
+- [Gladly – Tone of voice in customer service for phone, chat, and email](https://www.gladly.ai/blog/customer-service-tone-tips/)
+- [TextExpander – Customer Service Phrases & Words: 2026 Professional Examples](https://textexpander.com/blog/magic-customer-service-phrases)
+- [Stripo – Customer service email response examples: templates, best practices, and tips](https://stripo.email/blog/customer-service-email-response-examples-templates-best-practices-and-tips/)
+- [EmailAnalytics – 17 Customer Service Email Best Practices for 2026](https://emailanalytics.com/17-customer-service-email-best-practices/)
+- [VerticalResponse – Survey Reveals The Best Tone of Voice to Take with Customers](https://verticalresponse.com/blog/survey-reveals-the-best-tone-of-voice-to-take-with-customers/)
+- [RewriteBar – 8 Perfect Automatic Reply Email Sample Templates for 2026](https://rewritebar.com/articles/automatic-reply-email-sample)
+- [Kenect – Best Practices for Templatizing Customer Service Text Message Responses](https://www.kenect.com/blog/best-practices-for-templatizing-text-responses-to-customers)
