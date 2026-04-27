@@ -329,6 +329,96 @@ nutzt einen `service_role`-Client, der RLS umgeht (Code-Session 42+).
   Tenant-Wiring-Session, sobald „Mein Account" inhaltlich mehr
   zeigt als nur die User-ID.
 
+### Settings-Pfad: Slug + Publish + Locale (Code-Session 52)
+
+`PATCH /api/businesses/[slug]/settings` ist die Pflicht-Route für
+**Live-Operationen**:
+
+| Feld          | Validation                              | Postgres-Effekt                       |
+| ------------- | --------------------------------------- | ------------------------------------- |
+| `newSlug`     | regex, 3–40, nicht reserved, ≠ current | `update businesses set slug=…`        |
+| `isPublished` | boolean                                 | `update businesses set is_published=…`|
+| `locale`      | 'de' \| 'en'                            | `update businesses set locale=…`      |
+
+Architektur identisch zu Session 50 (Server-Auth-Client, RLS macht
+Authorization). Postgres-`23505` (Slug-Unique-Violation) wird auf
+HTTP 409 gemappt. Bei erfolgreichem Slug-Wechsel macht das UI einen
+`router.push(/dashboard/<neuerSlug>/settings)` — sonst landet der
+User im 404. Alte Storage-Files (Logos/Hero-Bilder) bleiben unter
+dem alten Slug-Pfad als Waisen liegen → eigenes Plan-Item für
+Cleanup-Job.
+
+### Storage-Pfad: Logos + Hero-Bilder (Code-Session 51)
+
+Bucket `business-images` (Migration 0008):
+- **public = true** — Logos werden auf der Public-Site geladen,
+  anonyme Besucher müssen ohne Auth lesen können. Public-Buckets
+  bypassen RLS bei SELECT.
+- **5 MB Limit**, **MIME-Whitelist**: PNG, JPEG, WebP. SVG ist
+  bewusst **ausgeschlossen** — XSS-Risiko durch eingebettetes
+  `<script>`-Tag.
+- **Schreibe-Pfad ausschließlich Service-Role**: keine
+  INSERT-/UPDATE-/DELETE-Policy auf `storage.objects`. Anon kann
+  nichts hochladen — der einzige Schreibe-Pfad ist die
+  Auth-gegated Server-Route.
+
+**Pfad-Konvention**: `<slug>/<kind>.<ext>` (z. B.
+`studio-haarlinie/logo.png`). Slug-basiert für saubere CDN-URLs.
+Bei Slug-Wechsel werden alte Dateien zu Waisen — Cleanup ist
+Plan-Item für eine spätere Session.
+
+**Server-Route** `POST /api/businesses/[slug]/image`:
+1. `getCurrentUser()` → 401.
+2. Owner-Check: authenticated-Client liest `businesses` →
+   maybeSingle, RLS lässt nur Owner durch. 0 Zeilen → 403.
+3. Multipart-Validierung server-seitig (Mime, Size, Kind ∈
+   {logo, cover}).
+4. Service-Role-Client uploadet mit `upsert: true`,
+   `cacheControl: "3600"`.
+5. Public-URL via `getPublicUrl(path)` zurück.
+
+Form pflegt die `logo_url`/`cover_image_url`-Spalte **nicht**
+direkt — User muss anschließend „Speichern" klicken (PATCH aus
+Session 50). So bleibt die Upload-Route fokussiert (Storage only),
+und der User behält Kontrolle, ob das neue Bild übernommen
+werden soll.
+
+### Business-Update-Pfad (Code-Session 50)
+
+`PATCH /api/businesses/[slug]` ist scharf. Pfad:
+
+1. `getCurrentUser()` → 401 wenn nicht eingeloggt.
+2. Body als snake_case-Row akzeptiert (vom Form-Helper geliefert),
+   intern wieder in camelCase gemappt und gegen
+   `BusinessProfileSchema` validiert. Bei Failure: 400 mit
+   `fieldErrors`.
+3. **Server-Auth-Client** (`createServerSupabaseClient()`) führt
+   das UPDATE aus — explizit NICHT der Service-Role-Client. Damit
+   greift die Migration-0007-Policy „Allow owner to update own
+   business" automatisch: ein User, der nicht im
+   `business_owners`-Eintrag des Slugs ist, sieht das UPDATE auf
+   0 Zeilen reduziert.
+4. Trifft das UPDATE 0 Zeilen → 403 mit kombinierter „Owner oder
+   Slug existiert nicht"-Meldung (kein Existenz-Leak).
+5. Postgres `23505` (unique-violation auf Slug) → 409.
+
+### Lead-Read-Pfad (Code-Session 49)
+
+`LeadRepository.listForBusiness(businessId)` ergänzt den Schreibe-
+Pfad aus Session 40. Drei Beobachtungen:
+
+1. **Mock-Pfad** seedet beim Boot mit `leadsByBusiness` aus
+   `src/data` — sodass Dashboard-Liste auch im Static-Build die
+   Demo-Anfragen pro Betrieb zeigt.
+2. **Supabase-Pfad** filtert via `eq("business_id", id)` +
+   RLS (`has_business_access` aus Migration 0007). Sortierung
+   `order("created_at", { ascending: false })`.
+3. **Sort-Stabilität**: bei mehreren Leads mit gleichem
+   `created_at` (z. B. Bulk-Import) ist die Reihenfolge
+   undefined. Pagination werden wir mit `range()` und einem
+   stabilen `order` über zwei Spalten ergänzen, sobald die
+   Liste produktiv groß wird.
+
 ### Public-Lead-Form-Pfad (Code-Session 44)
 
 `POST /api/leads` ist scharf. Form schreibt parallel:
@@ -404,7 +494,28 @@ mit `mapMembershipRow`, das defensiv beide Embed-Formen normalisiert:
 
 `unwrapEmbed` greift in beiden Fällen das erste Objekt heraus.
 
+### Page-Loader (Code-Session 47/48)
+
+`src/lib/page-business.ts` ist die zentrale Server-Side-Brücke
+zwischen Page-Komponenten und `BusinessRepository`:
+
+- `loadBusinessOrNotFound(slug)` — `React.cache()`-gewrappt,
+  wirft `notFound()` aus `next/navigation`, wenn der
+  Repository-Pfad nichts liefert. Pro Render-Pass max. ein
+  Roundtrip pro Slug (Layout + Page sind dedupliziert).
+- `loadBusinessOrNotFoundWith(slug, repo)` — Test-Variante
+  mit injizierbarem Repository (kein Cache).
+- `listSlugParams()` — direkt verwendbar in
+  `generateStaticParams`. Liefert `[{slug:"…"}, …]` aus dem
+  konfigurierten Repository.
+
+Public-Site `/site/[slug]/*` und Dashboard `/dashboard/[slug]/*`
+sind seit Session 48 vollständig auf diesen Pfad umgestellt.
+`generateMetadata`-Funktionen rufen das Repository direkt auf
+(statt `loadBusinessOrNotFound`) — Metadata darf bei unbekanntem
+Slug nicht 404'en, sonst kollidiert das mit dem Page-404-Pfad.
+
 ### Roadmap
 
-- **Session 47+** — Dashboard-Read aus Supabase (Public-Site und Dashboard-UI lesen aus DB statt Mock, sobald `LP_DATA_SOURCE=supabase`), Onboarding-Wizard mehrstufig, Member-Verwaltung.
+- **Session 49+** — Onboarding-Wizard mehrstufig (Adresse + Logo), Member-Verwaltung, Slug-Live-Check, Default-Redirect bei einem Betrieb, Lead-`leadsByBusiness`-Read aus DB (aktuell noch Mock-Direktzugriff im Dashboard).
 - **0008+** — Storage-Buckets für Logos und Hero-Bilder, Backup-Policy.

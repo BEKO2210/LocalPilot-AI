@@ -5644,3 +5644,467 @@ die Owner-Sichtbarkeit. Damit kann ein User seinen echten
 Betrieb sehen, nicht nur einen Demo-Mock. Vor Storage und Member-
 Verwaltung, weil Read der direkte Folge-Schritt aus 46 ist.
 
+---
+
+## Code-Session 47 – Public-Site liest aus Repository (Teil 1 von 2)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Refactor
+
+**Was**: Beim Plan-Schritt fiel auf, dass „Dashboard + Public-
+Site umstellen" 12 Pages anfasst — über dem Atomar-Limit. Ich
+splitte: **Session 47** macht die drei `/site/[slug]/*`-Pages
+(Hauptseite, Datenschutz, Impressum), **Session 48** macht die
+neun `/dashboard/[slug]/*`-Pages. Vorteil: jede Session hat
+klare Akzeptanz, der Account-Page-CTA „Public-Site" liefert
+sofort echte DB-Daten.
+
+Neuer zentraler Loader `src/lib/page-business.ts` mit
+`loadBusinessOrNotFound` (wirft `notFound()` für unbekannte
+Slugs), `listBusinessSlugsForPages` (Slug-Liste vom Repository)
+und `listSlugParams` (direkt für `generateStaticParams`
+nutzbar).
+
+**Dateien**:
+- ✚ `src/lib/page-business.ts` — Server-Side-Helper. Default-
+  Repo-Argument für Production, Override-Argument für Tests.
+  Kommentar erklärt Static-Export-vs-SSR-Semantik.
+- ✚ `src/tests/page-business.test.ts` (~10 Asserts):
+  vorhandener Slug → Business, unbekannter Slug → `notFound()`-
+  Wurf (Digest enthält `NEXT_NOT_FOUND`/`NEXT_HTTP_ERROR`),
+  Slug-Liste vollständig, `listSlugParams`-Form-Check, Privacy-
+  Smoketest gegen ENV-Key-Leaks im Output.
+- 🔄 `src/app/site/[slug]/page.tsx` — `getMockBusinessBySlug` +
+  `notFound()` ersetzt durch `loadBusinessOrNotFound`. Metadata-
+  Pfad nutzt `getBusinessRepository().findBySlug` direkt
+  (Metadata soll bei unbekanntem Slug nicht 404'en, sondern
+  leeres Metadata zurückgeben — sonst kollidiert das mit dem
+  404-Pfad der Page selbst). `generateStaticParams` ist async.
+- 🔄 `src/app/site/[slug]/datenschutz/page.tsx` — gleicher Swap.
+- 🔄 `src/app/site/[slug]/impressum/page.tsx` — gleicher Swap.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **30/31 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Alle 6 Mock-Slugs werden in beiden Builds weiterhin
+als ●-SSG-Pfade prerendered. Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item teil-abgehakt (Public-Site-Read). 1 neues
+Item für Session 48 (`/dashboard/[slug]/*` analog umstellen,
+9 Pages).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — generateStaticParams
++ dynamicParams.
+
+**Manueller Test** (nach Session-48 wirksam):
+- Static-Pages-Vorschau: identisches Verhalten wie vorher,
+  Mock-Daten.
+- Vercel + `LP_DATA_SOURCE=supabase` + Migrationen 0001–0007
+  + mindestens ein Eintrag in `businesses`: `/site/<slug>`
+  zeigt die DB-Daten statt Mock. RLS sorgt dafür, dass nur
+  veröffentlichte Betriebe sichtbar sind.
+
+**Nächste Session**: Code-Session 48 = **Dashboard-Pages auf
+Repository umstellen**. Symmetrisch zu 47, aber für die 9
+`/dashboard/[slug]/*`-Pages plus den Layout. Damit liest auch
+das Dashboard aus DB. Eine atomare Refactor-Session ohne
+Logik-Änderung — nur konsistente Anwendung des Loader-Patterns.
+
+---
+
+## Code-Session 48 – Dashboard-Pages auf Repository (2/2)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Refactor
+
+**Was**: Schluss der Repository-Migration. Alle 9
+`/dashboard/[slug]/*`-Files (Layout + 8 Pages) lesen jetzt
+einheitlich über `loadBusinessOrNotFound`. End-to-End-Schleife
+für einen eingeloggten User ist damit vollständig: Login →
+Onboarding → Account → echte Public-Site UND echtes Dashboard
+aus DB (sobald `LP_DATA_SOURCE=supabase`).
+
+**Befund aus Recherche**: Next.js 15 cached default nichts,
+und Layout + Page rufen unabhängig — Layout würde im
+Supabase-Modus pro Request einen zusätzlichen DB-Roundtrip
+machen. Lösung: `loadBusinessOrNotFound` mit `React.cache()`
+gewrappt → pro Render-Pass max. ein Roundtrip pro Slug. Das
+Test-Pfad-Helper `loadBusinessOrNotFoundWith(slug, repo)` ist
+ungecacht, damit Smoketest-Injektionen sauber bleiben.
+
+**Dateien**:
+- 🔄 `src/lib/page-business.ts` — Aufteilung in
+  `loadBusinessOrNotFound` (cached, Default-Repo aus Resolver)
+  und `loadBusinessOrNotFoundWith` (plain, Test-Pfad mit
+  injizierbarem Repository).
+- 🔄 `src/tests/page-business.test.ts` — Tests rufen jetzt
+  die `…With`-Variante (Cache wäre für die Test-Setup-
+  Szenarien Hinderlich).
+- 🔄 `src/app/dashboard/[slug]/layout.tsx` — `getMockBusinessBySlug
+  + notFound` → `loadBusinessOrNotFound`. Kommentar dokumentiert
+  Layout↔Page-Dedup.
+- 🔄 `src/app/dashboard/[slug]/page.tsx` — Dashboard-Hauptseite.
+  `generateMetadata` nutzt das Repository direkt (kein 404 für
+  Metadata, gleiche Logik wie /site/[slug] in Session 47).
+  `leadsByBusiness` bleibt Mock-Direktzugriff — folgt in
+  späterer Session.
+- 🔄 `src/app/dashboard/[slug]/business/page.tsx`
+- 🔄 `src/app/dashboard/[slug]/services/page.tsx`
+- 🔄 `src/app/dashboard/[slug]/leads/page.tsx` — `leadsByBusiness`-
+  Import bleibt, der Rest fliegt raus.
+- 🔄 `src/app/dashboard/[slug]/ai/page.tsx`
+- 🔄 `src/app/dashboard/[slug]/reviews/page.tsx`
+- 🔄 `src/app/dashboard/[slug]/social/page.tsx`
+- 🔄 `src/app/dashboard/[slug]/settings/page.tsx`
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **30/31 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Alle 6 Mock-Slugs werden in beiden Builds über alle
+Dashboard-Sub-Routen weiterhin als ●-SSG-Pfade prerendered
+(Pages-kompatibel). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Dashboard-Read). 1 neues Folge-
+Item: `leadsByBusiness`-Read im Dashboard auf Repository
+umstellen (aktuell noch Mock-Direktzugriff in `/dashboard/[slug]/
+page.tsx` und `/dashboard/[slug]/leads/page.tsx`).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Layout/Page-Dedup
+mit React.cache.
+
+**Manueller Test** (mit Auth + Service-Role + Migrationen + ENVs):
+- Static-Pages-Vorschau: identisches Verhalten wie vorher,
+  Mock-Daten auf allen 9 Dashboard-Routen.
+- Vercel + `LP_DATA_SOURCE=supabase`: Login → Onboarding →
+  Account zeigt eigenen Betrieb → Klick „Dashboard öffnen" →
+  alle 9 Routen zeigen die DB-Daten. Im Supabase-Modus läuft
+  pro Page-Render genau **ein** Roundtrip (Layout+Page
+  dedupliziert).
+
+**Nächste Session**: ich nehme **Code-Session 49 = Lead-Read
+aus Repository**. Begründung: das Dashboard liest jetzt zwar
+das Business aus DB, aber `leadsByBusiness` ist noch immer
+der Mock-Direktzugriff aus `src/data`. Der vorhandene
+`LeadRepository` hat seit Session 40 nur `create` — wir
+ergänzen `listForBusiness(businessId)` und ziehen die zwei
+betroffenen Dashboard-Pages auf den Repo-Pfad. Damit ist auch
+die Leads-Seite ein durchgängiger End-to-End-Pfad. Vor
+Onboarding-Wizard und Storage, weil Lead-Read der direkte
+Folge-Schritt aus 48 ist.
+
+---
+
+## Code-Session 49 – Lead-Read aus Repository
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Refactor
+
+**Was**: Vor Sessionstart ehrliche Status-Einschätzung an den
+Auftraggeber: ~70% auf dem Weg zum „erstes Betrieb-fertiges
+Produkt". Letzter Mock-Direktzugriff in der Pages-Schicht
+geräumt — `leadsByBusiness` floh aus zwei Dashboard-Pages auf
+das `LeadRepository`. Damit ist die Lese-Seite konsistent: alle
+Pages gehen über Repository-Resolver mit Mock/Supabase-Switch.
+
+**Dateien**:
+- 🔄 `src/core/database/repositories/lead.ts` — Interface um
+  `listForBusiness(businessId)` erweitert. Mock-Impl bekommt
+  optionalen `seed`-Konstruktor-Parameter (für Bestand aus
+  `leadsByBusiness`). Supabase-Impl mit
+  `.eq("business_id", id).order("created_at", desc)`.
+  Sort-Stabilität-Hinweis im Modulkommentar. Neuer
+  `rowToLead`-Mapper + `LEAD_COLUMNS`-Konstante.
+- 🔄 `src/core/database/repositories/index.ts` — Resolver
+  initialisiert den Mock-Pfad jetzt mit
+  `createMockLeadRepository(leadsByBusiness)` — sodass die
+  Dashboard-Liste auch ohne Supabase die Demo-Anfragen sieht.
+- 🔄 `src/tests/lead-repository.test.ts` (~30 → ~38 Asserts):
+  neuer Block für `listForBusiness` (Reihenfolge, Filter pro
+  business_id, Seed-Konstruktor, create erweitert geseedeten
+  Bucket). Mini-Pause zwischen Creates für stabile
+  Timestamp-Reihenfolge — sonst Race im Sort.
+- 🔄 `src/app/dashboard/[slug]/leads/page.tsx` — `leadsByBusiness`
+  Mock-Direktzugriff raus, `getLeadRepository().listForBusiness`
+  rein.
+- 🔄 `src/app/dashboard/[slug]/page.tsx` — analog für die
+  Übersicht (LeadsSummaryCard + RecentLeadsList).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **30/31 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Alle 6 Mock-Slugs werden weiterhin als ●-SSG-Pfade
+prerendered. Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Lead-Read). Pages-Schicht ist jetzt
+**vollständig** Repository-only — keine Mock-Direktzugriffe mehr
+aus `src/data` in Routen unter `src/app/`. Verbleibende Mock-
+Direktzugriffe nur noch in Komponenten, die im Edit-State noch
+keinen DB-Schreibpfad haben (BusinessEditForm, ServicesEditForm).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Lead-Listing +
+Pagination-Patterns.
+
+**Nächste Session**: Code-Session 50 = **Schreibpfad in DB für
+BusinessEditForm**. Begründung: das Dashboard zeigt jetzt echte
+DB-Daten (Read), aber `BusinessEditForm` und `ServicesEditForm`
+schreiben weiterhin nur in einen Mock-State. Damit kann ein User
+seinen Slug, Namen, Tagline, Description, Theme und Farben **noch
+nicht persistent** ändern — der nächste essentielle Schritt für
+„echter Kunde betreibt das produktiv". Storage (Logo + Hero-Bild)
+folgt danach in Session 51, weil das eigene Storage-Bucket-Auth
+braucht. Vor Reviews/Social-UI, weil Edit-Pfade die Pflicht-
+Funktionalität sind, Reviews/Social nice-to-have.
+
+---
+
+## Code-Session 50 – Schreibpfad in DB für BusinessEditForm
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Owner kann seine Stammdaten (Name, Tagline, Beschreibung,
+Branche, Theme, Adresse, Kontakt, Öffnungszeiten, Brand-Farben,
+Logo-/Cover-URL) jetzt **persistent in der DB** ändern. Form
+versucht zuerst Server-PATCH; bei 401/403/5xx blockiert mit
+sichtbarem Fehler, bei 404 / offline / Static-Build fällt
+transparent auf localStorage zurück (Demo-Modus).
+
+**Architektur-Schlüsselentscheidung**: Server-Auth-Client (NICHT
+Service-Role). Damit greift die Migration-0007-Policy „Allow owner
+to update own business" automatisch — ein böswilliger User kann
+den Slug eines fremden Betriebs aufrufen und bekommt vom UPDATE
+0 Zeilen zurück. RLS ersetzt manuelle Authorization-Checks im
+Code.
+
+**Dateien**:
+- ✚ `src/lib/business-update.ts` — `profileToBusinessRow`
+  (camelCase→snake_case mit `null`-Fallback statt `undefined`),
+  `submitBusinessUpdate(slug, profile)` mit 7-stufigem
+  `BusinessUpdateResult`-Mapping, `userMessageForResult` für
+  User-Texte (silent für `server`/`local-fallback`).
+- ✚ `src/tests/business-update.test.ts` (~30 Asserts):
+  alle Result-Pfade, snake_case-Mapping (incl. `null` für
+  optionale Felder), URL-Encoding bei Slugs mit Sonderzeichen,
+  PATCH-Body-Capture.
+- ✚ `src/app/api/businesses/[slug]/route.ts` — PATCH-Handler.
+  Body als snake_case akzeptieren, intern auf camelCase mappen
+  + `BusinessProfileSchema` validieren (zod-Issues → fieldErrors-
+  Map). Server-Auth-Client + `.eq("slug", slug)` UPDATE. RLS
+  greift automatisch. 0-Zeilen-Update → 403.
+- 🔄 `src/components/dashboard/business-edit/business-edit-form.tsx`:
+  `onSubmit` ist async, ruft `submitBusinessUpdate`. Neuer
+  `savedTo`-State (`"server"` | `"local"` | `null`) zeigt
+  unterschiedliche Erfolgs-Banner. `submitMessage` für Fehler.
+  Bei `validation`-Result: per-Feld `methods.setError`. Bei
+  `not-authed` / `forbidden` / `fail`: KEIN localStorage-Schreiben
+  (würde stille Drift mit DB erzeugen).
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **31/32 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Static-Build hat `/api/businesses/[slug]` korrekt
+nicht gemountet (`pageExtensions`-Filter), SSR-Build hat ƒ.
+Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Business-Stammdaten-Schreibpfad).
+1 neues Folge-Item: Services-Editor analog (ist nice-to-have,
+nicht blocker für ersten Kunden — Owner kann Services über die
+Dashboard-Seite manuell anlegen).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — RLS-scoped UPDATE via
+Server-Auth-Client.
+
+**state-refresh-light** (Session 50 ist 5er-Multiple):
+- Smoketest-Regression: 31/32 grün, industry-presets bleibt
+  Codex-#11.
+- Stale-Stub-Audit: 3 Treffer (services/leads/settings) —
+  bekannt, Codex-#12 sammelt.
+- Codex-Backlog: 2 needs-review aktiv, kein Codex-Done.
+- Bundle: 102 KB shared stabil.
+
+**Manueller Test** (mit Auth + Service-Role + ENVs):
+1. Login → Onboarding → Account → „Dashboard öffnen" → Tab
+   „Betrieb".
+2. Name oder Tagline ändern → „Speichern".
+3. Grünes „Gespeichert in der Datenbank"-Banner.
+4. Public-Site `/site/<slug>` aktualisieren → neue Werte
+   sichtbar.
+5. Static-Pages-Vorschau: gelbes „Lokal gespeichert (Demo)"-
+   Banner — gleiches Verhalten wie vorher.
+
+**Nächste Session**: Code-Session 51 = **Storage-Bucket für
+Logos + Hero-Bilder** (Migration 0008 + Upload-UI). Begründung:
+nach 50 hat der Owner alle Text-Felder editierbar, aber Logo
+und Hero-Bild sind weiterhin URLs (kein Upload). Für „echter
+Kunde live": Logo-Upload ist visuelles Pflicht-Feature.
+Service-Role wird gebraucht, um RLS auf Storage-Bucket zu
+setzen. Vor Reviews/Social-UI, weil Storage die letzte
+fehlende Capability für End-to-End-Onboarding ist.
+
+---
+
+## Code-Session 51 – Storage-Bucket für Logos + Hero-Bilder
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Letzter visueller Baustein vor Live-Betrieb. Owner
+lädt sein Logo und Hero-Bild jetzt direkt im Dashboard hoch,
+statt eine URL eingeben zu müssen. Storage-Bucket hat sinnvolle
+Defaults (5 MB Limit, PNG/JPEG/WebP, SVG bewusst raus). Form
+zeigt Vorschau-Tile, ein Klick auf „Hochladen"/„Ersetzen"
+öffnet den File-Picker.
+
+**Architektur**: Server-Proxy-Upload (Form → API-Route →
+Service-Role-Client → Storage). Vorteile gegenüber Direct-
+Upload: simplere RLS (kein Path-Parsing in SQL nötig), Auth-
+Check zentral, einfacheres Error-Mapping. Bandwidth-Kosten
+sind für Logos vernachlässigbar.
+
+**Dateien**:
+- ✚ `supabase/migrations/0008_storage_buckets.sql` —
+  `business-images`-Bucket (public=true), 5 MB,
+  PNG/JPEG/WebP-Whitelist, SVG explizit raus (XSS-Risiko).
+  Hinweis-Kommentar: keine INSERT/UPDATE/DELETE-Policy auf
+  `storage.objects` für anon — Service-Role bypasst RLS.
+- ✚ `src/lib/business-image-upload.ts` — pure Helper.
+  `validateImageFile` (Mime, Size, Empty), `extensionForMime`,
+  `buildStoragePath` (slug-basiert), `submitImageUpload` mit
+  5-stufigem Result-Mapping (server / not-authed / forbidden
+  / validation / fail), `userMessageForResult`.
+- ✚ `src/tests/business-image-upload.test.ts` (~35 Asserts):
+  alle Validierungs-Pfade (PNG/JPG/WebP ok, GIF/PDF/SVG nein,
+  zu groß, leer), Pfad-Bau, alle 5 Submit-Pfade, FormData-
+  Capture, Pre-Validation-Skip-Server.
+- ✚ `src/app/api/businesses/[slug]/image/route.ts` — POST mit:
+  Auth-Gate, Owner-Check via authenticated-Read (RLS), server-
+  seitige Mime/Size-Validation (authoritative),
+  Service-Role-Upload mit `upsert: true`, Public-URL-Return.
+- ✚ `src/components/dashboard/business-edit/image-upload-field.tsx`
+  — Vorschau-Tile (80×80) + „Hochladen"/„Ersetzen"/„Entfernen"-
+  Buttons, Spinner während Upload, aria-live-Status.
+- 🔄 `src/components/dashboard/business-edit/business-edit-form.tsx`:
+  Logo-URL/Cover-URL-Textfelder ersetzt durch
+  `<ImageUploadField>` × 2 in der Branding-Sektion. Hidden
+  inputs halten die URLs im Form-State; Form-`setValue` mit
+  `shouldDirty: true` triggert das „Speichern"-Knöpfchen.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **32/33 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Static-Build hat `/api/businesses/[slug]/image`
+korrekt nicht gemountet, SSR-Build hat ƒ. Bundle: shared 102 KB
+unverändert.
+
+**Roadmap**: 1 Item abgehakt (Storage). 1 neues Folge-Item:
+Storage-Cleanup-Job für Slug-Wechsel-Waisen.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Supabase Storage + RLS.
+
+**Manueller Schritt für den Auftraggeber**:
+1. Migration 0008 im Supabase-SQL-Editor ausführen — erstellt
+   das Bucket. Idempotent (`on conflict do update`).
+2. Optional im Supabase-Dashboard prüfen: **Storage** → das
+   Bucket „business-images" sollte als „public" angezeigt
+   werden.
+
+**Manueller Test** (mit Auth + Service-Role + ENVs +
+Migrationen 0001–0008):
+1. Login → Dashboard → „Betrieb"-Tab → Branding-Sektion.
+2. „Hochladen" → File-Picker → PNG-Logo wählen.
+3. Spinner kurz, Vorschau-Tile zeigt das neue Logo.
+4. Über dem Form sollte „1 Änderung"-Indikator stehen.
+5. „Speichern" klicken → grünes „in DB gespeichert".
+6. Public-Site `/site/<slug>` zeigt das neue Logo im Header.
+
+**Status-Update**: ~75 % auf dem Weg zum „erstes Betrieb-fertiges
+Produkt". Die Pflicht-Capabilities sind fast komplett —
+verbleibend für Vollausbau:
+- Slug-Wechsel-Cleanup (Storage-Waisen)
+- Reviews/Social-UI scharf (aktuell Status-Stubs)
+- Settings-Page (Slug ändern + Publish-Toggle, Branding)
+- Custom-Domain auf Vercel
+- Sentry / Lighthouse-CI
+
+**Nächste Session**: Code-Session 52 = **Settings-Page mit
+Slug-Wechsel + Publish-Toggle**. Begründung: nach 50/51 kann
+der Owner Stammdaten + Bilder editieren, aber er kann seinen
+Slug nicht ändern und seinen Betrieb nicht publishen. Beides
+sind Pflicht-Operationen für Live-Betrieb. Settings ist auch
+der natürliche Ort für die Legal-Sektion (USt-IdNr.,
+Aufsichtsbehörde — siehe Codex-Backlog). Vor Reviews/Social-UI,
+weil Publish-Toggle direkt unter „echter Kunde live" steht.
+
+---
+
+## Code-Session 52 – Settings-Page (Slug + Publish + Locale) + README/Homepage-Sync
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature + Doku
+
+**Was**: Letzte Pflicht-Operationen für Live-Betrieb sind jetzt im
+UI greifbar. Owner kann seinen Slug ändern (mit Validierung,
+Reserved-Liste, Postgres-Unique-Catch), seine Public-Site
+veröffentlichen oder als Entwurf zurückziehen, die Default-Sprache
+wechseln. Bei Slug-Wechsel macht das Form einen Auto-Redirect, sonst
+landet der User im 404.
+
+Zusätzlich: README + Homepage auf den aktuellen Stand gezogen — Status-
+Tabelle mit echten Meilenstein-Werten (M2 als ✅ scharf, M4 als 🔄
+aktiv), Tech-Stack ergänzt um `@supabase/ssr` + AI-SDKs, Header zeigt
+jetzt „Login" + „Jetzt starten"-CTAs (statt nur „Live-Demos" +
+„Pakete"), OnboardingPromise reflektiert Magic-Link + Image-Upload-
+Capability. Der Auftraggeber hatte zu Recht angemerkt, dass die
+README-Status-Sektion sich automatisch aktualisieren sollte — der
+Drift seit Sessions 35–51 war zu groß.
+
+**Dateien**:
+- ✚ `src/lib/business-settings.ts` — pure Helper.
+  `validateSettingsInput` (Slug-Regex, Reserved-List-Check, Locale,
+  same-slug-no-op), `submitSettingsUpdate` mit 7-stufigem Result
+  (noop / server / not-authed / forbidden / slug_taken /
+  validation / fail), `userMessageForResult`.
+- ✚ `src/tests/business-settings.test.ts` (~30 Asserts):
+  alle Validation-Pfade (zu kurz, Bindestrich-Anfang, reserviert,
+  Großbuchstaben → lowercase, gleicher Slug → no-op), alle
+  Result-Pfade, Body-Capture, Pre-Validation-Skip-Server.
+- ✚ `src/app/api/businesses/[slug]/settings/route.ts` — PATCH mit
+  Auth-Gate, Server-Auth-Client + RLS, Slug-Format-Re-Validierung
+  server-seitig, Postgres-23505 → 409.
+- ✚ `src/components/dashboard/settings/settings-form.tsx` — UI
+  mit drei Sektionen (Slug, Publish, Locale), Slug-Wechsel-Warn-
+  Hinweis bei Dirty, Auto-Redirect nach erfolgreichem Slug-Update.
+- 🔄 `src/app/dashboard/[slug]/settings/page.tsx` — von ComingSoon-
+  Stub auf scharfes Form umgestellt.
+- 🔄 `README.md` — Status-Tabelle aktualisiert (M2 ✅ scharf, M4
+  🔄 aktiv, M5 ⏳ teilweise), Tech-Stack-Block um `@supabase/ssr`,
+  AI-SDKs, Mock-first-Garantie. „Aktive Phase"-Zeile reflektiert
+  Backend-Sprint-Status.
+- 🔄 `src/components/marketing/onboarding-promise.tsx` — 4-Step-
+  Liste neu (Magic-Link → Branche/Paket → Inhalte/KI →
+  Veröffentlichen), neue CTAs „Jetzt anmelden" (führt zu
+  `/login`).
+- 🔄 `src/components/layout/site-header.tsx` — „Login"-Outline-CTA
+  (sm+) + „Jetzt starten"-Primary-CTA (führt zu `/onboarding`),
+  ersetzt „Live-Demos" + „Pakete".
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **34/35 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Static-Build hat `/api/businesses/[slug]/settings`
+korrekt nicht gemountet, SSR-Build hat ƒ. Settings-Page als
+●-SSG-prerendered. Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Settings + Doku-Sync). Codex-#10-
+Falle „deutsche Anführungszeichen in JSX-String" hat bei der
+Homepage-Anpassung wieder zugeschlagen — direkt mit Template-
+Literal gelöst.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Slug-Wechsel +
+Publish-Toggle.
+
+**Manueller Test**: Login → Dashboard → „Einstellungen"-Tab.
+Slug ändern → Speichern → Auto-Redirect auf neuen Pfad. Publish-
+Toggle umschalten → Public-Site `/site/<slug>` zeigt 404 wenn
+Entwurf, sonst die Site.
+
+**Status-Update**: ~80 % Richtung „erstes Betrieb-fertiges
+Produkt". Pflicht-Capabilities sind komplett. Verbleibend:
+- Schreibpfad ServicesEditForm (nice-to-have, Bronze hat eh
+  kein Service-Management)
+- Reviews/Social-UI scharf (Backend live, UI noch Status-Stubs)
+- Storage-Cleanup-Job (Slug-Wechsel-Waisen)
+- Custom-Domain auf Vercel
+- Sentry / Lighthouse-CI
+
+**Nächste Session**: Code-Session 53 = **Reviews-UI scharf**.
+Begründung: nach 52 hat der Owner alles, um seinen Betrieb live
+zu schalten. Der nächste Hebel für Engagement ist die Bewertungs-
+Anfrage-UI — aktuell Status-Stub bei `/dashboard/[slug]/reviews`.
+Backend (Mock + Live-Provider via AIPlayground) ist seit 26 fertig,
+aber als ChatGPT-Spielwiese, nicht als zielgerichteter
+Bewertungs-Booster. Vor Social-UI, weil Reviews den höchsten ROI
+haben (mehr Google-Sterne = mehr Vertrauen = mehr Anfragen).
+

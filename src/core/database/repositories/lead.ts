@@ -1,21 +1,22 @@
 /**
- * Lead-Repository (Code-Session 40).
+ * Lead-Repository (Code-Session 40, erweitert in 49).
  *
- * Server-/Edge-tauglicher Schreibe-Pfad für Public-Form-Submits.
- * Anders als bei `BusinessRepository` ist Lead **write-only für anon**:
- *   - `create()` ist der einzige Pfad, der ohne Auth läuft.
- *   - `listForBusiness()` braucht einen authenticated-Client (kommt
- *     in Session 41+, wenn Owner-Auth steht). Vorerst werfen die
- *     Implementierungen ein klares „nicht unterstützt"-Error.
+ * Zwei Pfade:
+ *   - `create()` — Schreibe-Pfad, anon erlaubt (Public-Form).
+ *     Implementiert seit Code-Session 40.
+ *   - `listForBusiness()` — Lese-Pfad, nur authenticated-User mit
+ *     `has_business_access` auf den Betrieb (Migration 0007 RLS).
+ *     Implementiert in Code-Session 49 für die Dashboard-Liste.
  *
- * **Wichtig zur RLS-Falle**: PostgREST macht nach `insert(...)` einen
- * impliziten SELECT, um die geschriebene Zeile zurückzugeben. Unter
- * unserer asymmetrischen RLS (anon darf nicht lesen, Migration 0005)
- * scheitert dieser SELECT mit `42501 row-level security violation`,
- * obwohl der INSERT erfolgreich war. Workaround: ID + Timestamps
- * **client-side** generieren, INSERT ohne `.select()`-Chain ausführen.
- * Wir geben dann das Lead-Objekt zurück, das wir selbst gebaut haben —
- * inhaltsidentisch zur DB-Zeile.
+ * **Wichtig zur RLS-Falle (create)**: PostgREST macht nach
+ * `insert(...)` einen impliziten SELECT, um die geschriebene Zeile
+ * zurückzugeben. Unter unserer asymmetrischen RLS (anon darf nicht
+ * lesen, Migration 0005) scheitert dieser SELECT mit `42501
+ * row-level security violation`, obwohl der INSERT erfolgreich war.
+ * Workaround: ID + Timestamps **client-side** generieren, INSERT
+ * ohne `.select()`-Chain ausführen. Wir geben dann das Lead-Objekt
+ * zurück, das wir selbst gebaut haben — inhaltsidentisch zur
+ * DB-Zeile.
  *
  * Browser-side `localStorage`-Schreibpfad
  * (`src/lib/mock-store/leads-overrides.ts`) bleibt unverändert. Das
@@ -74,6 +75,17 @@ export interface LeadRepository {
   readonly source: "mock" | "supabase";
   /** Erstellt einen Lead. Wirft `LeadRepositoryError`. */
   create(input: NewLeadInput): Promise<Lead>;
+  /**
+   * Listet Leads für einen Betrieb (neuste zuerst). Im Supabase-
+   * Modus filtert RLS auf `has_business_access(business_id)` —
+   * der explizite `eq("business_id", id)` ist redundant zur RLS,
+   * macht den Intent aber im Code sichtbar und schützt vor
+   * versehentlichem Service-Role-Aufrufen.
+   *
+   * Wirft `LeadRepositoryError` mit `kind: "rls"`, wenn der
+   * Aufrufer keine Berechtigung hat (anon ohne Auth).
+   */
+  listForBusiness(businessId: string): Promise<readonly Lead[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,9 +136,21 @@ function buildLeadFromInput(
  * Erzeugt ein Mock-Repository. Hält Leads in einem internen Bucket
  * pro Prozess — gut für Tests und SSR-Pfade. Browser-`localStorage`
  * läuft separat in `src/lib/mock-store/leads-overrides.ts`.
+ *
+ * Die optionale `seed`-Map ermöglicht es, das Mock-Repo mit
+ * Bestands-Daten aus `src/data/mock-leads.ts` zu initialisieren —
+ * sodass die Dashboard-Liste auch im Mock-Modus die Demo-Anfragen
+ * pro Betrieb sieht.
  */
-export function createMockLeadRepository(): LeadRepository {
+export function createMockLeadRepository(
+  seed?: Readonly<Record<string, readonly Lead[]>>,
+): LeadRepository {
   const bucket = new Map<string, Lead[]>();
+  if (seed) {
+    for (const [businessId, leads] of Object.entries(seed)) {
+      bucket.set(businessId, [...leads]);
+    }
+  }
   return {
     source: "mock",
     create(input: NewLeadInput) {
@@ -135,6 +159,14 @@ export function createMockLeadRepository(): LeadRepository {
       list.push(lead);
       bucket.set(lead.businessId, list);
       return Promise.resolve(lead);
+    },
+    listForBusiness(businessId: string) {
+      const list = bucket.get(businessId) ?? [];
+      // Neuste zuerst — symmetrisch zum Supabase-Pfad.
+      const sorted = [...list].sort((a, b) =>
+        b.createdAt.localeCompare(a.createdAt),
+      );
+      return Promise.resolve(sorted);
     },
   };
 }
@@ -213,6 +245,34 @@ interface LeadInsertRow {
   readonly updated_at: string;
 }
 
+/** Mapt eine Supabase-Row zurück auf das Lead-Schema. */
+function rowToLead(row: LeadInsertRow): Lead {
+  const draft = {
+    id: row.id,
+    businessId: row.business_id,
+    source: row.source,
+    name: row.name,
+    ...(row.phone ? { phone: row.phone } : {}),
+    ...(row.email ? { email: row.email } : {}),
+    message: row.message,
+    ...(row.requested_service_id
+      ? { requestedServiceId: row.requested_service_id }
+      : {}),
+    ...(row.preferred_date ? { preferredDate: row.preferred_date } : {}),
+    ...(row.preferred_time ? { preferredTime: row.preferred_time } : {}),
+    extraFields: row.extra_fields ?? {},
+    status: row.status,
+    notes: row.notes ?? "",
+    consent: row.consent,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+  return LeadSchema.parse(draft);
+}
+
+const LEAD_COLUMNS =
+  "id, business_id, source, name, phone, email, message, requested_service_id, preferred_date, preferred_time, extra_fields, status, notes, consent, created_at, updated_at";
+
 function leadToRow(lead: Lead): LeadInsertRow {
   return {
     id: lead.id,
@@ -247,6 +307,26 @@ export function createSupabaseLeadRepository(
       const { error } = await client.from("leads").insert(row);
       if (error) throw mapSupabaseError(error as PostgrestErrorLike);
       return lead;
+    },
+    async listForBusiness(businessId: string) {
+      const { data, error } = await client
+        .from("leads")
+        .select(LEAD_COLUMNS)
+        .eq("business_id", businessId)
+        .order("created_at", { ascending: false });
+      if (error) throw mapSupabaseError(error as PostgrestErrorLike);
+      const rows = (data ?? []) as readonly LeadInsertRow[];
+      const leads: Lead[] = [];
+      for (const row of rows) {
+        try {
+          leads.push(rowToLead(row));
+        } catch {
+          // Defekte DB-Zeilen still überspringen — sollte nicht
+          // passieren, weil INSERT-Pfad selbst LeadSchema.parse
+          // anwendet, aber UI-Code bleibt damit robust.
+        }
+      }
+      return leads;
     },
   };
 }

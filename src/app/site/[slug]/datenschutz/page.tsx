@@ -1,16 +1,15 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import {
-  getMockBusinessBySlug,
-  listMockBusinessSlugs,
-} from "@/data";
+  listSlugParams,
+  loadBusinessOrNotFound,
+} from "@/lib/page-business";
 import { LEAD_RETENTION_MONTHS, PRIVACY_POLICY_VERSION } from "@/core/legal";
 
 type Params = { slug: string };
 type PageProps = { params: Promise<Params> };
 
-export function generateStaticParams(): Params[] {
-  return listMockBusinessSlugs().map((slug) => ({ slug }));
+export async function generateStaticParams(): Promise<Params[]> {
+  return listSlugParams();
 }
 
 /**
@@ -31,8 +30,7 @@ export function generateStaticParams(): Params[] {
  */
 export default async function DatenschutzPage({ params }: PageProps) {
   const { slug } = await params;
-  const business = getMockBusinessBySlug(slug);
-  if (!business) notFound();
+  const business = await loadBusinessOrNotFound(slug);
 
   return (
     <main className="lp-container max-w-3xl py-10">

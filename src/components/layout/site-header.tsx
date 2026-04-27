@@ -35,11 +35,16 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <LinkButton href="/demo" variant="outline" size="sm" className="hidden sm:inline-flex">
-            Live-Demos
+          <LinkButton
+            href="/login"
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+          >
+            Login
           </LinkButton>
-          <LinkButton href="/pricing" size="sm">
-            Pakete
+          <LinkButton href="/onboarding" size="sm">
+            Jetzt starten
           </LinkButton>
         </div>
       </Container>

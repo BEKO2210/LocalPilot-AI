@@ -1,16 +1,15 @@
-import { notFound } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard";
 import { AIPlayground } from "@/components/dashboard/ai-playground";
 import {
-  getMockBusinessBySlug,
-  listMockBusinessSlugs,
-} from "@/data";
+  listSlugParams,
+  loadBusinessOrNotFound,
+} from "@/lib/page-business";
 
 type Params = { slug: string };
 type PageProps = { params: Promise<Params> };
 
-export function generateStaticParams(): Params[] {
-  return listMockBusinessSlugs().map((slug) => ({ slug }));
+export async function generateStaticParams(): Promise<Params[]> {
+  return listSlugParams();
 }
 
 export const metadata = {
@@ -33,8 +32,7 @@ export const metadata = {
  */
 export default async function DashboardAiPage({ params }: PageProps) {
   const { slug } = await params;
-  const business = getMockBusinessBySlug(slug);
-  if (!business) notFound();
+  const business = await loadBusinessOrNotFound(slug);
 
   return (
     <DashboardShell business={business} active="ai">

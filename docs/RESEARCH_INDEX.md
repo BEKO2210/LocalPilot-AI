@@ -90,6 +90,45 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Slug-Wechsel + Publish-Toggle (Code-Session 52)
+- [Supabase Docs – Use Supabase with Next.js](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs) — Standard-Update-Pattern via `.update().eq()` (52).
+- [Supabase Docs – Use Supabase Auth with Next.js](https://supabase.com/docs/guides/auth/quickstarts/nextjs) — Authenticated-Client mit Cookie-Session in Route-Handler (52).
+- Postgres `23505` UNIQUE-Violation: `error.code === "23505"` aus dem Update-Result → 409 Conflict an den Client (Best-Practice aus eigener Session-50-Erfahrung).
+
+### Supabase Storage + RLS (Code-Session 51)
+- [Supabase Docs – Storage Access Control](https://supabase.com/docs/guides/storage/security/access-control) — Public-Bucket bypasst SELECT-Auth, INSERT/UPDATE/DELETE bleiben policy-gated (51).
+- [Supabase Docs – Storage Buckets](https://supabase.com/docs/guides/storage/buckets/fundamentals) — Bucket-Konfiguration: file_size_limit + allowed_mime_types (51).
+- [Supabase JS API – storage-from-upload](https://supabase.com/docs/reference/javascript/storage-from-upload) — `upsert: true` für Re-Upload-Idempotenz (51).
+- [Supabase JS API – storage-from-getPublicUrl](https://supabase.com/docs/reference/javascript/storage-from-getpublicurl) — Public-URL-Konstruktion (51).
+- [Supabase Discussion #37611 – RLS Error mit Service Role](https://github.com/orgs/supabase/discussions/37611) — Service-Role bypasst RLS auf storage.objects (51).
+- [Niko Fischer – Supabase Storage File Upload Guide](https://nikofischer.com/supabase-storage-file-upload-guide) — Praxis-Beispiel Multipart-Upload (51).
+
+### RLS-scoped UPDATE via Server-Auth-Client (Code-Session 50)
+- [Supabase Docs – Setting up Server-Side Auth for Next.js](https://supabase.com/docs/guides/auth/server-side/nextjs) — server-auth-Client liest Cookie, RLS gilt automatisch (50).
+- [Supabase Discussion #13792 – Authenticated client in API route](https://github.com/orgs/supabase/discussions/13792) — RLS-only-Pattern statt Service-Role für User-Updates (50).
+- [Egghead – Restrict Access to Authenticated Users with Supabase RLS Policies](https://egghead.io/lessons/next-js-restrict-access-to-authenticated-users-with-supabase-rls-policies) — Owner-Update-Beispiel (50).
+- [Permit.io – Supabase Authentication and Authorization in Next.js](https://www.permit.io/blog/supabase-authentication-and-authorization-in-nextjs-implementation-guide) — Audit-trail beim UPDATE (50).
+
+### Lead-Listing + Pagination-Patterns (Code-Session 49)
+- [Supabase Docs – JavaScript: Order the results](https://supabase.com/docs/reference/javascript/order) — `order()`-Pflicht für stabile Pagination (49).
+- [Supabase Docs – JavaScript API: select](https://supabase.com/docs/reference/javascript/select) — `count: 'estimated'` vs. `'exact'` Trade-off (49).
+- [MakerKit – Pagination with React.js and Supabase](https://makerkit.dev/blog/tutorials/pagination-supabase-react) — Range-basiertes Pattern (49).
+- [Supabase Discussion #1223 – Pagination Diskussion](https://github.com/orgs/supabase/discussions/1223) — Praktiker-Workarounds + Cursor-vs-Offset (49).
+
+### Layout/Page-Dedup mit React.cache (Code-Session 48)
+- [Next.js – Getting Started: Fetching Data](https://nextjs.org/docs/app/getting-started/fetching-data) — Default-no-Cache in 15+, Memoization-Patterns (48).
+- [DEV – Reducing Network Overhead with Layout Deduplication](https://dev.to/mericcintosun/reducing-network-overhead-with-layout-deduplication-in-the-nextjs-app-router-m7b) — Praxis-Beispiel für Layout↔Page-Dedup (48).
+- [Next.js – Caching (Previous Model)](https://nextjs.org/docs/app/guides/caching-without-cache-components) — `React.cache()`-Pattern für Request-Scope-Memoization (48).
+- [Next.js – Directives: use cache](https://nextjs.org/docs/app/api-reference/directives/use-cache) — alternative cache-Directive für Cross-Request-Caching (48).
+- [Roboto Studio – Optimized data fetching in Next.js 15](https://robotostudio.com/blog/optimized-data-fetching-in-nextjs-15) — Best-Practice-Round-up (48).
+
+### generateStaticParams + dynamicParams (Code-Session 47)
+- [Next.js – generateStaticParams Functions Reference](https://nextjs.org/docs/app/api-reference/functions/generate-static-params) — partielles Prerendern, Memoization (47).
+- [Next.js – Dynamic Routes (file-conventions)](https://nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes) — `dynamicParams=true`-Default-Verhalten (47).
+- [Next.js Discussion #81155 – dynamicParams not working with Next 15/16](https://github.com/vercel/next.js/discussions/81155) — Caveats bei Cache-Components (47).
+- [Next.js – Static Exports Guide](https://nextjs.org/docs/app/guides/static-exports) — Pflicht-Slug-Liste fürs Static-Export (47).
+- [Next.js – Empty generateStaticParams with Cache Components](https://nextjs.org/docs/messages/empty-generate-static-params) — leere Arrays brechen den Build (47).
+
 ### Supabase-js v2 FK-Embed Type-Inferenz (Code-Session 46)
 - [Supabase Docs – Querying Joins and Nested tables](https://supabase.com/docs/guides/database/joins-and-nesting) — `!inner`-Modifier, Single-vs-Array-Verhalten je FK-Richtung (46).
 - [Supabase JS API – select](https://supabase.com/docs/reference/javascript/select) — Embed-Syntax, conservative Array-Typing-Default (46).

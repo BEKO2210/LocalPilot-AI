@@ -137,6 +137,61 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Cards mit Rolle/Tier/Publish-Badges, Empty-State CTA auf
   `/onboarding`. Damit ist die End-to-End-Schleife geschlossen:
   Login → Onboarding → Account → Dashboard.
+- 47: Public-Site auf Repository umgestellt ✅. Drei Pages
+  (`/site/[slug]`, `/site/[slug]/datenschutz`, `/site/[slug]/
+  impressum`) lesen jetzt über `loadBusinessOrNotFound` aus dem
+  konfigurierten Repository (Mock im Static-Export, Supabase
+  in SSR mit `LP_DATA_SOURCE=supabase`). `generateStaticParams`
+  ist async und liefert Slugs aus dem Repository. Mit
+  `dynamicParams=true` (Default) werden neue Slugs nach
+  Build-Zeit on-demand gerendert. Dashboard-Migration folgt in
+  Session 48 (9 Pages).
+- 48: Dashboard auf Repository umgestellt ✅. Alle 9
+  `/dashboard/[slug]/*`-Pages (layout, page, business,
+  services, leads, ai, reviews, social, settings) lesen
+  einheitlich über `loadBusinessOrNotFound`. Loader mit
+  `React.cache()` gewrappt → Layout + Page deduplizieren den
+  DB-Roundtrip pro Render-Pass. End-to-End-Schleife
+  vollständig: Login → Onboarding → Account → echte
+  Public-Site UND echtes Dashboard.
+- 49: Lead-Read aus Repository ✅.
+  `LeadRepository.listForBusiness(businessId)` ergänzt (mock
+  in-memory + supabase mit `.order("created_at", desc)`).
+  Mock-Resolver seedet jetzt aus `leadsByBusiness`, sodass
+  Demo-Anfragen weiter sichtbar sind. Beide Dashboard-Pages
+  (`page.tsx` Übersicht + `leads/page.tsx`) lesen jetzt aus
+  dem Repo. Letzter Mock-Direktzugriff der Pages-Schicht ist
+  damit erledigt.
+- 50: Schreibpfad in DB für `BusinessEditForm` ✅.
+  `PATCH /api/businesses/[slug]` mit Auth-Gate + RLS-only
+  (Owner-Update via Migration-0007-Policy, KEIN Service-Role).
+  Pure Submit-Helper `business-update.ts` mit 7-stufigem
+  `BusinessUpdateResult`-Mapping (server / not-authed /
+  forbidden / validation / local-fallback / fail). Form fällt
+  bei Static-Build / 404 / offline transparent auf den
+  localStorage-Pfad zurück. Bei 401/403/5xx KEIN Local-
+  Schreiben → keine stille Drift mit DB.
+- 51: Storage-Bucket für Logos + Hero-Bilder ✅.
+  Migration 0008 erstellt `business-images`-Bucket (public=true,
+  5 MB Limit, PNG/JPEG/WebP, **kein SVG**). Server-Route
+  `POST /api/businesses/[slug]/image` macht Auth-Gate +
+  Owner-Read-Check via authenticated-Client, anschließend
+  Service-Role-Upload mit `upsert: true`. Pfad-Konvention
+  `<slug>/<kind>.<ext>`. Pure Upload-Helper mit Mime-/Size-/
+  SVG-Validation, ImageUploadField-Komponente mit Vorschau-
+  Tile + „Hochladen" / „Ersetzen" / „Entfernen". URL landet
+  über `methods.setValue` im Form und wird beim regulären
+  „Speichern" mit-persistiert.
+- 52: Settings-Page (Slug-Wechsel + Publish-Toggle + Locale)
+  ✅. `PATCH /api/businesses/[slug]/settings` mit Auth-Gate +
+  RLS-only (Server-Auth-Client). Postgres-23505 → 409
+  „Slug vergeben". Pure Submit-Helper mit 7-stufigem Result
+  (noop / server / not-authed / forbidden / slug_taken /
+  validation / fail). Form macht bei Slug-Wechsel einen
+  `router.push` auf den neuen Slug-Pfad nach 0,9 s. Stub-Page
+  aus Session 32 ersetzt. README + Homepage angepasst
+  (Header zeigt jetzt „Login" + „Jetzt starten",
+  OnboardingPromise hat Magic-Link-Schritt + Login-CTA).
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 
