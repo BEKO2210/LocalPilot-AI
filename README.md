@@ -59,13 +59,14 @@ Der Dev-Server läuft anschließend unter [http://localhost:3000](http://localho
 
 ### Wichtige Skripte
 
-| Befehl              | Zweck                                              |
-| ------------------- | -------------------------------------------------- |
-| `npm run dev`       | Lokaler Dev-Server (Hot Reload).                   |
-| `npm run build`     | Production-Build.                                  |
-| `npm run start`     | Production-Build starten.                          |
-| `npm run lint`      | ESLint (Next.js + TypeScript Regeln).              |
-| `npm run typecheck` | TypeScript-Typenprüfung ohne Emit.                 |
+| Befehl                | Zweck                                                          |
+| --------------------- | -------------------------------------------------------------- |
+| `npm run dev`         | Lokaler Dev-Server (Hot Reload).                               |
+| `npm run build`       | Production-Build (mit SSR, für Vercel-Deploys).                |
+| `npm run build:static`| Static-Export-Build nach `out/` (für GitHub Pages).            |
+| `npm run start`       | Production-Build starten.                                      |
+| `npm run lint`        | ESLint (Next.js + TypeScript Regeln).                          |
+| `npm run typecheck`   | TypeScript-Typenprüfung ohne Emit.                             |
 
 ### Ohne API-Key starten
 
@@ -163,11 +164,25 @@ Im UI wickeln `<PricingGrid>`, `<FeatureLock>` und `<UpgradeHint>` aus
 
 ---
 
+## Live-Preview / Deployment
+
+Bei jedem Push auf `main` oder `claude/**` deployt der Workflow
+`.github/workflows/deploy.yml` die Seite automatisch nach **GitHub Pages**:
+
+```
+https://beko2210.github.io/LocalPilot-AI/
+```
+
+Einmaliger Setup-Schritt im GitHub-Repo: **Settings → Pages → Source → GitHub Actions**.
+Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
+
 ## Dokumentation
 
 - [`Claude.md`](./Claude.md) – Master-Briefing (Single Source of Truth)
 - [`docs/PRODUCT_STRATEGY.md`](./docs/PRODUCT_STRATEGY.md) – Vision, Zielgruppen, Pakete, Akzeptanz
 - [`docs/TECHNICAL_NOTES.md`](./docs/TECHNICAL_NOTES.md) – Architektur, Konventionen, Stack
+- [`docs/PRICING.md`](./docs/PRICING.md) – Pricing-System, Feature-Locks, Helper-API
+- [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) – GitHub Pages und Vercel
 - [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) – Was wurde in welcher Session gebaut?
 - [`CHANGELOG.md`](./CHANGELOG.md) – Versionshistorie
 
