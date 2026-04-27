@@ -1550,17 +1550,117 @@ Manuell:
 
 ### 6. Was ist der nächste empfohlene Run?
 
-**Session 13 – AI Provider Interface und Mock AI.**
+**Methodik-Wechsel zuerst** (s. u.). Erst danach Code-Session 13
+(AI-Provider-Scaffold), bewusst klein zugeschnitten.
 
-Provider-Interface technisch sauber vorbereiten: `src/core/ai/`-Modul
-mit:
-- `providers/{mock,openai,anthropic,gemini}-provider.ts` (Mock liefert
-  hochwertige Beispieltexte, andere Provider sind Skeleton).
-- `ai-client.ts` mit Provider-Resolver basierend auf
-  `AI_PROVIDER`-ENV; Fallback auf `mock`, falls Key fehlt.
-- API-Route `app/api/ai/generate/route.ts` (oder client-only Wrapper,
-  falls Static Export erhalten bleiben soll).
-- Test-Karte im Dashboard `/ai`, die alle 7 Methoden des
-  `AIProvider`-Interfaces (Session 2) sichtbar macht.
-Akzeptanz: App funktioniert ohne API-Key, Mock-Texte sind branchen-
-neutral und brauchbar, Fehler werden freundlich angezeigt.
+---
+
+## Methodik-Wechsel — vor Code-Session 13
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+Das Programm-Modell wurde fundamental umgestellt: vom „22 Sessions, dann
+fertig"-Sprint zu einem **dauerhaften Programm mit rollenden Meilensteinen**.
+
+- **`Claude.md`** hat einen neuen Abschnitt 0 „PROGRAMM-PHILOSOPHIE", der
+  vor allem anderen gilt:
+  - Sessions sind klein und atomar (30–60 Min., 30–80 KB Diff).
+  - Pro Session ein Recherche-Step (WebSearch + Quellen-Zitierung).
+  - Sessions 1–22 sind Inhaltsverzeichnis, kein Zeitplan; Code-Session-
+    Nummern dürfen frei wachsen.
+  - Es gibt kein „Projekt fertig" – Meilenstein 7 läuft permanent.
+  - Maintenance/Polish/Security/A11y/Performance/Doku gleichberechtigt
+    zu Features.
+- **`Claude.md`** Abschnitt 22 („Session-Plan") explizit als
+  Inhaltsverzeichnis markiert, nicht mehr als Zeitplan.
+- **`docs/PROGRAM_PLAN.md`** definiert 7 rollende Meilensteine
+  (Foundation ✅, KI-Schicht 🔄, Engagement, Backend, Production,
+  Vertikalisierung, Innovation Loop ♾️). Jeder mit eigenem
+  Erfolgskriterium, ohne fixe Session-Anzahl.
+- **`docs/SESSION_PROTOCOL.md`** ist der verbindliche Ablauf jeder
+  Code-Session: Größenbegrenzung, Recherche-Step, Verifikation
+  (typecheck/lint/build/smoke), Doku, Commit. 9 gleichberechtigte
+  Session-Typen (Feature, Refactor, Polish, A11y, Performance, Security,
+  DX, Doku, Research-Only).
+- **README.md** reframt von „Aktueller Stand: Session 12 von 22" auf
+  „Meilenstein 1 (Foundation) ✅ stabil, ab Code-Session 13 startet
+  Meilenstein 2 (KI-Schicht) in kleineren atomaren Sessions".
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu:
+- `docs/PROGRAM_PLAN.md`
+- `docs/SESSION_PROTOCOL.md`
+
+Geändert:
+- `Claude.md` (neuer Abschnitt 0, Hinweis in Abschnitt 22)
+- `README.md` (Aktueller-Stand-Block, Doku-Liste)
+- `CHANGELOG.md` (Versions-Block 0.13.0 + neuer Geplant-Block)
+- `docs/RUN_LOG.md` (dieser Eintrag)
+
+Kein Source-Diff – die Änderung ist organisatorisch.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck     # MUSS grün bleiben (kein Source-Code geändert)
+npm run lint          # MUSS grün bleiben
+npm run build:static  # MUSS grün bleiben
+```
+
+Manuell:
+- `Claude.md`, `docs/PROGRAM_PLAN.md`, `docs/SESSION_PROTOCOL.md` und
+  `README.md` lesen und auf Konsistenz prüfen.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                     | Status |
+| --------------------------------------------- | ------ |
+| Programm hat keinen festen Endpunkt           | ✅      |
+| Pro Session ein Recherche-Step ist verbindlich | ✅      |
+| Sessions sind kleiner zugeschnitten (Limits dokumentiert) | ✅ |
+| Meilensteine sind benannt und priorisiert     | ✅      |
+| `Claude.md` bleibt inhaltlicher Anker         | ✅      |
+| Build/Typecheck/Lint bleiben grün             | ✅ (kein Source-Diff) |
+
+### 5. Was ist offen?
+
+- Erste Session nach neuem Protokoll = **Code-Session 13**
+  (AI-Provider-Scaffold). Sehr klein zugeschnitten:
+  - Nur das `src/core/ai/`-Verzeichnis-Skelett + Re-Export-Barrel.
+  - Eine Stub-Datei pro Provider (mock/openai/anthropic/gemini),
+    jede wirft `AIProviderError("provider_unavailable")`.
+  - Provider-Resolver `getAIProvider()` mit ENV-Gate
+    (`AI_PROVIDER` + automatic Fallback auf `mock`).
+  - Smoketest in `src/tests/ai-provider-resolver.test.ts`.
+  - Keine echten API-Calls, kein Dashboard-UI in dieser Session.
+- Code-Sessions 14+ befüllen Mock-Provider mit hochwertigen
+  Beispieltexten, jeweils EINE Methode pro Session.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 13 – AI-Provider-Scaffold (klein).**
+
+Ein einziges atomares Deliverable:
+1. WebSearch zu „Anthropic SDK 2026 + AI provider abstraction
+   patterns" für aktuelle Best-Practices.
+2. `src/core/ai/`-Modul mit Provider-Stubs anlegen (alle Methoden
+   werfen `AIProviderError("provider_unavailable")`).
+3. `getAIProvider()`-Resolver mit ENV-Gate.
+4. Smoketest, der den Resolver + Fallback auf `mock` prüft.
+5. CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT in dieser Session:
+- Mock-Provider-Implementierung (kommt in Code-Session 14).
+- Dashboard-UI für AI (kommt nach Code-Session 17).
+- Echte API-Calls (kommen in Code-Sessions 21–24).
+
+### Quellen (Methodik-Recherche)
+
+- [Innovecs – SaaS Development Process: The Updated Guide for 2026](https://innovecs.com/blog/saas-development-process/)
+- [Riseup Labs – Software Development Methodologies: Complete 2026 Guide](https://riseuplabs.com/software-development-methodologies/)
+- [Basecamp – Shape Up: Stop Running in Circles and Ship Work that Matters](https://basecamp.com/shapeup)
+- [ProductPlan – Shape Up Method Glossary](https://www.productplan.com/glossary/shape-up-method)
+- [Curious Lab – What is Basecamp's Shape Up method?](https://www.curiouslab.io/blog/what-is-basecamps-shape-up-method-a-complete-overview)

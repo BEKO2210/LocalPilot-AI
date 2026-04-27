@@ -6,8 +6,52 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant
-- Session 13+: KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+### Geplant (Meilenstein 2 – KI-Schicht, in atomaren Code-Sessions ab 13)
+- Code-Sessions 13–14: AI-Provider-Scaffold + Mock für Website-Texte.
+- Code-Sessions 15–17: Mock für Service-Beschreibung, FAQ, Antworten.
+- Code-Sessions 18–20: Mock für Social-Posts, Bewertungs-Anfragen, Angebote.
+- Code-Sessions 21–22: OpenAI-Provider scharf (mit Caching).
+- Code-Sessions 23–24: Anthropic-Provider scharf.
+- Code-Session 25: Cost-Tracking + Rate-Limit-UI.
+
+Folge-Meilensteine (Engagement, Backend, Production-Readiness,
+Vertikalisierung, Innovation Loop) sind in `docs/PROGRAM_PLAN.md`
+beschrieben — dieses Programm hat **keinen Endpunkt**.
+
+## [0.13.0] – Methodik-Wechsel (vor Code-Session 13) – 2026-04-27
+
+### Changed
+- **Programm-Modell auf rollende Meilensteine umgestellt.**
+  Ursprüngliche „22 Sessions, dann fertig"-Sicht ist ersetzt durch ein
+  dauerhaftes Programm mit kleineren atomaren Code-Sessions, jeder mit
+  Recherche-Step, Tests und Deploy.
+- **`Claude.md`** – neuer Abschnitt 0 „PROGRAMM-PHILOSOPHIE" als
+  verbindliche Vorgabe vor allen anderen Anweisungen. Abschnitt 22
+  („Session-Plan") ist jetzt explizit als Inhaltsverzeichnis (nicht
+  Zeitplan) markiert.
+- **README.md** – Aktueller-Stand-Block reframt von „Session N von 22"
+  auf „Meilenstein N (rollend)" plus Link zu `PROGRAM_PLAN.md` /
+  `SESSION_PROTOCOL.md`.
+
+### Added
+- **`docs/PROGRAM_PLAN.md`** – 7 Meilensteine (Foundation ✅,
+  KI-Schicht 🔄, Engagement, Backend, Production, Vertikalisierung,
+  Innovation Loop ♾️). Jeder Meilenstein mit eigenem Erfolgskriterium,
+  ohne fixe Session-Anzahl.
+- **`docs/SESSION_PROTOCOL.md`** – verbindlicher Ablauf jeder
+  Code-Session: Größenbegrenzung (30–80 KB Diff), Recherche-Step
+  (WebSearch + Quellen im RUN_LOG), Verifikation (typecheck/lint/build/
+  smoke), Doku, Commit. 6 gleichberechtigte Session-Typen (Feature,
+  Refactor, Polish, A11y, Performance, Security, DX, Doku, Research).
+
+### Notes
+- Recherche-Quellen, die diesen Wechsel motiviert haben, im RUN_LOG-
+  Eintrag „Methodik-Wechsel" mit Markdown-Links zitiert.
+- Kein Code-Diff im Produkt selbst – die Änderung ist organisatorisch.
+  Build/Typecheck/Lint bleiben grün, weil keine Source-Datei berührt
+  wurde.
+
+## [0.12.0] – Session 12 – 2026-04-27
 
 ## [0.12.0] – Session 12 – 2026-04-27
 

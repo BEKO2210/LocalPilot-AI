@@ -23,8 +23,16 @@ Autowerkstatt bis zur Reinigungsfirma – und ist im Kern bewusst branchenneutra
 - Bronze/Silber/Gold-Pakete als echte Produktlogik (Feature-Locks im UI)
 - Branchen-Presets (Friseur, Werkstatt, Reinigung, Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop, …)
 
-Aktueller Stand: **Session 12** – Lead-System: Public-Site-Anfrageformular mit dynamischen Feldern aus dem Preset, Dashboard mit Filter, Suche, Detail-Pane, Status-Wechsel, Notizen und Antwort-Vorlagen mit Copy-to-Clipboard.
-Weitere Funktionen folgen in den Sessions 13–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
+**Aktueller Stand: Meilenstein 1 (Foundation) ✅ stabil – Code-Sessions 1–12 abgeschlossen.**
+
+Lead-System mit dynamischem Public-Site-Formular und Dashboard-Verwaltung
+ist live. Ab Code-Session 13 startet **Meilenstein 2 (KI-Schicht)** in
+kleineren atomaren Sessions.
+
+LocalPilot AI ist als **dauerhaftes Programm** mit rollenden Meilensteinen
+aufgesetzt – nicht als endlicher Sprint mit fixem Schluss. Details:
+[`docs/PROGRAM_PLAN.md`](./docs/PROGRAM_PLAN.md) und das Session-Protokoll
+in [`docs/SESSION_PROTOCOL.md`](./docs/SESSION_PROTOCOL.md).
 
 ---
 
@@ -195,6 +203,8 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - [`docs/BUSINESS_EDITOR.md`](./docs/BUSINESS_EDITOR.md) – Business-Editor, RHF + Zod, Mock-Store, Live-Preview
 - [`docs/SERVICES_EDITOR.md`](./docs/SERVICES_EDITOR.md) – Services-Editor, useFieldArray, Sortierung, Paket-Limits
 - [`docs/LEAD_SYSTEM.md`](./docs/LEAD_SYSTEM.md) – Lead-System (Public-Site-Form, Dashboard, Mock-Store)
+- [`docs/PROGRAM_PLAN.md`](./docs/PROGRAM_PLAN.md) – Rolling Milestones, kein Endpunkt
+- [`docs/SESSION_PROTOCOL.md`](./docs/SESSION_PROTOCOL.md) – Verbindlicher Ablauf jeder Code-Session
 - [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) – GitHub Pages und Vercel
 - [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) – Was wurde in welcher Session gebaut?
 - [`CHANGELOG.md`](./CHANGELOG.md) – Versionshistorie
