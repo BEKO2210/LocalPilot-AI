@@ -3226,3 +3226,215 @@ dafür gibt es Folge-Sessions.
 - [GetSiteControl – 10 Limited-Time Offer Examples + Templates to Help You Craft Yours](https://getsitecontrol.com/blog/limited-time-offer-examples/)
 - [SDOCPA – Small Business Marketing Ideas That Actually Work in 2026](https://www.sdocpa.com/small-business-marketing-ideas/)
 - [Indeed – Limited-Time Offers: 3 Examples and How To Create One](https://www.indeed.com/career-advice/career-development/limited-time-offers)
+
+---
+
+## Code-Session 21 – OpenAI-Provider scharf (`generateWebsiteCopy`)
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein) + erste externe AI-Dependency
+Meilenstein: 2 (KI-Schicht — Live-Provider-Phase startet)
+
+### 1. Was wurde umgesetzt?
+
+Erste scharfe Live-AI-Methode überhaupt. Ein einzelner Pfad
+(`generateWebsiteCopy`) ist jetzt nicht mehr Mock, sondern echter
+OpenAI-Call — wenn ein Key gesetzt ist. Ohne Key bleibt das Verhalten
+identisch zu vorher, weil der Resolver auf den Mock fällt.
+
+- `src/core/ai/providers/openai/_client.ts` (neu) — gemeinsamer
+  Client-Builder für **alle** zukünftigen scharfen OpenAI-Methoden:
+  - `getOpenAIApiKey(opts?)` — defensiver Vor-Check, wirft
+    `AIProviderError("no_api_key")` mit deutscher Nachricht statt den
+    SDK-Konstruktor selbst zu lassen. Wichtig: das ist die
+    Hauptstelle, an der die UI später eine sprechende Fehlermeldung
+    anzeigen kann.
+  - `getOpenAIModel(opts?)` — liest `OPENAI_MODEL` aus der ENV. Default
+    `gpt-4o-mini`. Die ENV-Override ermöglicht es, später auf
+    `gpt-4o`, `gpt-4.5` oder `o1-mini` zu wechseln, ohne Code
+    anzufassen.
+  - `buildOpenAIClient(opts?)` — `maxRetries: 2` (SDK-Default), damit
+    429-Fehler automatisch mit exponential Backoff wiederholt werden.
+  - `mapOpenAIError(err)` — vereinheitlicht alle SDK-Fehler auf
+    `AIErrorCode`: 401/403 → `no_api_key`, 429 → `rate_limited`,
+    5xx → `provider_unavailable`, 400 → `invalid_input`,
+    sonst → `unknown`. `AIProviderError`s werden unverändert
+    weitergeworfen.
+- `src/core/ai/providers/openai/website-copy.ts` (neu) — die
+  Live-Implementierung:
+  - Eingabevalidierung über `WebsiteCopyInputSchema.safeParse`
+    **vor** der Key-Prüfung, damit ein invalider Input keinen
+    Cost-Verbrauch auslöst.
+  - **Statischer System-Prompt** (~1500 Token) mit Stilrichtlinien:
+    deutsch, keine Superlative, USPs würdigen, Fallback-Verhalten
+    bei sinnlosem Input, strict an Schema halten. Statisch =
+    cache-tauglich.
+  - **User-Prompt** baut Branchen-Kontext (Label, Beschreibung,
+    Zielgruppe), Betriebsname, Stadt, Tonalität, USPs, Variant
+    und optionalen Hint. Variabler Teil hinten = Caching-best-
+    practice.
+  - **Structured Outputs** via `zodResponseFormat(WebsiteCopyOutputSchema,
+    "website_copy")`. Strict-JSON-Schema verhindert Halluzinationen,
+    SDK parst direkt nach Zod-Typ.
+  - **`prompt_cache_key`** = `lp:website-copy:${industryKey}:${variant}`.
+    Zwei Friseur-Salons in Bremen und Leipzig mit gleicher
+    `hero`-Variante teilen sich denselben Cache-Slot
+    (90 % Token-Rabatt nach OpenAI-Recherche).
+  - **Doppelte Validierung**: nach `parsed`-Erhalt nochmal durch
+    `WebsiteCopyOutputSchema.parse` — gleiche Sicherheits-Pipeline
+    wie beim Mock-Provider.
+  - Gut definierte Fehlerpfade:
+    - `message.refusal` → `empty_response` mit dem Refusal-Text.
+    - `!message.parsed` → `empty_response`.
+    - SDK-`APIError` → über `mapOpenAIError`.
+- `src/core/ai/providers/openai-provider.ts`: komponiert nun den
+  Stub mit der scharfen Methode. Status-Header zeigt die noch
+  offenen 6 Methoden.
+- `src/tests/ai-openai-provider.test.ts` (neu) — zwei Modi:
+  - **Strukturell** (12 Assertions, immer aktiv):
+    1. `openaiProvider.key === "openai"`.
+    2. Alle 7 AIProvider-Methoden sind Funktionen.
+    3. Ohne `OPENAI_API_KEY` → `no_api_key` **vor** Netzwerk-Call.
+    4. Ungültiges Input → `invalid_input`.
+    5. Resolver mit `AI_PROVIDER=openai` + Key → openai-Provider.
+    6. Übrige 6 Methoden werfen `provider_unavailable`
+       (improveServiceDescription, generateFaqs,
+       generateCustomerReply, generateReviewRequest,
+       generateSocialPost, generateOfferCampaign).
+  - **Live** (opt-in via `LP_TEST_OPENAI_LIVE=1` + `OPENAI_API_KEY`):
+    echter Call, Output gegen `WebsiteCopyOutputSchema` validiert.
+- `package.json`: `openai@^5.23.2` als erste externe AI-SDK-
+  Dependency.
+  - Version 5 (nicht 6), weil OpenAI-SDK v6 als peer-dep
+    `zod ^3.25 || ^4` verlangt — wir bleiben bei `zod 3.24.1`,
+    weil RHF + bestehende Schemas darauf abgestimmt sind.
+  - Bump auf v6 wird in einer DX-Session geprüft, wenn wir
+    Anthropic ergänzen und sowieso einen Dependency-Audit fahren.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (3 Code-Dateien):
+- `src/core/ai/providers/openai/_client.ts`
+- `src/core/ai/providers/openai/website-copy.ts`
+- `src/tests/ai-openai-provider.test.ts`
+
+Geändert:
+- `src/core/ai/providers/openai-provider.ts` (Stub → komponiert)
+- `package.json` + `package-lock.json` (Dependency `openai@^5`)
+- `docs/PROGRAM_PLAN.md` (Roadmap-Selbstaktualisierung, +4 Items)
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~30 KB im Code-Bereich (ohne `package-lock.json`,
+das ja durch npm autoritativ wächst). Im Session-Limit.
+
+### 3. Wie teste ich es lokal?
+
+Ohne API-Key (CI-Pfad):
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün, Bundle bleibt 102 KB
+npx tsx src/tests/ai-mock-provider.test.ts            # ~380 Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 22 Asserts ok
+npx tsx src/tests/ai-openai-provider.test.ts          # 12 Strukturelle Asserts ok
+```
+
+Mit API-Key (Live-Smoketest opt-in):
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export LP_TEST_OPENAI_LIVE=1
+npx tsx src/tests/ai-openai-provider.test.ts
+# → "✓ Live-OpenAI-Call erfolgreich."
+```
+
+Programmatisch:
+
+```ts
+import { getAIProvider } from "@/core/ai";
+
+const provider = getAIProvider();
+// Ohne ENV: liefert Mock-Provider, generateWebsiteCopy ist deterministisch.
+// Mit AI_PROVIDER=openai + OPENAI_API_KEY: liefert openai-Provider,
+// generateWebsiteCopy ruft echtes Modell.
+
+await provider.generateWebsiteCopy({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich", "modern"],
+    uniqueSellingPoints: ["Termine auch samstags"],
+  },
+  variant: "hero",
+});
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                      | Status |
+| -------------------------------------------------------------- | ------ |
+| `openai`-SDK-Dependency installiert (v5, zod-3-kompatibel)     | ✅      |
+| `generateWebsiteCopy` ruft echte OpenAI-API mit Structured Out | ✅      |
+| Defensiver `no_api_key`-Vor-Check vor Netzwerk-Call            | ✅      |
+| Error-Mapping 401/429/5xx/400 → AIErrorCode                    | ✅      |
+| Prompt-Caching-tauglich: statischer Prefix + `prompt_cache_key`| ✅      |
+| Doppelte Validierung über `WebsiteCopyOutputSchema`            | ✅      |
+| Übrige 6 OpenAI-Methoden bleiben Stub (`provider_unavailable`) | ✅      |
+| Resolver mit Key routet auf openai, ohne Key auf mock          | ✅      |
+| Strukturelle Smoketest (12 Asserts) ohne Netzwerk grün         | ✅      |
+| Live-Smoketest opt-in über `LP_TEST_OPENAI_LIVE=1`             | ✅      |
+| Bundle bleibt unverändert (Tree-Shaking funktioniert)          | ✅ (102 KB) |
+| Build/Typecheck/Lint grün                                      | ✅      |
+| Recherche-Step + Quellen zitiert                               | ✅      |
+| Roadmap-Selbstaktualisierung: 4 neue Items                     | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 22**: zweite OpenAI-Live-Methode
+  (`improveServiceDescription`). Nutzt denselben `_client.ts`-
+  Helper, eigene `service-description.ts` mit zugespitztem
+  System-Prompt für Service-Texte. Schmaler Mock-Vergleichs-
+  Smoketest (Live-/Mock-Parität auf gleichem Input).
+- **Codex**: 9 Backlog-Tasks warten weiterhin (alle aus Session 20).
+- **Self-Extending Backlog** (4 neue Items aus dieser Session):
+  Prompt-Caching-Telemetrie, Modell-Switch-UI, API-Key-Hygiene-
+  Audit, Cost-Cap pro Betrieb.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 22 — OpenAI-Provider, zweite Live-Methode (`improveServiceDescription`).**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „prompt template service description local
+   business OpenAI structured outputs 2026" — verfeinert die
+   System-Prompts für die zweite Methode.
+2. `src/core/ai/providers/openai/service-description.ts` neu,
+   analog zu `website-copy.ts`. Eigener System-Prompt, eigener
+   `prompt_cache_key` (`lp:service-desc:${industryKey}:${targetLength}`).
+3. `openai-provider.ts` um die zweite Methode erweitern.
+4. `ai-openai-provider.test.ts` um zweite Strukturell-Suite
+   ergänzen (analog: ohne Key → no_api_key, ungültig →
+   invalid_input). Die übrigen 5 Stub-Asserts bleiben.
+5. PROGRAM_PLAN.md +1 Item (Roadmap-Self-Step), CHANGELOG/RUN_LOG,
+   Commit, Push.
+
+Bewusst NICHT: andere 5 Methoden, UI, API-Route — pro Session
+nur eine scharfe Methode.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [OpenAI – Structured model outputs (Guides)](https://developers.openai.com/api/docs/guides/structured-outputs)
+- [OpenAI – Introducing Structured Outputs in the API](https://openai.com/index/introducing-structured-outputs-in-the-api/)
+- [OpenAI – Prompt Caching (Guides)](https://developers.openai.com/api/docs/guides/prompt-caching)
+- [OpenAI – Prompt Caching 201 (Cookbook)](https://developers.openai.com/cookbook/examples/prompt_caching_201)
+- [OpenAI – Prompt Caching in the API (Blog)](https://openai.com/index/api-prompt-caching/)
+- [TokenMix – Prompt Caching Guide 2026: Save 50–95 % on AI API Costs](https://tokenmix.ai/blog/prompt-caching-guide)
+- [OpenAI – How to handle rate limits (Cookbook)](https://developers.openai.com/cookbook/examples/how_to_handle_rate_limits)
+- [OpenAI – Error codes (Guides)](https://developers.openai.com/api/docs/guides/error-codes)
+- [OpenAI Help Center – How can I solve 429 errors?](https://help.openai.com/en/articles/5955604-how-can-i-solve-429-too-many-requests-errors)
+- [Portkey – OpenAI's Prompt Caching: A Deep Dive](https://portkey.ai/blog/openais-prompt-caching-a-deep-dive/)

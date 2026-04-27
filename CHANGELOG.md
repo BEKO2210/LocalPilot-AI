@@ -6,19 +6,103 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant (Meilenstein 2 – KI-Schicht, jetzt Live-Provider-Phase)
-- Code-Sessions 21–22: OpenAI-Provider scharf (mit Caching).
-- Code-Sessions 23–24: Anthropic-Provider scharf.
+### Geplant (Meilenstein 2 – KI-Schicht, Live-Provider-Phase)
+- Code-Session 22: OpenAI-Provider, zweite Live-Methode
+  (`improveServiceDescription`).
+- Code-Sessions 23–24: Anthropic-Provider scharf
+  (`generateWebsiteCopy` + 1 weitere Methode).
 - Code-Sessions 25–26: Gemini-Provider + Cost-Tracking + Rate-Limit-UI.
 - Code-Session 27+: AI-API-Route hinter Auth, Dashboard-UI je
   Capability, DOMPurify-Sanitizer auf übernommene KI-Outputs.
 
 ### Self-Extending Backlog
-Code-Session 20 hat 4 neue Items in `docs/PROGRAM_PLAN.md` ergänzt
-(Track A: Offer-Campaign-Bundle aus 1 Trigger → Social+Review,
-AI-API-Route mit Edge-Runtime; Track F: Glossar, Codex-Onboarding-
-Polish; **Track G neu**: Mitwirkende-Koordination und
-Codex-pre-commit-Schutz).
+Code-Session 21 hat 4 neue Items in `docs/PROGRAM_PLAN.md` ergänzt
+(Track A: Prompt-Caching-Telemetrie, Modell-Switch-UI;
+Track B: API-Key-Hygiene-Audit, Cost-Cap pro Betrieb;
+Track D: Live-/Mock-Parität sichern).
+
+## [0.15.0] – Code-Session 21 – 2026-04-27
+
+### Added
+- **OpenAI-Provider erste Live-Methode**: `generateWebsiteCopy` ist
+  jetzt scharf. Ohne `OPENAI_API_KEY` fällt der Resolver weiterhin
+  defensiv auf den Mock-Provider zurück, mit Key wird tatsächlich
+  OpenAI angesprochen.
+  - `src/core/ai/providers/openai/_client.ts` (neu) — gemeinsamer
+    Client-Builder + Error-Mapper:
+    - `getOpenAIApiKey(opts?)` mit defensiver Vor-Prüfung; ohne Key
+      → `AIProviderError("no_api_key")` mit deutschsprachiger
+      Nachricht.
+    - `getOpenAIModel(opts?)` liest `OPENAI_MODEL` aus der ENV,
+      Default ist `gpt-4o-mini` (günstig, strukturierte Outputs,
+      schnell).
+    - `buildOpenAIClient(opts?)` setzt `maxRetries: 2`, sodass
+      429-Fehler automatisch mit exponential Backoff wiederholt
+      werden (SDK-Default).
+    - `mapOpenAIError(err)` mappt SDK-Fehler auf `AIErrorCode`:
+      401/403 → `no_api_key`, 429 → `rate_limited`,
+      5xx → `provider_unavailable`, 400 → `invalid_input`,
+      sonst → `unknown`.
+  - `src/core/ai/providers/openai/website-copy.ts` (neu) —
+    `openaiGenerateWebsiteCopy(input)`:
+    - **Structured Outputs** via `zodResponseFormat(WebsiteCopyOutputSchema,
+      "website_copy")` aus `openai/helpers/zod`. Strict-JSON-Schema
+      verhindert Halluzinationen, das SDK parst direkt nach
+      Zod-Typ.
+    - **Statischer System-Prompt** mit Stilrichtlinien (deutsch,
+      keine Superlative, USPs würdigen, Fallback-Verhalten bei
+      sinnlosem Input). Prompt-Caching greift automatisch ab
+      ≥ 1024 Tokens.
+    - **`prompt_cache_key`** pro `(industryKey, variant)` — ermöglicht
+      Cache-Hits über mehrere Betriebe der gleichen Branche +
+      Variante hinweg (90 % Token-Rabatt, ~80 % weniger Latenz
+      laut OpenAI).
+    - **User-Prompt** baut Branchen-Kontext, Tonalität, USPs,
+      Variant und optionalen Hint zusammen.
+    - **Doppelte Validierung**: SDK-`parsed`-Output wird
+      zusätzlich durch `WebsiteCopyOutputSchema.parse` gejagt,
+      bevor er zurückgegeben wird.
+- `src/core/ai/providers/openai-provider.ts`: komponiert nun den
+  Stub mit der neuen Live-Methode (`{ ...stub, generateWebsiteCopy }`).
+  Die übrigen 6 Methoden bleiben Stubs und werfen
+  `provider_unavailable`.
+- Smoketest `src/tests/ai-openai-provider.test.ts` (neu) mit zwei
+  Modi:
+  - **Strukturell** (immer ausgeführt, kein Netzwerk): 12 Assertions
+    — Provider-Key + alle 7 Methoden sind Funktionen, ohne Key →
+    `no_api_key` (vor Netzwerk-Call), ungültiges Input →
+    `invalid_input`, Resolver routet mit Key auf openai, übrige 6
+    Methoden werfen `provider_unavailable`.
+  - **Live** (opt-in via `LP_TEST_OPENAI_LIVE=1` + `OPENAI_API_KEY`):
+    echter API-Call mit Hairdresser-Hero-Input, Output gegen
+    `WebsiteCopyOutputSchema` validiert.
+
+### Dependencies
+- **`openai@^5`** als erste externe AI-SDK-Dependency hinzugefügt.
+  Version 5 statt 6, weil OpenAI-SDK v6 als peer-dep
+  `zod ^3.25 || ^4` verlangt — wir bleiben bei `zod 3.24.1`
+  (Konsistenz mit React-Hook-Form + bestehenden Schemas). Bump
+  auf v6 wird in einer separaten DX-Session geprüft, sobald wir
+  Anthropic ergänzen und sowieso einen Dependency-Audit fahren.
+- `node_modules/openai` wird in Client-Bundle **nicht** mit-
+  gepackt (Tree-Shaking funktioniert sauber, First-Load-JS bleibt
+  bei 102 KB).
+
+### Notes
+- **Recherche** (Session-Protokoll): Quellen zu 2026-Patterns für
+  OpenAI Structured Outputs, Prompt-Caching (statisches zuerst,
+  variables zuletzt; ≥ 1024 Token automatisch; `prompt_cache_key`
+  für Routing) und Error-Handling (429-Auto-Retry im SDK,
+  selektives Re-Throw bei 401/5xx) im RUN_LOG-Eintrag
+  „Code-Session 21".
+- **Keine UI-Änderung**, keine API-Route, kein Cost-Tracking — die
+  scharfe OpenAI-Methode ist serverseitig isoliert verwendbar.
+  Dashboard-Integration kommt in einer späteren Session.
+- Diff ~25 KB Code, ~3 KB Test, ~5 KB Doku. 4 neue Dateien, 2
+  geänderte Dateien (+ `package.json` / `package-lock.json` durch
+  Dependency-Install).
+- Alle Verifikationen grün: `typecheck`, `lint`, `build:static`,
+  alle drei Smoketests.
 
 ## [0.14.0] – Code-Session 20 – 2026-04-27
 

@@ -163,6 +163,14 @@ aktiven Session.
 - **AI-API-Route mit Edge-Runtime**: `/api/ai/generate` als Vercel-Edge-
   Function (statt Node), niedrige Latenz, gute Streaming-Kompatibilität
   mit Anthropic/OpenAI-SSE.
+- **Prompt-Caching-Telemetrie** (aus Code-Session 21): pro Request
+  loggen, wie viele Token aus dem Cache kamen (`usage.prompt_tokens_details
+  .cached_tokens`). Daraus lässt sich später ein konkreter Kostenreport
+  pro Branche/Variante bauen.
+- **Modell-Switch-UI** (Track A oder F): pro Betrieb einstellbar,
+  ob OpenAI-`gpt-4o-mini`, `gpt-4o` oder `o1-mini` benutzt wird.
+  Default bleibt `gpt-4o-mini` (günstig + schnell, strukturiert
+  zuverlässig).
 
 ### Track B · Security & Compliance
 - DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen
@@ -175,6 +183,13 @@ aktiven Session.
   zentraler Konfiguration und transparenter Fehlermeldung im UI.
 - Content-Security-Policy + Subresource-Integrity Header für den
   produktiven Build.
+- **API-Key-Hygiene-Audit** (aus Code-Session 21): aktuell wird der
+  Key direkt aus `process.env` gelesen. Sobald API-Routes existieren,
+  ergänzen wir einen serverseitigen Wrapper, der den Key nie in
+  Logs auftauchen lässt (Redaction in Sentry-Integration).
+- **Cost-Cap pro Betrieb**: pro Tag/Monat ein Hard-Limit, das vor dem
+  OpenAI-Call geprüft wird. Bei Überschreitung wirft die KI-Schicht
+  `AIProviderError("rate_limited")` mit eigenem Hinweistext.
 
 ### Track C · Observability & Qualität
 - Strukturierte Telemetrie der Mock-Provider-Aufrufe (Welche Methode,
@@ -191,18 +206,23 @@ aktiven Session.
 - Gemeinsamen `clamp`/`polish`/`substituteCity`-Helper in
   `src/core/ai/providers/mock/_helpers.ts` extrahieren — derzeit
   duplizieren website-copy / service-description / customer-reply
-  / review-request / social-post diese Funktionen leicht abweichend.
-  Mit Code-Session 19 sind es **fünf** Duplikate von `clamp` —
-  nächste DX-Session sollte das einsammeln.
+  / review-request / social-post / offer-campaign diese Funktionen
+  leicht abweichend. Mit Code-Session 20 sind es **sechs** Duplikate
+  von `clamp` — nächste DX-Session sollte das einsammeln.
 - `topicToQA` aus `faqs.ts` und `detectTopic` aus `customer-reply.ts`
   teilen sich eine ähnliche Stamm-Erkennung — ein gemeinsames
   `topic-detection.ts`-Modul vermeidet zukünftige Drift.
-- Smoketest-Datei ist mit Code-Session 19 auf >900 Zeilen / ~350
+- Smoketest-Datei ist mit Code-Session 20 auf >1100 Zeilen / ~380
   Assertions gewachsen — Aufteilung pro Methode parallel zur
   Aufteilung der Implementierung wird dringender.
 - `tagify`-Helper aus `social-post.ts` ist verwandt mit
   `normalizeQuestion` aus `faqs.ts` (NFKD + Diakritik-Strip). Ein
   gemeinsames `slugify.ts` würde beides bedienen.
+- **Live-/Mock-Parität sichern** (aus Code-Session 21): wenn der
+  OpenAI-Provider mehr Methoden scharf hat, lohnt eine Parity-Suite,
+  die Mock und Live mit dem gleichen Input fährt und prüft, dass
+  beide das gleiche Schema erfüllen. Live-Calls dürfen optional
+  bleiben (skip-by-default).
 
 ### Track E · Vertikalisierung
 - Branchen-Presets von 13 auf mindestens 20 erweitern; Kandidaten:
