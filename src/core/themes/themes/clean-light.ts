@@ -1,0 +1,53 @@
+import { ThemeSchema } from "@/core/validation/theme.schema";
+import type { Theme } from "@/types/theme";
+
+export const cleanLightTheme: Theme = ThemeSchema.parse({
+  key: "clean_light",
+  label: "Clean Light",
+  description:
+    "Hell, modern und neutral. Allrounder für die meisten lokalen Betriebe.",
+  colors: {
+    primary: "#1f47d6",
+    primaryForeground: "#ffffff",
+    secondary: "#0f1320",
+    secondaryForeground: "#ffffff",
+    accent: "#3563f0",
+    background: "#ffffff",
+    foreground: "#0f1320",
+    muted: "#f6f7f9",
+    mutedForeground: "#67738a",
+    border: "#d5dae2",
+  },
+  typography: {
+    headingFontFamily: "Inter, ui-sans-serif, system-ui",
+    bodyFontFamily: "Inter, ui-sans-serif, system-ui",
+    baseFontSize: "16px",
+    headingWeight: 600,
+    bodyWeight: 400,
+    letterSpacing: "tight",
+  },
+  radius: "xl",
+  shadow: "soft",
+  sectionStyle: "comfortable",
+  buttonStyle: "rounded",
+  cardStyle: "soft",
+  suitableForIndustries: [
+    "hairdresser",
+    "barbershop",
+    "auto_workshop",
+    "cleaning_company",
+    "cosmetic_studio",
+    "nail_studio",
+    "craftsman_general",
+    "electrician",
+    "painter",
+    "driving_school",
+    "tutoring",
+    "personal_trainer",
+    "photographer",
+    "restaurant",
+    "cafe",
+    "local_shop",
+    "garden_landscaping",
+  ],
+});

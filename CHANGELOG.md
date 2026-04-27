@@ -7,7 +7,56 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 5+: Themes, Mock-Daten, Public Site Generator, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+- Session 6+: Mock-Daten, Public Site Generator, Dashboard, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.5.0] – Session 5 – 2026-04-27
+
+### Added
+- 10 Theme-Datensätze unter `src/core/themes/themes/`:
+  `clean_light` (Default), `premium_dark`, `warm_local`, `medical_clean`,
+  `beauty_luxury`, `automotive_strong`, `craftsman_solid`, `creative_studio`,
+  `fitness_energy`, `education_calm`. Jedes Theme bringt 10 Farb-Tokens,
+  Typografie, Radius, Schatten, Section-/Button-/Card-Stil und eine
+  Liste passender Branchen mit. Jedes Theme wird beim Module-Load via
+  `ThemeSchema.parse(...)` validiert.
+- `src/core/themes/theme-resolver.ts`: `themeToCssVars(theme)` wandelt
+  einen Theme-Datensatz in ein `Record<\`--theme-...\`, string>` für
+  inline `style`. `hexToRgbTriplet()` konvertiert `#1f47d6` → `"31 71 214"`,
+  passend zur Tailwind-`<alpha-value>`-Syntax.
+- `src/core/themes/registry.ts` mit `THEME_REGISTRY`, `DEFAULT_THEME`
+  (clean_light), `getTheme`, `getThemeOrFallback`, `getAllThemes`,
+  `listThemeKeys`, `getThemesForIndustry`, `UnknownThemeError`,
+  Konsistenz-Check beim Module-Load (Map-Key === theme.key).
+- `src/core/themes/index.ts` Barrel.
+- `<ThemeProvider>` (`src/components/theme/theme-provider.tsx`):
+  Server-Component-tauglicher Wrapper, der die CSS-Variablen per inline
+  `style` setzt und optional `bg-theme-background`/`text-theme-foreground`
+  via `lp-theme-surface`-Klasse anwendet. Kein React Context, kein
+  useEffect, kein Client-JS – kompatibel mit Static Export.
+- `<ThemePreviewCard>` für die Galerie (Hero-Mini mit Buttons, Service-Card).
+- Statische Galerie-Seite **`/themes`** rendert alle 10 Themes als Vorschau
+  – serverseitig, ohne Client-JS, statisch exportierbar.
+- Tailwind-Integration: `theme.*`-Color-Set (primary, primary-fg, secondary,
+  secondary-fg, accent, background, foreground, muted, muted-fg, border)
+  via `rgb(var(--theme-...) / <alpha-value>)`. `borderRadius.theme`,
+  `borderRadius.theme-button`, `borderRadius.theme-card`, `boxShadow.theme`,
+  `fontFamily.theme-heading`, `fontFamily.theme-body`.
+- `src/app/globals.css` setzt Default-Theme-Variablen im `:root`, sodass
+  Seiten ohne expliziten ThemeProvider trotzdem theme-Klassen nutzen können.
+- Smoketest `src/tests/themes.test.ts` mit ~25 Assertions
+  (Mindestabdeckung, Hex-Validierung, RGB-Konvertierung, Lookup-Verhalten,
+  Branchenempfehlungen).
+- `docs/THEMES.md`: Galerie-Übersicht, Architektur, Code-Beispiele,
+  Erweiterungsanleitung.
+
+### Changed
+- `<LinkButton>` (`src/components/ui/button.tsx`) ist jetzt basePath-aware:
+  Bei internen absoluten Pfaden (`/themes`, `/#kontakt`) wird automatisch
+  `next/link` verwendet, sonst weiterhin nativer `<a>`. Damit funktionieren
+  Header-Buttons von jeder Seite aus auf GitHub Pages korrekt.
+- `<SiteHeader>` enthält jetzt einen Nav-Link auf `/themes`.
+- `tailwind.config.ts` und `globals.css` mit Theme-Tokens erweitert
+  (Marketing-Optik bleibt unberührt – `brand-*` und `ink-*` bleiben).
 
 ## [0.4.0] – Session 4 – 2026-04-27
 

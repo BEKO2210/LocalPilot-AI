@@ -188,21 +188,55 @@ Konvention für ein neues Preset:
   und deployt mit `actions/deploy-pages@v4`.
 - `npm run build:static` für lokale Verifikation.
 
-## Stand nach Session 4
+## Theme-System (ab Session 5)
+
+- **`src/core/themes/themes/<key>.ts`** – ein Datensatz pro Theme,
+  Zod-validiert beim Module-Load. 10 Themes ausgeliefert
+  (`clean_light` als Default).
+- **`theme-resolver.ts`** wandelt Themes in CSS-Variablen für inline
+  `style`. Hex → RGB-Triplet (`"31 71 214"`) für Tailwind-`<alpha-value>`-
+  Syntax.
+- **`registry.ts`**: `THEME_REGISTRY`, `DEFAULT_THEME`, `getTheme`,
+  `getThemeOrFallback`, `getAllThemes`, `getThemesForIndustry`,
+  `UnknownThemeError`. Konsistenz-Check beim Laden.
+- **`<ThemeProvider>`** ist Server-Component-tauglich – kein Context, kein
+  useEffect, kein Client-JS. Pattern (Stand 2026): inline `style` mit
+  Custom Properties, kaskadiert auf alle Kinder.
+- **Tailwind-Integration**: `theme.*`-Color-Set, `borderRadius.theme*`,
+  `boxShadow.theme`, `fontFamily.theme-heading|body`. Alle nutzen die
+  CSS-Vars und sind opazitäts-tauglich (`bg-theme-primary/50`).
+- **`globals.css`** setzt Default-Theme im `:root`, sodass Seiten ohne
+  expliziten Provider die Theme-Klassen trotzdem nutzen können (fallen auf
+  `clean_light`-Werte zurück).
+- **Static-Export-Kompatibilität** ist gewahrt – `/themes` rendert
+  serverseitig, kein Client-JS für die Galerie nötig.
+- **Smoketest** in `src/tests/themes.test.ts`.
+
+Konvention für ein neues Theme:
+
+1. `THEME_KEYS` in `src/types/common.ts` ergänzen.
+2. Theme-Datei in `src/core/themes/themes/` anlegen, Zod-Validierung läuft
+   automatisch beim Import.
+3. In `THEME_REGISTRY` (`registry.ts`) eintragen.
+4. Smoketest und `docs/THEMES.md` aktualisieren.
+
+## Stand nach Session 5
 
 - App Router läuft, `/` rendert Marketing-Landingpage.
+- `/themes` rendert die Theme-Galerie statisch.
 - Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber
   (Static und SSR).
-- Tailwind & Brand-Tokens stehen.
+- Tailwind & Brand-Tokens stehen, Theme-Tokens als CSS-Variablen verfügbar.
 - Datenmodelle vollständig, Pricing-System produktiv.
 - **13 Branchen-Presets** registriert und validiert.
+- **10 Themes** registriert, mit Resolver, Provider und Live-Galerie.
 - **GitHub-Pages-Deployment** automatisiert; lokal über `build:static`.
+- `<LinkButton>` ist basePath-aware (interne Pfade via `next/link`).
 - Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
   `npm run build:static`.
 
 ## Offene technische Punkte
 
-- Theme-Registry als konkrete Daten + Resolver (Session 5).
 - Mock-Inhalte für Demo-Betriebe (Session 6).
 - Public Site Generator unter `/site/[slug]` (Session 7) – wird
   `generateStaticParams` aus den Mock-Daten nutzen, damit Static Export

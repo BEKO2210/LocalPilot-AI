@@ -1,4 +1,5 @@
 import * as React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
 
 type Variant = "primary" | "secondary" | "ghost" | "outline";
@@ -45,21 +46,37 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 type LinkButtonProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+  href: string;
   variant?: Variant;
   size?: Size;
 };
 
+/**
+ * Anker mit Button-Optik. Bei internen Routen (Pfad beginnt mit `/`)
+ * wird automatisch `next/link` verwendet, damit `basePath` (z. B.
+ * `/LocalPilot-AI` auf GitHub Pages) korrekt vorangestellt wird.
+ * Externe Links und reine Hash-Links (`#kontakt`, `mailto:`) werden als
+ * normaler `<a>` ausgegeben.
+ */
 export const LinkButton = React.forwardRef<HTMLAnchorElement, LinkButtonProps>(
   function LinkButton(
-    { className, variant = "primary", size = "md", ...props },
+    { className, variant = "primary", size = "md", href, ...props },
     ref,
   ) {
-    return (
-      <a
-        ref={ref}
-        className={cn(baseStyles, variantStyles[variant], sizeStyles[size], className)}
-        {...props}
-      />
+    const classes = cn(
+      baseStyles,
+      variantStyles[variant],
+      sizeStyles[size],
+      className,
     );
+
+    const isInternalAbsolute =
+      href.startsWith("/") && !href.startsWith("//");
+
+    if (isInternalAbsolute) {
+      return <Link ref={ref} href={href} className={classes} {...props} />;
+    }
+
+    return <a ref={ref} href={href} className={classes} {...props} />;
   },
 );

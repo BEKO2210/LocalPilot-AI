@@ -23,8 +23,8 @@ Autowerkstatt bis zur Reinigungsfirma – und ist im Kern bewusst branchenneutra
 - Bronze/Silber/Gold-Pakete als echte Produktlogik (Feature-Locks im UI)
 - Branchen-Presets (Friseur, Werkstatt, Reinigung, Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop, …)
 
-Aktueller Stand: **Session 4** – 13 Branchen-Presets, Preset-Registry und Fallback-Preset.
-Weitere Funktionen folgen in den Sessions 5–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
+Aktueller Stand: **Session 5** – 10 Themes mit CSS-Variablen-Resolver und Live-Galerie unter `/themes`.
+Weitere Funktionen folgen in den Sessions 6–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
 
 ---
 
@@ -101,7 +101,7 @@ src/
     validation/        Zod-Schemas (Session 2 ✅) – Single Source of Truth
     pricing/           PricingTier-Konfiguration + Helper (Session 3 ✅)
     industries/        13 Branchen-Presets + Registry (Session 4 ✅)
-    themes/            Theme-Registry (Session 5+)
+    themes/            10 Themes + Resolver + Registry (Session 5 ✅)
     ai/                Provider-Implementierungen, Prompts (Session 13+)
     leads/, reviews/, social/, utils/  → folgen
   data/
@@ -183,6 +183,7 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - [`docs/TECHNICAL_NOTES.md`](./docs/TECHNICAL_NOTES.md) – Architektur, Konventionen, Stack
 - [`docs/PRICING.md`](./docs/PRICING.md) – Pricing-System, Feature-Locks, Helper-API
 - [`docs/INDUSTRY_PRESETS.md`](./docs/INDUSTRY_PRESETS.md) – Branchen-Presets, Registry, Compliance
+- [`docs/THEMES.md`](./docs/THEMES.md) – Theme-System, CSS-Variablen, Tailwind-Integration
 - [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) – GitHub Pages und Vercel
 - [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) – Was wurde in welcher Session gebaut?
 - [`CHANGELOG.md`](./CHANGELOG.md) – Versionshistorie
@@ -205,7 +206,9 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - ✅ Marketing-Pricing-Sektion ist jetzt config-driven
 - ✅ **13 Branchen-Presets** + Registry (`getPreset`, `getPresetOrFallback`,
   `listPresetKeys`, `listMissingPresetKeys`) + Fallback-Preset
+- ✅ **10 Themes** mit CSS-Variablen-Resolver, `<ThemeProvider>` (server-component-tauglich)
+  und Live-Galerie unter `/themes`
 - ✅ **GitHub-Pages-Deployment** über Workflow `.github/workflows/deploy.yml`
   mit konditionellem Static-Export
-- ⏳ Themes, Mock-Daten, Public Sites, Dashboard, KI-System –
-  folgen in Sessions 5 bis 22
+- ⏳ Mock-Daten, Public Sites, Dashboard, KI-System –
+  folgen in Sessions 6 bis 22

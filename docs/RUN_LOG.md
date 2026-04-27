@@ -519,3 +519,161 @@ schreibt und in der App-Layout-Komponente konsumiert wird. Themes sollen
 beeinflussen: Farben, Buttons, Cards, Section-Abstände, Header-/Hero-Stil,
 Schatten, Rundungen. Anschließend kann die Public Site (Session 7)
 business-spezifisch designt werden.
+
+---
+
+## Session 5 – Theme-System
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- **10 vollständige Theme-Datensätze** in `src/core/themes/themes/`:
+  clean_light (Default), premium_dark, warm_local, medical_clean,
+  beauty_luxury, automotive_strong, craftsman_solid, creative_studio,
+  fitness_energy, education_calm. Jedes Theme bringt 10 Farb-Tokens,
+  Typografie (heading/body Font-Family, Basis-Größe, Weights, Letter-
+  Spacing), Radius, Shadow, Section-/Button-/Card-Stil und passende
+  Branchen mit. Beim Module-Load via `ThemeSchema.parse(...)` validiert.
+- **`theme-resolver.ts`**: `themeToCssVars()` wandelt einen Theme-Datensatz
+  in ein `CSSProperties`-Objekt mit Custom Properties (`--theme-*`) um.
+  `hexToRgbTriplet()` konvertiert Hex zu Triplets, kompatibel mit der
+  Tailwind-`<alpha-value>`-Syntax.
+- **`registry.ts`** als zentraler Lookup: `THEME_REGISTRY`,
+  `DEFAULT_THEME`, `getTheme`, `getThemeOrFallback`, `getAllThemes`,
+  `listThemeKeys`, `getThemesForIndustry`, `UnknownThemeError` plus
+  Konsistenz-Check beim Laden.
+- **`<ThemeProvider>`** (`src/components/theme/theme-provider.tsx`):
+  Server-Component-fähiger Wrapper, der die CSS-Vars per inline `style`
+  setzt. Pattern Stand 2026 – kein React Context, kein Client-JS, voll
+  kompatibel mit Static Export.
+- **`<ThemePreviewCard>`** für die Galerie: zeigt einen kleinen
+  Public-Site-Hero mit dem jeweiligen Theme.
+- **Statische Galerie** unter `/themes` rendert alle 10 Themes
+  serverseitig und prerendert sie ins Static Export.
+- **Tailwind-Integration**: `theme.*`-Color-Set, `borderRadius.theme*`,
+  `boxShadow.theme`, `fontFamily.theme-heading|body`. Klassen wie
+  `bg-theme-primary`, `text-theme-foreground/80`, `rounded-theme-button`,
+  `shadow-theme` stehen ab sofort zur Verfügung.
+- **`globals.css`** setzt Default-Theme-Variablen im `:root`, sodass
+  Seiten ohne expliziten Provider keine kaputten Klassen produzieren.
+- **`<LinkButton>` basePath-aware**: bei internen absoluten Pfaden
+  automatisch `next/link`, sonst nativer `<a>`. Header-Nav (`/themes`)
+  funktioniert dadurch sauber auf GitHub Pages mit basePath.
+- **`<SiteHeader>`** zeigt jetzt einen Nav-Link auf `/themes`.
+- **Smoketest** `src/tests/themes.test.ts` mit 25+ Assertions.
+- **`docs/THEMES.md`** mit Galerie-Übersicht, Architektur, Code-Beispielen,
+  Erweiterungsanleitung.
+- **Build-Verifikation**: typecheck, lint, build und build:static alle
+  grün; Live-Smoketest auf `/themes` zeigt 10 unterschiedliche
+  `data-theme`-Wrapper mit korrekt gesetzten CSS-Vars.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu:
+- `src/core/themes/theme-resolver.ts`
+- `src/core/themes/registry.ts`
+- `src/core/themes/index.ts`
+- `src/core/themes/themes/{clean-light,premium-dark,warm-local,
+  medical-clean,beauty-luxury,automotive-strong,craftsman-solid,
+  creative-studio,fitness-energy,education-calm}.ts` (10 Dateien)
+- `src/components/theme/theme-provider.tsx`
+- `src/components/theme/theme-preview-card.tsx`
+- `src/components/theme/index.ts`
+- `src/app/themes/page.tsx`
+- `src/tests/themes.test.ts`
+- `docs/THEMES.md`
+
+Geändert:
+- `tailwind.config.ts` (Theme-Color-Set, Border-Radius-Tokens, Shadow-Token)
+- `src/app/globals.css` (Default-Theme-Variablen + theme-aware Components)
+- `src/components/ui/button.tsx` (LinkButton basePath-aware)
+- `src/components/layout/site-header.tsx` (Nav-Link auf `/themes`)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+Entfernt: `.gitkeep` in `src/core/themes` und `src/components/theme`.
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck      # tsc --noEmit – grün
+npm run lint           # 0 warnings/errors
+npm run build          # SSR-Build
+npm run build:static   # Static Export, /themes ist eine eigene Route
+npm run dev            # http://localhost:3000/themes
+```
+
+Live-Smoketest:
+
+```bash
+curl -s http://localhost:3000/themes | grep -oE 'data-theme="[^"]+"' | sort -u
+# erwartet: 10 verschiedene Themes
+```
+
+Programmatisch:
+
+```ts
+import {
+  getThemeOrFallback,
+  themeToCssVars,
+  hexToRgbTriplet,
+} from "@/core/themes";
+
+themeToCssVars(getThemeOrFallback("beauty_luxury"))["--theme-primary"];
+// "200 117 143" (RGB-Triplet von #c8758f)
+```
+
+In Komponenten:
+
+```tsx
+<ThemeProvider theme={getThemeOrFallback(business.themeKey)}>
+  <button className="bg-theme-primary text-theme-primary-fg rounded-theme-button shadow-theme">
+    Termin anfragen
+  </button>
+</ThemeProvider>
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                              | Status                                       |
+| -------------------------------------- | -------------------------------------------- |
+| Business kann Theme wählen             | ✅ `Business.themeKey` (seit Session 2)     |
+| Theme beeinflusst Public Site          | ✅ `<ThemeProvider>` setzt CSS-Vars; Tailwind-Klassen `bg-theme-*` etc. wirken |
+| Themes sind erweiterbar                | ✅ Anleitung in `docs/THEMES.md`            |
+| Design bleibt konsistent               | ✅ Default-Theme im `:root`, Konsistenz-Check beim Laden, Smoketest |
+| Mindestens 10 Themes                   | ✅ Genau 10 (clean_light, premium_dark, …)   |
+
+### 5. Was ist offen?
+
+- **Session 6** – Mock-Inhalte für Demo-Betriebe (`mock-businesses.ts`,
+  `mock-services.ts`, `mock-reviews.ts`, `mock-leads.ts`). Nutzt
+  `defaultServices`/`defaultFaqs` aus den Presets als Seed-Quelle und
+  kombiniert mit den Themes pro Demo-Betrieb.
+- **Session 7** – Public Site Generator unter `/site/[slug]`, der
+  `<ThemeProvider>` einsetzt und mit `generateStaticParams()` alle Slugs
+  zur Build-Zeit erzeugt (damit Static Export für GitHub Pages weiter
+  funktioniert).
+- **Session 9+** – Dashboard mit Theme-Picker.
+- **Sessions 13–17** – AI-Provider; Tonalität aus dem aktuellen Theme/Preset
+  als Kontext.
+- Optional in Session 20 (Polish): externe Schriften (Playfair Display,
+  Lora, Cormorant Garamond, Manrope, Space Grotesk, Barlow) tatsächlich
+  via `next/font` laden, wenn das Theme sie verlangt. Aktuell fallen sie
+  auf System-Schrift zurück.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 6 – Mock-Daten und Demo-Betriebe.**
+
+Mindestens 5 Demo-Betriebe in `src/data/`:
+- `Studio Haarlinie` (Friseur, Silber, beauty_luxury)
+- `AutoService Müller` (Autowerkstatt, Gold, automotive_strong)
+- `Glanzwerk Reinigung` (Reinigungsfirma, Silber, medical_clean)
+- `Beauty Atelier` (Kosmetik, Gold, beauty_luxury)
+- `Meisterbau Schneider` (Handwerker, Bronze, craftsman_solid)
+
+Jeder Betrieb mit eigenem Slug, Adresse, Öffnungszeiten, 5–8 Leistungen
+(aus dem Preset abgeleitet), 3–6 Reviews und 3–10 Beispiel-Leads. Alles
+über `MockDatasetSchema` validiert. Damit ist die Vorarbeit für Session 7
+(Public Site Generator) komplett.
