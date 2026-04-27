@@ -90,21 +90,10 @@ async function checkAllVariants(
   }
 }
 
-async function expectUnavailable(
-  label: string,
-  call: () => Promise<unknown>,
-): Promise<void> {
-  let err: unknown = null;
-  try {
-    await call();
-  } catch (e) {
-    err = e;
-  }
-  assert(
-    err instanceof AIProviderError && err.code === "provider_unavailable",
-    `${label}: wirft provider_unavailable`,
-  );
-}
+// Note: `expectUnavailable` wurde mit Code-Session 20 entfernt — alle 7
+// Mock-Methoden sind jetzt scharf. Wenn das Interface erweitert wird und
+// wieder Stub-Methoden auftauchen, kann die Helper-Funktion aus dem
+// Git-History wiederbelebt werden (Commit `5cb03b2` und früher).
 
 async function run(): Promise<void> {
   // 1. 2 Branchen × 4 Varianten → vollständig befüllte Outputs
@@ -836,29 +825,405 @@ async function run(): Promise<void> {
   );
 
   // -----------------------------------------------------------------------
-  // 11. Übrige 2 Methoden müssen weiterhin provider_unavailable werfen.
+  // 11. generateSocialPost (Code-Session 19)
   // -----------------------------------------------------------------------
-  const placeholderContext = baseContextHairdresser;
-  await expectUnavailable("generateSocialPost", () =>
-    mockProvider.generateSocialPost({
-      context: placeholderContext,
-      platform: "instagram",
-      goal: "more_appointments",
-      topic: "Neueröffnung",
-      length: "medium",
-      includeHashtags: true,
-    }),
+  // 11a. 5 Plattformen × 8 Goals → vollständige Outputs, alle Felder
+  //      im Schema-Limit.
+  // -----------------------------------------------------------------------
+
+  const PLATFORMS = [
+    "instagram",
+    "facebook",
+    "google_business",
+    "linkedin",
+    "whatsapp_status",
+  ] as const;
+  const GOALS = [
+    "more_appointments",
+    "promote_offer",
+    "new_service",
+    "collect_review",
+    "seasonal",
+    "before_after",
+    "trust_building",
+    "team_intro",
+  ] as const;
+  const POST_LENGTHS = ["short", "medium", "long"] as const;
+
+  for (const platform of PLATFORMS) {
+    for (const goal of GOALS) {
+      const out = await mockProvider.generateSocialPost({
+        context: baseContextHairdresser,
+        platform,
+        goal,
+        topic: "Damenhaarschnitt mit Tiefenpflege",
+        length: "medium",
+        includeHashtags: true,
+      });
+      assert(
+        out.shortPost.length >= 2 && out.shortPost.length <= 280,
+        `${platform}/${goal}: shortPost im Limit`,
+      );
+      assert(
+        out.longPost.length >= 2 && out.longPost.length <= 2000,
+        `${platform}/${goal}: longPost im Limit`,
+      );
+      assert(
+        out.cta.length >= 2 && out.cta.length <= 160,
+        `${platform}/${goal}: cta im Limit`,
+      );
+      assert(
+        out.imageIdea.length >= 2 && out.imageIdea.length <= 280,
+        `${platform}/${goal}: imageIdea im Limit`,
+      );
+      assert(
+        out.hashtags.length <= 20,
+        `${platform}/${goal}: ≤ 20 Hashtags`,
+      );
+      for (const tag of out.hashtags) {
+        assert(
+          tag.length >= 2 && tag.length <= 40,
+          `${platform}/${goal}: jeder Tag im Limit`,
+        );
+      }
+    }
+  }
+
+  // 11b. Hashtag-Anzahl ist plattform-abhängig nach 2026-Pattern.
+  const hashtagSamples = await Promise.all(
+    PLATFORMS.map((platform) =>
+      mockProvider.generateSocialPost({
+        context: baseContextHairdresser,
+        platform,
+        goal: "more_appointments",
+        topic: "Damenhaarschnitt",
+        length: "medium",
+        includeHashtags: true,
+      }),
+    ),
   );
-  await expectUnavailable("generateOfferCampaign", () =>
-    mockProvider.generateOfferCampaign({
-      context: placeholderContext,
-      offerTitle: "Sommer-Aktion",
-      details: "",
-    }),
+  const igTags = hashtagSamples[0]!.hashtags;
+  const fbTags = hashtagSamples[1]!.hashtags;
+  const gbTags = hashtagSamples[2]!.hashtags;
+  const liTags = hashtagSamples[3]!.hashtags;
+  const waTags = hashtagSamples[4]!.hashtags;
+  assert(
+    igTags.length >= 3 && igTags.length <= 5,
+    "instagram: 3–5 Hashtags",
+  );
+  assert(
+    fbTags.length >= 1 && fbTags.length <= 2,
+    "facebook: 1–2 Hashtags",
+  );
+  assert(gbTags.length === 0, "google_business: 0 Hashtags");
+  assert(
+    liTags.length >= 3 && liTags.length <= 5,
+    "linkedin: 3–5 Hashtags",
+  );
+  assert(waTags.length === 0, "whatsapp_status: 0 Hashtags");
+
+  // 11c. includeHashtags: false → leere Hashtags auf jeder Plattform.
+  const noTags = await mockProvider.generateSocialPost({
+    context: baseContextHairdresser,
+    platform: "instagram",
+    goal: "more_appointments",
+    topic: "Damenhaarschnitt",
+    length: "medium",
+    includeHashtags: false,
+  });
+  assert(
+    noTags.hashtags.length === 0,
+    "includeHashtags=false → leere Hashtags",
   );
 
-  // 12. Provider-Key
+  // 11d. Hashtags enthalten city und industryLabel (Hyperlokal +
+  //      Branche, 2026-Pattern).
+  assert(
+    igTags.some((t) => t === "#Bremen") &&
+      igTags.some((t) => t === "#Friseur"),
+    "instagram-Hashtags enthalten city + industry",
+  );
+  // Kein Tag zweimal vorhanden.
+  assert(
+    new Set(igTags.map((t) => t.toLowerCase())).size === igTags.length,
+    "instagram-Hashtags eindeutig",
+  );
+
+  // 11e. CTA ist goal-abhängig.
+  const ctaPromote = await mockProvider.generateSocialPost({
+    context: baseContextHairdresser,
+    platform: "instagram",
+    goal: "promote_offer",
+    topic: "Frühlingsaktion",
+    length: "short",
+    includeHashtags: true,
+  });
+  assert(
+    ctaPromote.cta.includes("Aktion"),
+    "promote_offer-CTA enthält 'Aktion'",
+  );
+  const ctaReview = await mockProvider.generateSocialPost({
+    context: baseContextHairdresser,
+    platform: "instagram",
+    goal: "collect_review",
+    topic: "Bewertung",
+    length: "short",
+    includeHashtags: false,
+  });
+  assert(
+    ctaReview.cta.toLowerCase().includes("bewertung"),
+    "collect_review-CTA enthält 'Bewertung'",
+  );
+
+  // 11f. longPost wächst mit length: long > medium > short.
+  const lengthSamples = await Promise.all(
+    POST_LENGTHS.map((length) =>
+      mockProvider.generateSocialPost({
+        context: baseContextHairdresser,
+        platform: "instagram",
+        goal: "more_appointments",
+        topic: "Damenhaarschnitt",
+        length,
+        includeHashtags: false,
+      }),
+    ),
+  );
+  const lShort = lengthSamples[0]!.longPost.length;
+  const lMedium = lengthSamples[1]!.longPost.length;
+  const lLong = lengthSamples[2]!.longPost.length;
+  assert(lLong > lMedium, "long.longPost > medium.longPost");
+  assert(lMedium > lShort, "medium.longPost > short.longPost");
+
+  // 11g. USPs erscheinen im long-Post (Trust-Block).
+  assert(
+    lengthSamples[2]!.longPost.includes("Termine auch samstags"),
+    "USP erscheint im long-longPost",
+  );
+
+  // 11h. Preset-Match wird genutzt: Friseur-Preset hat einen
+  //      'trust_building'-Prompt mit ideaShort 'Team kurz vorstellen
+  //      mit einem Foto aus dem Salon-Alltag.'
+  const trustOut = await mockProvider.generateSocialPost({
+    context: baseContextHairdresser,
+    platform: "instagram",
+    goal: "trust_building",
+    topic: "Unser Team",
+    length: "short",
+    includeHashtags: false,
+  });
+  assert(
+    trustOut.shortPost.toLowerCase().includes("team"),
+    "Preset-Match (trust_building): ideaShort als Saat genutzt",
+  );
+
+  // 11i. ImageIdea bezieht sich auf Topic.
+  assert(
+    trustOut.imageIdea.includes("Unser Team"),
+    "imageIdea referenziert Topic",
+  );
+
+  // 11j. Determinismus.
+  const sd1 = await mockProvider.generateSocialPost({
+    context: baseContextAutoWorkshop,
+    platform: "facebook",
+    goal: "seasonal",
+    topic: "Reifenwechsel-Saison",
+    length: "medium",
+    includeHashtags: true,
+  });
+  const sd2 = await mockProvider.generateSocialPost({
+    context: baseContextAutoWorkshop,
+    platform: "facebook",
+    goal: "seasonal",
+    topic: "Reifenwechsel-Saison",
+    length: "medium",
+    includeHashtags: true,
+  });
+  assert(
+    JSON.stringify(sd1) === JSON.stringify(sd2),
+    "generateSocialPost deterministisch",
+  );
+
+  // 11k. Defensive: zu kurzes topic → invalid_input.
+  let spCaught: unknown = null;
+  try {
+    await mockProvider.generateSocialPost({
+      context: baseContextHairdresser,
+      platform: "instagram",
+      goal: "more_appointments",
+      topic: "X",
+      length: "medium",
+      includeHashtags: true,
+    });
+  } catch (err) {
+    spCaught = err;
+  }
+  assert(
+    spCaught instanceof AIProviderError && spCaught.code === "invalid_input",
+    "topic zu kurz → invalid_input",
+  );
+
+  // -----------------------------------------------------------------------
+  // 12. generateOfferCampaign (Code-Session 20 — schließt die Mock-Phase)
+  // -----------------------------------------------------------------------
+  // 12a. 2 Branchen × { mit/ohne validUntil } × { mit/ohne details }
+  //      → vollständige Outputs, alle Felder im Schema-Limit.
+  // -----------------------------------------------------------------------
+
+  async function checkOfferShape(
+    context: AIBusinessContext,
+    label: string,
+    args: { offerTitle: string; details?: string; validUntil?: string },
+  ): Promise<void> {
+    const out = await mockProvider.generateOfferCampaign({
+      context,
+      offerTitle: args.offerTitle,
+      details: args.details ?? "",
+      ...(args.validUntil !== undefined ? { validUntil: args.validUntil } : {}),
+    });
+    assert(
+      out.headline.length >= 2 && out.headline.length <= 120,
+      `${label}: headline im Limit`,
+    );
+    assert(
+      out.subline.length >= 2 && out.subline.length <= 280,
+      `${label}: subline im Limit`,
+    );
+    assert(
+      out.bodyText.length >= 2 && out.bodyText.length <= 2000,
+      `${label}: bodyText im Limit`,
+    );
+    assert(
+      out.cta.length >= 2 && out.cta.length <= 120,
+      `${label}: cta im Limit`,
+    );
+  }
+
+  await checkOfferShape(baseContextHairdresser, "hairdresser/min", {
+    offerTitle: "Frühlings-Aktion",
+  });
+  await checkOfferShape(baseContextAutoWorkshop, "auto_workshop/full", {
+    offerTitle: "TÜV-Paket Frühling",
+    details:
+      "TÜV-Vorbereitung inkl. Lichttest, Bremsen-Sichtprüfung und Zwischenkontrolle.",
+    validUntil: "31.05.2026",
+  });
+
+  // 12b. validUntil wirkt sich sichtbar auf Body und CTA aus.
+  const withValid = await mockProvider.generateOfferCampaign({
+    context: baseContextHairdresser,
+    offerTitle: "Pflege-Special",
+    details: "",
+    validUntil: "Ende Mai 2026",
+  });
+  assert(
+    withValid.bodyText.includes("Gültig bis Ende Mai 2026"),
+    "validUntil → Body enthält Gültigkeits-Hinweis",
+  );
+  assert(
+    withValid.cta.includes("Ende Mai 2026"),
+    "validUntil → CTA nennt das Enddatum",
+  );
+
+  // 12c. Ohne validUntil bleibt der CTA neutral-einladend, kein
+  //      „Gültig bis"-Hinweis im Body.
+  const noValid = await mockProvider.generateOfferCampaign({
+    context: baseContextHairdresser,
+    offerTitle: "Pflege-Special",
+    details: "",
+  });
+  assert(
+    !noValid.bodyText.includes("Gültig bis"),
+    "ohne validUntil: kein Gültigkeits-Hinweis im Body",
+  );
+  assert(
+    noValid.cta.toLowerCase().includes("unverbindlich"),
+    "ohne validUntil: CTA ist neutral-einladend",
+  );
+
+  // 12d. Headline enthält offerTitle und businessName.
+  assert(
+    noValid.headline.includes("Pflege-Special") &&
+      noValid.headline.includes("Salon Sophia"),
+    "headline enthält offerTitle und businessName",
+  );
+
+  // 12e. Subline ist lokal verankert (nennt city) und Branchen-Label.
+  assert(
+    noValid.subline.includes("Bremen") &&
+      noValid.subline.toLowerCase().includes("friseur"),
+    "subline: city + industryLabel",
+  );
+
+  // 12f. Mit details ≥ 10 Zeichen wird der Text als Inhalts-Saat
+  //      übernommen (statt generischem Lückentext).
+  const withDetails = await mockProvider.generateOfferCampaign({
+    context: baseContextAutoWorkshop,
+    offerTitle: "TÜV-Paket Frühling",
+    details:
+      "TÜV-Vorbereitung inkl. Lichttest, Bremsen-Sichtprüfung und Zwischenkontrolle.",
+  });
+  assert(
+    withDetails.bodyText.includes("Lichttest"),
+    "mit details: Saatzeile übernommen",
+  );
+
+  // 12g. USPs landen als Bullet-Block im bodyText.
+  assert(
+    withDetails.bodyText.includes("Was Sie bekommen:") &&
+      withDetails.bodyText.includes("· TÜV in 24 h"),
+    "USPs als Trust-Bullets im bodyText",
+  );
+
+  // 12h. Determinismus.
+  const oc1 = await mockProvider.generateOfferCampaign({
+    context: baseContextHairdresser,
+    offerTitle: "Pflege-Special",
+    details: "Pflegebehandlung mit Massage.",
+    validUntil: "31.05.2026",
+  });
+  const oc2 = await mockProvider.generateOfferCampaign({
+    context: baseContextHairdresser,
+    offerTitle: "Pflege-Special",
+    details: "Pflegebehandlung mit Massage.",
+    validUntil: "31.05.2026",
+  });
+  assert(
+    JSON.stringify(oc1) === JSON.stringify(oc2),
+    "generateOfferCampaign deterministisch",
+  );
+
+  // 12i. Defensive: zu kurzer offerTitle → invalid_input.
+  let ocCaught: unknown = null;
+  try {
+    await mockProvider.generateOfferCampaign({
+      context: baseContextHairdresser,
+      offerTitle: "X",
+      details: "",
+    });
+  } catch (err) {
+    ocCaught = err;
+  }
+  assert(
+    ocCaught instanceof AIProviderError && ocCaught.code === "invalid_input",
+    "offerTitle zu kurz → invalid_input",
+  );
+
+  // -----------------------------------------------------------------------
+  // 13. Provider-Key + Mock-Phase abgeschlossen.
+  //     Es gibt keine verbleibenden Stub-Methoden mehr.
+  // -----------------------------------------------------------------------
   assert(mockProvider.key === "mock", "mockProvider.key === 'mock'");
+
+  const allMethodsImplemented =
+    typeof mockProvider.generateWebsiteCopy === "function" &&
+    typeof mockProvider.improveServiceDescription === "function" &&
+    typeof mockProvider.generateFaqs === "function" &&
+    typeof mockProvider.generateCustomerReply === "function" &&
+    typeof mockProvider.generateReviewRequest === "function" &&
+    typeof mockProvider.generateSocialPost === "function" &&
+    typeof mockProvider.generateOfferCampaign === "function";
+  assert(allMethodsImplemented, "alle 7 Mock-Methoden sind Funktionen");
 }
 
 void run();
@@ -871,5 +1236,9 @@ export const __AI_MOCK_PROVIDER_SMOKETEST__ = {
   replyTones: 3,
   reviewChannels: 4,
   reviewTones: 3,
-  totalAssertions: 130,
+  socialPlatforms: 5,
+  socialGoals: 8,
+  offerVariants: 4,
+  mockPhaseComplete: true,
+  totalAssertions: 380,
 };

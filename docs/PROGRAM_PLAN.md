@@ -46,7 +46,9 @@ Business-Editor, Services-Editor, Lead-System.
 neue Branchen-Presets, neue Themes, UX-Polish.
 
 ### Meilenstein 2 — KI-Schicht
-**Status:** 🔄 in Arbeit (ab Session 13)
+**Status:** 🔄 in Arbeit (ab Session 13). **Mock-Phase mit Code-Session 20
+abgeschlossen** — alle 7 Mock-Methoden sind deterministisch belegt,
+~380 Smoketest-Assertions grün.
 
 Branchenneutraler AI-Provider-Adapter, Mock-Provider mit hochwertigen
 Beispieltexten, Echte Provider (OpenAI / Anthropic / Gemini) als
@@ -57,13 +59,16 @@ UI-Komponente, Cost-Tracking, Rate-Limiting, Safety-Filter.
 laufen mit Mock + mindestens einem Live-Provider, ohne API-Key
 funktioniert die App weiterhin, Kostendeckel pro Betrieb.
 
-**Geplante Session-Cluster (nicht in Stein gemeißelt):**
-- 13–14: Provider-Scaffold + Mock für Website-Texte
-- 15–17: Mock für Service-Beschreibung, FAQ, Antworten
-- 18–20: Mock für Social-Posts, Bewertungs-Anfragen, Angebote
+**Session-Cluster (rollend):**
+- 13–14: Provider-Scaffold + Mock für Website-Texte ✅
+- 15–17: Mock für Service-Beschreibung, FAQ, Customer-Reply ✅
+- 18–20: Mock für Review-Request, Social-Post, Offer-Campaign ✅
+  **Mock-Phase abgeschlossen.**
 - 21–22: OpenAI-Provider scharf (mit Caching)
 - 23–24: Anthropic-Provider scharf
-- 25: Cost-Tracking + Rate-Limit-UI
+- 25–26: Gemini-Provider scharf + Cost-Tracking + Rate-Limit-UI
+- 27+: AI-API-Route hinter Auth, Dashboard-UI je Capability,
+  DOMPurify-Sanitizer auf übernommene KI-Outputs
 
 ### Meilenstein 3 — Engagement & Wachstum
 **Status:** ⏳ vorbereitet
@@ -143,6 +148,21 @@ aktiven Session.
   damit später Cost-Tracking + Audit-Log möglich werden.
 - View-Transitions-API für Dashboard-Tab-Wechsel — verbessert die
   „App-Feel"-Wahrnehmung auf dem Handy spürbar.
+- **Social-Media-Forwarding** (aus Code-Session 19): Buffer-/Hootsuite-
+  oder Meta-Graph-API-Anbindung, sodass `generateSocialPost` direkt
+  als Entwurf in der Plattform landet. Plattform-spezifische Hashtag-
+  Limits (Code-Session 19 hat sie deterministisch verankert) bleiben
+  auch im Vorschau-Schritt sichtbar.
+- **Visual-Companion**: Vorschlag für ein passendes Stockfoto-Pendant
+  oder Canva-Template-Slot zu jedem `imageIdea`, damit der Workflow
+  vom Text bis zum gepostbaren Asset durchgängig ist.
+- **Offer-Campaign-Bundle**: aus `generateOfferCampaign` automatisch
+  passende `generateSocialPost`-Varianten (Instagram + Facebook) +
+  `generateReviewRequest` (Follow-Up) ableiten. Eine Kampagne =
+  Headline + Subline + Body + CTA + Social-Pakete + Review-Push.
+- **AI-API-Route mit Edge-Runtime**: `/api/ai/generate` als Vercel-Edge-
+  Function (statt Node), niedrige Latenz, gute Streaming-Kompatibilität
+  mit Anthropic/OpenAI-SSE.
 
 ### Track B · Security & Compliance
 - DOMPurify oder ähnlicher Sanitizer für jeden vom Nutzer übernommenen
@@ -171,12 +191,18 @@ aktiven Session.
 - Gemeinsamen `clamp`/`polish`/`substituteCity`-Helper in
   `src/core/ai/providers/mock/_helpers.ts` extrahieren — derzeit
   duplizieren website-copy / service-description / customer-reply
-  / review-request diese Funktionen leicht abweichend.
+  / review-request / social-post diese Funktionen leicht abweichend.
+  Mit Code-Session 19 sind es **fünf** Duplikate von `clamp` —
+  nächste DX-Session sollte das einsammeln.
 - `topicToQA` aus `faqs.ts` und `detectTopic` aus `customer-reply.ts`
   teilen sich eine ähnliche Stamm-Erkennung — ein gemeinsames
   `topic-detection.ts`-Modul vermeidet zukünftige Drift.
-- Smoketest-Datei wird zu groß (>700 Zeilen) — Aufteilung pro Methode
-  parallel zur Aufteilung der Implementierung.
+- Smoketest-Datei ist mit Code-Session 19 auf >900 Zeilen / ~350
+  Assertions gewachsen — Aufteilung pro Methode parallel zur
+  Aufteilung der Implementierung wird dringender.
+- `tagify`-Helper aus `social-post.ts` ist verwandt mit
+  `normalizeQuestion` aus `faqs.ts` (NFKD + Diakritik-Strip). Ein
+  gemeinsames `slugify.ts` würde beides bedienen.
 
 ### Track E · Vertikalisierung
 - Branchen-Presets von 13 auf mindestens 20 erweitern; Kandidaten:
@@ -185,6 +211,9 @@ aktiven Session.
 - Pro Branche: dedizierte `reviewRequestTemplates` (sms ergänzen, ist
   bei einigen Presets noch nicht abgedeckt — Code-Session 18 musste
   daher synthetisieren).
+- Pro Branche: dedizierte `socialPostPrompts` für **alle 8 Goals**
+  (Code-Session 19 hat aufgedeckt, dass kein Preset alle Goals
+  abdeckt — Synthese springt häufiger ein, als sie sollte).
 
 ### Track F · Doku & Onboarding
 - Architektur-Diagramm (Mermaid) für den AI-Adapter — wie greifen
@@ -194,6 +223,24 @@ aktiven Session.
 - Recherche-Quellen aus den RUN_LOG-Einträgen in einer
   `docs/RESEARCH_INDEX.md` thematisch sortieren — wird mit der Zeit
   zum belegten Wissensspeicher des Programms.
+- **Glossar** (`docs/GLOSSARY.md`) für projektinterne Begriffe —
+  bereits als Codex-Backlog #7 vorbereitet.
+- **Codex-Onboarding-Polish**: nach den ersten 5 Codex-Sessions die
+  Erfahrungen in `codex.md` als „Was hat sich bewährt"-Anhang
+  ergänzen.
+
+### Track G · Mitwirkende-Koordination (neu mit Code-Session 20)
+- **Codex-Junior-Workflow** ist jetzt etabliert
+  (`codex.md` + `docs/CODEX_BACKLOG.md` + `docs/CODEX_LOG.md`).
+- Backlog mit 9 Starter-Aufgaben (8 `[pre-approved]` + 1
+  `[blocked]` auf Prettier).
+- Folge-Iteration: Backlog wächst durch jede Claude-Session
+  (Schritt 6 im Session-Protokoll, Sub-Punkt: „beobachtete Junior-
+  Tasks ins Codex-Backlog").
+- **Granularer Zugriffsschutz**: prüfen, ob `.git/hooks/pre-commit`
+  einen einfachen Check enthalten kann, der bei `codex/`-Branches
+  Änderungen an NEVER-Zone-Pfaden blockiert (Track B Security
+  + Track G).
 
 ## Meilenstein-Wechsel-Entscheidung
 

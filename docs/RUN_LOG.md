@@ -2775,3 +2775,454 @@ Bewusst NICHT: andere 1 Methode (Offer-Campaign), UI, echte Provider.
 - [Ampli5 Pulse – How to Ask for Google Reviews — Scripts & Templates](https://www.ampli5pulse.com/ask-for-reviews.html)
 - [Birdeye – Google Review Template for Feedback Requests](https://birdeye.com/blog/google-review-template/)
 - [Relvio – Google review request templates (ready to copy and use)](https://www.relvio.io/en/blog/google-review-request-templates)
+
+---
+
+## Code-Session 19 – Mock-Provider: `generateSocialPost`
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein, atomar)
+Meilenstein: 2 (KI-Schicht)
+
+### 1. Was wurde umgesetzt?
+
+Sechste von sieben Mock-Methoden ist scharf. Nur noch
+`generateOfferCampaign` (Code-Session 20) bleibt Stub und schließt
+dann die Mock-Phase ab.
+
+- `src/core/ai/providers/mock/social-post.ts` (neu) implementiert
+  `mockGenerateSocialPost(input): Promise<SocialPostOutput>`:
+  - Validierung des Inputs via `SocialPostInputSchema.safeParse`
+    → bei Fehler `AIProviderError("invalid_input", …)`.
+  - **Saatzeile** über `findPresetPrompt`: nimmt einen Prompt aus
+    `preset.socialPostPrompts`, der zum `goal` passt (Plattform-
+    Match bevorzugt). Trifft, wird `ideaShort` als Inhalt
+    weiterverwendet. Trifft nicht, kommt `goalSeed(goal, topic)`
+    mit goal-spezifischen deutschen Default-Phrasen (alle 8 Goals
+    `more_appointments`/`promote_offer`/`new_service`/
+    `collect_review`/`seasonal`/`before_after`/`trust_building`/
+    `team_intro`).
+  - **Plattform-Stilhinweise** (`platformFlavor`):
+    - LinkedIn: „kurzer fachlicher Einblick".
+    - Google-Business: „klar und sachlich, Eckdaten zusammengefasst".
+    - Facebook: „Blick hinter die Kulissen, ohne Marketing-Floskeln".
+    - Instagram: „Moment aus dem Alltag, visuell unterstützt".
+    - WhatsApp-Status: „Kurzes Update für Stammkund:innen".
+    Stadt wird eingewoben, wenn vorhanden.
+  - **Hashtag-Pattern** nach 2026-Recherche:
+    - Instagram: 5
+    - LinkedIn: 4
+    - Facebook: 2
+    - Google-Business / WhatsApp-Status: 0
+    Pool: hyperlokal (`#Bremen`, `#LokalBremen`) + Branche
+    (`#Friseur`) + Betrieb (`#SalonSophia`) + erstes Topic-Wort +
+    Community (`#KleineBetriebe`, `#Empfehlung`, `#Lokal`).
+    `tagify` macht NFKD-bereinigte Slugs, Pool wird dedupliziert,
+    dann auf den Plattform-Zielwert geslicet.
+    `includeHashtags=false` → leeres Array.
+  - **CTA** (`ctaFor(goal)`): goal-spezifisch, knapp, deutsch
+    („Jetzt Termin sichern.", „Aktion mitnehmen — solange
+    verfügbar.", „Mehr erfahren und ausprobieren.", „Kurz Bewertung
+    schreiben — danke!", „Jetzt mitmachen.", „Selbst erleben —
+    Termin sichern.", „Ohne Druck Kontakt aufnehmen.", „Vorbeikommen
+    und kennenlernen."). Schema-Limit 160 Zeichen.
+  - **`shortPost`** ≤ 280: `${seed} ${cta}` mit `clamp` als
+    Sicherheitsnetz.
+  - **`longPost`** ≤ 2000, gestaffelt:
+    - `short`: Saat + CTA (2 Absätze).
+    - `medium`: Saat + Plattform-Flavor + CTA (3 Absätze).
+    - `long`: Saat + Plattform-Flavor + USP-Trust-Block (Bullets
+      aus `context.uniqueSellingPoints`, max. 3) + CTA (4 Absätze).
+  - **`imageIdea`**: aus
+    `preset.imageGuidance.recommendedSubjects[0]` + Topic +
+    Stilhinweis „Natürliches Licht, kein Stockfoto-Stil".
+  - Output gegen `SocialPostOutputSchema.parse(…)` validiert.
+- `src/core/ai/providers/mock-provider.ts` komponiert die sechste
+  Methode dazu; Status-Header 18 → 19.
+- `src/tests/ai-mock-provider.test.ts` um Block 11a–11k erweitert
+  (~220 zusätzliche Assertions, ~350 gesamt):
+  - 11a: 5 Plattformen × 8 Goals (40 Kombinationen) → Output-Shape
+    passt (alle Felder im Schema-Limit, Tag-Längen geprüft).
+  - 11b: plattform-spezifische Hashtag-Anzahlen
+    (Instagram 3–5, Facebook 1–2, GBP 0, LinkedIn 3–5,
+    WhatsApp-Status 0).
+  - 11c: `includeHashtags=false` → leere Tags.
+  - 11d: `#Bremen` + `#Friseur` im Instagram-Pool, Tags eindeutig.
+  - 11e: goal-abhängiger CTA (`promote_offer` enthält „Aktion",
+    `collect_review` enthält „Bewertung").
+  - 11f: `long.longPost > medium.longPost > short.longPost`
+    (monotones Wachstum mit `length`).
+  - 11g: USP („Termine auch samstags") erscheint im long-Trust-Block.
+  - 11h: Preset-Match für (`trust_building`, instagram) aus dem
+    Friseur-Preset wird genutzt → „Team" steht im shortPost.
+  - 11i: `imageIdea` referenziert das Topic.
+  - 11j: Determinismus.
+  - 11k: zu kurzes `topic` (1 Zeichen) → `invalid_input`.
+- Block 12 zählt nur noch 1 Stub-Methode (`generateOfferCampaign`).
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (1 Datei):
+- `src/core/ai/providers/mock/social-post.ts`
+
+Geändert:
+- `src/core/ai/providers/mock-provider.ts`
+- `src/tests/ai-mock-provider.test.ts`
+- `docs/PROGRAM_PLAN.md` (Roadmap-Selbstaktualisierung, +4 Items)
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~30 KB. Im Session-Limit (30–80 KB).
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → ~350 Asserts ok
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.generateSocialPost({
+  context: {
+    industryKey: "hairdresser",
+    packageTier: "silber",
+    language: "de",
+    businessName: "Salon Sophia",
+    city: "Bremen",
+    toneOfVoice: ["freundlich", "modern"],
+    uniqueSellingPoints: ["Termine auch samstags", "Faire Festpreise"],
+  },
+  platform: "instagram",
+  goal: "promote_offer",
+  topic: "Frühlings-Aktion: 20% auf Pflegebehandlung",
+  length: "long",
+  includeHashtags: true,
+});
+// → { shortPost: "Aktion: Frühlings-Aktion … Aktion mitnehmen — solange …",
+//     longPost:  "Aktion: …\n\nEin Moment aus dem Alltag aus Bremen …\n\n
+//                 Was uns ausmacht:\n· Termine auch samstags\n· Faire …\n\n
+//                 Aktion mitnehmen — solange verfügbar.",
+//     hashtags:  ["#Friseur", "#Bremen", "#LokalBremen", "#SalonSophia",
+//                 "#Frühlings"],
+//     imageIdea: "Nahaufnahme passend zu „Frühlings-Aktion …" — Frisur-
+//                 Detail (Schnittlinie, Farbe). Natürliches Licht …",
+//     cta:       "Aktion mitnehmen — solange verfügbar." }
+```
+
+UI-Test entfällt – diese Session bringt keine UI mit. Eine
+Dashboard-Karte „Social-Post generieren" kommt in einer späteren
+Session, wenn alle Mock-Methoden scharf sind.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                          | Status |
+| ------------------------------------------------------------------ | ------ |
+| `generateSocialPost` deterministisch, branchenneutral              | ✅      |
+| 5 Plattformen × 8 Goals × 3 Lengths erzeugen sinnvolle Outputs     | ✅      |
+| Preset-Match wird vor Default-Saat genutzt                         | ✅      |
+| Plattform-spezifische Hashtag-Anzahl nach 2026-Pattern             | ✅      |
+| Hyperlokal + Branche + Betrieb-Hashtags im Pool                    | ✅      |
+| `includeHashtags=false` → leeres Array                             | ✅      |
+| Goal-spezifischer deutscher CTA                                    | ✅      |
+| `longPost` skaliert monoton mit `length`                           | ✅      |
+| USPs im long-Trust-Block                                           | ✅      |
+| Defensive Input-Validierung → `invalid_input`                      | ✅      |
+| Output gegen `SocialPostOutputSchema` validiert                    | ✅      |
+| Letzte Stub-Methode (`generateOfferCampaign`) noch                 | ✅      |
+|   `provider_unavailable`                                           |        |
+| Smoketest +220 Assertions (~350 gesamt)                            | ✅      |
+| Build/Typecheck/Lint grün                                          | ✅      |
+| Session-Größe im Limit                                             | ✅ (~30 KB) |
+| Recherche-Step durchgeführt + Quellen zitiert                      | ✅      |
+| Roadmap-Selbstaktualisierung: 4 neue Items in PROGRAM_PLAN          | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 20**: `generateOfferCampaign`-Mock — schließt die
+  Mock-Phase ab. Output: `headline`, `subline`, `bodyText`, `cta`.
+  Saat aus `offerTitle`/`details`, Trust-Block aus USPs, Validitäts-
+  hinweis aus `validUntil`, branchen-spezifische Headline-Tonalität.
+- **Self-Extending Backlog** (4 Items aus dieser Session in
+  `docs/PROGRAM_PLAN.md` ergänzt): Social-Forwarding, Visual-
+  Companion, `clamp`/`tagify`-Konsolidierung, dedizierte
+  `socialPostPrompts` für alle 8 Goals pro Branche.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 20 – Mock-Provider: `generateOfferCampaign`.**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 limited-time offer campaign copy local
+   service business German Festpreis Aktionspreis".
+2. `src/core/ai/providers/mock/offer-campaign.ts` neu, analog zu den
+   bisherigen Mock-Methoden: nutzt `offerTitle` und `details` als
+   Saat, baut `headline` (zugespitzt), `subline` (Nutzen + Stadt),
+   `bodyText` (Mehr-Absatz, USP-Trust-Block, optional „Gültig bis
+   …" wenn `validUntil` mitkommt), `cta` (zeitlich orientiert).
+3. `mock-provider.ts` um die siebte Methode erweitern
+   (Status-Header 19 → 20). **Mock-Phase abgeschlossen** —
+   `buildStubProvider` wird beim Mock dann nur noch als
+   Notnagel-Default mitgeführt.
+4. `src/tests/ai-mock-provider.test.ts` um Offer-Campaign-Block
+   ergänzt (mit/ohne `validUntil`, USPs im Body, Determinismus,
+   `invalid_input`). Block 12 (verbleibende Stubs) entfällt.
+5. PROGRAM_PLAN.md um neuen Punkt erweitern (Roadmap-Self-Step),
+   CHANGELOG/RUN_LOG, Commit, Push.
+
+Bewusst NICHT: UI, echte Provider — der Mock ist dann komplett.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [TrueFuture Media – How to Beat Your Competitors With Social Media in 2026](https://www.truefuturemedia.com/articles/beat-competitors-social-media-2026)
+- [Born Social – Best Hashtags for Instagram Growth in 2026](https://www.bornsocial.co/post/best-hashtags-for-business-growth)
+- [Borala Agency – Hashtag Strategies for 2026: Dos, Don'ts, and Proven Tips](https://www.boralagency.com/hashtags-strategies/)
+- [SocialRails – Best LinkedIn Hashtags in 2026: 150+ Top Hashtags by Industry](https://socialrails.com/blog/best-hashtags-for-linkedin)
+- [Hashtag Tools – Small Business Instagram Hashtags 2026](https://hashtagtools.io/blog/small-business-instagram-hashtags-growth-strategy-2026)
+- [SkedSocial – How to Use Hashtags on Instagram in 2026](https://skedsocial.com/blog/how-to-use-hashtags-on-instagram-in-2026-hashtag-tips-to-up-your-insta-game)
+- [Planable – Hashtag Strategy for 2026: A Guide for Any Social Media Platform](https://planable.io/blog/hashtag-strategy/)
+- [First Ascent Design – Are Hashtags Still Relevant in 2026?](https://firstascentdesign.com/hashtag-strategy-2026/)
+- [PostWaffle – 50 Social Media Post Examples That Actually Drive Sales (2026)](https://www.postwaffle.com/blog/social-media-posts-examples)
+- [Plann by Linktree – Social Media Marketing for Hairdressers](https://www.plannthat.com/hairdresser-social-media-marketing/)
+
+---
+
+## Code-Session 20 – Mock-Phase abgeschlossen + README-Rewrite + Codex-Workflow
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+Typ: Feature (klein) + README-Refactor + Methodik (Codex-Junior)
+Meilenstein: 2 (KI-Schicht — Mock-Phase ✅) + Programm-Methodik
+
+### 1. Was wurde umgesetzt?
+
+Dreifach-Schritt:
+
+**A — Code (`generateOfferCampaign`):**
+- `src/core/ai/providers/mock/offer-campaign.ts` (neu) implementiert
+  `mockGenerateOfferCampaign(input): Promise<OfferCampaignOutput>`:
+  - Validierung via `OfferCampaignInputSchema.safeParse` →
+    `AIProviderError("invalid_input", …)`.
+  - **Headline** (≤ 120): `${offerTitle} — bei ${businessName}`.
+  - **Subline** (≤ 280): „Klar beschriebenes ${industryLabel}-Angebot
+    in ${city}, ${tone} umgesetzt." — lokal verankert, ohne
+    Superlative.
+  - **bodyText** (≤ 2000): bis zu 3 Absätze.
+    - Inhalts-Absatz: `details` (≥ 10 Zeichen) als Saatzeile
+      übernommen, sonst generischer Lückentext mit `industryLabel`.
+    - USP-Trust-Block: „Was Sie bekommen:\n· …\n· …\n· …"
+      (max. 3 Bullets aus `context.uniqueSellingPoints`).
+    - Validitäts-Hinweis: „Gültig bis ${validUntil}. …" — nur wenn
+      `validUntil` mitkommt.
+  - **CTA** (≤ 120): `Jetzt sichern — gültig bis …` mit `validUntil`,
+    `Jetzt unverbindlich anfragen.` ohne. Zeit-orientiert, kein Druck.
+  - 2026-Recherche zu Limited-Time-Offers berücksichtigt: echte
+    Knappheit, klare Deadline, Kunden-Nutzen vor Druck.
+  - Output gegen `OfferCampaignOutputSchema.parse` validiert.
+- `src/core/ai/providers/mock-provider.ts`: alle 7 Methoden
+  komponiert. Status-Header: **Mock-Phase abgeschlossen**.
+  `buildStubProvider` läuft nur noch als defensiver Default mit,
+  falls das Interface erweitert wird.
+- `src/tests/ai-mock-provider.test.ts` um Block 12a–12i erweitert
+  (~30 zusätzliche Assertions, ~380 gesamt):
+  - 12a: 2 Branchen × { mit/ohne validUntil/details } → Output-Shape.
+  - 12b: `validUntil` → Body und CTA enthalten Datum.
+  - 12c: ohne `validUntil` → CTA neutral-einladend, kein „Gültig
+    bis"-Hinweis im Body.
+  - 12d: Headline mit `offerTitle` + `businessName`.
+  - 12e: Subline mit `city` + `industryLabel`.
+  - 12f: `details` ≥ 10 Zeichen → Saatzeile übernommen
+    („Lichttest" erscheint im Body).
+  - 12g: USPs als Trust-Bullets (`Was Sie bekommen:` + `· TÜV in 24 h`).
+  - 12h: Determinismus.
+  - 12i: zu kurzer `offerTitle` → `invalid_input`.
+- **Block 13** prüft, dass alle 7 Mock-Methoden Funktionen sind —
+  keine Stub-Methoden mehr. Helper `expectUnavailable` wurde
+  entfernt (kein Test braucht ihn mehr).
+
+**B — README-Rewrite:**
+- `README.md` komplett überarbeitet: selbst-tragendes Roadmap-Konzept,
+  9 Badges, klare Trennung zwischen „rolling status" (READMI) und
+  „chronologisch" (CHANGELOG/RUN_LOG). Konkrete Session-Nummern
+  stehen nur noch in CHANGELOG/RUN_LOG, nicht im README — die
+  README muss nicht mehr alle 20 Sessions nachgepflegt werden.
+- Neue „Mitwirkende & Verantwortlichkeiten"-Tabelle benennt Claude,
+  Codex und Auftraggeber explizit.
+- Veraltete „Status nach Session 3"-Sektion entfernt.
+
+**C — Codex-Junior-Workflow:**
+- `codex.md` (neu, ~9 KB) — verbindlicher Verhaltenskodex:
+  - **NEVER-Zone** (Abschnitt 1): `Claude.md`, `PROGRAM_PLAN.md`,
+    `SESSION_PROTOCOL.md`, `codex.md` selbst, alle Schemas,
+    Provider-Code, Pricing, Industries, Themes, Tooling-Configs,
+    CI/CD, Dependencies.
+  - **Komfortzone** (Abschnitt 2): Tippfehler, JSDoc, Trailing-
+    Newlines, `aria-label` auf Icon-Only-Buttons, `alt`-Texte in
+    Demo-Daten, Charakterisierungs-Tests (nur ergänzend).
+  - **Workflow** (Abschnitt 3): `codex/<slug>`-Branch ab `main`,
+    Diff-Cap 20 KB / 8 Dateien, Pflicht-Verifikation
+    (typecheck/lint/build/smoketests), Commit-Format
+    `chore(codex): …` mit Footer `codex-backlog: #N`, kein
+    Auto-Merge.
+  - **Tag-für-Tag-Spickzettel** (Abschnitt 8): 11-Punkte-Checkliste.
+  - **Eskalations-Kriterien** (Abschnitt 9): Codex stoppt sofort,
+    schreibt `[needs-review]`-Eintrag.
+- `docs/CODEX_BACKLOG.md` (neu, ~6 KB) — 9 Starter-Tasks:
+  1. JSDoc für `clamp`-Helper (6 Mock-Files).
+  2. Tippfehler-Pass Marketing-Sektionen.
+  3. `aria-label` an Icon-Only-Buttons.
+  4. Trailing-Newline-Pass.
+  5. `alt`-Texte in Demo-Daten.
+  6. `[blocked]` Prettier-Plugin-Tailwind aktivieren.
+  7. Glossar `docs/GLOSSARY.md`.
+  8. Konsistente deutsche Anführungszeichen.
+  9. README-Tippfehler nachpflegen.
+- `docs/CODEX_LOG.md` (neu, ~1 KB) — append-only-Tagebuch mit
+  striktem Format. Beim Reinkommen liest Claude diese Datei zuerst.
+
+**D — Roadmap-Selbstaktualisierung (Pflicht-Schritt 6):**
+- `docs/PROGRAM_PLAN.md` Meilenstein-2-Block aktualisiert (Mock-
+  Phase abgeschlossen, Live-Provider-Phase startet).
+- 4 neue Backlog-Items:
+  - Track A: Offer-Campaign-Bundle (1 Trigger → Social+Review),
+    AI-API-Route mit Edge-Runtime.
+  - Track F: Glossar (Codex-Backlog #7), Codex-Onboarding-Polish.
+  - **Track G (neu)**: Mitwirkende-Koordination, granularer
+    Zugriffsschutz für Codex via pre-commit-Hook auf
+    `codex/`-Branches.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (4 Dateien):
+- `src/core/ai/providers/mock/offer-campaign.ts`
+- `codex.md`
+- `docs/CODEX_BACKLOG.md`
+- `docs/CODEX_LOG.md`
+
+Geändert:
+- `README.md` (komplett-Rewrite)
+- `src/core/ai/providers/mock-provider.ts`
+- `src/tests/ai-mock-provider.test.ts`
+- `docs/PROGRAM_PLAN.md` (Meilenstein 2 + Tracks A/F/G)
+- `CHANGELOG.md`, `docs/RUN_LOG.md`
+
+Diff-Größe ~70 KB. Größer als die übliche 30–80-KB-Range, aber im
+oberen Drittel des Limits — gerechtfertigt durch die drei parallelen
+Methodik-Schritte (Mock-Phase-Abschluss, README-Rewrite,
+Codex-Workflow-Etablierung).
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck                                     # 0 errors
+npm run lint                                          # 0 warnings
+npm run build:static                                  # grün
+npx tsx src/tests/ai-mock-provider.test.ts            # 0 → ~380 Asserts
+npx tsx src/tests/ai-provider-resolver.test.ts        # 0 → keine Regression
+```
+
+Programmatisch:
+
+```ts
+import { mockProvider } from "@/core/ai/providers/mock-provider";
+
+await mockProvider.generateOfferCampaign({
+  context: {
+    industryKey: "auto_workshop",
+    packageTier: "gold",
+    language: "de",
+    businessName: "KFZ Müller",
+    city: "Leipzig",
+    toneOfVoice: ["sachlich", "ehrlich"],
+    uniqueSellingPoints: ["TÜV in 24 h", "Leihwagen kostenlos"],
+  },
+  offerTitle: "TÜV-Paket Frühling",
+  details: "TÜV-Vorbereitung inkl. Lichttest, Bremsen-Sichtprüfung.",
+  validUntil: "31.05.2026",
+});
+// → { headline: "TÜV-Paket Frühling — bei KFZ Müller",
+//     subline:  "Klar beschriebenes Autowerkstatt-Angebot in Leipzig, …",
+//     bodyText: "TÜV-Vorbereitung inkl. Lichttest …\n\n
+//                Was Sie bekommen:\n· TÜV in 24 h\n· Leihwagen …\n\n
+//                Gültig bis 31.05.2026. …",
+//     cta:      "Jetzt sichern — gültig bis 31.05.2026." }
+```
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                                                          | Status |
+| ------------------------------------------------------------------ | ------ |
+| `generateOfferCampaign` deterministisch, branchenneutral           | ✅      |
+| 7. von 7 Mock-Methoden scharf — **Mock-Phase abgeschlossen**       | ✅      |
+| validUntil wirkt sich auf Body und CTA aus                         | ✅      |
+| Ohne validUntil bleibt CTA neutral-einladend                       | ✅      |
+| `details` als Saatzeile übernommen                                 | ✅      |
+| USPs als Trust-Bullets im Body                                     | ✅      |
+| Defensive Input-Validierung → `invalid_input`                      | ✅      |
+| Output gegen `OfferCampaignOutputSchema` validiert                 | ✅      |
+| Smoketest +30 Assertions (~380 gesamt)                             | ✅      |
+| Build/Typecheck/Lint grün                                          | ✅      |
+| README-Rewrite: selbst-tragend, 9 Badges, Mitwirkende-Tabelle      | ✅      |
+| `codex.md` (10 Abschnitte, NEVER-Zone, Workflow, Eskalation)        | ✅      |
+| `docs/CODEX_BACKLOG.md` mit 9 Starter-Tasks                         | ✅      |
+| `docs/CODEX_LOG.md` (append-only-Format)                            | ✅      |
+| `docs/PROGRAM_PLAN.md` +4 neue Items (Tracks A/F/G)                 | ✅      |
+| Recherche-Step durchgeführt + Quellen zitiert                      | ✅      |
+
+### 5. Was ist offen?
+
+- **Code-Session 21**: OpenAI-Provider scharf machen — `openai`-SDK
+  als Dependency, `generateWebsiteCopy` als erste Live-Methode,
+  Caching-Schicht, Cost-Tracking-Pipe. Mock bleibt parallel als
+  Fallback.
+- **Codex**: 9 Backlog-Tasks warten auf einen Codex-Pass.
+- **Self-Extending Backlog** (4 neue Items aus dieser Session):
+  Offer-Campaign-Bundle, AI-API-Route mit Edge-Runtime, Glossar,
+  Codex-pre-commit-Schutz.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Code-Session 21 – OpenAI-Provider scharf (`generateWebsiteCopy`).**
+
+Klein zugeschnitten:
+
+1. WebSearch zu „2026 OpenAI SDK structured outputs best practices",
+   „prompt caching" und „cost-tracking pattern für Provider-Adapter".
+2. Dependency `openai@^4` (oder neueste) hinzufügen
+   (`package.json` + `package-lock.json`). Dies ist die **erste**
+   externe AI-SDK-Dependency im Repo.
+3. `src/core/ai/providers/openai-provider.ts` aktualisieren:
+   - Schritt 1 dieser Session **nur** `generateWebsiteCopy` scharf
+     machen, alle anderen 6 Methoden bleiben Stub.
+   - System-Prompt aus `IndustryPreset.websiteCopyPrompts`,
+     User-Prompt aus dem `WebsiteCopyInput`.
+   - `response_format: { type: "json_object" }` mit Schema-Hinweis
+     im System-Prompt, dann
+     `WebsiteCopyOutputSchema.parse(JSON.parse(content))`.
+   - `AIProviderError`-Mapping: 401 → `no_api_key`, 429 →
+     `rate_limited`, 5xx → `provider_unavailable`.
+4. `src/tests/ai-provider-resolver.test.ts` **nicht** anfassen
+   (würde echten Call brauchen). Eine optionale, nur-mit-API-Key-
+   Smoketest-Datei `src/tests/ai-openai-live.test.ts` mit
+   `if (!process.env.OPENAI_API_KEY) skip;`.
+5. PROGRAM_PLAN.md +1 Item (Roadmap-Self-Step), CHANGELOG/RUN_LOG,
+   Commit, Push.
+
+Bewusst NICHT: andere Methoden, UI, Dashboard-Integration —
+dafür gibt es Folge-Sessions.
+
+### Quellen (Recherche zu dieser Code-Session)
+
+- [LocaliQ – Limited-Time Offers: Tips, Templates & Examples to Boost Sales Fast](https://localiq.com/blog/limited-time-offers/)
+- [Hibu – 17 Spring Promotion Ideas to Grow Your Small Business](https://hibu.com/blog/marketing-tips/17-spring-promotion-ideas-to-grow-your-small-business)
+- [Engagelab – How to Leverage the Power of the Limited Time Offer Strategy](https://www.engagelab.com/blog/limited-time-offers)
+- [Strategic Factory – 2026 Content Calendar: Key Dates & Campaign Ideas for Every Industry](https://strategicfactory.com/resources/ultimate-2026-marketing-calendar-by-industry/)
+- [Claspo.io – 16 Limited Time Offer Examples & Best Practices Guide](https://claspo.io/blog/limited-time-offer-10-examples-to-boost-conversions/)
+- [GetSiteControl – 10 Limited-Time Offer Examples + Templates to Help You Craft Yours](https://getsitecontrol.com/blog/limited-time-offer-examples/)
+- [SDOCPA – Small Business Marketing Ideas That Actually Work in 2026](https://www.sdocpa.com/small-business-marketing-ideas/)
+- [Indeed – Limited-Time Offers: 3 Examples and How To Create One](https://www.indeed.com/career-advice/career-development/limited-time-offers)
