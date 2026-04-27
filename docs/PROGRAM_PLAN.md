@@ -121,6 +121,13 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   visible local-fallback-Hinweis), 4-stufiges `SubmitResult`-Mapping
   in `src/lib/lead-submit.ts`. Static-Pages-Build bleibt
   unverändert via `pageExtensions`-Filter.
+- 45: Onboarding-Flow ✅. `/onboarding` Page + Form,
+  `POST /api/onboarding` mit Auth-Gate + Service-Role-Dual-Insert
+  (`businesses` + `business_owners`). Slug-Heuristik mit
+  Umlaut-Mapping vor NFKD, Apostrophe-Strip. Reservierte Slugs
+  Liste, 23505 → 409 mit klarer „Slug vergeben"-Meldung.
+  Kompensation: bei Owner-Insert-Fehler wird der businesses-Insert
+  rückgängig gemacht.
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 
@@ -390,6 +397,19 @@ aktiven Session.
   - **Retry-Queue für `local-fallback`**: aktuell bleibt der Lead
     im localStorage liegen. Optional: ein leichter Retry-Worker,
     der bei nächster Online-Phase erneut versucht zu posten.
+- ~~**Onboarding-Flow** (Code-Session 45 ✅).~~
+  Folge-Items:
+  - **Account-Page mit eigenen Betrieben**: `/account` zeigt aktuell
+    nur User-ID + E-Mail. Sobald `business_owners`-Reads laufen,
+    listet `/account` die eigenen Betriebe + Link auf Dashboard.
+    Wenn Liste leer → Redirect / Hinweis auf `/onboarding`.
+  - **Slug-Live-Check**: ein optionaler `HEAD`/`exists`-Check auf
+    `/site/<slug>` bevor der Submit losgeht — fängt vergebene Slugs
+    schon im Form ab. Heute löst Postgres-Unique das, aber erst
+    nach dem Submit.
+  - **Onboarding-Wizard mehrstufig**: Adresse + Kontakt + Logo
+    optional als Schritt 2 nach dem Initial-Insert. Aktuell ist
+    `address` mit Platzhaltern gefüllt.
 - **Dependency-Sweep-Session** (aus Deep-Pass nach Session 40):
   viele Major-Bumps stehen an: `next 15→16`, `react 19.0→19.2`,
   `tailwindcss 3→4`, `typescript 5.7→6`, `zod 3→4`, `eslint 9→10`,

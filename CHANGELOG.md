@@ -7,16 +7,65 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 45: Onboarding-Flow** (post-Login-Pfad: ersten
-  Betrieb + initialen `business_owners`-Eintrag via service-role
-  anlegen, sodass ein neu eingeloggter User direkt ein eigenes
-  Dashboard sieht).
-- Code-Sessions 46+: Dashboard-Read aus Supabase, Retry-Queue für
+- **Code-Session 46: Account-Page zeigt eigene Betriebe**
+  (Read-Pfad über `business_owners` ⨝ `businesses`,
+  „Meine Betriebe"-Liste auf `/account`). Schließt die
+  End-to-End-Schleife: Login → Onboarding → Account → Dashboard.
+- Code-Sessions 47+: Dashboard-Read aus Supabase, Retry-Queue für
   Lead-`local-fallback`, Storage-Bucket für Logos,
   Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
   Settings-Editor mit Legal-Sektion, Impressum-Editor pro Betrieb,
   Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test,
+  Onboarding-Wizard mehrstufig (Adresse + Logo),
   **Dependency-Sweep** (17 Major-Bumps).
+
+## [0.16.19] – Code-Session 45 – 2026-04-27
+
+Onboarding-Flow. Post-Login-Pfad legt parallel `businesses` +
+`business_owners` mit Service-Role an. Ein neu eingeloggter
+User kann jetzt seinen ersten Betrieb in unter 2 Minuten anlegen.
+
+- ⬆️ `server-only@^0.0.1` als dependency. Schützt
+  Service-Role-Module vor versehentlichem Client-Import (Build-
+  Bruch, kein Runtime-Leak).
+- ✚ `src/core/database/supabase-service.ts` — `getServiceRoleClient`
+  Singleton, `auth.persistSession/autoRefreshToken/detectSessionInUrl`
+  alle off. `import "server-only"`-Schutz.
+- ✚ `src/lib/onboarding-validate.ts` — pure
+  `validateOnboarding(input)` mit field-genauen Errors.
+  Slug-Heuristik: Umlaut-Mapping vor NFKD, Apostrophe-Strip vor
+  Bindestrich-Replace. `RESERVED_SLUGS`-Liste für System-Pfade.
+- ✚ `src/tests/onboarding-validate.test.ts` (~35 Asserts):
+  alle Felder, Slug-Edge-Cases, Whitelist-Checks, Heuristik mit
+  Umlauten/Akzenten/Apostrophen/ß.
+- ✚ `src/core/database/repositories/onboarding.ts` —
+  `createBusinessForUser` mit Kompensation: bei Owner-Insert-
+  Fehler wird der businesses-Insert rückgängig gemacht.
+  Mappt Postgres 23505 → `slug_taken`.
+- ✚ `src/app/api/onboarding/route.ts` — POST mit Auth-Gate +
+  Pure-Validierung + Reserved-Slug-Check + Repository-Call.
+  HTTP-Mapping: not_configured→503, slug_taken→409,
+  constraint→422.
+- ✚ `src/app/onboarding/page.tsx` + `onboarding-form.tsx` —
+  statische Page + Client-Form mit Live-Slug-Vorschlag (Auto-
+  Folgen am Namen). Erfolg → Success-Card + Redirect auf
+  `/account` nach 1.2s.
+
+28/29 Smoketests grün (industry-presets pre-existing red, Codex
+#11). Beide Builds grün, `/onboarding` ○ static-prerendered,
+`/api/onboarding` ƒ im SSR-Build. Bundle: shared 102 KB
+unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Onboarding-Flow). 3 neu (Account-Page
+mit Betrieben, Slug-Live-Check, Onboarding-Wizard mehrstufig).
+
+🔁 state-refresh-light: 28/29 grün, 3 Stale-Stubs bekannt
+(Codex-#12), 2 needs-review aktiv.
+
+**Manueller Test** (mit Auth + Service-Role-ENV):
+Login → `/onboarding` → Form ausfüllen → Submit → Success-Card
+→ Auto-Redirect zu `/account`. Im Supabase-Dashboard sind beide
+Zeilen sichtbar (businesses + business_owners).
 
 ## [0.16.18] – Code-Session 44 – 2026-04-27
 

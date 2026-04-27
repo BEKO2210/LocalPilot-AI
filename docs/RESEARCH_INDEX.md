@@ -90,6 +90,12 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Service-Role + Onboarding-Pattern (Code-Session 45)
+- [Supabase Discussion #30739 – Using Service Role with Supabase in Next.js Backend](https://github.com/orgs/supabase/discussions/30739) — Server-only, persistSession off, Sicherheitsbetrachtung (45).
+- [Adrian Murage – How to Use the Supabase Service Role Secret Key in Next.js Routes](https://adrianmurage.com/posts/supabase-service-role-secret-key/) — `server-only`-Import-Pattern (45).
+- [Dev.to – Multi-Tenant SaaS Auth + Billing with Supabase RLS](https://dev.to/diven_rastdus_c5af27d68f3/how-i-built-multi-tenant-saas-auth-billing-with-supabase-rls-and-stripe-connect-3h08) — Onboarding-Sequenz Owner→Tenant (45).
+- [Supabase Discussion #3919 – Service Role Key in createClient](https://github.com/orgs/supabase/discussions/3919) — Konfig-Optionen für Server-Client (45).
+
 ### Form-Submit + Offline-Fallback (Code-Session 44)
 - [Next.js Discussion #82498 – Building an Offline-First Next.js 15 App](https://github.com/vercel/next.js/discussions/82498) — Pattern-Diskussion, Service-Worker vs. localStorage-Backup (44).
 - [Next.js Components – Form](https://nextjs.org/docs/app/api-reference/components/form) — Progressive-Enhancement-Form (44).

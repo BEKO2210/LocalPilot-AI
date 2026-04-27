@@ -5480,3 +5480,95 @@ sieht ein eingeloggter User aktuell nichts Eigenes. Vor
 Dependency-Sweep, weil der Sweep eine reine Wartungs-Session ist
 und kein User-Wert generiert — Onboarding schon.
 
+---
+
+## Code-Session 45 – Onboarding-Flow (Service-Role-Dual-Insert)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Post-Login-Pfad für neue User. `/onboarding` zeigt ein
+Form (Slug, Name, Branche, Theme, Paket, Slogan, Beschreibung).
+Der Server-Pfad legt parallel `businesses` + `business_owners`
+mit Service-Role an — bypasst die RLS aus Migration 0007 für
+den Henne-Ei-Spezialfall (kein Owner = kein Insert-Berechtigter).
+Bei Owner-Insert-Fehler kompensiert der Server mit einem DELETE
+auf den businesses-Insert, damit keine waisen Betriebe
+zurückbleiben.
+
+**Dateien**:
+- ⬆️ `package.json` — `server-only@^0.0.1`. Statischer Build-Bruch,
+  falls Client Component den Service-Role-Client importiert.
+- ✚ `src/core/database/supabase-service.ts` — `getServiceRoleClient`
+  Singleton, `auth.persistSession/autoRefreshToken/detectSessionInUrl`
+  alle off. `import "server-only"`-Schutz. `isServiceRoleConfigured`
+  als Pure-Helper.
+- ✚ `src/lib/onboarding-validate.ts` — `validateOnboarding(input)`
+  liefert field-Errors oder validen Output. Slug-Heuristik:
+  Umlaut-Mapping (ä→ae, ö→oe, ü→ue, ß→ss) **vor** NFKD, sonst
+  spaltet NFKD `ü` und der Strip macht `u` daraus. Apostrophe-
+  Strip vor dem Bindestrich-Replace, sodass „Müller's" zu
+  „muellers" wird (nicht „mueller-s"). `RESERVED_SLUGS`-Liste
+  für System-Pfade.
+- ✚ `src/tests/onboarding-validate.test.ts` (~35 Asserts):
+  alle Pflicht-Felder, Slug-Edge-Cases (Umlaute, Whitespace,
+  Bindestrich-Anfang/Ende), Industry/Theme/Tier-Whitelist
+  (englisches `silver` wird abgelehnt — Enum ist deutsch),
+  Slug-Heuristik mit Umlauten/Akzenten/Apostroph/Doppel-
+  Bindestrichen/ß, RESERVED_SLUGS.
+- ✚ `src/core/database/repositories/onboarding.ts` —
+  `createBusinessForUser(userId, validInput)`. Sequenz: businesses-
+  insert → owner-insert → bei Fehler im 2. Schritt: business
+  wieder löschen (Best-effort-Kompensation). Mappt Postgres
+  23505 → `OnboardingError.kind="slug_taken"`, andere 23xxx →
+  `constraint`.
+- ✚ `src/app/api/onboarding/route.ts` — POST. Auth-Gate via
+  `getCurrentUser()`. Light-Validation, dann Pure-`validateOnboarding`,
+  dann Reserved-Slug-Check, dann Repository-Call.
+  HTTP-Mapping: not_configured→503, slug_taken→409, constraint→422,
+  validation→400, sonst 500.
+- ✚ `src/app/onboarding/onboarding-form.tsx` — Client Component.
+  Live-Slug-Vorschlag aus dem Namen mit Auto-Folgen (solange
+  Slug-Feld leer oder dem letzten Vorschlag entspricht).
+  Server-fieldErrors werden aufs Form gemappt. Erfolg →
+  Success-Card + Redirect auf `/account` nach 1.2s. Branchen-,
+  Theme-, Paket-Labels deutsch lokalisiert.
+- ✚ `src/app/onboarding/page.tsx` — Server Component, statisch
+  prerenderable. Nur Wrapper + Links auf `/account` und `/login`.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **28/29 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). `/onboarding` static-prerendered (○), `/api/onboarding`
+ƒ im SSR-Build. Bundle: shared 102 KB unverändert, `/onboarding`
++ form ca. 5.9 kB Page-Bundle.
+
+**Roadmap**: 1 Item abgehakt (Onboarding-Flow). 3 neue Folge-
+Items: Account-Page mit eigenen Betrieben, Slug-Live-Check vor
+Submit, Onboarding-Wizard mehrstufig (Adresse + Logo).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Service-Role +
+Onboarding-Pattern.
+
+**state-refresh-light** (Session 45 ist 5er-Multiple):
+- Smoketest-Regression: 28/29 grün, industry-presets bleibt
+  Codex-#11.
+- Stale-Stub-Audit: 3 Treffer (services/leads/settings) —
+  bekannt, Codex-#12 sammelt.
+- Codex-Backlog: 2 needs-review aktiv, kein Codex-Done.
+- Bundle: 102 KB shared stabil.
+
+**Manueller Test (sobald Auth + Service-Role-ENV gesetzt)**:
+1. Magic-Link-Login auf `/login`.
+2. `/onboarding` öffnen.
+3. Form ausfüllen → Submit.
+4. Erfolgs-Card mit Slug, Auto-Redirect zu `/account`.
+5. Supabase-Dashboard: `businesses` hat eine neue Zeile,
+   `business_owners` hat (user_id, business_id, role='owner').
+
+**Nächste Session**: Code-Session 46 = **Account-Page zeigt
+eigene Betriebe**. Read-Pfad über
+`business_owners` ⨝ `businesses`, Liste der Betriebe pro
+eingeloggtem User. Damit ist die End-to-End-Schleife für einen
+Single-Tenant-User geschlossen: Login → Onboarding → Account
+sieht den Betrieb → Klick → Dashboard. Vor dem Dashboard-
+Multi-Tenant-Wiring, weil das eine eigene große Session ist;
+Account-Page ist ein kleiner, abgeschlossener Schritt.
+

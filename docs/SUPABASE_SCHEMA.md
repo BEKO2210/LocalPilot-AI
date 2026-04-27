@@ -351,7 +351,35 @@ Static-Pages-Build: `/api/leads` wird durch
 Form fällt **silent** auf den localStorage-Pfad zurück (kein
 Hinweis nötig — das ist der erwartete Demo-Zustand).
 
+### Onboarding-Pfad (Code-Session 45)
+
+`POST /api/onboarding` ist scharf. Pfad:
+1. `getCurrentUser()` (Cookie-Check, RLS-konform) → `userId`.
+2. `validateOnboarding(input)` → field-genaue Errors oder
+   `OnboardingValidInput`.
+3. Reservierter-Slug-Check (`isReservedSlug`) gegen Liste der
+   System-Pfade (admin, api, dashboard, login, …).
+4. `createBusinessForUser(userId, validInput)` mit dem
+   Service-Role-Client (`@/core/database/supabase-service.ts`,
+   `import "server-only"`-gegated):
+   - Insert in `businesses` (RLS via `service_role` bypassed).
+   - Insert in `business_owners` mit `role='owner'`.
+   - Bei `business_owners`-Fehler: Kompensations-DELETE auf
+     `businesses` (kein dangling business ohne Owner).
+5. 201 mit `{ ok, slug, businessId }`.
+
+**Status-Mapping**:
+- `OnboardingError.kind = "not_configured"` → 503.
+- `kind = "slug_taken"` (Postgres 23505) → 409.
+- `kind = "constraint"` (23xxx generic) → 422.
+- `kind = "unknown"` → 500.
+
+`SUPABASE_SERVICE_ROLE_KEY` darf NIEMALS im Client-Bundle landen.
+Der Service-Client-File hat `import "server-only"` als statischen
+Schutz — Next.js bricht den Build, wenn ein Client Component das
+importiert.
+
 ### Roadmap
 
-- **Session 45+** — Onboarding-Flow (post-Login: businesses-Tabelle leer? → kleine `<OnboardingForm>` legt ersten Betrieb + business_owners-Eintrag via service-role an).
+- **Session 46+** — Account-Page zeigt eigene Betriebe (Read-Pfad über `business_owners`), Onboarding-Wizard mehrstufig (Adresse, Logo), Dashboard-Read aus Supabase.
 - **0008+** — Storage-Buckets für Logos und Hero-Bilder, Backup-Policy.
