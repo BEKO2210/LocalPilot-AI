@@ -105,6 +105,12 @@
 - [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
 - [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
 
+### Helper-Extraktion + Promise.all in Route-Handlern (Code-Session 60)
+- [Next.js – Getting Started: Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers) — Helper-Extraktion ist Standard-Pattern für testbare Route-Handler (60).
+- [makerkit – Next.js Route Handlers Best Practices 2026](https://makerkit.dev/blog/tutorials/nextjs-api-best-practices) — Universal try-catch wrapper + DI-Tests (60).
+- [Drew Bredvick – Promise.all in App Router](https://drew.tech/posts/promise-all-in-nextjs-app-router) — `Promise.all` über independent DB-Calls als Performance-Best-Practice (60).
+- [next-test-api-route-handler](https://www.npmjs.com/package/next-test-api-route-handler) — DX-Pattern für Integration-Tests; nicht eingesetzt (Smoketest-Strategie ist Stub-Client-basiert), aber als Referenz dokumentiert (60).
+
 ### Bulk-Update mit unterschiedlichen Werten pro Row (Code-Session 59)
 - [supabase/postgrest-js #174 – Support bulk update](https://github.com/supabase/postgrest-js/issues/174) — Native Bulk-Update existiert 2026 nicht; pro-Row-UPDATE oder RPC sind die zwei sauberen Wege (59).
 - [supabase Discussion #15744 – RPC to update multiple rows](https://github.com/orgs/supabase/discussions/15744) — RPC für >>100 Rows; bei kleiner Skala overkill (59).

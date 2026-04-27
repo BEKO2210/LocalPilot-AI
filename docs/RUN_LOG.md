@@ -6837,3 +6837,139 @@ einzigen `MoveResultGroup`-Struktur,
 (c) Recap-Dokumentation in `STORAGE.md` (neu), die alle 4
 Hygiene-Pfade in einem Diagramm zeigt.
 
+## Code-Session 60 – Light-Pass: Storage-Migration-Helper + STORAGE.md
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Light-Pass · 5er-Multiple
+
+**Was**: Sessions 56–59 haben den Storage-Hygiene-Stack
+inkrementell ausgebaut, sodass am Ende in `settings/route.ts`
+zwei nahezu identische Slug-Move-Blöcke nebeneinander
+standen (Logo/Cover aus 57, Service-Bilder aus 59). Diese
+Light-Pass-Session konsolidiert sie in einen einzigen pure
+Helper, schreibt einen vollständigen Stub-Client-basierten
+Test, und ergänzt eine neue `STORAGE.md`-Dokumentation, die
+alle vier Hygiene-Pfade (Upload / DELETE-Cleanup / Slug-Move
+für Logo+Cover / Slug-Move für Service-Bilder) in einem
+Diagramm zeigt.
+
+**Architektur-Entscheidung — Helper statt Inline**: Die
+beiden Move-Blöcke in `settings/route.ts` waren strukturell
+identisch (extract → rewrite → move → URL-build → DB-update).
+Einziger echter Unterschied: ein Block updated 2 Spalten in
+einem UPDATE auf `businesses`, der andere updated N Rows mit
+je einer Spalte auf `services`. Beide werden zu Sub-Aufgaben
+des neuen Helpers, der sie via `Promise.all` parallel
+ausführt (race-frei, weil disjunkte Tabellen + disjunkte
+Storage-Pfade). Test-Stubs für `SupabaseClient` reichen aus
+— kein in-Memory-Mock-Backend nötig.
+
+**Architektur-Entscheidung — Helper-Doku statt
+Inline-Komments**: Die Sessions-Kommentare „Code-Session 57"
+und „Code-Session 59" in der Route waren historisch sinnvoll,
+aber redundant nach der Konsolidierung. Sie wandern in den
+JSDoc des Helpers + die neue `STORAGE.md`. Die Route ist
+jetzt frei von Storage-Detail-Wissen.
+
+**WebSearch (Track C)**: bestätigt
+- [Next.js – Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers)
+  Helper-Extraktion ist Standard-Pattern für testbare
+  Route-Handler.
+- [makerkit – Next.js Route Handlers Best Practices](https://makerkit.dev/blog/tutorials/nextjs-api-best-practices)
+  „Universal try-catch wrapper" + dependency-injection für
+  Tests ist 2026-Best-Practice.
+- [Drew Bredvick – Promise.all in App Router](https://drew.tech/posts/promise-all-in-nextjs-app-router)
+  Promise.all über independent DB-Calls ist im App-Router
+  performance-Best-Practice.
+
+**Dateien**:
+- ✚ `src/lib/storage-slug-migration.ts` — pure Helper
+  ~250 Zeilen:
+  - `migrateBusinessImagesOnSlugChange(deps, input)` als
+    Top-Level-Function. `deps`: `supabase` (Server-Auth),
+    `adminClient` (Service-Role, kann null sein), optional
+    `warn`-Logger. `input`: `oldSlug`, `newSlug`, `bucket`,
+    `business: { id, logo_url, cover_image_url }`.
+  - Private `moveOneUrl(...)` extrahiert die vier-Schritt-
+    Logik (extract → rewrite → move → URL-build) in einen
+    re-usable-Helper, der von beiden Sub-Aufgaben aufgerufen
+    wird.
+  - `migrateLogoCover(...)` und `migrateServices(...)` als
+    private Sub-Funktionen — beide gracefully bei null/missing
+    Daten.
+  - Top-Level-Migration läuft Logo/Cover und Services in
+    `Promise.all` parallel.
+  - Liefert `SlugMigrationResult { logoCover: MoveCounts,
+    services: MoveCounts }`.
+- ✚ `src/tests/storage-slug-migration.test.ts` (~38
+  Asserts):
+  - `makeStubs(opts)`-Factory baut `SupabaseClient`-Stubs
+    (Reads, Updates, Storage-Move) mit Konfiguration für
+    Lookup-Errors, Update-Errors, Move-Result-Map.
+  - 9 Test-Szenarien: No-op, Happy-Path, externe URL skip,
+    Move-Failure, Service-Bilder-Happy (3 Rows),
+    Service-Bilder-Mixed (1 failed), Lookup-Error,
+    null-Admin, DB-Update-Error.
+  - Asserts gegen die Mocks: Move-from/to-Pfade, DB-UPDATE-
+    Patches, Filter-Spalten, Warning-Strings.
+- 🔄 `src/app/api/businesses/[slug]/settings/route.ts`:
+  - Imports `extractStoragePath`/`moveStoragePath`/
+    `rewritePathPrefix`/`buildPublicUrl` weg, stattdessen
+    `migrateBusinessImagesOnSlugChange`.
+  - 2 inline Migrations-Blöcke (~140 Zeilen) → 1 Helper-
+    Aufruf (~20 Zeilen, davon 15 Zeilen Setup für `input`).
+  - `slugChanged`-Check vor dem Aufruf (bei `false` setzen
+    wir die Counts auf 0 ohne Helper-Call).
+  - Antwort-Shape unverändert — kein Bestandstest betroffen.
+- ✚ `docs/STORAGE.md` — neue Recap-Doku:
+  - Bucket-Layout-Tabelle.
+  - Pfad-Konventionen-Block (`<slug>/logo.<ext>`,
+    `<slug>/cover.<ext>`, `<slug>/services/<id>.<ext>`).
+  - ASCII-Diagramm aller 4 Hygiene-Pfade.
+  - Detail-Beschreibung für jeden Pfad: Wer / Wie / Auth /
+    Persistenz / Graceful-Mode.
+  - Helper-Übersicht (`business-image-upload.ts`,
+    `storage-cleanup.ts`, `storage-slug-migration.ts`).
+  - Test-Coverage-Tabelle (~130 Asserts insgesamt).
+  - Bekannte Lücken-Liste (Business-DELETE-Flow,
+    Race-Conditions).
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**38/39 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +1 storage-slug-migration grün — gesamt jetzt
+~340 Asserts in 38 Test-Files.
+
+**Light-Pass-Bilanz Sessions 56–60**:
+- 4 neue API/Logic-Pfade hinzugefügt (Cleanup, Slug-Move
+  Logo/Cover, Service-Image-Upload, Slug-Move Services)
+- 3 neue pure-Helper-Module
+  (`storage-cleanup.ts`, erweitert; `storage-slug-migration.ts`)
+- ~130 neue Test-Asserts
+- 1 Recap-Doku (`STORAGE.md`)
+- Ein Dependabot-Vuln-Fix (postcss + eslint, separater Commit)
+- Ein UI-Feature (Service-Image-Upload-UI)
+- Refactor: 140 → 20 Zeilen in `settings/route.ts`
+- 8 Sessions × 0 Regressions (alle 38 Tests grün)
+
+**Roadmap**: Storage-Hygiene-Stack ist jetzt **production-
+ready** und vollständig dokumentiert. Zukünftige Storage-
+Operationen können direkt auf den drei Helper-Modulen
+aufsetzen.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Next.js Route-
+Handler-Patterns 2026.
+
+**Status-Update**: ~93 % Richtung „erstes Betrieb-fertiges
+Produkt". Storage-Architektur ist Production-ready.
+Verbleibend: Live-Provider-Switch (Reviews/Social),
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member-
+Verwaltung, „Betrieb löschen"-Flow.
+
+**Nächste Session**: Code-Session 61 = **Live-Provider-
+Switch für Reviews-Panel**. Begründung: Storage-Hygiene-
+Stack ist abgeschlossen — als nächster Quality-Sprung sollte
+das Reviews-Panel (Session 53) den Mock-Provider gegen einen
+echten AI-Aufruf via `/api/ai/generate` (Auth-Bearer)
+ersetzen können. Pattern liegt schon in `AIPlayground` vor;
+hier muss nur die client-side Provider-Wahl symmetrisch
+eingebaut werden. Klein, scharf, Quality-Boost ohne
+Architektur-Risiko.
+

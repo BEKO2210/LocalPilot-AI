@@ -279,8 +279,21 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Antwort um `serviceImagesMoved` + `serviceImagesFailed`.
   Damit ist die Storage-Hygiene-Lücke aus 58 geschlossen
   und der Storage-Stack symmetrisch über alle vier Pfade.
+- 60: Light-Pass + Storage-Hygiene-Recap ✅. Sessions 56–59
+  haben den Stack inkrementell ausgebaut — diese 5er-
+  Multiple-Session konsolidiert die zwei Slug-Move-Blöcke
+  aus 57+59 in einen einzigen pure Helper
+  `storage-slug-migration.ts` (~38 Asserts), der per
+  `Promise.all` Logo/Cover- und Service-Bilder-Migration
+  parallel ausführt. `settings/route.ts` schrumpft von
+  ~140 inline-Zeilen auf einen einzigen Helper-Aufruf. Neue
+  Recap-Doku `docs/STORAGE.md` zeigt Bucket-Layout, Pfad-
+  Konventionen und ein Diagramm aller 4 Hygiene-Pfade
+  (Upload, DELETE-Cleanup, Slug-Move Logo/Cover, Slug-Move
+  Services). Storage-Architektur ist damit production-ready
+  und vollständig dokumentiert.
 - 41+: Backup-Policy, Seed-Skript für Demo-Daten,
-  Light-Pass-Refactor der Slug-Move-Blöcke (Session 60).
+  „Betrieb löschen"-Flow mit rekursivem Storage-Cleanup.
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant

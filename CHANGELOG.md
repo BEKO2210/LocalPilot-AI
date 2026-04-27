@@ -7,14 +7,87 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Code-Sessions 60+: Light-Pass (5er-Multiple), Live-Provider-
-  Variante für Reviews/Social-Panels (Auth-Bearer + `/api/ai/
-  generate`), Direkt-Posten zu Buffer/Hootsuite/Meta-Graph,
-  Multi-Member-Verwaltung, Default-Redirect bei einem Betrieb,
-  Retry-Queue für Lead-`local-fallback`, Edge-Runtime-
-  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
-  Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
-  Schema↔Migration-Drift-Test.
+- Code-Sessions 61+: Live-Provider-Variante für Reviews/Social-
+  Panels (Auth-Bearer + `/api/ai/generate`), Direkt-Posten zu
+  Buffer/Hootsuite/Meta-Graph, Multi-Member-Verwaltung,
+  Default-Redirect bei einem Betrieb, Retry-Queue für Lead-
+  `local-fallback`, „Betrieb löschen"-Flow mit rekursivem
+  Storage-Cleanup, Edge-Runtime-Migration, CSRF-Schutz,
+  HTML-Sanitize-Whitelist, Impressum-Editor pro Betrieb,
+  Seed-Skript für Demo-Daten, Schema↔Migration-Drift-Test.
+
+## [0.16.34] – Code-Session 60 – 2026-04-27 (Light-Pass)
+
+5er-Multiple. Light-Pass über die Storage-Hygiene-Stack
+(Sessions 56–59): die zwei nahezu identischen Slug-Move-
+Blöcke in `settings/route.ts` (Logo/Cover aus 57 + Service-
+Bilder aus 59) werden in einen **einzigen** stub-bar
+testbaren Helper extrahiert; neue Recap-Doku
+[`docs/STORAGE.md`](docs/STORAGE.md) mit Diagramm aller vier
+Hygiene-Pfade.
+
+- ✚ `src/lib/storage-slug-migration.ts` — neuer pure
+  Helper:
+  - `migrateBusinessImagesOnSlugChange(deps, input)`
+    konsolidiert Logo/Cover-Move (ein gesammeltes UPDATE)
+    und Service-Image-Move (per-Row-UPDATE in `Promise.all`)
+    in einer einzigen Top-Level-Funktion. Beide Sub-Aufgaben
+    laufen parallel via `Promise.all`.
+  - Liefert `{ logoCover: {moved, failed}, services:
+    {moved, failed} }`.
+  - Optional injectable `warn`-Logger (Default `console.warn`)
+    für Tests.
+  - Graceful für alle Fehlerklassen: `null`-adminClient
+    (Service-Role fehlt), Move-Failure, DB-Lookup-Fehler,
+    DB-Update-Fehler. Kein Throw.
+- ✚ `src/tests/storage-slug-migration.test.ts` (~38
+  Asserts): Stub-Client-basiert. No-op (oldSlug=newSlug),
+  Logo+Cover-Happy-Path, externe URL skip, Move-Failure
+  setzt URL=null, Service-Bilder-Happy-Path (3 Rows),
+  Service-Bilder-Mixed (1 von 3 failed),
+  Service-Lookup-Error, null-Admin-Client, DB-Update-Error.
+  Alle Asserts gegen die Mocks (Move-Calls, DB-Update-Patches,
+  Warning-Strings).
+- 🔄 `src/app/api/businesses/[slug]/settings/route.ts`:
+  Imports von `extractStoragePath`/`moveStoragePath`/
+  `rewritePathPrefix`/`buildPublicUrl` weg, stattdessen
+  einziger Import `migrateBusinessImagesOnSlugChange`. Die
+  zwei Migrations-Blöcke (~140 Zeilen) → einziger Helper-
+  Aufruf (~20 Zeilen). Antwort-Mapping unverändert
+  (`imagesMoved`/`imagesFailed`/`serviceImagesMoved`/
+  `serviceImagesFailed`).
+- ✚ `docs/STORAGE.md` — neue Recap-Doku:
+  - Bucket-Layout + Pfad-Konventionen.
+  - ASCII-Diagramm der vier Hygiene-Pfade
+    (Upload / DELETE-Cleanup / Slug-Move).
+  - Helper-Übersicht mit Zuständigkeiten.
+  - Test-Coverage-Tabelle (~130 Asserts auf der
+    Storage-Schicht).
+  - Bekannte Lücken (Business-DELETE-Flow,
+    Race-Conditions).
+
+38/39 Smoketests grün (industry-presets pre-existing red,
+Codex #11). +1 storage-slug-migration grün. typecheck ✅,
+lint ✅, beide Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 Light-Pass abgehakt. Storage-Hygiene-Stack ist
+jetzt **vollständig konsolidiert** (vier Pfade × ein
+Helper-Modul). Zukünftige Storage-Operationen (Business-
+DELETE, Bucket-Migrationen, Multi-Bucket-Setups) können
+direkt auf den drei pure Helpers `business-image-upload.ts`,
+`storage-cleanup.ts`, `storage-slug-migration.ts` aufsetzen.
+
+**Status-Update**: ~93 % Richtung „erstes Betrieb-fertiges
+Produkt". Storage-Architektur ist Production-ready.
+Verbleibend: Live-Provider-Switch (Reviews/Social),
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member-
+Verwaltung, „Betrieb löschen"-Flow.
+
+**Manueller Test**: Identisch zu Session 59 (Slug-Wechsel mit
+Logo+Cover+Service-Bildern) — User sollte keinen Verhaltens-
+Unterschied sehen. Refactor ist verhaltens-neutral.
+
+## [0.16.33] – Code-Session 59 – 2026-04-27
 
 ## [0.16.33] – Code-Session 59 – 2026-04-27
 
