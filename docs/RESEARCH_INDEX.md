@@ -90,6 +90,14 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Social-Media-Char-Limits + Hashtag-Counts 2026 (Code-Session 54)
+- [Sociality.io – Social Media Character Limits 2025](https://sociality.io/blog/social-media-character-limits/) — IG 2200 hard / 125 truncation, FB 63206 / 480, LinkedIn 3000 / 210 (54).
+- [thedebuggers – March 2026 Guide to Social Media Character Limits](https://thedebuggersitsolutions.com/blog/social-media-character-limits-2026) — aktuelle 2026-Werte (54).
+- [HubSpot – How Long Should Your Social Media Posts Be?](https://blog.hubspot.com/marketing/character-count-guide) — Engagement vs. Hard-Limit, Truncation-vor-„Mehr lesen" entscheidet (54).
+- [SproutSocial – Social Media Character Counter](https://sproutsocial.com/insights/social-media-character-counter/) — Tool + Best-Practice-Tabelle (54).
+- [PickBlend – Character Limits 2026 Complete Guide](https://pickblend.com/blog/character-limits-for-every-platform-2026) — Plattform-Übersicht inklusive Stories (54).
+- Kontext aus Session 19: Hashtag-Counts: IG 3–5, FB 1–2, GBP 0, LinkedIn 3–5, WhatsApp-Status 0 — auch hier wieder bestätigt.
+
 ### Review-Request-Best-Practices (Code-Session 53)
 - [Apptoto – SMS Review Requests: 18 Templates That Get Results](https://www.apptoto.com/best-practices/sms-review-requests) — SMS 34 % Antwortrate vs. 4,2 % E-Mail (53).
 - [Embed My Reviews – How to Get More Google Reviews](https://www.embedmyreviews.com/resources/how-to-get-more-google-reviews/) — Timing-Faustregeln (innerhalb 24 h, mid-morning/early-evening) (53).

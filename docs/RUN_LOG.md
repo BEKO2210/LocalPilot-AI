@@ -6186,3 +6186,78 @@ Plattformen) seit Session 19 fertig. UI-Pattern ist symmetrisch
 zu Reviews: Plattform + Goal + Tonalität → KI generiert Post →
 Copy / Direkt-Posten-Link (Buffer/Hootsuite kommt später).
 
+---
+
+## Code-Session 54 – Social-Media-UI scharf
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: `/dashboard/[slug]/social` ist nicht mehr Status-Stub.
+Owner wählt Plattform (5), Ziel (8), Länge (3), trägt ein Thema
+ein, schaltet Hashtags an/aus → Mock-Provider liefert kurzen Post,
+langen Post, Hashtags, Bildidee und CTA. Plattform-spezifische
+Char-Counter mit Truncation-Warnung, Hashtag-Empfehlung pro
+Kanal. Pattern ist symmetrisch zu Reviews-UI aus Session 53.
+
+**Architektur-Konsistenz**: gleiche Entscheidung wie bei Reviews —
+Mock-Provider direkt im Browser, kein Auth-Bearer-Pfad. Live-
+Provider-Variante kommt später (Plan-Item).
+
+**Dateien**:
+- ✚ `src/lib/social-post-format.ts` — pure Helper:
+  `platformLabel` / `goalLabel` / `lengthLabel` (deutsch),
+  `platformLimits(p)` mit `hardChar` + `truncationChar` +
+  `recommendedHashtags`-Bereich aus 2026-Recherche,
+  `assessLength(text, platform)` → `"ok" | "truncated" | "over"`
+  mit user-sichtbarem Hint, `composeFinalPost` mit Tag-
+  Normalisierung (führendes `#`, Whitespace-Trim, case-
+  insensitive Dedupe), `adviseHashtagCount` mit
+  `discouraged`-Status für GBP/WA-Status.
+- ✚ `src/tests/social-post-format.test.ts` (~40 Asserts):
+  alle Labels, alle 5 Plattform-Limits, assessLength für
+  ok/truncated/over (auf 3 Plattformen), composeFinalPost
+  inklusive Tag-Normalisierung („FRISEUR" + „#friseur" wird
+  als Duplikat erkannt), adviseHashtagCount für
+  ok/below/above/discouraged.
+- ✚ `src/components/dashboard/social/social-post-panel.tsx` —
+  Client Component. PlatformTabs + GoalPills + LengthPicker
+  als ARIA-getaggte Sub-Komponenten. PostCard rendert
+  shortPost und longPost mit Char-Status-Farbe (emerald/amber/
+  rose) und Truncation-Hint. Separate Karten für Hashtags,
+  Bildidee, CTA — alle mit eigenem Copy-Button.
+- 🔄 `src/app/dashboard/[slug]/social/page.tsx` — Stub
+  durch Panel ersetzt. Bleibt static-prerenderable.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **35/36 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Social-Page als ●-SSG-prerendered (Pages-kompatibel).
+Bundle: shared 102 KB unverändert; `/dashboard/[slug]/social`
+4 kB page-spezifisch.
+
+**Roadmap**: 1 Item abgehakt (Social-UI). 1 neues Folge-Item:
+Live-Provider-Variante für Social-Panel (analog zu AIPlayground
+mit Auth-Bearer + `/api/ai/generate`). Direkt-Posten zu Buffer/
+Hootsuite/Meta-Graph als separates Plan-Item für Track A
+Innovation.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Social-Media-Char-
+Limits + Hashtag-Counts 2026.
+
+**Status-Update**: ~85 % Richtung „erstes Betrieb-fertiges
+Produkt". Mit Reviews + Social ist auch der Engagement-Hebel
+(Meilenstein 3) erreichbar. Verbleibend für Vollausbau:
+Schreibpfad ServicesEditForm (nice-to-have), Storage-Cleanup-
+Job, Live-Provider-Switch in Reviews/Social, Custom-Domain,
+Sentry, Lighthouse-CI.
+
+**Nächste Session**: Code-Session 55 = **Schreibpfad
+ServicesEditForm**. Begründung: nach 54 sind alle
+End-User-UI-Capabilities (Stamm-, Bild-, Slug-, Review-,
+Social-Pfad) live. Was fehlt für vollständigen
+Self-Service-Betrieb: ServicesEditForm schreibt aktuell nur in
+einen Mock-State. Owner kann seine Leistungen also nicht
+persistent ändern — und Leistungen sind in Friseur, Werkstatt,
+Reinigung der **Hauptinhalt** der Public-Site. Pattern ist
+symmetrisch zu Session 50 (PATCH `/api/businesses/[slug]/
+services` mit Bulk-Update + RLS), nur etwas größer wegen der
+Array-Form.
+

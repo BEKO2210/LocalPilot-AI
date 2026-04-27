@@ -7,16 +7,55 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 54: Social-Media-UI scharf** — symmetrisch zu
-  Reviews (Plattform + Goal + Tonalität → KI-Post → Copy /
-  Direkt-Posten-Link). Backend seit Session 19 fertig.
-- Code-Sessions 55+: Live-Provider-Variante für Reviews-Panel,
-  Schreibpfad ServicesEditForm, Multi-Member-Verwaltung,
-  Default-Redirect bei einem Betrieb, Retry-Queue für Lead-
-  `local-fallback`, Storage-Cleanup-Job für Slug-Wechsel-
-  Waisen, Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-
-  Whitelist, Impressum-Editor pro Betrieb, Seed-Skript für
-  Demo-Daten, Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+- **Code-Session 55: Schreibpfad ServicesEditForm** — symmetrisch
+  zu Session 50 (PATCH `/api/businesses/[slug]/services` mit
+  Bulk-Update + RLS). Damit ist auch der Hauptinhalt der
+  Public-Site persistent editierbar.
+- Code-Sessions 56+: Live-Provider-Variante für Reviews/Social-
+  Panels (Auth-Bearer + `/api/ai/generate`), Direkt-Posten zu
+  Buffer/Hootsuite/Meta-Graph, Multi-Member-Verwaltung, Default-
+  Redirect bei einem Betrieb, Retry-Queue für Lead-`local-
+  fallback`, Storage-Cleanup-Job für Slug-Wechsel-Waisen,
+  Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
+  Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
+  Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+
+## [0.16.28] – Code-Session 54 – 2026-04-27
+
+Social-Media-UI scharf: `/dashboard/[slug]/social` ist nicht
+mehr Status-Stub, sondern zielgerichtete Post-Generator-UI.
+Symmetrisch zu Reviews aus Session 53.
+
+- ✚ `src/lib/social-post-format.ts` — pure Helper:
+  `platformLabel`/`goalLabel`/`lengthLabel` (deutsch),
+  `platformLimits` (5 Plattformen mit hardChar/truncationChar/
+  Hashtag-Empfehlung), `assessLength` → `ok|truncated|over`,
+  `composeFinalPost` mit Tag-Normalisierung + case-insensitive
+  Dedupe, `adviseHashtagCount` mit `discouraged`-Status für
+  GBP/WA-Status.
+- ✚ `src/tests/social-post-format.test.ts` (~40 Asserts):
+  alle Labels, alle 5 Plattform-Limits, Length-Assessment,
+  Final-Post-Komposition mit Edge-Cases, Hashtag-Beratung.
+- ✚ `src/components/dashboard/social/social-post-panel.tsx`:
+  Client Component. PlatformTabs + GoalPills + LengthPicker
+  + Topic-Input + Hashtags-Toggle. Mock-Provider liefert
+  shortPost + longPost + hashtags + imageIdea + CTA.
+  Char-Counter pro Plattform mit Truncation-Warnung
+  (emerald/amber/rose). Separate Copy-Buttons pro Sektion.
+- 🔄 `src/app/dashboard/[slug]/social/page.tsx`: Stub durch
+  Panel ersetzt. Bleibt static-prerenderable.
+
+35/36 Smoketests grün (industry-presets pre-existing red,
+Codex #11). Social-Page als ●-SSG-prerendered. Bundle 102 KB
+shared unverändert; `/dashboard/[slug]/social` 4 kB page-spez.
+
+🛣️ Roadmap: 1 abgehakt. 1 neu (Live-Provider-Variante für
+Social-Panel). Direkt-Posten zu Buffer/Hootsuite/Meta-Graph
+als separates Track-A-Item.
+
+**Status-Update**: ~85% Richtung „erstes Betrieb-fertiges
+Produkt". Engagement-Hebel (Meilenstein 3) ist mit Reviews +
+Social erreichbar.
 
 ## [0.16.27] – Code-Session 53 – 2026-04-27
 

@@ -202,6 +202,19 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Copy-to-Clipboard pro Variante. Pure Template-Helper mit
   ~46 Asserts (Substitution, Phone-Cleaning für Kanäle,
   URL-Bau für 4 Channel-Typen, Subject/Body-Encoding).
+- 54: Social-Media-UI scharf ✅. Symmetrisch zu Reviews:
+  Plattform-Tabs (5: IG/FB/GBP/LinkedIn/WhatsApp-Status), 8
+  Goal-Pills (more_appointments, promote_offer, new_service,
+  collect_review, seasonal, before_after, trust_building,
+  team_intro), Length-Picker (Kurz/Mittel/Lang), Topic-Input
+  + Hashtags-On/Off. Mock-Provider liefert shortPost +
+  longPost + hashtags + imageIdea + cta — alles mit
+  Copy-Buttons. Plattform-spezifische Char-Counter mit
+  Truncation-Warnung (IG 125, FB 480, LinkedIn 210, GBP 250)
+  und Hashtag-Empfehlungs-Status (IG/LI 3–5, FB 1–2, GBP/WA 0).
+  Pure Format-Helper mit ~40 Asserts (Labels, Limits,
+  assessLength, composeFinalPost mit Tag-Normalisierung +
+  case-insensitive Dedupe, adviseHashtagCount).
 - 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
   durchziehen, Backup-Policy, Seed-Skript für Demo-Daten.
 
