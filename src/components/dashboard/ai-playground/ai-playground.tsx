@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { AlertCircle, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { AlertCircle, Loader2, Server, Sparkles, Wand2 } from "lucide-react";
 import { AIProviderError } from "@/types/ai";
+import type { AIProviderKey } from "@/types/common";
 import type { Business } from "@/types/business";
 import { DashboardCard } from "../dashboard-card";
 import { ResultPanel } from "./result-panel";
@@ -13,6 +14,35 @@ import type {
   PlaygroundFormValues,
   PlaygroundMethodId,
 } from "./types";
+
+const TOKEN_STORAGE_KEY = "lp:ai-api-token:v1";
+
+const PROVIDER_OPTIONS: readonly {
+  readonly value: AIProviderKey;
+  readonly label: string;
+  readonly description: string;
+}[] = [
+  {
+    value: "mock",
+    label: "Mock (deterministisch)",
+    description: "Lokal, ohne API-Call. Funktioniert immer.",
+  },
+  {
+    value: "openai",
+    label: "OpenAI",
+    description: "Über /api/ai/generate (nur SSR-Deploy + Bearer-Token).",
+  },
+  {
+    value: "anthropic",
+    label: "Anthropic",
+    description: "Über /api/ai/generate (nur SSR-Deploy + Bearer-Token).",
+  },
+  {
+    value: "gemini",
+    label: "Gemini",
+    description: "Über /api/ai/generate (nur SSR-Deploy + Bearer-Token).",
+  },
+];
 
 interface AIPlaygroundProps {
   readonly business: Business;
@@ -37,9 +67,35 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
     }
     return initial;
   });
+  const [providerKey, setProviderKey] = useState<AIProviderKey>("mock");
+  const [apiToken, setApiToken] = useState("");
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Token aus localStorage hydrieren, damit der Auftraggeber ihn nur
+  // einmal eingeben muss. Nicht persistiert, wenn das Browser-Storage
+  // sealed ist (Privatemodus, etc.) — dann bleibt es Session-only.
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (stored) setApiToken(stored);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (apiToken.trim().length > 0) {
+        window.localStorage.setItem(TOKEN_STORAGE_KEY, apiToken.trim());
+      } else {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [apiToken]);
 
   const config = METHOD_CONFIGS[methodId];
   const formValues = valuesByMethod[methodId];
@@ -57,8 +113,59 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
     setResult(null);
     startTransition(async () => {
       try {
-        const out = await config.call(business, formValues);
-        setResult(out);
+        if (providerKey === "mock") {
+          const out = await config.call(business, formValues);
+          setResult(out);
+          return;
+        }
+        // Live-Provider via API-Route. Nur in SSR-Deploy verfügbar;
+        // im Static-Export gibt es keine `/api`-Route → 404.
+        if (apiToken.trim().length === 0) {
+          setError(
+            "Live-Provider brauchen einen API-Token. Bitte oben einfügen oder zurück auf Mock wechseln.",
+          );
+          return;
+        }
+        const input = config.buildInput(business, formValues);
+        const res = await fetch("/api/ai/generate", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${apiToken.trim()}`,
+          },
+          body: JSON.stringify({
+            method: config.apiName,
+            providerKey,
+            input,
+          }),
+        });
+        if (!res.ok) {
+          if (res.status === 404) {
+            setError(
+              "API-Route /api/ai/generate ist nicht verfügbar. Static-Export-Build (GitHub Pages) hat keine API-Routen — bitte SSR-Deploy (Vercel) oder zurück auf Mock.",
+            );
+            return;
+          }
+          let errBody: { error?: string; message?: string } = {};
+          try {
+            errBody = (await res.json()) as typeof errBody;
+          } catch {
+            /* ignore */
+          }
+          setError(
+            `API ${res.status}: ${errBody.error ?? "fehler"} — ${errBody.message ?? "(keine Nachricht)"}`,
+          );
+          return;
+        }
+        const json = (await res.json()) as { output: unknown };
+        // Output kommt aus der gleichen Pipeline (Mock oder Live mit
+        // gleichem Schema), wir können ihn als das jeweilige Output-Type
+        // typisieren. Validierung passierte server-seitig.
+        setResult({
+          method: config.id,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          output: json.output as any,
+        } as GenerationResult);
       } catch (err) {
         if (err instanceof AIProviderError) {
           setError(`${err.code}: ${err.message}`);
@@ -88,11 +195,85 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
             Aufruf aber eine API-Route mit Auth (Code-Session 28+).
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
-          <Sparkles className="h-3 w-3" aria-hidden />
-          Provider: Mock (deterministisch)
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${
+            providerKey === "mock"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-brand-200 bg-brand-50 text-brand-800"
+          }`}
+        >
+          {providerKey === "mock" ? (
+            <Sparkles className="h-3 w-3" aria-hidden />
+          ) : (
+            <Server className="h-3 w-3" aria-hidden />
+          )}
+          Provider:{" "}
+          {PROVIDER_OPTIONS.find((o) => o.value === providerKey)?.label ?? providerKey}
         </span>
       </header>
+
+      {/* Provider-Auswahl */}
+      <DashboardCard
+        title="Provider"
+        description="Mock funktioniert immer (lokal). Live-Provider gehen über die API-Route /api/ai/generate — nur in SSR-Deploys verfügbar."
+      >
+        <div className="space-y-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {PROVIDER_OPTIONS.map((opt) => {
+              const isActive = opt.value === providerKey;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    setProviderKey(opt.value);
+                    setError(null);
+                  }}
+                  className={`flex flex-col gap-1 rounded-xl border px-3 py-2 text-left transition-colors ${
+                    isActive
+                      ? "border-brand-500 bg-brand-50 ring-2 ring-brand-200"
+                      : "border-ink-200 bg-white hover:border-ink-300 hover:bg-ink-50"
+                  }`}
+                >
+                  <span
+                    className={`text-sm font-semibold ${
+                      isActive ? "text-brand-900" : "text-ink-900"
+                    }`}
+                  >
+                    {opt.label}
+                  </span>
+                  <span className="line-clamp-2 text-xs text-ink-600">
+                    {opt.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {providerKey !== "mock" ? (
+            <div>
+              <label
+                htmlFor="ai-api-token"
+                className="block text-sm font-medium text-ink-900"
+              >
+                API-Token (Bearer)
+              </label>
+              <input
+                id="ai-api-token"
+                type="password"
+                placeholder="Pasten — wird im localStorage gespeichert"
+                value={apiToken}
+                onChange={(e) => setApiToken(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-mono text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+                autoComplete="off"
+              />
+              <p className="mt-1 text-xs text-ink-500">
+                Muss dem `LP_AI_API_KEY` ENV-Wert auf dem Server entsprechen.
+                Token bleibt nur im Browser, wird nicht ans Repo committet.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </DashboardCard>
 
       {/* Methoden-Picker */}
       <DashboardCard

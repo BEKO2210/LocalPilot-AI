@@ -4401,3 +4401,51 @@ Live-Provider-Aufruf aus Browser; USP-Editor pro Betrieb.
 
 **Nächste Session**: Code-Session 28 — `/api/ai/generate`-Route
 mit Auth-Stub, Provider-Dropdown im Playground.
+
+---
+
+## Code-Session 28 – AI-API-Route + Provider-Dropdown im Playground
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Erste API-Route der App. `POST /api/ai/generate` dispatcht
+mit Bearer-Auth-Stub via `LP_AI_API_KEY` an alle 4 Provider.
+Playground bekommt einen Provider-Dropdown (Mock / OpenAI /
+Anthropic / Gemini) + Token-Eingabefeld. Static-Export skippt die
+Route über `pageExtensions: ["tsx","jsx"]`-Filter — keine
+Build-Konflikte, GitHub Pages bleibt grün.
+
+**Dateien**:
+- ✚ `src/app/api/ai/generate/route.ts` (POST + GET-Health-Check,
+  Zod-Discriminated-Union-Validierung der 7 Methoden,
+  AIProviderError-→-HTTP-Status-Mapping, `runtime: "nodejs"`,
+  `dynamic: "force-dynamic"`)
+- 🔄 `next.config.mjs` (`pageExtensions` conditional: `["tsx","jsx"]`
+  für Static-Export, alle für SSR — schließt `route.ts` im
+  Pages-Build aus)
+- 🔄 `src/components/dashboard/ai-playground/method-configs.ts`
+  (`apiName` + `buildInput` pro Methoden-Config; sieben
+  `build<Method>Input`-Helper extrahiert)
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx`
+  (Provider-Dropdown-Card + Token-Input, persistiert via
+  localStorage `lp:ai-api-token:v1`; `handleGenerate` dispatcht
+  Mock direkt vs. fetch zu `/api/ai/generate`; klare 404-Message
+  im Static-Export-Pfad)
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅
+(Route wird gefiltert), build (SSR) ✅ (Route als `ƒ /api/ai/generate`
+sichtbar), alle 6 Smoketests ✅. Bundle 102 KB shared, /ai-Route
+164 KB (+1 KB).
+
+**Roadmap**: PROGRAM_PLAN — Item „AI-API-Route mit Auth"
+abgehakt, ersetzt durch 5 Folge-Items (Cookie-/JWT-Auth,
+Edge-Runtime-Migration, Cost-Tracking-Pipeline, Rate-Limiting,
+Vercel-SSR-Deploy).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C (Methodik) — neu:
+- [Next.js – Static Exports Guide](https://nextjs.org/docs/app/guides/static-exports) — `pageExtensions`-Filter-Pattern.
+- [Next.js – API Routes in Static Export Warning](https://nextjs.org/docs/messages/api-routes-static-export) — Limitierung verstanden.
+- [Next.js – Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers) — App-Router-Patterns.
+
+**Nächste Session**: Code-Session 29 — Cost-Tracking-Pipeline auf
+Server-Side (Token-Counts in Cost-Bucket loggen, Per-Betrieb-Cap).
+Vorbedingung: Vercel-SSR-Deploy als zweite Deploy-Pipeline.

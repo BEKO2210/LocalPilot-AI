@@ -215,13 +215,20 @@ aktiven Session.
   hat es bewusst weggelassen, weil ohne Volumen kein Effekt.
   Folge-Session: Cache-Layer mit TTL-Tracking, getrennte Cost-
   Bucket pro Branche/Variant.
-- **AI-API-Route mit Auth + Live-Provider-Aufruf aus Browser**
-  (aus Code-Session 27): Der Playground ist aktuell auf Mock
-  beschränkt, weil ein Live-API-Key im Bundle fahrlässig wäre.
-  Folge-Session: `/api/ai/generate` als Edge-Function mit Auth
-  (Cookie/JWT), Provider-Auswahl-Dropdown im Playground (Mock /
-  OpenAI / Anthropic / Gemini). Vorbedingung für Cost-Tracking
-  und Rate-Limiting (Track B-Items).
+- ~~**AI-API-Route mit Auth + Live-Provider-Aufruf aus Browser**~~
+  (Code-Session 28 ✅): `/api/ai/generate` als Node-Runtime-Route
+  mit Bearer-Auth-Stub und Provider-Dropdown im Playground.
+  Static-Export skippt die Route via `pageExtensions`-Filter.
+  **Folge-Items**:
+  - Echte Cookie-/JWT-Auth statt Bearer-Token (mit Session 4-
+    Backend).
+  - Edge-Runtime-Migration (statt Node) für niedrige Latenz +
+    Streaming-Support, sobald Vercel-Deploy steht.
+  - Cost-Tracking-Pipeline auf Server-Side (Token-Counts pro Call
+    in einem Cost-Bucket loggen).
+  - Rate-Limiting per Betrieb-ID (Track B).
+  - SSR-Deploy-Setup auf Vercel als zweite Deploy-Pipeline neben
+    GitHub Pages.
 - **USP-Editor pro Betrieb** (aus Code-Session 27): Die
   Kontext-Box zeigt aktuell „USPs: (noch nicht hinterlegt)".
   Schema und Repository-Layer fehlen — kommt zusammen mit dem

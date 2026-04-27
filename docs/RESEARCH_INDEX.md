@@ -70,6 +70,9 @@
 - [Karen Boyd, PhD – Simple prompt templates for better LLM results](https://drkarenboyd.com/blog/simple-prompt-templates-for-better-llm-results-today) (22).
 - [Smashing Magazine – Building Dynamic Forms In React And Next.js](https://www.smashingmagazine.com/2026/03/building-dynamic-forms-react-next-js/) — schema-driven UI Pattern (27).
 - [Formisch – Choosing a React Form Library in 2026](https://formisch.dev/blog/react-form-library-comparison/) — Discriminated Unions in Forms (27).
+- [Next.js – Static Exports Guide](https://nextjs.org/docs/app/guides/static-exports) — `pageExtensions`-Filter (28).
+- [Next.js – API Routes in Static Export Warning](https://nextjs.org/docs/messages/api-routes-static-export) (28).
+- [Next.js – Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers) (28).
 
 ---
 

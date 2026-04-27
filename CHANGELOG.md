@@ -7,12 +7,40 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant (Meilenstein 2 – KI-Schicht)
-- **Code-Session 28: AI-API-Route mit Auth + Live-Provider im UI** —
-  `/api/ai/generate` als Edge-Function, Provider-Auswahl-Dropdown
-  im Playground (Mock / OpenAI / Anthropic / Gemini). Vorbedingung
-  für Cost-Tracking und Rate-Limiting.
-- Code-Sessions 29+: Cost-Tracking + Rate-Limit-UI,
-  DOMPurify-Sanitizer auf übernommene KI-Outputs.
+- **Code-Session 29: Cost-Tracking-Pipeline** auf Server-Side
+  (Token-Counts in Cost-Bucket, Per-Betrieb-Cap). Vorbedingung:
+  Vercel-SSR-Deploy.
+- Code-Session 30: Rate-Limit-UI im Playground.
+- Code-Sessions 31+: DOMPurify-Sanitizer für übernommene KI-Outputs,
+  echte Cookie-/JWT-Auth statt Bearer-Token-Stub, Edge-Runtime-
+  Migration der API-Route.
+
+## [0.16.2] – Code-Session 28 – 2026-04-27
+
+AI-API-Route + Provider-Dropdown. Erste API-Route der App.
+
+- ✚ `src/app/api/ai/generate/route.ts` — POST-Dispatcher für alle 7
+  Methoden, Bearer-Auth-Stub via `LP_AI_API_KEY` ENV,
+  Zod-Discriminated-Union-Validation, `AIProviderError → HTTP`-Mapping.
+- 🔄 `next.config.mjs` — `pageExtensions: ["tsx","jsx"]` im Static-
+  Export-Build, schließt `route.ts` aus. SSR-Build behält alle.
+- 🔄 `ai-playground/method-configs.ts` — `apiName` + `buildInput`
+  pro Methode (sieben Helper-Funktionen extrahiert).
+- 🔄 `ai-playground/ai-playground.tsx` — Provider-Dropdown-Card +
+  Token-Input (localStorage `lp:ai-api-token:v1`); `handleGenerate`
+  dispatcht Mock direkt, Live-Provider via `fetch /api/ai/generate`
+  mit klarer 404-Message im Static-Build-Pfad.
+- 🛣️ Roadmap +5 Items (statt 1): Cookie/JWT-Auth, Edge-Runtime,
+  Cost-Tracking, Rate-Limit, Vercel-SSR-Deploy.
+- ✚ `.claude/skills/` — 10 Project-Level-Skills scaffolded
+  (rube-mcp, superpowers, document-suite, theme-factory,
+  algorithmic-art, slack-gif-creator, webapp-testing, mcp-builder,
+  brand-guidelines, systematic-debugging). Werden vom Harness in
+  Folgesessions automatisch geladen.
+
+Bundle: shared 102 KB unverändert, /ai-Route 164 KB (+1 KB).
+
+## [0.16.1] – Code-Session 27 – 2026-04-27
 
 ## [0.16.1] – Code-Session 27 – 2026-04-27
 
