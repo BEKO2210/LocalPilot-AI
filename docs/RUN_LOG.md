@@ -4734,3 +4734,70 @@ Token).
 Damit kommen die API-Routen tatsächlich live (GitHub Pages bleibt
 für die Static-Seiten). Dann erst kann der Auftraggeber Cookie-
 Auth + Live-Provider produktiv testen.
+
+---
+
+## Code-Session 34 – Vercel-SSR-Deploy-Pipeline (Infrastructure-as-Code)
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Zwei-Pipeline-Architektur ist scharf. GitHub Pages liefert
+weiter den statischen Showcase, Vercel kommt als zweite Pipeline für
+SSR + alle API-Routen (Auth, AI-Generate, Health). Beide Pipelines
+bauen aus demselben Code; Weiche ist `STATIC_EXPORT=true`. Vercel
+auto-detect übernimmt den Rest, ein expliziter `vercel.json`
+verankert Region (Frankfurt) + API-Cache-Header reproduzierbar.
+
+**Hinweis**: ich kann nicht selbst auf Vercel deployen — die
+`vercel link` + `vercel env add` + `vercel --prod`-Schritte muss
+der Auftraggeber einmal manuell ausführen. Komplette Anleitung
+steht in [`docs/DEPLOYMENT.md`](./DEPLOYMENT.md).
+
+**Dateien**:
+- ✚ `vercel.json` — explizit `framework: "nextjs"`, `regions: ["fra1"]`
+  (DACH-Markt), `buildCommand: "npm run build"` (KEIN
+  `STATIC_EXPORT`), `outputDirectory: ".next"`, plus Cache-Control-
+  Header für `/api/:path*`.
+- ✚ `.env.production.example` — Vorlage aller benötigten ENV-
+  Variablen mit Beschreibung. **Niemals echte Werte hier reinschreiben**,
+  nur als Liste für `vercel env add`.
+- 🔄 `docs/DEPLOYMENT.md` — komplett neu strukturiert: Teil A
+  Pages-Setup (bestehend), Teil B Vercel-Setup (neu), Vergleichs-
+  Tabelle „was sieht man wo", Smoke-Test-curl-Befehle, Roll-back-
+  Anleitung, Stolperfallen-Sektion auf 7 Einträge erweitert.
+- 🔄 `README.md` — Live-Preview-Sektion auf Dual-Pipeline aktualisiert,
+  Vergleichs-Tabelle übernommen.
+- ✚ `src/tests/deployment-config.test.ts` (~25 Asserts): vercel.json
+  parst und hat richtige Werte (framework, region, buildCommand,
+  api-Header), `.env.production.example` listet alle Pflicht-Vars
+  und enthält keine echten Secrets, GitHub-Pages-Workflow setzt
+  `STATIC_EXPORT=true` und triggert auf `main` + `claude/**`,
+  `package.json`-Skripte sind konsistent, `next.config.mjs` hat
+  den `pageExtensions`-Filter.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **20/20 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+**Roadmap**: 1 Item abgehakt (Vercel-SSR-Deploy), 3 Folge-Items:
+Edge-Runtime-Migration (Web Crypto statt `node:crypto`),
+Custom-Domain auf Vercel, Vercel-Logs-Adapter zu Sentry/Logflare.
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Vercel-Deployment-2026.
+
+**Manueller Schritt für den Auftraggeber** (einmalig, ≈ 5 min):
+1. `npm i -g vercel`
+2. `vercel link` im Repo-Root
+3. `vercel env add LP_AI_API_KEY production`
+4. `vercel env add LP_AI_PASSWORD production`
+5. `vercel env add LP_AI_SESSION_SECRET production` (32-Byte-Random,
+   Generator-Befehl im DEPLOYMENT.md)
+6. Optional Provider-Keys (`OPENAI_API_KEY`, …)
+7. `vercel --prod`
+
+Danach läuft jeder Push auf `main` automatisch nach Production,
+jeder andere Branch erzeugt eine Preview-URL.
+
+**Nächste Session**: Code-Session 35 — **Backend-Sprint-Auftakt**:
+erste Supabase-Anbindung (read-only, sodass der API-Health-
+Endpunkt einen `database`-Status anzeigen kann). Vorbedingung für
+Multi-Tenant-Auth mit echten User-Accounts.

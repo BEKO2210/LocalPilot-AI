@@ -216,12 +216,18 @@ aktiven Session.
   Folge-Session: Cache-Layer mit TTL-Tracking, getrennte Cost-
   Bucket pro Branche/Variant.
 - ~~**AI-API-Route mit Auth + Live-Provider-Aufruf aus Browser**~~
-  (Code-Session 28 ✅, plus Cookie/JWT-Auth in Code-Session 33 ✅).
+  (Code-Session 28 ✅ + Cookie/JWT-Auth Session 33 ✅ + Vercel-
+  Deploy-Pipeline Session 34 ✅).
   Verbleibende Folge-Items:
   - Edge-Runtime-Migration (statt Node) für niedrige Latenz +
-    Streaming-Support, sobald Vercel-Deploy steht.
-  - SSR-Deploy-Setup auf Vercel als zweite Deploy-Pipeline neben
-    GitHub Pages.
+    Streaming-Support. Aktuell `runtime: "nodejs"` für die HMAC-
+    Auth via `node:crypto`. Für Edge umstellen auf
+    `Web Crypto SubtleCrypto.HMAC`.
+  - **Custom-Domain auf Vercel** (Code-Session 34 lieferte das
+    Default-Subdomain). DNS-Records am eigenen Provider setzen,
+    Vercel-Dashboard verbindet automatisch.
+  - **Vercel-Logs → Sentry / Logflare**-Adapter, sobald wir echte
+    Nutzer haben (Track C Observability).
   - **Multi-Tenant-Auth mit echten Usern** (Track G, ab Backend-
     Meilenstein 4): aktuell ein einzelnes geteiltes Passwort pro
     Server. Sobald Supabase steht: User-Accounts mit Email/Magic-

@@ -90,6 +90,14 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Vercel-Deployment (Code-Session 34)
+- [Vercel – Next.js on Vercel (Framework Docs)](https://vercel.com/docs/frameworks/full-stack/nextjs) (34).
+- [Vercel – Configuring a Build](https://vercel.com/docs/builds/configure-a-build) (34).
+- [Vercel – Project Configuration](https://vercel.com/docs/project-configuration) (34).
+- [Vercel – Configuring Regions for Functions](https://vercel.com/docs/functions/configuring-functions/region) (34).
+- [Vercel – Environment Variables](https://vercel.com/docs/environment-variables) (34).
+- [Vercel – Sensitive Environment Variables](https://vercel.com/docs/environment-variables/sensitive-environment-variables) (34).
+
 ### Cookie/JWT-Auth (Code-Session 33)
 - [Next.js – Authentication Guide (Cookies, Sessions)](https://nextjs.org/docs/app/guides/authentication) (33).
 - [Wisp CMS – HttpOnly-Cookie-JWT-Auth-Best-Practices](https://www.wisp.blog/blog/ultimate-guide-to-securing-jwt-authentication-with-httponly-cookies) (33).

@@ -6,15 +6,54 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Geplant
-- **Code-Session 34: Vercel-SSR-Deploy-Pipeline.** GitHub Pages
-  bleibt für Static-Routen, Vercel kommt für die API-Routen
-  (Login, Generate, Health). Vorbedingung für produktive
-  Live-Provider-Calls aus dem Browser.
-- Code-Sessions 35+: Multi-Tenant-Auth (echte User-Accounts mit
-  Supabase), Edge-Runtime-Migration (Web Crypto statt Node),
+### Geplant — Backend-Sprint-Auftakt
+- **Code-Session 35: Erste Supabase-Anbindung** (read-only). Health-
+  Endpunkt erweitert um `database: "ok"`/`degraded`/`offline`-
+  Status. Vorbedingung für Multi-Tenant-Auth.
+- Code-Sessions 36+: Multi-Tenant-Auth mit echten User-Accounts
+  (Magic-Link), Repository-Layer (localStorage → Supabase
+  transparent), Storage-Bucket für Logos, Edge-Runtime-Migration,
   CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-Editor mit
   Legal-Sektion.
+
+## [0.16.8] – Code-Session 34 – 2026-04-27
+
+Vercel-SSR-Deploy-Pipeline als zweite Pipeline neben GitHub Pages.
+**Infrastructure-as-Code + Doku** — die finale `vercel link`-Session
+muss der Auftraggeber selbst einmal ausführen (Anleitung in
+`docs/DEPLOYMENT.md`).
+
+- ✚ `vercel.json` — `framework: "nextjs"`, `regions: ["fra1"]`
+  (Frankfurt für DACH), `buildCommand: "npm run build"` (KEIN
+  Static-Export!), `outputDirectory: ".next"`, Cache-Control-Header
+  für `/api/:path*`.
+- ✚ `.env.production.example` — komplette Vorlage aller benötigten
+  ENV-Variablen mit Beschreibung. Generator-Hinweis für
+  `LP_AI_SESSION_SECRET`. Niemals echte Secrets einchecken.
+- 🔄 `docs/DEPLOYMENT.md` komplett restrukturiert: Teil A Pages
+  (bestehend), Teil B Vercel (neu), „Was sieht man wo"-Vergleichs-
+  Tabelle, curl-basierte Smoke-Tests, Roll-back-Anleitung,
+  Stolperfallen-Sektion auf 7 Einträge erweitert.
+- 🔄 `README.md` — Live-Preview-Sektion auf Dual-Pipeline aktualisiert.
+- ✚ `src/tests/deployment-config.test.ts` (~25 Asserts):
+  vercel.json-Validität, ENV-Vorlage-Vollständigkeit + Secret-Hygiene,
+  Workflow-Trigger-Branches, package.json-Skript-Konsistenz,
+  pageExtensions-Filter in next.config.mjs.
+- 🛣️ Roadmap: 1 großes Item abgehakt, 3 Folge-Items
+  (Edge-Runtime-Migration, Custom-Domain, Logs-Adapter
+  zu Sentry/Logflare).
+
+20/20 Smoketests grün (industry-presets pre-existing red, Codex #11).
+Bundle: shared 102 KB unverändert.
+
+**Manuelle Setup-Schritte für den Auftraggeber** (einmalig):
+1. `npm i -g vercel` → `vercel link`
+2. `vercel env add LP_AI_API_KEY production` (+ PASSWORD,
+   SESSION_SECRET, optional Provider-Keys)
+3. `vercel --prod`
+Danach Auto-Deploy auf Push.
+
+## [0.16.7] – Code-Session 33 – 2026-04-27
 
 ## [0.16.7] – Code-Session 33 – 2026-04-27
 
