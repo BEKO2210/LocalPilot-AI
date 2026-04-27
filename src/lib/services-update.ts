@@ -109,6 +109,9 @@ export type ServicesUpdateResult =
       readonly inserted: number;
       readonly updated: number;
       readonly deleted: number;
+      /** Storage-Cleanup-Counts (Code-Session 56). Optional. */
+      readonly imagesRemoved?: number;
+      readonly imagesFailed?: number;
     }
   | { readonly kind: "not-authed" }
   | { readonly kind: "forbidden" }
@@ -128,6 +131,8 @@ interface ApiSuccessBody {
   readonly inserted?: number;
   readonly updated?: number;
   readonly deleted?: number;
+  readonly imagesRemoved?: number;
+  readonly imagesFailed?: number;
 }
 interface ApiErrorBody {
   readonly error?: string;
@@ -191,6 +196,8 @@ export async function submitServicesUpdate(
       inserted: body?.inserted ?? 0,
       updated: body?.updated ?? 0,
       deleted: body?.deleted ?? 0,
+      imagesRemoved: body?.imagesRemoved,
+      imagesFailed: body?.imagesFailed,
     };
   }
 

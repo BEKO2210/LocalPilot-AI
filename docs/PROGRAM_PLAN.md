@@ -229,10 +229,21 @@ sehen ausschließlich ihre eigenen Daten, Daten überleben Browser-Wechsel.
   Bannern (server/local/error) + `submitting`-State. **Damit
   ist der Hauptinhalt der Public-Site (Friseur-Leistungen,
   Werkstatt-Pakete) endgültig self-service-fähig.**
-- 41+: Storage-Bucket für Logos + Hero-Bilder, RLS-Policies
-  durchziehen, Backup-Policy, Seed-Skript für Demo-Daten,
-  Storage-Cleanup-Job auf Service-`imageUrl`-Waisen
-  ausweiten (analog zu Slug-Wechsel-Job).
+- 56: Storage-Cleanup für Service-Bilder ✅. Beim Bulk-DELETE
+  von Services werden orphan `image_url`-Werte aus dem
+  `business-images`-Bucket entfernt. Pure Helper
+  `storage-cleanup.ts` (parametrisiert auf `(urls, bucket)`,
+  ~30 Asserts) ist generisch wiederverwendbar — Slug-Wechsel-
+  Cleanup und ein zukünftiges Service-Image-Upload-UI nutzen
+  ihn ohne Anpassung. Storage-Errors sind graceful: DB-DELETE
+  läuft trotzdem (`console.warn` + `imagesFailed`-Count im
+  Response). Außerdem als separater Commit: postcss-XSS-Fix
+  (Dependabot moderate) + eslint-ReDoS-Fix (low) durch
+  semver-minor-Bumps; `npm audit` ist nach diesem Commit auf
+  0 Vulnerabilities.
+- 41+: Restliche Storage-Hygiene (Slug-Wechsel-Cleanup,
+  Service-Image-Upload-UI), RLS-Policies durchziehen,
+  Backup-Policy, Seed-Skript für Demo-Daten.
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant

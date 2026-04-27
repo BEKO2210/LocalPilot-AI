@@ -105,6 +105,15 @@
 - [Textedly – 32 Proven Review Request Text Templates](https://www.textedly.com/blog/review-request-templates) — kurze, persönliche Templates (53).
 - [WiserReview – 50+ Google Review Templates 2026](https://wiserreview.com/blog/google-review-templates/) — Channel-Mix-Empfehlungen (53).
 
+### Storage-Cleanup-Patterns + Dependabot-Vulns (Code-Session 56)
+- [Supabase Docs – Delete Objects](https://supabase.com/docs/guides/storage/management/delete-objects) — Storage-API für DELETE; SQL-only-DELETE produziert orphans (56).
+- [supabase Discussion #36755 – Feature Request: Native Storage File Deletion Trigger on Row Delete](https://github.com/orgs/supabase/discussions/36755) — bestätigt: native DB→Storage-Trigger existiert 2026 noch nicht, Application-Cleanup ist Pflicht (56).
+- [supabase Discussion #34254 – What to do when storage objects are orphaned](https://github.com/orgs/supabase/discussions/34254) — Best-Effort-Cleanup-Pattern (56).
+- [Supabase JS – storage.from.remove](https://supabase.com/docs/reference/javascript/storage-from-remove) — Bulk-Remove via `.remove([paths])` (56).
+- [GHSA-qx2v-qp2m-jg93 – PostCSS XSS via Unescaped `</style>`](https://github.com/advisories/GHSA-qx2v-qp2m-jg93) — Dependabot moderate, CVSS 6.1, fix in postcss 8.5.10+ (56).
+- [GHSA-xffm-g5w8-qvg7 – @eslint/plugin-kit ReDoS](https://github.com/advisories/GHSA-xffm-g5w8-qvg7) — fix transitive in eslint 9.39.4+ (56).
+- npm `overrides` mit `"$dep"`-Self-Reference: Hebt transitive Versionen auf die direkte Top-Level-Version, ohne separate Version-Pinnung (npm-Cli-Doku, 56).
+
 ### Bulk-Sync Services + RLS-driven Diff (Code-Session 55)
 - [Supabase JS – upsert with onConflict](https://supabase.com/docs/reference/javascript/upsert) — `onConflict: "id"` für UPDATE-bei-Match-INSERT-sonst (55).
 - [Supabase Docs – Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security) — Policy mit USING + WITH CHECK; gleiche Policy deckt UPDATE OLD + NEW row (55).

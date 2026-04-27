@@ -35,11 +35,18 @@ import {
   createServerSupabaseClient,
   getCurrentUser,
 } from "@/core/database/supabase-server";
+import { getServiceRoleClient } from "@/core/database/supabase-service";
 import { ServiceSchema } from "@/core/validation/service.schema";
 import { looksLikeDbUuid } from "@/lib/services-update";
+import {
+  collectStoragePaths,
+  removeStoragePaths,
+} from "@/lib/storage-cleanup";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const IMAGE_BUCKET = "business-images";
 
 interface RouteContext {
   readonly params: Promise<{ slug: string }>;
@@ -189,10 +196,10 @@ export async function PUT(
     );
   }
 
-  // 4) Existing IDs für DELETE-Diff
+  // 4) Existing-Rows (id + image_url) für DELETE-Diff + Storage-Cleanup
   const { data: existing, error: existingErr } = await supabase
     .from("services")
-    .select("id")
+    .select("id, image_url")
     .eq("business_id", businessId);
   if (existingErr) {
     return NextResponse.json(
@@ -201,7 +208,11 @@ export async function PUT(
     );
   }
 
-  const existingIds = new Set((existing ?? []).map((r: { id: string }) => r.id));
+  const existingRows = (existing ?? []) as ReadonlyArray<{
+    id: string;
+    image_url: string | null;
+  }>;
+  const existingIds = new Set(existingRows.map((r) => r.id));
   const incomingIds = new Set(upsertRows.map((r) => String(r["id"])));
   const toDelete = [...existingIds].filter((id) => !incomingIds.has(id));
 
@@ -227,8 +238,40 @@ export async function PUT(
   }
 
   // 5b) DELETE waisen — Lead-FK-Cascade läuft via DB-Constraint.
+  // Vor dem DB-DELETE den Storage-Cleanup für Service-Bilder
+  // anstoßen: wenn ein Service ein `image_url` hat, das auf
+  // unseren Bucket zeigt, das Storage-Object aufräumen. Best-
+  // effort, Storage-Fehler blockieren den DB-DELETE NICHT —
+  // sonst könnte ein temporärer Storage-Hänger den User aus
+  // seiner UI aussperren.
   let deleted = 0;
+  let imagesRemoved = 0;
+  let imagesFailed = 0;
   if (toDelete.length > 0) {
+    const toDeleteSet = new Set(toDelete);
+    const orphanImageUrls = existingRows
+      .filter((r) => toDeleteSet.has(r.id))
+      .map((r) => r.image_url);
+    const orphanPaths = collectStoragePaths(orphanImageUrls, IMAGE_BUCKET);
+    if (orphanPaths.length > 0) {
+      const adminClient = getServiceRoleClient();
+      const removeRes = await removeStoragePaths(
+        adminClient,
+        IMAGE_BUCKET,
+        orphanPaths,
+      );
+      imagesRemoved = removeRes.removed;
+      imagesFailed = removeRes.failed;
+      if (removeRes.reason) {
+        // Nicht fatal. Logging-only — Operations-Team sieht es,
+        // User kriegt weiter ein 200.
+        console.warn(
+          "[services-cleanup] Storage-Remove fehlgeschlagen:",
+          removeRes.reason,
+        );
+      }
+    }
+
     const { error: delErr } = await supabase
       .from("services")
       .delete()
@@ -243,7 +286,14 @@ export async function PUT(
   }
 
   return NextResponse.json(
-    { ok: true, inserted, updated, deleted },
+    {
+      ok: true,
+      inserted,
+      updated,
+      deleted,
+      imagesRemoved,
+      imagesFailed,
+    },
     { status: 200, headers: { "Cache-Control": "no-store" } },
   );
 }

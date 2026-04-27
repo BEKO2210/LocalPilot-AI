@@ -6383,3 +6383,113 @@ Session 47, aber für Service-`imageUrl`. Alternative wäre
 Live-Provider-Switch in Reviews/Social — der ist aber kein
 Self-Service-Blocker, sondern Quality-Layer; daher danach.
 
+## Code-Session 56 – Storage-Cleanup für Service-Bilder + Dependabot-Patch
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Hygiene + Security
+
+**Was**: Beim Bulk-DELETE von Services (Session 55) blieben
+hochgeladene `image_url`-Werte als Waisen im
+`business-images`-Bucket zurück. Diese Session führt einen
+generischen, parametrisierten Storage-Cleanup-Helper ein und
+verdrahtet ihn mit dem DELETE-Pfad. Zusätzlich: Dependabot
+moderate (postcss XSS) + 2 npm-audit low (eslint ReDoS) als
+separater Commit gefixt.
+
+**Architektur-Entscheidung — generisch statt service-only**:
+Cleanup-Helper ist auf `(urls, bucket)` parametrisiert, nicht
+auf Services hartcodiert. Damit können später Slug-Wechsel
+(logo/cover-Cleanup beim Slug-Rename) und ein Service-
+Image-Upload-UI denselben Helper nutzen — keine
+Re-Implementierung. Der Slug-Wechsel-Cleanup ist explizit
+NICHT in dieser Session (kein UI-Pfad existiert noch, der
+Service-Bilder hochlädt, also keine echten Waisen).
+
+**Architektur-Entscheidung — graceful failure**: Storage-Errors
+**dürfen den DB-DELETE nicht blockieren**. Wenn der
+Service-Role-Key fehlt oder das Storage-Backend gerade hängt,
+würde sonst der User aus seiner UI gesperrt (Karte nicht
+löschbar → Service kommt nicht weg). Daher: `console.warn` +
+`imagesFailed`-Count im Response, aber DB-DELETE läuft.
+
+**WebSearch (Track A)**: bestätigt
+- „Storage hat keinen native DELETE-Trigger auf
+  `storage.objects` — Cleanup ist Application-Pflicht"
+  ([GitHub-Discussion #36755](https://github.com/orgs/supabase/discussions/36755),
+  Feature Request 2025/26 noch offen).
+- „Wenn man storage.objects per SQL löscht, bleibt das File in
+  S3 stehen — nur Storage-API ruft cleanup an"
+  ([Supabase Docs – Delete Objects](https://supabase.com/docs/guides/storage/management/delete-objects)).
+
+**Dateien**:
+- ✚ `src/lib/storage-cleanup.ts` — pure Helper:
+  - `extractStoragePath(publicUrl, bucket)` — URL-Parsing
+    für `/storage/v1/object/public/<bucket>/<path>` und
+    `/storage/v1/render/image/public/<bucket>/<path>`.
+    `decodeURIComponent` für Umlaut-Slugs. Externe CDNs +
+    falscher Bucket → `null`.
+  - `collectStoragePaths(urls, bucket)` — Liste-zu-Set mit
+    Dedupe und Skip externer URLs.
+  - `removeStoragePaths(client, bucket, paths)` — Wrapper
+    um `.storage.from(bucket).remove([])` mit
+    try/catch + `null`-Client-Handling. Liefert
+    `{ removed, failed, reason }`. **Keine Throws.**
+- ✚ `src/tests/storage-cleanup.test.ts` (~30 Asserts):
+  Standard-URL, Render-Image-URL, Query-String-Trim,
+  URL-Encoding, falscher Bucket, Custom-CDN, defensive
+  null/empty/malformed-Inputs, Dedupe, Stub-Client für
+  Empty/null-Client/Happy-Path/Storage-Error/Throw.
+- 🔄 `src/app/api/businesses/[slug]/services/route.ts`:
+  - Existing-SELECT von `id` auf `id, image_url` erweitert.
+  - Vor DB-DELETE: orphan-image_urls aus `existingRows`
+    filtern (per `toDeleteSet`), via `collectStoragePaths`
+    auf den Bucket reduzieren, mit Service-Role-Client
+    `removeStoragePaths` aufrufen.
+  - Storage-Fehler nur `console.warn`, nicht fatal.
+  - Response um `imagesRemoved` + `imagesFailed` erweitert.
+- 🔄 `src/lib/services-update.ts`: `ServicesUpdateResult.server`
+  um optionale `imagesRemoved`/`imagesFailed` ergänzt
+  (rückwärtskompatibel, alte Tests bleiben grün).
+
+**Dependabot-Patches** (separater Commit `ee0cc37`):
+- postcss 8.5.1 → 8.5.12 (XSS GHSA-qx2v-qp2m-jg93).
+- eslint 9.18.0 → 9.39.4 (transitive @eslint/plugin-kit
+  ReDoS GHSA-xffm-g5w8-qvg7).
+- `overrides: { "postcss": "$postcss" }` hebt
+  Next-bundled postcss@8.4.31 auf Top-Level.
+- `npm audit`: **0 vulnerabilities** post-Patch.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**37/38 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). +1 storage-cleanup grün. Bundle unverändert.
+
+**Roadmap**: 1 abgehakt (Service-Image-Cleanup). 2 neue
+Folge-Items, die jetzt direkt anschließbar sind:
+1. **Slug-Wechsel-Cleanup**: bei Slug-Rename die alten
+   `<old-slug>/logo.<ext>` + `<old-slug>/cover.<ext>`
+   entfernen (`extractStoragePath`+`removeStoragePaths`
+   nutzbar ohne Anpassung).
+2. **Service-Image-Upload-UI**: ServiceCard bekommt einen
+   `ImageUploadField`-Slot wie BusinessEdit; dahinter wird
+   die Upload-Route von `kind: "logo"|"cover"` auf
+   `kind: "service"` mit `serviceId`-Pfadbestandteil
+   erweitert. Cleanup ist bereits da, sobald Owner Bilder
+   wieder entfernt.
+
+**Quellen**: `RESEARCH_INDEX.md` Track A — Supabase Storage
+Cleanup-Patterns 2026.
+
+**Status-Update**: ~89 % Richtung „erstes Betrieb-fertiges
+Produkt". Storage-Hygiene + Security-Hygiene sind eingezogen.
+Verbleibend: Slug-Wechsel-Storage-Cleanup, Service-Image-
+Upload-UI, Live-Provider-Switch (Reviews/Social),
+Custom-Domain, Sentry, Lighthouse-CI, Multi-Member-Verwaltung.
+
+**Nächste Session**: Code-Session 57 = **Slug-Wechsel-
+Storage-Cleanup**. Begründung: Pattern aus Session 56 ist
+direkt wiederverwendbar (`extractStoragePath` +
+`removeStoragePaths`). Bei Slug-Rename via
+`/api/businesses/[slug]/settings` muss `<old-slug>/logo.<ext>`
+und `<old-slug>/cover.<ext>` entfernt werden — sonst bleiben
+sie als Waisen, und die Public-Site zeigt sie nirgends mehr
+an. Klein, scharf, abgrenzbar — gute Folge-Session ohne
+Speedrun-Charakter.
+

@@ -7,14 +7,81 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Code-Sessions 56+: Live-Provider-Variante für Reviews/Social-
+- Code-Sessions 57+: Live-Provider-Variante für Reviews/Social-
   Panels (Auth-Bearer + `/api/ai/generate`), Direkt-Posten zu
   Buffer/Hootsuite/Meta-Graph, Multi-Member-Verwaltung, Default-
   Redirect bei einem Betrieb, Retry-Queue für Lead-`local-
-  fallback`, Storage-Cleanup-Job für Slug-Wechsel-Waisen,
-  Edge-Runtime-Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
+  fallback`, Storage-Cleanup-Job für Slug-Wechsel-Waisen
+  (logo/cover bei Slug-Wechsel), Service-Image-Upload-UI
+  (Schema + Storage-Cleanup sind ready), Edge-Runtime-
+  Migration, CSRF-Schutz, HTML-Sanitize-Whitelist,
   Impressum-Editor pro Betrieb, Seed-Skript für Demo-Daten,
-  Schema↔Migration-Drift-Test, **Dependency-Sweep**.
+  Schema↔Migration-Drift-Test.
+
+## [0.16.30] – Code-Session 56 – 2026-04-27
+
+Storage-Cleanup-Hygiene + Dependabot-Vuln-Fix. Service-Bilder
+werden beim Bulk-DELETE jetzt automatisch aus dem Storage-
+Bucket entfernt (Best-Effort). Pattern ist später für Slug-
+Wechsel und ein zukünftiges Service-Image-Upload-UI
+wiederverwendbar.
+
+- ✚ `src/lib/storage-cleanup.ts` — pure Helper:
+  `extractStoragePath(publicUrl, bucket)` parst Standard-
+  Supabase-Storage-URLs (`/storage/v1/object/public/...` und
+  `/storage/v1/render/image/public/...`) zum Bucket-relativen
+  Pfad; URLs für andere Buckets oder externe CDNs liefern
+  `null` (Foreign-Hosting wird in Ruhe gelassen).
+  `collectStoragePaths(urls, bucket)` mit Dedupe + Skip
+  externer URLs. `removeStoragePaths(client, bucket, paths)`
+  graceful Wrapper um `.storage.from(bucket).remove()` —
+  liefert `{ removed, failed, reason }` ohne zu throwen.
+- ✚ `src/tests/storage-cleanup.test.ts` (~30 Asserts):
+  URL-Parsing inkl. Render-Image-Variante, Query-String-
+  Trim, URL-decoding, Custom-CDN/Unsplash → null, leere/
+  malformed Inputs, Bucket-Mismatch, Dedupe, Stub-Client für
+  Empty/Null/Happy-Path/Error/Throw.
+- 🔄 `src/app/api/businesses/[slug]/services/route.ts`:
+  Existing-SELECT erweitert auf `id, image_url`. Vor dem
+  DB-DELETE: Pfade der orphan-Services über
+  `collectStoragePaths` einsammeln, Service-Role-Client →
+  `removeStoragePaths(adminClient, "business-images", ...)`.
+  Storage-Fehler werden nur gewarnt (`console.warn`), nicht
+  fatal — DB-DELETE läuft trotzdem (sonst Sperre des Users).
+  Antwort um `imagesRemoved` + `imagesFailed` erweitert.
+- 🔄 `src/lib/services-update.ts`: `ServicesUpdateResult`-
+  `server`-Variant um optionale `imagesRemoved`/
+  `imagesFailed` ergänzt (rückwärtskompatibel — alte Tests
+  brauchen keine Anpassung).
+- 🔒 `package.json`: postcss 8.5.1 → 8.5.12 (XSS-Fix
+  GHSA-qx2v-qp2m-jg93, CVSS 6.1, vorher als separater Commit
+  `ee0cc37`), eslint 9.18.0 → 9.39.4 (ReDoS-Fix
+  GHSA-xffm-g5w8-qvg7), `overrides: { "postcss": "$postcss" }`
+  hebt auch Next-bundled `postcss@8.4.31` auf Top-Level.
+  `npm audit` ist jetzt `0 vulnerabilities`.
+
+37/38 Smoketests grün (industry-presets pre-existing red,
+Codex #11). +1 storage-cleanup-Test grün. typecheck ✅,
+lint ✅, beide Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: 1 abgehakt (Storage-Cleanup auf Service-`image_url`-
+Waisen). Helper ist parametrisiert, sodass spätere Sessions
+ihn für Slug-Wechsel-Cleanup (logo/cover) und ein
+Service-Image-Upload-UI ohne Re-Implementierung nutzen können.
+
+**Status-Update**: ~89 % Richtung „erstes Betrieb-fertiges
+Produkt". Storage-Hygiene ist eingezogen. Verbleibend:
+Slug-Wechsel-Storage-Cleanup, Service-Image-Upload-UI,
+Live-Provider-Switch, Custom-Domain, Sentry, Lighthouse-CI,
+Multi-Member-Verwaltung.
+
+**Manueller Test**: Dashboard → „Leistungen" → eine Karte mit
+hochgeladenem Bild entfernen → „Speichern" → bei aktivem
+Supabase + Service-Role-Key zeigt der Server-Response
+`imagesRemoved: 1`, das Bild ist aus dem
+`business-images`-Bucket weg. Bei Static-Build / fehlendem
+Service-Role-Key: DB-DELETE läuft, `imagesFailed > 0` gibt
+einen Hinweis im Server-Log; UI bleibt funktional.
 
 ## [0.16.29] – Code-Session 55 – 2026-04-27
 
