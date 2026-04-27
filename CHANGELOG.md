@@ -7,13 +7,52 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- **Code-Session 33: Cookie/JWT-Auth** statt Bearer-Token-Stub
-  (Track G). Auth-State in HttpOnly-Cookie, Server-Validation,
-  Vorbedingung für Multi-Tenant.
-- Code-Sessions 34+: Edge-Runtime-Migration, Vercel-SSR-Deploy,
-  Status-History, HTML-Sanitize-Whitelist (`isomorphic-dompurify`),
-  Settings-Editor mit Legal-Sektion (USt-IdNr., Aufsichtsbehörde,
-  Berufshaftpflicht), Datenschutzerklärung-Editor mit Versions-Bump.
+- **Code-Session 34: Vercel-SSR-Deploy-Pipeline.** GitHub Pages
+  bleibt für Static-Routen, Vercel kommt für die API-Routen
+  (Login, Generate, Health). Vorbedingung für produktive
+  Live-Provider-Calls aus dem Browser.
+- Code-Sessions 35+: Multi-Tenant-Auth (echte User-Accounts mit
+  Supabase), Edge-Runtime-Migration (Web Crypto statt Node),
+  CSRF-Schutz, HTML-Sanitize-Whitelist, Settings-Editor mit
+  Legal-Sektion.
+
+## [0.16.7] – Code-Session 33 – 2026-04-27
+
+Cookie/JWT-Auth statt Bearer-Token-Stub. UI-Login statt manuelles
+Token-Pasten.
+
+- ✚ `src/core/ai/auth/session.ts` — HMAC-SHA256 sign/verify via
+  Node `crypto`, kein externes Lib. Strict-Header-Compare gegen
+  `alg=none`-Bypass. `crypto.timingSafeEqual` statt String-Compare.
+- ✚ `src/core/ai/auth/check.ts` — `checkAuth(req, env)` versucht
+  Cookie zuerst, Bearer als Fallback. `getAuthConfig` zentralisiert
+  ENV-Defaults (`LP_AI_PASSWORD` → `LP_AI_API_KEY`,
+  `LP_AI_SESSION_SECRET` → `LP_AI_API_KEY`).
+- ✚ `/api/auth/login` — POST, Passwort-Validierung, HttpOnly-Cookie
+  mit 7d TTL, `SameSite=Lax`, `Secure` in Production.
+- ✚ `/api/auth/logout` — POST, idempotent, Cookie löschen.
+- ✚ `/api/auth/me` — GET, gibt `{ authenticated, principal, via }`
+  zurück. Keine sensiblen Daten.
+- 🔄 `/api/ai/generate` + `/api/ai/health` — alter Inline-Auth-Stub
+  raus, geteilter `checkAuth` rein.
+- ✚ `<AuthCard>` — Login-Form im Playground, Status-Polling via
+  `/api/auth/me`. Saubere Fallbacks für Static-Build und nicht-
+  konfigurierte ENV.
+- 🔄 Playground — `credentials: "same-origin"` für Live-Calls,
+  Cookie-Session greift automatisch ohne manuelles Token.
+- ✚ `src/tests/auth-session.test.ts` (35 Asserts: Token-Format,
+  Verify mit korrektem/falschem Secret, Tampered-Signature,
+  alg=none-Bypass-Versuch, expired Token, Garbage-Inputs, Cookie-
+  und Bearer-Pfad in checkAuth, leere ENV → 503).
+- 🛣️ Roadmap +4 Folge-Items: Edge-Runtime-Migration, Vercel-SSR-
+  Deploy, Multi-Tenant-Auth, CSRF-Schutz.
+
+5 API-Routen jetzt im SSR-Build sichtbar:
+`/api/ai/generate`, `/api/ai/health`, `/api/auth/{login,logout,me}`.
+**19/19 Smoketests grün** (industry-presets pre-existing red,
+Codex #11). Bundle: shared 102 KB unverändert.
+
+## [0.16.6] – Code-Session 32 – 2026-04-27
 
 ## [0.16.6] – Code-Session 32 – 2026-04-27
 

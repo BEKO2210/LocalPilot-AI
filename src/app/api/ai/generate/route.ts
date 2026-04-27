@@ -37,6 +37,7 @@ import { AIProviderError } from "@/types/ai";
 import { estimateCost, formatCostUsd } from "@/core/ai/cost/pricing";
 import { chargeBudget, previewBudget } from "@/core/ai/cost/budget";
 import { sanitizeAIOutput } from "@/core/ai/sanitize";
+import { checkAuth } from "@/core/ai/auth/check";
 
 /** Liefert das Default-Modell pro Provider — wie in den `_client.ts`-Dateien. */
 function modelForProvider(provider: string): string {
@@ -94,38 +95,8 @@ const RequestSchema = z.discriminatedUnion("method", [
   }),
 ]);
 
-/**
- * Auth-Stub: prüft `Authorization: Bearer <token>` gegen
- * `LP_AI_API_KEY` ENV. Wenn `LP_AI_API_KEY` nicht gesetzt ist,
- * wird die Route komplett abgewiesen — verhindert versehentliche
- * Open-Endpoints in Production.
- *
- * Echtes JWT/Cookie-Auth folgt mit Meilenstein 4.
- */
-function checkAuth(req: Request): { ok: true } | { ok: false; status: number; message: string } {
-  const expected = process.env["LP_AI_API_KEY"]?.trim();
-  if (!expected || expected.length === 0) {
-    return {
-      ok: false,
-      status: 503,
-      message:
-        "API ist nicht aktiviert. Setze LP_AI_API_KEY in der Server-ENV, um die Route freizuschalten.",
-    };
-  }
-  const auth = req.headers.get("authorization") ?? "";
-  const match = auth.match(/^Bearer\s+(.+)$/);
-  if (!match || match[1]?.trim() !== expected) {
-    return {
-      ok: false,
-      status: 401,
-      message: "Ungültiger oder fehlender Bearer-Token.",
-    };
-  }
-  return { ok: true };
-}
-
 export async function POST(req: Request): Promise<Response> {
-  // 1. Auth-Stub
+  // 1. Auth-Check (Cookie-Session ODER Bearer-Token)
   const auth = checkAuth(req);
   if (!auth.ok) {
     return NextResponse.json(

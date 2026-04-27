@@ -90,6 +90,16 @@
 
 ## Track D · Security & Sanitization / Compliance
 
+### Cookie/JWT-Auth (Code-Session 33)
+- [Next.js – Authentication Guide (Cookies, Sessions)](https://nextjs.org/docs/app/guides/authentication) (33).
+- [Wisp CMS – HttpOnly-Cookie-JWT-Auth-Best-Practices](https://www.wisp.blog/blog/ultimate-guide-to-securing-jwt-authentication-with-httponly-cookies) (33).
+- [Authgear – Next.js Session Management 2026](https://www.authgear.com/post/nextjs-session-management) (33).
+- [Wisp – Robust Cookie Management for Next.js](https://www.wisp.blog/blog/implementing-robust-cookie-management-for-nextjs-applications) (33).
+- [Max Schmitt – Next.js HTTP-Only Cookies for Secure Auth](https://maxschmitt.me/posts/next-js-http-only-cookie-auth-tokens) (33).
+- [Leapcell Medium – JWT Middleware in Next.js](https://leapcell.medium.com/implementing-jwt-middleware-in-next-js-a-complete-guide-to-auth-300d9c7fcae2) (33).
+
+
+
 ### DSGVO / Lead-Einwilligung (Code-Session 32)
 - [LeadGenApp – DSGVO-Formular: Einholung der Einwilligung mit Online-Formularen](https://leadgenapp.io/de/DSGVO-Formular/) — Aktiver Opt-In (32).
 - [LeadScraper – Lead Generierung DSGVO-konform 2026 + Checkliste](https://www.leadscraper.de/blog/lead-generieren-dsgvo) — Storage-Duration + Pflichtangaben (32).

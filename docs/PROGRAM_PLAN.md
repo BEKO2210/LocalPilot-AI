@@ -216,19 +216,22 @@ aktiven Session.
   Folge-Session: Cache-Layer mit TTL-Tracking, getrennte Cost-
   Bucket pro Branche/Variant.
 - ~~**AI-API-Route mit Auth + Live-Provider-Aufruf aus Browser**~~
-  (Code-Session 28 ✅): `/api/ai/generate` als Node-Runtime-Route
-  mit Bearer-Auth-Stub und Provider-Dropdown im Playground.
-  Static-Export skippt die Route via `pageExtensions`-Filter.
-  **Folge-Items**:
-  - Echte Cookie-/JWT-Auth statt Bearer-Token (mit Session 4-
-    Backend).
+  (Code-Session 28 ✅, plus Cookie/JWT-Auth in Code-Session 33 ✅).
+  Verbleibende Folge-Items:
   - Edge-Runtime-Migration (statt Node) für niedrige Latenz +
     Streaming-Support, sobald Vercel-Deploy steht.
-  - Cost-Tracking-Pipeline auf Server-Side (Token-Counts pro Call
-    in einem Cost-Bucket loggen).
-  - Rate-Limiting per Betrieb-ID (Track B).
   - SSR-Deploy-Setup auf Vercel als zweite Deploy-Pipeline neben
     GitHub Pages.
+  - **Multi-Tenant-Auth mit echten Usern** (Track G, ab Backend-
+    Meilenstein 4): aktuell ein einzelnes geteiltes Passwort pro
+    Server. Sobald Supabase steht: User-Accounts mit Email/Magic-
+    Link, Tenant-Bucket pro Betrieb, Session-Bindung an `business_id`.
+  - **CSRF-Schutz** für die Cookie-Auth: Origin-Header-Check oder
+    Double-Submit-Token. Aktuell schützt SameSite=Lax die meisten
+    Cross-Site-Forgeries; eine zweite Verteidigungslinie ist trotzdem
+    sinnvoll, sobald wir cross-domain-Endpunkte haben.
+  - **Edge-Compatible-JWT**: aktuell Node-`crypto`. Für Edge-
+    Runtime auf `Web Crypto SubtleCrypto.HMAC` umstellen.
 - **USP-Editor pro Betrieb** (aus Code-Session 27): Die
   Kontext-Box zeigt aktuell „USPs: (noch nicht hinterlegt)".
   Schema und Repository-Layer fehlen — kommt zusammen mit dem

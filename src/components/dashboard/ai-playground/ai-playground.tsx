@@ -7,6 +7,7 @@ import type { AIProviderKey } from "@/types/common";
 import type { Business } from "@/types/business";
 import { sanitizeAIOutput } from "@/core/ai/sanitize";
 import { DashboardCard } from "../dashboard-card";
+import { AuthCard } from "./auth-card";
 import { HealthCard } from "./health-card";
 import { ResultPanel } from "./result-panel";
 import { METHOD_CONFIGS, METHOD_ORDER, contextFromBusiness } from "./method-configs";
@@ -136,19 +137,23 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
         }
         // Live-Provider via API-Route. Nur in SSR-Deploy verfügbar;
         // im Static-Export gibt es keine `/api`-Route → 404.
-        if (apiToken.trim().length === 0) {
-          setError(
-            "Live-Provider brauchen einen API-Token. Bitte oben einfügen oder zurück auf Mock wechseln.",
-          );
-          return;
+        // Auth: Cookie-Session ODER Bearer-Token (für CLI). Wenn weder
+        // ein Bearer-Token gesetzt ist noch eine aktive Cookie-Session
+        // sichtbar gewesen wäre, geht der Request trotzdem raus —
+        // wenn die Cookie-Session gültig ist, sendet der Browser sie
+        // automatisch mit. Bei 401 wird die Fehlermeldung darauf
+        // hinweisen, dass Login fehlt.
+        const headers: Record<string, string> = {
+          "content-type": "application/json",
+        };
+        if (apiToken.trim().length > 0) {
+          headers.authorization = `Bearer ${apiToken.trim()}`;
         }
         const input = config.buildInput(business, formValues);
         const res = await fetch("/api/ai/generate", {
           method: "POST",
-          headers: {
-            "content-type": "application/json",
-            authorization: `Bearer ${apiToken.trim()}`,
-          },
+          headers,
+          credentials: "same-origin",
           body: JSON.stringify({
             method: config.apiName,
             providerKey,
@@ -252,6 +257,9 @@ export function AIPlayground({ business }: AIPlaygroundProps) {
           {PROVIDER_OPTIONS.find((o) => o.value === providerKey)?.label ?? providerKey}
         </span>
       </header>
+
+      {/* Auth-Status (Cookie-Session, Login/Logout) */}
+      <AuthCard />
 
       {/* Health-Status (System) */}
       <HealthCard apiToken={apiToken} />

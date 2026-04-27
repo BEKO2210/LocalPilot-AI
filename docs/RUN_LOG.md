@@ -4669,3 +4669,68 @@ Lead-Retention-Cron, Widerrufs-Handler-Endpoint).
 Bearer-Token-Stub (Track G). Aktuell hängt der Auth-State im
 localStorage als simpler Token; Cookies + Server-Validation sind
 die nächste Ausbaustufe Richtung Multi-Tenant.
+
+---
+
+## Code-Session 33 – Cookie/JWT-Auth + Login/Logout/Me-Endpunkte
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Feature
+
+**Was**: Cookie-basierte Session-Auth ergänzt den Bearer-Token-Pfad.
+HS256-JWT in HttpOnly-Cookie, signiert per Node `crypto`, kein
+externes JWT-Lib. UI bekommt Login-Form über `<AuthCard>`. Bestehender
+Bearer-Pfad bleibt für CLI/Scripting. `/api/ai/generate` und
+`/api/ai/health` nutzen jetzt einen geteilten `checkAuth`-Helper.
+
+**Dateien**:
+- ✚ `src/core/ai/auth/session.ts` — `signSessionToken`,
+  `verifySessionToken`, `buildSessionToken`. Pure HMAC-SHA256 +
+  Base64URL via `node:crypto`. Strict-Header-Compare verhindert
+  `alg=none`-Bypass. `crypto.timingSafeEqual` für die Signatur-
+  Prüfung.
+- ✚ `src/core/ai/auth/check.ts` — `checkAuth(req, env)` versucht
+  Cookie zuerst, dann Bearer. `getAuthConfig(env)` löst die ENV-
+  Defaults zentral auf (`LP_AI_PASSWORD` → `LP_AI_API_KEY`,
+  `LP_AI_SESSION_SECRET` → `LP_AI_API_KEY`).
+- ✚ `src/app/api/auth/login/route.ts` — POST, Passwort-Validierung,
+  setzt HttpOnly-Cookie, 7 Tage TTL, `SameSite=Lax`, `Secure` in
+  Production.
+- ✚ `src/app/api/auth/logout/route.ts` — POST, idempotent, löscht
+  Cookie via `Max-Age=0`.
+- ✚ `src/app/api/auth/me/route.ts` — GET, gibt
+  `{ authenticated, principal, via }` zurück. Keine sensiblen Daten.
+- 🔄 `src/app/api/ai/generate/route.ts` — alter Inline-Auth-Stub
+  raus, neuer `checkAuth(req)` rein.
+- 🔄 `src/app/api/ai/health/route.ts` — gleiche Refaktorierung.
+- ✚ `src/components/dashboard/ai-playground/auth-card.tsx` —
+  Client-Side Login-/Logout-Form. Status-Polling bei Mount via
+  `/api/auth/me`. Saubere Fallback-Texte für Static-Build (404)
+  und nicht-konfigurierte ENV (503).
+- 🔄 `src/components/dashboard/ai-playground/ai-playground.tsx` —
+  `<AuthCard>` an erster Stelle. Live-Provider-Calls senden
+  Cookie automatisch via `credentials: "same-origin"`; Bearer-
+  Token-Input bleibt für CLI/Power-User.
+- ✚ `src/tests/auth-session.test.ts` (35 Asserts): Token-Format
+  (3 Base64URL-Teile), Verify mit korrektem/falschem Secret,
+  Tampered-Signature, alg=none-Header-Bypass-Versuch,
+  Expired-Token, Garbage-Inputs, leeres Secret wirft, Cookie-Pfad
+  in checkAuth, Bearer-Pfad, ohne ENV → 503.
+
+**Verifikation**: typecheck ✅, lint ✅, build:static ✅, build (SSR)
+✅. **5 API-Routen** im SSR-Build sichtbar (`/api/ai/generate`,
+`/api/ai/health`, `/api/auth/{login,logout,me}`). **19/19
+Smoketests grün** (industry-presets pre-existing red bleibt
+Codex-#11).
+
+**Roadmap**: 1 großes Item abgehakt (Cookie/JWT-Auth), 4
+Folge-Items: Edge-Runtime-Migration (Web Crypto statt Node),
+Vercel-SSR-Deploy als zweite Pipeline, Multi-Tenant-Auth (echte
+User-Accounts), CSRF-Schutz (Origin-Header-Check / Double-Submit-
+Token).
+
+**Quellen**: `RESEARCH_INDEX.md` Track D — Cookie/JWT-Patterns
+2026.
+
+**Nächste Session**: Code-Session 34 — Vercel-SSR-Deploy-Pipeline.
+Damit kommen die API-Routen tatsächlich live (GitHub Pages bleibt
+für die Static-Seiten). Dann erst kann der Auftraggeber Cookie-
+Auth + Live-Provider produktiv testen.

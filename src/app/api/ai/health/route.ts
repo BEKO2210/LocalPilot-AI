@@ -13,31 +13,10 @@
 
 import { NextResponse } from "next/server";
 import { getHealthSnapshot } from "@/core/ai/health";
+import { checkAuth } from "@/core/ai/auth/check";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-function checkAuth(req: Request): { ok: boolean; status: number; message?: string } {
-  const expected = process.env["LP_AI_API_KEY"]?.trim();
-  if (!expected || expected.length === 0) {
-    return {
-      ok: false,
-      status: 503,
-      message:
-        "API ist nicht aktiviert. Setze LP_AI_API_KEY in der Server-ENV.",
-    };
-  }
-  const auth = req.headers.get("authorization") ?? "";
-  const match = auth.match(/^Bearer\s+(.+)$/);
-  if (!match || match[1]?.trim() !== expected) {
-    return {
-      ok: false,
-      status: 401,
-      message: "Ungültiger oder fehlender Bearer-Token.",
-    };
-  }
-  return { ok: true, status: 200 };
-}
 
 export async function GET(req: Request): Promise<Response> {
   const auth = checkAuth(req);
