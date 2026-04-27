@@ -296,19 +296,38 @@ Konvention für eine neue Sektion:
 - Compliance: Telefon `+49 30 9000 9999` als Demo-Nummer markiert,
   Testimonials klar als Beispiel-Stimmen aus der Demo-Welt ausgewiesen.
 
-## Stand nach Session 8
+## Dashboard-Grundstruktur (ab Session 9)
 
-- App Router läuft, `/`, `/pricing`, `/themes`, `/demo` und
-  `/site/<6 slugs>` rendern statisch (**13 prerendete Routen**).
+- **Routen**: `/dashboard` (Demo-Picker) + `/dashboard/[slug]/{,
+  business,services,leads,ai,reviews,social,settings}` – alle statisch
+  prerendert via `generateStaticParams(listMockBusinessSlugs())`.
+- **`<DashboardShell>`** umrahmt jede Seite mit Sticky-`<BusinessHeader>`,
+  Sidebar (md+) und horizontalem Mobile-Nav-Strip. Reine Server
+  Components, kein Client-JS – Demo-Switcher nutzt natives `<details>`.
+- **`nav-config.ts`** als Single Source of Truth (`DASHBOARD_NAV` +
+  `dashboardHref`) für Sidebar, Mobile-Nav, Quickactions.
+- **Übersicht**: 5 Cards (`<PackageStatusCard>`, `<PreviewLinkCard>`,
+  `<LeadsSummaryCard>`, `<QuickActionsCard>`, `<RecentLeadsList>`).
+  Quick-Actions sind paketabhängig gegated via `hasFeature()`.
+- **Stub-Routen** zeigen `<ComingSoonSection>` mit Roadmap-Bullets +
+  Paket-Gating-Hinweis. Sidebar markiert sie mit „Vorschau"-Badge.
+- **Privacy**: alle Dashboard-Routen tragen
+  `robots: { index: false, follow: false }`.
+- **Smoketest** in `src/tests/dashboard.test.ts` validiert Nav-Config
+  und Slug-Konsistenz.
+
+## Stand nach Session 9
+
+- App Router läuft, `/`, `/pricing`, `/themes`, `/demo` rendern statisch.
+  Plus `/site/<6 slugs>` (Public Sites) und `/dashboard` + 6 ×
+  8 Dashboard-Sektionen = insgesamt **62 prerendete Routen**.
 - Strict TS aktiv, ESLint vorhanden, Build-Pipeline läuft sauber
   (Static und SSR).
 - Tailwind & Brand-Tokens stehen, Theme-Tokens als CSS-Variablen verfügbar.
-- Datenmodelle vollständig, Pricing-System produktiv – Marketing-Tabellen
-  greifen direkt auf die Code-Konfiguration zu.
+- Datenmodelle vollständig, Pricing-System produktiv.
 - 13 Branchen-Presets, 10 Themes registriert und validiert.
 - 6 Demo-Betriebe vollständig validiert; jeder hat eine eigene
-  Public Site mit individuellem Theme und ist im Marketing als Live-Demo
-  verlinkt.
+  Public Site UND ein eigenes Dashboard mit individuellem Theme.
 - GitHub-Pages-Deployment automatisiert; lokal über `build:static`.
 - `<LinkButton>` ist basePath-aware (interne Pfade via `next/link`).
 - Build-Verifikation: `npm run typecheck`, `npm run lint`, `npm run build`,
@@ -316,8 +335,9 @@ Konvention für eine neue Sektion:
 
 ## Offene technische Punkte
 
-- Dashboard (Session 9+) – sobald Interaktivität nötig, prüfen ob als
-  Client-SPA innerhalb des Static Exports ausreichend.
+- Dashboard-Sub-Routen ausbauen (`business` Session 10, `services`
+  Session 11, `leads` Session 12, `ai` Sessions 13–15, `reviews`
+  Session 16, `social` Session 17, `settings` Session 18).
 - Lead-System (Session 12) – ersetzt die Formular-Vorschau in
   `<PublicContact>` und die Demo-Telefonnummer im `<CtaContact>` durch
   eine echte Erfassung (Server Action / API).
@@ -330,6 +350,6 @@ Konvention für eine neue Sektion:
 - Image-Hosting/-Optimierung – `logoUrl`/`coverImageUrl` optional im
   Schema, werden aber noch nicht gerendert. Sobald sie kommen, via
   `next/image` mit `unoptimized: true` für Static Export.
-- Analytics/Tracking für den Marketing-Funnel (Session 19+).
+- Analytics/Tracking für Marketing-Funnel und Dashboard (Session 19+).
 - Sobald API-Routen oder Server Actions kommen: Vercel als
   Production-Target ergänzen, GitHub Pages bleibt als Showcase.

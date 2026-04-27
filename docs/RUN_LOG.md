@@ -1035,11 +1035,140 @@ horizontal mit `overflow-x-auto`, Erste-Spalte ist sticky.
 
 ### 6. Was ist der nächste empfohlene Run?
 
-**Session 9 – Dashboard-Grundstruktur.**
+**Session 9 – Dashboard-Grundstruktur.** (s. u.)
 
-Route `/dashboard` mit Sidebar/Mobile-Navigation, Übersicht-Page (Paketstatus,
-offene Leads, Vorschau-Link auf eigene Public Site, Schnellaktionen,
-leere Zustände, Dashboard-Karten). Branchenneutrale Sprache („Anfragen"
-statt „Leads", „Inhalte" statt „Entities"). Static-Export-tauglich
-durch Server Components – falls später Interaktivität gebraucht wird,
-gezielt Client-Komponenten an die richtigen Stellen.
+---
+
+## Session 9 – Dashboard-Grundstruktur
+Datum: 2026-04-27
+Branch: `claude/setup-localpilot-foundation-xx0GE`
+
+### 1. Was wurde umgesetzt?
+
+- **`/dashboard`** – Demo-Picker mit 6 Karten. Pro Karte: Branche,
+  Tier-Badge, Anfragen/Bewertung/Leistungen-Counter, aktiver Link auf
+  `/dashboard/<slug>`.
+- **`/dashboard/[slug]`** – per-Business-Übersicht mit
+  `<DashboardShell>` (Sticky-`<BusinessHeader>` + persistente Sidebar
+  auf md+ + horizontaler Mobile-Nav-Strip). 5 Cards:
+  - **`<PackageStatusCard>`** – Tier, monatlich/Setup-Preis,
+    Bronze→Gold-Fortschrittsbar, Hinweis auf nächste Stufe.
+  - **`<PreviewLinkCard>`** – Veröffentlichungsstatus + Public-Site-
+    Öffnen-Button + Einstellungen.
+  - **`<LeadsSummaryCard>`** – Status-Counts in 6 farbcodierten Boxen
+    (Neu/Kontaktiert/Qualifiziert/Gewonnen/Verloren/Archiviert).
+  - **`<QuickActionsCard>`** – 4 Schnellaktionen (Neue Leistung,
+    Anfragen prüfen, Bewertung anfragen, KI-Text erstellen),
+    paketabhängig gegated mit „Verfügbar ab Silber/Gold"-Hinweis.
+  - **`<RecentLeadsList>`** – 5 jüngste Anfragen mit Status, Quelle,
+    Datum, optional `tel:`-Anrufen-Link.
+- **7 statisch prerendete Sub-Routen** (Stubs):
+  `business`, `services`, `leads`, `ai`, `reviews`, `social`,
+  `settings`. Jede zeigt `<ComingSoonSection>` mit Roadmap-Bullets aus
+  Claude.md, der zugewiesenen Session-Nummer und (wo passend) einem
+  Paket-Gating-Hinweis (nutzt `hasFeature()`/`requiredTierFor()`).
+- **`/dashboard/[slug]/not-found.tsx`** – freundliche 404-Seite.
+- **`<DashboardShell>`** als Layout-Hülle. **`<BusinessHeader>`** mit
+  `<details>`-basiertem Demo-Switcher (kein Client-JS), Tier-Badge und
+  Public-Site-Button. **`<DashboardSidebar>`** und
+  **`<DashboardMobileNav>`** lesen aus derselben `DASHBOARD_NAV`-Liste.
+- **`nav-config.ts`** als Single Source of Truth: 8 Nav-Sektionen
+  (Übersicht + 7 Sub) mit Label, Icon, Path-Suffix und
+  `comingInSession`-Markierung.
+- **`<DashboardCard>`** und **`<EmptyState>`** als wiederverwendbare
+  Primitive.
+- **Header-Nav** im Site-Header zeigt jetzt einen „Dashboard"-Link.
+- Smoketest `src/tests/dashboard.test.ts` mit ~15 Assertions
+  (Nav-Vollständigkeit, eindeutige Keys, gültige Session-Nummern,
+  korrekte Href-Auflösung, Slug-Konsistenz).
+- `docs/DASHBOARD.md` mit Routenbaum, Komponenten-Übersicht,
+  UX-Konventionen, Static-Export-Notes, Erweiterungsanleitung.
+
+### 2. Welche Dateien wurden geändert / neu angelegt?
+
+Neu (24 Dateien):
+- `src/components/dashboard/{nav-config,dashboard-shell,dashboard-sidebar,
+  dashboard-mobile-nav,business-header,dashboard-card,empty-state,
+  coming-soon-section,index}.tsx/.ts` (9 Dateien)
+- `src/components/dashboard/overview/{package-status-card,
+  leads-summary-card,preview-link-card,quick-actions-card,
+  recent-leads-list}.tsx` (5 Dateien)
+- `src/app/dashboard/page.tsx` (Picker)
+- `src/app/dashboard/[slug]/{layout,page,not-found}.tsx` (3 Dateien)
+- `src/app/dashboard/[slug]/{business,services,leads,ai,reviews,
+  social,settings}/page.tsx` (7 Dateien, alle Stubs)
+- `src/tests/dashboard.test.ts`
+- `docs/DASHBOARD.md`
+
+Geändert:
+- `src/components/layout/site-header.tsx` (Dashboard-Link)
+- `README.md`, `CHANGELOG.md`, `docs/TECHNICAL_NOTES.md`,
+  `docs/RUN_LOG.md`
+
+### 3. Wie teste ich es lokal?
+
+```bash
+npm run typecheck       # tsc --noEmit + Smoketests
+npm run lint            # 0 warnings/errors
+npm run build:static    # Static Export, jetzt 62 prerendete Routen
+npm run dev             # http://localhost:3000/dashboard
+```
+
+Schnell-Check:
+
+```bash
+curl -s -o /dev/null -w "%{http_code} /dashboard\n" http://localhost:3000/dashboard
+for slug in studio-haarlinie autoservice-mueller glanzwerk-reinigung beauty-atelier meisterbau-schneider fahrschule-stadtmitte; do
+  curl -s -o /dev/null -w "%{http_code} /dashboard/$slug\n" "http://localhost:3000/dashboard/$slug"
+done
+curl -s -o /dev/null -w "%{http_code} /dashboard/nope\n" http://localhost:3000/dashboard/nope
+# erwartet: Picker 200 + 6× 200 + Bad-Slug 404
+```
+
+Auf dem Handy: Demo-Picker zeigt 6 Karten, eine Karte antippen führt
+zur Übersicht. Mobile-Nav-Strip oberhalb des Inhalts ist horizontal
+scrollbar; jeder Tab zeigt entweder echten Inhalt (Übersicht) oder die
+Vorschau-Sektion mit Roadmap.
+
+### 4. Welche Akzeptanzkriterien sind erfüllt?
+
+| Kriterium                       | Status                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| Dashboard wirkt professionell   | ✅ konsistente Karten, klare Typo, Tier-/Status-Badges, Mobile-First    |
+| Navigation klar                 | ✅ Sidebar + Mobile-Strip aus derselben Konfiguration; aktive Markierung |
+| Nicht-technische Sprache        | ✅ „Anfragen", „Aktiver Demo-Betrieb", „Vorschau" statt Tech-Jargon     |
+| Responsive                      | ✅ Sidebar erst ab `md:`, Mobile bekommt horizontalen Nav-Strip         |
+| Übersicht                       | ✅ 5 Cards plus Recent-Leads                                            |
+| Paketstatus                     | ✅ `<PackageStatusCard>` mit Fortschrittsbar                            |
+| Offene Leads                    | ✅ `<LeadsSummaryCard>` + `<RecentLeadsList>`                           |
+| Vorschau-Link                   | ✅ `<PreviewLinkCard>` mit Public-Site-Öffnen                          |
+| Schnellaktionen                 | ✅ `<QuickActionsCard>` mit paketabhängigem Gating                      |
+| Dashboard-Karten                | ✅ wiederverwendbares `<DashboardCard>`                                 |
+| Leere Zustände                  | ✅ `<EmptyState>` (genutzt in `<LeadsSummaryCard>` und `<RecentLeadsList>`) |
+
+### 5. Was ist offen?
+
+- **Session 10** – `business`-Sub-Route ausbauen (Stammdaten-Formular,
+  React Hook Form, Zod, Live-Vorschau).
+- **Session 11** – `services`-Sub-Route mit CRUD + Sortierung +
+  Paket-Limits.
+- **Session 12** – `leads`-Sub-Route mit Filter, Detail-Drawer,
+  echtes Anfrageformular auf der Public Site.
+- **Sessions 13–17** – `ai`, `reviews`, `social` mit Provider-Adapter
+  und Vorlagen-Cards.
+- **Session 18** – `settings`-Sub-Route + Feature-Lock-Vergleichsmatrix.
+- **Session 19** – Auth via Supabase, Demo-Picker entfällt für
+  eingeloggte Sitzungen, Repository-Layer ersetzt
+  `getMockBusinessBySlug` transparent.
+
+### 6. Was ist der nächste empfohlene Run?
+
+**Session 10 – Betriebsdaten und Branding bearbeiten.**
+
+`src/app/dashboard/[slug]/business/page.tsx` von Stub zu echter Edit-
+Page promoten: Stammdaten-Formular (Name, Tagline, Beschreibung,
+Adresse, Kontakt, Öffnungszeiten), Theme-Picker, Branding-Felder
+(Logo-/Hero-Bild-Platzhalter), Validierung über bestehendes
+`BusinessSchema`/Zod, Speichern via Mock-Repository (Supabase folgt
+Session 19). Optional Live-Vorschau-Karte, die `<ThemeProvider>` mit
+den aktuellen Form-Werten rendert.

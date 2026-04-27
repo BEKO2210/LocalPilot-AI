@@ -23,8 +23,8 @@ Autowerkstatt bis zur Reinigungsfirma – und ist im Kern bewusst branchenneutra
 - Bronze/Silber/Gold-Pakete als echte Produktlogik (Feature-Locks im UI)
 - Branchen-Presets (Friseur, Werkstatt, Reinigung, Kosmetik, Handwerk, Fahrschule, Fitness, Foto, Restaurant, Shop, …)
 
-Aktueller Stand: **Session 8** – Marketing-Funnel ausgebaut, eigene `/pricing`-Seite mit Feature-Vergleichsmatrix, Live-Demo-Showcase auf der Startseite.
-Weitere Funktionen folgen in den Sessions 9–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
+Aktueller Stand: **Session 9** – Dashboard-Grundstruktur unter `/dashboard/[slug]` mit Sidebar/Mobile-Nav, Übersichts-Cards (Paketstatus, Anfragen, Vorschau, Schnellaktionen, letzte Anfragen) und 7 Sub-Routen als Vorschau.
+Weitere Funktionen folgen in den Sessions 10–22 (siehe `Claude.md` und `docs/RUN_LOG.md`).
 
 ---
 
@@ -191,6 +191,7 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - [`docs/MOCK_DATA.md`](./docs/MOCK_DATA.md) – Demo-Betriebe, Aggregation, Daten-Hygiene
 - [`docs/PUBLIC_SITE.md`](./docs/PUBLIC_SITE.md) – Public Site Generator, Sektionen, SEO
 - [`docs/MARKETING.md`](./docs/MARKETING.md) – Marketing-Funnel, /pricing-Aufbau, Konversionspfad
+- [`docs/DASHBOARD.md`](./docs/DASHBOARD.md) – Dashboard-Routen, Sidebar/Mobile-Nav, Sub-Page-Vorschau
 - [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) – GitHub Pages und Vercel
 - [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) – Was wurde in welcher Session gebaut?
 - [`CHANGELOG.md`](./CHANGELOG.md) – Versionshistorie
@@ -222,7 +223,9 @@ Vollständige Anleitung inkl. Vercel-Pfad: [`docs/DEPLOYMENT.md`](./docs/DEPLOYM
 - ✅ **Marketing-Funnel** auf der Startseite (11-Schritt-Funnel), eigene
   `/pricing`-Seite mit Feature-Vergleichsmatrix und Limits-Tabelle,
   Live-Demo-Showcase, Beispiel-Stimmen, ROI-Sektion
+- ✅ **Dashboard-Grundstruktur** unter `/dashboard/[slug]` mit Sidebar +
+  Mobile-Nav, Übersicht (Paketstatus, Anfragen, Vorschau, Schnellaktionen,
+  letzte Anfragen) und 7 Sub-Routen als statisch prerendete Vorschau
 - ✅ **GitHub-Pages-Deployment** über Workflow `.github/workflows/deploy.yml`
   mit konditionellem Static-Export
-- ⏳ Dashboard, KI-System –
-  folgen in Sessions 9 bis 22
+- ⏳ Betriebsdaten-Editor, Leistungen, Lead-System, KI – folgen in Sessions 10 bis 22

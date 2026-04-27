@@ -7,7 +7,56 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Geplant
-- Session 9+: Dashboard-Grundstruktur, Betriebsdaten, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+- Session 10+: Betriebsdaten-Editor, Leistungen-CRUD, Lead-System, KI-Provider, Bewertungs-Booster, Social-Media-Generator, Supabase-Vorbereitung, Polish, Deployment.
+
+## [0.9.0] – Session 9 – 2026-04-27
+
+### Added
+- **Dashboard-Grundstruktur** unter `/dashboard`:
+  - **`/dashboard`** – Demo-Picker mit 6 Karten (Counter für Anfragen,
+    Bewertung, Leistungen + Tier-Badge + Branche/Stadt + aktiver Link
+    auf `/dashboard/<slug>`).
+  - **`/dashboard/[slug]`** – per-Business-Übersicht mit
+    `<DashboardShell>` (Sidebar + Mobile-Nav + BusinessHeader). 5 Cards:
+    `<PackageStatusCard>` (Tier, Preise, Bronze→Gold-Fortschritt, nächste
+    Stufe), `<PreviewLinkCard>` (Veröffentlichungsstatus + Public-Site-
+    Öffnen), `<LeadsSummaryCard>` (Status-Counts), `<QuickActionsCard>`
+    (4 Quick-Actions, paketabhängig gegated), `<RecentLeadsList>` (5
+    jüngste Anfragen mit Status, Quelle, Anrufen-Link).
+  - **7 Sub-Routen** als statisch prerendete Vorschauen mit
+    `<ComingSoonSection>` (Roadmap-Bullets, Paket-Gating-Hinweis):
+    `business`, `services`, `leads`, `ai`, `reviews`, `social`, `settings`.
+  - **`/dashboard/[slug]/not-found.tsx`** – 404 im Marketing-Layout.
+- **`<DashboardShell>`** – Layout-Hülle mit Sticky-`<BusinessHeader>`
+  (Tier-Badge, `<details>`-basierter Demo-Switcher, Public-Site-Button),
+  persistenter Sidebar (md+), horizontalem Mobile-Nav-Strip.
+- **`nav-config.ts`** – Single Source of Truth `DASHBOARD_NAV` für
+  Sidebar, Mobile-Nav und Quickactions plus `dashboardHref(slug, key)`-
+  Helper.
+- **`<DashboardCard>`** und **`<EmptyState>`** als wiederverwendbare
+  Primitive.
+- **Header-Nav** zeigt jetzt einen „Dashboard"-Link, damit der Picker
+  von der Marketing-Seite aus erreichbar ist.
+- Smoketest `src/tests/dashboard.test.ts`: Nav-Konfiguration vollständig
+  und konsistent, jede Sub-Route hat eine `comingInSession`-Nummer im
+  sinnvollen Bereich, `dashboardHref()` löst korrekt auf, alle
+  Demo-Slugs sind erreichbar.
+- `docs/DASHBOARD.md` mit Routenbaum, Komponenten-Übersicht,
+  UX-Konventionen, Static-Export-Notes und Erweiterungsanleitung.
+
+### Notes
+- Build:static produziert jetzt deutlich mehr Routen
+  (1× Picker + 6 Slugs × 8 Sektionen = 49 Dashboard-Pages; insgesamt
+  **62 prerendete Routen**).
+- Reine Server Components – kein Client-JS für die Navigation,
+  Demo-Switcher nutzt natives `<details>`. Static-Export-tauglich.
+- Alle Dashboard-Routen tragen `robots: { index: false, follow: false }`.
+- Branchenneutrale, nicht-technische Sprache: „Anfragen" statt „Leads",
+  „Aktiver Demo-Betrieb" statt „Tenant", „Letzte Anfragen" statt
+  „Recent submissions".
+- Quick-Actions sind paketabhängig (`hasFeature` / `requiredTierFor`):
+  in Bronze sind die KI-Aktionen optisch gedimmt mit Hinweis
+  „Verfügbar ab Silber".
 
 ## [0.8.0] – Session 8 – 2026-04-27
 
