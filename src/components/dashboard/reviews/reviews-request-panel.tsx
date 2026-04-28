@@ -383,7 +383,7 @@ export function ReviewsRequestPanel({
           type="button"
           onClick={() => void handleGenerate()}
           disabled={state.kind === "loading"}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="lp-focus-ring inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {state.kind === "loading" ? (
             <>
@@ -434,7 +434,7 @@ export function ReviewsRequestPanel({
                   <button
                     type="button"
                     onClick={() => void copyToClipboard(variant.body, idx)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50"
+                    className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50"
                   >
                     {copiedIdx === idx ? (
                       <>
@@ -453,7 +453,7 @@ export function ReviewsRequestPanel({
                       href={send.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
+                      className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
                     >
                       <Send className="h-3.5 w-3.5" aria-hidden />
                       {variant.channel === "email"
@@ -498,7 +498,7 @@ function ChannelTabs({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(c)}
-            className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+            className={`lp-focus-ring rounded-lg border px-3 py-1.5 text-sm transition-colors ${
               active
                 ? "border-brand-500 bg-brand-50 text-brand-800"
                 : "border-ink-200 bg-white text-ink-700 hover:bg-ink-50"
@@ -530,7 +530,7 @@ function ProviderTabs({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(opt.value)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+            className={`lp-focus-ring rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               active
                 ? "border-emerald-500 bg-emerald-50 text-emerald-800"
                 : "border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
@@ -562,7 +562,7 @@ function ToneTabs({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(t)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+            className={`lp-focus-ring rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               active
                 ? "border-brand-500 bg-brand-50 text-brand-800"
                 : "border-ink-200 bg-white text-ink-600 hover:bg-ink-50"

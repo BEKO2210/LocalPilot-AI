@@ -9067,4 +9067,138 @@ Inhalt:
    Validation-Hints, `lp-focus-ring`-Migration.
 7. UX-Findings ins Phase-2-Backlog.
 
+---
+
+## Code-Session 79 – Phase 2: 5-Editoren-Audit + zentrales ARIA-Wiring
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · Polish + A11y
+
+**Was**: Dritte Phase-2-Session. Audit per Explore-Agent
+über 7 Editor-Files (3.3K LOC) — Befunde: 42 Buttons ohne
+Focus-Ring, 33 Inputs ohne ARIA-Wiring, 5 echte Bugs im
+Backlog. Fix: **eine zentrale Änderung an `FormField`
+repariert 33 Inputs** + 23 Buttons mit `lp-focus-ring`
+gepatched. 5 neue Phase-2-Backlog-Items.
+
+**Audit-Strategie — Explore-Agent statt Code-Read im
+Hauptkontext**: 7 Files mit 3.360 LOC sind zu viel für
+direkten Read im Main-Context (würde Token-Budget
+sprengen). Lösung: Explore-Agent mit struktur-getriebenem
+Audit-Prompt (A: Buttons-ohne-focus, B: Inputs-ohne-ARIA,
+C: Banner-aria-live, D: Bugs, E: Inkonsistenzen) + Synthese-
+Tabelle. Agent liefert kompakten Report, Hauptkontext
+behält Code-Edit-Bandbreite. **Pattern für künftige
+Multi-File-Audits in Phase 2**.
+
+**Architektur-Entscheidung — `FormField` zentrales
+ARIA-Wiring statt 33 Edits**: Der Audit zeigte alle 33
+Inputs hatten `hasError`-Prop, aber **kein** `aria-invalid`
+oder `aria-describedby`. Naive Lösung: in jedem
+`FormInput`-Caller die ARIA-Attribute manuell setzen — 33
+Edits, hoher Diff. Eleganter:
+1. `FormField` generiert deterministische `errorId` /
+   `hintId` aus `htmlFor`.
+2. `React.cloneElement` injiziert `aria-invalid` +
+   `aria-describedby` ins Single-Element-Child.
+3. **Caller-Props gewinnen**: wer `aria-invalid` schon
+   manuell setzt (eine Stelle in `settings-form` Zeile
+   135 für Slug-Input), bleibt unverändert.
+4. Multi-Element-Children fallen auf alte Behavior zurück.
+
+**Gewinn**: 1 Edit (40 Zeilen) → 33 Inputs in 7
+Komponenten haben ARIA. Plus: jede neue Form, die
+`FormField` nutzt, ist automatisch A11y-korrekt.
+Trade-off: Implicit-Magic via `cloneElement` ist
+weniger explizit als Caller-Props, aber für
+Form-Primitive-Komponenten ist das akzeptiert (Pattern
+auch in Radix-UI, React-Aria).
+
+**Architektur-Entscheidung — `lp-focus-ring` per
+`replace_all` wo möglich**: 4 Copy-Buttons in
+`social-post-panel` haben **identischen** Klassen-String
+(`ml-auto inline-flex items-center gap-1.5 rounded-lg
+border border-ink-200 bg-white px-2.5 py-1 text-xs
+font-medium text-ink-700 hover:bg-ink-50`). Statt 4
+Einzel-Edits ein `replace_all`-Edit. Spart Diff-Zeilen
+und macht den Pattern explizit.
+
+**Bug-Backlog (NICHT in S79 gefixt, atomic-Begrenzung)**:
+- **#1: Discard-isDirty-Reset** (business + services
+  edit-form). S73 hat den Symptom-Punkt notiert, S79
+  hat den Code-Pfad bestätigt: `methods.reset(stored ??
+  initialProfile)` mit localStorage-Override hat
+  Timing-Issue zwischen `reset()` und RHF-internem
+  `isDirty`-Recompute. Eigene Phase-2-Session zur
+  systematischen Behebung.
+- **#2: settings-form `setTimeout(900ms)`-Race** vor
+  `router.push()`. Kein AbortController → wenn User
+  schnell wegnavigiert, läuft setTimeout ins Leere.
+- **#3: social-post-panel Hashtag-Advice-Color-Drift**
+  `discouraged` und `warning` beide `text-amber-700`.
+- **#4: service-card delete-state-cleanup** —
+  `confirmingRemove` State wird nicht garantiert resetted
+  nach erfolgreichem Delete (abhängig von parent-callback).
+- **#5: localStorage-Quota-Exceeded** in
+  `reviews-request-panel` — `try-catch` ohne User-Feedback.
+
+Alle 5 Bugs sind weder Show-Stopper noch tracked-by-tests.
+Atomic-Session-Limit: maximal 80 KB Diff. S79 hat ARIA +
+Focus-Ring; Bugs kommen in S80-Light-Pass oder dedizierter
+Bug-Session.
+
+**WebSearch (Track C)**:
+- [React Hook Form formState (RHF Docs)](https://react-hook-form.com/docs/useform/formstate) — `isDirty` recomputes nach `reset()` mit neuen `defaultValues`; `keepDirtyValues: true` für UX-Win, falls Server-Save den Form-Snapshot überschreibt (79).
+- [WAI-ARIA `aria-invalid` (W3C)](https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA21) — `aria-invalid="true"` pflicht bei sichtbarem Fehler, `undefined` (nicht `false`) wenn valid (79).
+- [aria-describedby + Error-Messages (David MacDonald)](https://www.davidmacd.com/blog/test-aria-describedby-errormessage-aria-live.html) — `aria-live` auf Error-`<p>` ist redundant mit `aria-describedby` für NVDA/JAWS (Double-Speak vermeiden) (79).
+
+**Dateien**:
+- 🔄 `src/components/forms/form-field.tsx`: zentrales
+  ARIA-Wiring via `React.cloneElement`.
+- 🔄 `src/components/dashboard/business-edit/business-edit-form.tsx`:
+  3 Buttons.
+- 🔄 `src/components/dashboard/business-edit/image-upload-field.tsx`:
+  2 Buttons.
+- 🔄 `src/components/dashboard/services-edit/services-edit-form.tsx`:
+  6 Buttons.
+- 🔄 `src/components/dashboard/services-edit/service-card.tsx`:
+  5 Buttons.
+- 🔄 `src/components/dashboard/settings/settings-form.tsx`:
+  2 Buttons.
+- 🔄 `src/components/dashboard/reviews/reviews-request-panel.tsx`:
+  6 Buttons (Tab-Helpers).
+- 🔄 `src/components/dashboard/social/social-post-panel.tsx`:
+  9 Buttons (Tab-Helpers + Copy-Buttons).
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/RESEARCH_INDEX.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:18 min). Bundle 102 KB
+shared unverändert.
+
+**Phase-2-Backlog (5 neue Items aus S79-Audit)**:
+1. `aria-live` explizit auf alle 8 Save-/Error-Banner
+   (polite vs assertive bewusst wählen).
+2. Discard-isDirty-Reset systematisch fixen (S73 + S79).
+3. `settings-form` setTimeout-Race-Fix mit AbortController.
+4. Hashtag-Advice-Color-Drift in `social-post-panel`.
+5. Delete-Confirm-UI vereinheitlichen (service-card inline
+   vs settings-form Slug-Confirm). S80-Light-Pass-Item.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — RHF formState +
+ARIA-Invalid + aria-describedby-Patterns.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(3/≥10 Sessions).
+
+**Nächste Session**: Code-Session 80 = **5er-Light-Pass**.
+Inhalt:
+1. simplify-Skill auf alle in S77–S79 angefassten
+   Komponenten.
+2. `<DashboardButton>`-Wrapper-Komponente einführen
+   (Account-Page + Editor-Save/Discard-Buttons).
+3. `beforeEach`-Migration für E2E-`goto()`-Wiederholungen
+   (S75-Backlog).
+4. Discard-isDirty-Reset-Fix (S73 + S79).
+5. README/Doku-Sync nach 5 Sessions.
+
 

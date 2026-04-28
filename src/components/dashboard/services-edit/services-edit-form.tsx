@@ -292,7 +292,7 @@ export function ServicesEditForm({ business }: ServicesEditFormProps) {
               <button
                 type="button"
                 onClick={handleResetOverride}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50"
+                className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50"
               >
                 <Undo2 className="h-3.5 w-3.5" aria-hidden />
                 Demo-Defaults laden
@@ -302,14 +302,14 @@ export function ServicesEditForm({ business }: ServicesEditFormProps) {
               type="button"
               onClick={handleDiscard}
               disabled={!isDirty}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-50"
+              className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-50"
             >
               Verwerfen
             </button>
             <button
               type="submit"
               disabled={!isDirty || overLimit || submitting}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               <Save className="h-3.5 w-3.5" aria-hidden />
               {submitting ? "Speichere …" : "Speichern"}
@@ -371,7 +371,7 @@ export function ServicesEditForm({ business }: ServicesEditFormProps) {
               <button
                 type="button"
                 onClick={handleAddEmpty}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:opacity-90"
+                className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:opacity-90"
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden />
                 Erste Leistung anlegen
@@ -379,7 +379,7 @@ export function ServicesEditForm({ business }: ServicesEditFormProps) {
               <button
                 type="button"
                 onClick={handleImportPreset}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-2 text-xs font-medium text-ink-700 hover:bg-ink-50"
+                className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-2 text-xs font-medium text-ink-700 hover:bg-ink-50"
               >
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 Aus Branchen-Preset übernehmen
@@ -432,7 +432,7 @@ export function ServicesEditForm({ business }: ServicesEditFormProps) {
               type="button"
               onClick={handleAddEmpty}
               disabled={overLimit || atLimit}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />
               Neue Leistung hinzufügen

@@ -111,7 +111,7 @@ export function ServiceCard({
             }}
             disabled={isFirst}
             aria-label="Nach oben verschieben"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink-200 text-ink-600 hover:bg-ink-50 disabled:opacity-40"
+            className="lp-focus-ring inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink-200 text-ink-600 hover:bg-ink-50 disabled:opacity-40"
           >
             <ArrowUp className="h-3.5 w-3.5" aria-hidden />
           </button>
@@ -123,7 +123,7 @@ export function ServiceCard({
             }}
             disabled={isLast}
             aria-label="Nach unten verschieben"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink-200 text-ink-600 hover:bg-ink-50 disabled:opacity-40"
+            className="lp-focus-ring inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink-200 text-ink-600 hover:bg-ink-50 disabled:opacity-40"
           >
             <ArrowDown className="h-3.5 w-3.5" aria-hidden />
           </button>
@@ -273,14 +273,14 @@ export function ServiceCard({
                   setConfirmingRemove(false);
                   onRemove();
                 }}
-                className="inline-flex h-8 items-center gap-1 rounded-lg bg-rose-600 px-3 text-xs font-medium text-white hover:bg-rose-700"
+                className="lp-focus-ring inline-flex h-8 items-center gap-1 rounded-lg bg-rose-600 px-3 text-xs font-medium text-white hover:bg-rose-700"
               >
                 Ja, entfernen
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmingRemove(false)}
-                className="inline-flex h-8 items-center gap-1 rounded-lg border border-ink-200 px-3 text-xs font-medium text-ink-700 hover:bg-white"
+                className="lp-focus-ring inline-flex h-8 items-center gap-1 rounded-lg border border-ink-200 px-3 text-xs font-medium text-ink-700 hover:bg-white"
               >
                 Abbrechen
               </button>
@@ -289,7 +289,7 @@ export function ServiceCard({
             <button
               type="button"
               onClick={() => setConfirmingRemove(true)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-200 px-3 text-xs font-medium text-rose-700 hover:bg-rose-50"
+              className="lp-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-200 px-3 text-xs font-medium text-rose-700 hover:bg-rose-50"
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden />
               Entfernen

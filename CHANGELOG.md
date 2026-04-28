@@ -6,6 +6,82 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.17.2] – Code-Session 79 – 2026-04-28 (Phase 2: 5-Editoren-Audit)
+
+Dritte Phase-2-Session. Audit aller 5 Dashboard-Editoren
+(Business / Services + Service-Card / Settings / Reviews /
+Social) plus Image-Upload-Field. **33 Inputs zentral mit
+ARIA-Wiring** (1 Edit auf der Form-Field-Komponente
+repariert alle 33 auf einen Schlag) + **23 Buttons mit
+`lp-focus-ring`** in den 7 Editor-Komponenten.
+
+- ✚ **`FormField`-Komponente zentral A11y-gewired**
+  (`src/components/forms/form-field.tsx`):
+  - Generiert stabile `errorId` / `hintId` aus `htmlFor`.
+  - Klont das Single-Element-Child via `React.cloneElement`
+    und injiziert `aria-invalid={error ? true : undefined}`
+    + `aria-describedby={errorId ?? hintId}` —
+    **nur wenn der Caller diese Props nicht selbst setzt**.
+  - Bereits gesetzte Caller-Props gewinnen → keine Regression
+    bei der einen settings-form-Stelle (Slug-Input), die
+    `aria-invalid` schon manuell setzte.
+  - Multi-Element-Children (selten) bleiben unverändert.
+  - **Gewinn**: 33 Inputs in 7 Editor-Komponenten haben jetzt
+    `aria-invalid` + `aria-describedby` ohne dass dort eine
+    einzige Zeile geändert wurde — das ist der
+    DRY-Hebel-Win der Form-Primitive-Komponente.
+- ✚ **`lp-focus-ring` auf 23 weitere interaktive Elemente**:
+  - `business-edit-form` (3 Buttons: Demo-Defaults laden,
+    Verwerfen, Speichern).
+  - `services-edit-form` (6 Buttons: Demo-Defaults, Verwerfen,
+    Speichern, Erste-Leistung-anlegen, Branchen-Preset,
+    Neue-Leistung).
+  - `service-card` (5 Buttons: Move-Up, Move-Down,
+    Delete-Trigger, Delete-Confirm-Ja, Delete-Cancel).
+  - `image-upload-field` (2 Buttons: Hochladen/Ersetzen,
+    Entfernen).
+  - `settings-form` (2 Buttons: Save, Danger-Zone-Delete).
+  - `reviews-request-panel` (5 Elemente: Generate-CTA,
+    Copy-Button, Send-Link, ChannelTabs/ProviderTabs/
+    ToneTabs).
+  - `social-post-panel` (alle: Generate-CTA, 4 Copy-Buttons
+    via `replace_all`, PlatformTabs, ProviderTabs, GoalPills,
+    LengthPicker, 2 Post-Copy-Buttons).
+
+**Phase-2-Backlog aus diesem Audit**:
+1. `aria-live` explizit auf alle 8 Save-/Error-Banner
+   setzen — `role="status"` impliziert es zwar, aber
+   `polite` (Save) vs `assertive` (Validation-Error) sollte
+   bewusst wählen.
+2. **Discard-isDirty-Reset-Bug** (S73-Backlog #3, immer
+   noch offen): `business-edit-form` + `services-edit-form`
+   `methods.reset()` nach `handleDiscard` bei localStorage-
+   Override hat Timing-Issues. Eigene Phase-2-Session.
+3. `settings-form` `setTimeout(900ms)` vor `router.push()`
+   ist Race-Condition-anfällig — AbortController ergänzen.
+4. `social-post-panel` Hashtag-Advice-Color-Drift:
+   `discouraged` und `warning` haben beide `text-amber-700`
+   — visuell ununterscheidbar.
+5. Delete-Confirmation-UI uneinheitlich: `service-card`
+   nutzt Inline-Pattern, `settings-form` nutzt Slug-
+   Confirmation-Form (anderes Pattern). S80-Light-Pass-Item.
+
+**45/45 Smoketests grün, 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 2:18 min). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: Phase 2 Sessions 3/≥10. Nächste Session 80 =
+**5er-Light-Pass**: Form-System-Konsistenz-Pass mit
+`simplify`-Skill, `<DashboardButton>`-Wrapper-Komponente,
+`beforeEach`-Migration für E2E-Tests, Discard-isDirty-
+Reset-Fix.
+
+**Manueller Test**: `npm run dev` →
+`/dashboard/studio-haarlinie/business` → Tab durch alle
+Form-Felder, jedes Feld mit Fehler bekommt jetzt
+sichtbar `aria-invalid="true"` (DevTools-Inspection).
+Save/Verwerfen-Buttons haben Accent-Outline beim Fokus.
+
 ## [0.17.1] – Code-Session 78 – 2026-04-28 (Phase 2: Dashboard-Shell-Audit)
 
 Zweite Phase-2-Session. Dashboard-Audit: 1 echter Bug

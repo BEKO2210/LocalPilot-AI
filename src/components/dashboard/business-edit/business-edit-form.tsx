@@ -205,7 +205,7 @@ export function BusinessEditForm({ business }: BusinessEditFormProps) {
               <button
                 type="button"
                 onClick={handleResetOverride}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50"
+                className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50"
               >
                 <Undo2 className="h-3.5 w-3.5" aria-hidden />
                 Demo-Defaults laden
@@ -215,14 +215,14 @@ export function BusinessEditForm({ business }: BusinessEditFormProps) {
               type="button"
               onClick={handleDiscardChanges}
               disabled={!isDirty}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-50"
+              className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-50"
             >
               Verwerfen
             </button>
             <button
               type="submit"
               disabled={!isDirty || submitting}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               <Save className="h-3.5 w-3.5" aria-hidden />
               {submitting ? "Speichere …" : "Speichern"}

@@ -11,7 +11,15 @@ type FormFieldProps = {
   children: React.ReactNode;
 };
 
-/** Wrapper: Label + Hilfetext + Inline-Fehler in konsistenter Optik. */
+/**
+ * Wrapper: Label + Hilfetext + Inline-Fehler in konsistenter Optik.
+ *
+ * A11y (Phase 2, Code-Session 79): Wenn das Children genau ein
+ * React-Element ist (typischer Fall: ein FormInput/FormTextarea/
+ * FormSelect), klonen wir es und injizieren `aria-invalid` und
+ * `aria-describedby` automatisch. Bestehende Props vom Caller
+ * gewinnen — wer manuell setzt, bleibt unangetastet.
+ */
 export function FormField({
   label,
   htmlFor,
@@ -21,6 +29,33 @@ export function FormField({
   className,
   children,
 }: FormFieldProps) {
+  const errorId = `${htmlFor}-error`;
+  const hintId = `${htmlFor}-hint`;
+  const describedBy = error ? errorId : hint ? hintId : undefined;
+
+  // Single-Element-Children bekommen aria-Wiring automatisch.
+  // Mehrteilige Children (selten) bleiben unverändert — Caller
+  // muss dann selbst `aria-invalid`/`aria-describedby` setzen.
+  const wired =
+    React.isValidElement(children) && React.Children.count(children) === 1
+      ? React.cloneElement(
+          children as React.ReactElement<{
+            "aria-invalid"?: boolean | "true" | "false";
+            "aria-describedby"?: string;
+          }>,
+          {
+            "aria-invalid":
+              (children.props as { "aria-invalid"?: boolean | "true" | "false" })[
+                "aria-invalid"
+              ] ?? (error ? true : undefined),
+            "aria-describedby":
+              (children.props as { "aria-describedby"?: string })[
+                "aria-describedby"
+              ] ?? describedBy,
+          },
+        )
+      : children;
+
   return (
     <div className={cn("space-y-1.5", className)}>
       <label
@@ -30,13 +65,19 @@ export function FormField({
         {label}
         {required ? <span className="text-rose-600"> *</span> : null}
       </label>
-      {children}
+      {wired}
       {error ? (
-        <p className="text-xs font-medium text-rose-600" role="alert">
+        <p
+          id={errorId}
+          className="text-xs font-medium text-rose-600"
+          role="alert"
+        >
           {error}
         </p>
       ) : hint ? (
-        <p className="text-xs text-ink-500">{hint}</p>
+        <p id={hintId} className="text-xs text-ink-500">
+          {hint}
+        </p>
       ) : null}
     </div>
   );

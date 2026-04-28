@@ -488,9 +488,20 @@ als Regression-Schutz.
   **116/116 E2E grün** — der Bug war ein Visual-Audit-Win,
   nicht ein Test-Win (E2E-Suite hat ihn nie aufgedeckt,
   weil sie keine Vorschau-Badge-Asserts hatte).
-- **79**: Editor-Audits — alle 5 Editoren (Business,
-  Services, Settings, Reviews, Social) auf Buttons, Spacing,
-  Validation-Hints, Banner-Konsistenz.
+- **79** ✅: Editor-Audits — alle 5 Editoren (Business,
+  Services, Settings, Reviews, Social) plus Image-Upload-
+  Field via Explore-Agent auditiert (3.3K LOC, 7 Files).
+  **Zentrales ARIA-Wiring in `FormField`** via
+  `React.cloneElement` — 1 Edit repariert 33 Inputs
+  (`aria-invalid` + `aria-describedby` automatisch). 23
+  Buttons mit `lp-focus-ring`. 5 Bugs ins Backlog (Discard-
+  isDirty-Reset, settings-form setTimeout-Race,
+  Hashtag-Color-Drift, service-card delete-state, lokal-
+  Storage-Quota-Feedback) — atomic-Session-Limit hat
+  Bug-Fix in S80-Light-Pass verschoben.
+  **116/116 E2E grün** — strukturelle Tests übersehen den
+  ARIA-Win (gute Indikator: zentrale Form-Verbesserung
+  ohne Test-Regression).
 - **80** (5er-Multiple, Light-Pass): Form-System-
   Konsistenz + Component-Reuse-Pass mit `simplify`-Skill.
 - **81**: **Demo-Logo + Brand-Identity**. Aktuelles Logo
@@ -765,6 +776,24 @@ aktiven Session.
      (Account-Page hat 7 unique-styled Buttons mit
      identischem `lp-focus-ring`-Pattern). Light-Pass-Item
      für S80.
+- **Phase-2-Bug-Backlog aus S79-Audit** (Editoren, atomic-
+  Limit hat Fix in S80-Light-Pass verschoben):
+  10. Discard-isDirty-Reset (S73 + S79) — `methods.reset()`
+      mit localStorage-Override hat Timing-Issue.
+  11. `settings-form` `setTimeout(900ms)` vor
+      `router.push()` braucht AbortController.
+  12. `social-post-panel` Hashtag-Advice-Color-Drift —
+      `discouraged` und `warning` beide `text-amber-700`,
+      visuell ununterscheidbar.
+  13. `service-card` `confirmingRemove`-State wird nicht
+      garantiert resetted nach Delete.
+  14. `reviews-request-panel` localStorage-Quota-
+      Exceeded ohne User-Feedback.
+  15. `aria-live` explizit auf alle 8 Save-/Error-Banner
+      (polite vs assertive bewusst wählen).
+  16. Delete-Confirm-UI vereinheitlichen (`service-card`
+      inline vs `settings-form` Slug-Confirm). S80-
+      Light-Pass-Item.
 - Strukturierte Telemetrie der Mock-Provider-Aufrufe (Welche Methode,
   welche Branche, welche Variante), damit später echte Calls mit
   derselben Pipeline angezeigt werden können.

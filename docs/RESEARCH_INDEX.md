@@ -178,6 +178,14 @@
 - [Tailwind UI Marketing Page Examples](https://tailwindcss.com/plus/ui-blocks/marketing/page-examples/landing-pages) — Spacing/Hierarchy-Patterns für Landing-Pages 2026 (77).
 - [WCAG 2.2 – Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) — `:focus-visible` ist 2026-Pflicht für Tastatur-Nav, theme-aware Outline ist Best-Practice (77).
 
+### Phase-2 5-Editoren-Audit + zentrales ARIA-Wiring (Code-Session 79)
+- [React Hook Form formState (Docs)](https://react-hook-form.com/docs/useform/formstate) — `isDirty` recomputes nach `reset()`; `keepDirtyValues: true` als UX-Pattern (79).
+- [React Hook Form Discussion #3948 — manuelles isDirty](https://github.com/orgs/react-hook-form/discussions/3948) — `reset()` mit aktuellen Values setzt `defaultValues` + clear-isDirty (79).
+- [WAI-ARIA `aria-invalid` (W3C)](https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA21) — `aria-invalid="true"` pflicht; `undefined` (nicht `false`) wenn valid (79).
+- [aria-describedby + Error-Messages (David MacDonald)](https://www.davidmacd.com/blog/test-aria-describedby-errormessage-aria-live.html) — `aria-live` auf Error-`<p>` ist redundant mit `aria-describedby` (NVDA/JAWS Double-Speak vermeiden) (79).
+- [ARIA: aria-invalid (MDN)](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-invalid) — Valid-State sollte das Attribut **entfernen**, nicht `false` setzen (79).
+- [Reform.app — Common ARIA Mistakes in Forms](https://www.reform.app/blog/common-aria-mistakes-in-forms-and-fixes) — `aria-describedby` muss auf existierende ID zeigen (79).
+
 ### Phase-2 Dashboard-Shell-Audit + Stub-Drift-Detection (Code-Session 78)
 - [SaaS Dashboard Templates 2026 (TailAdmin)](https://tailadmin.com/blog/saas-dashboard-templates) — Collapsible Sidebar ist 2026-Standard für komplexe Hierarchien (78).
 - [Mobile Navigation UX 2026 (DesignStudio)](https://www.designstudiouiux.com/blog/mobile-navigation-ux/) — Bottom-Nav (≤5 Items) ist Touch-Zone-Standard für Mobile-Web-Apps (78).
