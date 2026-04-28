@@ -428,11 +428,17 @@ CI-Umgebung).
   filtert Business-Header-Switcher raus; `<details>`-Cards
   per DOM-API geöffnet (sticky Top-Bar überdeckt Summary-
   Click — Phase-2-Item für Touch/Mobile).
-- **75** (5er-Multiple, Light-Pass + E2E): Settings-E2E
-  (Slug-Wechsel mit Storage-Move-Indikator, Publish-Toggle,
-  Locale, Danger-Zone-Löschen mit Slug-Confirm) + Light-
-  Pass auf E2E-Test-Helpers (Stable Selectors, Test-Data-
-  Builders, Page-Objects).
+- **75** (5er-Light-Pass) ✅: Settings + Danger-Zone E2E
+  (7 Tests), Test-Helper-Modul `_helpers.ts` (DEMO-Slugs,
+  openCard, statusBarHeading, visibleNavLink),
+  **Parallelität (`fullyParallel: true`, `workers: 4`)**
+  + **Firefox-Browser-Project** ergänzt. simplify-Skill
+  auf alle E2E-Files (3 Hot-Wins angewendet, beforeEach-
+  Migration vertagt auf S80). Tab-Navigation-Race-
+  Condition unter Parallel-Workern gefixt
+  (`Promise.all([waitForURL, click])`). **45 Tests × 2
+  Browser = 90 grün** in 1:48 min — Phase-1.5-Ziel mit
+  80 % Excess.
 - **76**: Public-Site-E2E + Lead-Retry-Queue. Lead-Form
   ausfüllen, Hero/Services/FAQ rendern, Mobile-CTA-
   Streifen, Theme-Wechsel, Lead-Retry-Queue-Verhalten

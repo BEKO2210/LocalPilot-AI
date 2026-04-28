@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { DEMO } from "./_helpers";
 
 /**
  * Dashboard-Shell + Tab-Navigation E2E (Code-Session 73).
@@ -7,7 +8,7 @@ import { expect, test } from "@playwright/test";
  * `nav-config.ts`. Wir testen die ARIA-Anker.
  */
 
-const DEMO_SLUG = "studio-haarlinie";
+const DEMO_SLUG = DEMO.silber;
 
 test.describe(`Dashboard-Shell /dashboard/${DEMO_SLUG}`, () => {
   test("Übersichts-Page lädt mit allen Nav-Tabs", async ({ page }) => {
@@ -40,24 +41,28 @@ test.describe(`Dashboard-Shell /dashboard/${DEMO_SLUG}`, () => {
     await page.goto(`/dashboard/${DEMO_SLUG}`);
 
     // Mobile-Nav rendert für Desktop-Viewport hidden, Sidebar
-    // sichtbar. Beide haben den gleichen href. `.click()` auf
-    // `.first()` greift Mobile-Nav (hidden) zuerst — wir
-    // filtern explizit auf visible.
-    const desktopLink = page
-      .locator(`a[href="/dashboard/${DEMO_SLUG}/business"]:visible`)
-      .first();
-    await desktopLink.click();
-
-    await expect(page).toHaveURL(`/dashboard/${DEMO_SLUG}/business`);
+    // sichtbar. Wir nutzen `Promise.all([waitForURL, click])`
+    // statt `toHaveURL`, damit der Test die Navigation
+    // deterministisch abwartet — auch unter Worker-
+    // Parallelität robust.
+    await Promise.all([
+      page.waitForURL(`**/dashboard/${DEMO_SLUG}/business`),
+      page
+        .locator(`a[href="/dashboard/${DEMO_SLUG}/business"]:visible`)
+        .first()
+        .click(),
+    ]);
   });
 
   test("Tab-Navigation: Betriebsdaten → Leistungen", async ({ page }) => {
     await page.goto(`/dashboard/${DEMO_SLUG}/business`);
-    await page
-      .locator(`a[href="/dashboard/${DEMO_SLUG}/services"]:visible`)
-      .first()
-      .click();
-    await expect(page).toHaveURL(`/dashboard/${DEMO_SLUG}/services`);
+    await Promise.all([
+      page.waitForURL(`**/dashboard/${DEMO_SLUG}/services`),
+      page
+        .locator(`a[href="/dashboard/${DEMO_SLUG}/services"]:visible`)
+        .first()
+        .click(),
+    ]);
   });
 
   test("Public-Site-Link öffnet `/site/<slug>` (target=_blank tolerant)", async ({

@@ -8576,3 +8576,125 @@ Sessions. Inhalt:
 5. Firefox-Browser-Project ergänzen.
 6. Phase-1.5-Bilanz in `TESTING.md` aktualisieren.
 
+## Code-Session 75 – Settings/Danger-Zone E2E + Light-Pass + Firefox + Parallel
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Phase 1.5 · 5er-Light-Pass
+
+**Was**: 5er-Light-Pass nach Sessions 71–74. 7 neue
+Settings/Danger-Zone-Tests, neuer Helper-Modul `_helpers.ts`,
+**Parallelität + Firefox aktiviert**, simplify-Skill auf alle
+E2E-Files. Ergebnis: **45 Tests × 2 Browser = 90 grün** in
+1:48 min — Phase-1.5-Erfolgskriterium ≥25 mit 80 % Excess.
+
+**Architektur-Entscheidung — `storageState`-Auth-Mock
+vertagt**: Phase-1.5-Auftrag war „test alles wie ein
+Endbenutzer". Demo-Mode (kein Supabase-ENV) liefert echte
+UI für alle Owner-Pages — kein Auth-Mock nötig. `storageState`
+braucht eine Test-Cookie-Generation, die Supabase-spezifisch
+ist und einen Test-Bypass-Mode in `/api/auth/magic-link`
+voraussetzt. Beides ist eigener Aufwand und kommt erst in
+Phase 2 (oder einer dedizierten Auth-E2E-Session), wenn
+authed-spezifische UX getestet werden soll.
+
+**Architektur-Entscheidung — Test-Helpers in
+`_helpers.ts`** (kein Page-Object): Bei aktuell 5
+Test-Files lohnt sich ein Page-Object-Pattern noch nicht
+(zu viel Boilerplate). Stattdessen flat Helper-Funktionen:
+`openCard(locator)`, `serviceCards(page)`,
+`statusBarHeading(page, regex)`, `visibleNavLink(page,
+href)`, `waitForFormHydration(input)`. Sobald wir ≥100
+Tests haben, wird auf Page-Objects umgestellt — das wird
+in einer Phase-2-Session entschieden.
+
+**Architektur-Entscheidung — Workers + Parallelität**:
+`fullyParallel: true` mit `workers: 4` (CI: 2). Tests sind
+state-unabhängig im Demo-Mode (jeder Test öffnet eine
+neue Page, kein Backend-State). Race-Condition bei
+Tab-Navigation aufgedeckt + gefixt: `Promise.all([
+waitForURL, click])` statt `click + toHaveURL`.
+
+**Architektur-Entscheidung — Firefox-Project ergänzt**:
+`Desktop Firefox` als zweites Project. Cross-Browser-
+Coverage ist 2026-Standard für Production-SaaS; WebKit
+kommt erst in Phase 2 (nach Vercel-Deploy, wo Safari-
+spezifische Quirks am ehesten auffallen).
+
+**simplify-Skill auf alle 8 E2E-Files** (parallel-Agent):
+- ✅ Helper-Reuse: 3× inline `<details>.open` →
+  `openCard()`.
+- ✅ Magic-Strings: 3 Files auf `DEMO.*`-Konstanten.
+- ✅ Anti-Pattern: 1× `waitForTimeout(500)` →
+  expect-Polling mit `toBeEnabled({ timeout: 5_000 })`.
+- 🟡 **`beforeEach`-Migration vertagt**: 4 Files haben
+  identische `page.goto(URL)` als erste Zeile in jedem
+  Test — Kandidat für `test.beforeEach`. Wir verschieben
+  auf S80 (nächster Light-Pass), um diese Session
+  scope-begrenzt zu halten.
+- 🟢 Selektoren clean nach S72-Refactor — kein fragile
+  Label-Match mehr.
+
+**WebSearch (Track C)**: bestätigt
+- [Playwright – Parallelism](https://playwright.dev/docs/test-parallel)
+  `fullyParallel: true` + `workers: 4` ist 2026-Standard
+  für state-unabhängige Tests.
+- [Playwright – Fixtures](https://playwright.dev/docs/test-fixtures)
+  Worker-scoped Fixtures für Shared-Setup; wir bleiben
+  bei flat Helper-Funktionen, bis ≥100 Tests.
+- [TestDino – Parallel Execution](https://testdino.com/blog/playwright-parallel-execution/)
+  CI-Worker-Limit auf 2 ist Best-Practice für Stability.
+
+**Dateien**:
+- ✚ `e2e/_helpers.ts` (~80 Zeilen).
+- ✚ `e2e/settings-danger.spec.ts` (7 Tests).
+- 🔄 `playwright.config.ts`: fullyParallel + workers + Firefox.
+- 🔄 `e2e/services-edit.spec.ts`: openCard + DEMO.
+- 🔄 `e2e/business-editor.spec.ts`: DEMO.silber.
+- 🔄 `e2e/dashboard-shell.spec.ts`: DEMO.silber + waitForURL.
+- 🔄 `e2e/smoke-login.spec.ts`: waitForTimeout-Fix.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **90/90 E2E-Tests** grün
+(Chromium 45 + Firefox 45). Bundle 102 KB shared
+unverändert.
+
+**Phase-1.5-Bilanz (Sessions 71–75)**:
+- 5 Sessions, 45 E2E-Tests, 2 Browser-Projects, 1
+  Helper-Modul.
+- Erfolgskriterium ≥25 mit 80 % Excess erreicht.
+- 6 Phase-2-Backlog-Items aus Test-Findings.
+- Demo-Mode-Coverage komplett für alle Owner-Pages
+  (Onboarding, Editor, Services, Settings, Dashboard-
+  Shell).
+- Bundle/Asserts unverändert während aller 5 Sessions.
+
+**Roadmap**: Phase 1.5 mit Session 76 abschließen
+(Public-Site + Lead-Retry-Queue). Danach Phase 2 ab S77
+(UI/UX-Polish + Demo-Logo via `algorithmic-art`-Skill in
+S81).
+
+**Phase-2-Backlog (Stand S75)**:
+1. Default-Tier `silber` → `bronze`? (S72)
+2. Branche → Theme-Auto-Empfehlung? (S72)
+3. Verwerfen-isDirty-Reset (S73)
+4. Status-Bar-Heading `<p>` → `<h2>` (S73)
+5. Sticky-Status-Bar Touch/Mobile-UX (S74)
+6. `beforeEach`-Migration für E2E-`goto()`-Wiederholung
+   (S75 Light-Pass-Skip, für S80).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Playwright-
+Parallel-Execution + Fixture-Patterns 2026.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 fast komplett
+(45/≥25 Tests). Eine Session bis Phase 2 startet.
+
+**Nächste Session**: Code-Session 76 = **Public-Site E2E
++ Lead-Retry-Queue**. Letzte Phase-1.5-Session. Inhalt:
+1. Public-Site-Page-E2E pro Demo-Slug (alle 6 Mock-
+   Betriebe, Hero+Services+FAQ rendern).
+2. Lead-Form-Submit mit gefüllten Pflicht-Feldern; im
+   Demo-Mode landet es im localStorage (Mock-Pfad).
+3. Retry-Queue-Test: localStorage-pre-populating mit
+   einem fake-Lead, dann `online`-Event simulieren →
+   Queue wird geflushed.
+4. Theme-Switch (falls UI das im Public-Mode zulässt).
+5. Mobile-CTA-Streifen-Visibility auf Mobile-Viewport.
+

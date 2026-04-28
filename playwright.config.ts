@@ -19,13 +19,14 @@ const BASE_URL = process.env["E2E_BASE_URL"] ?? `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",
-  // Kein paralleles Laufen für die ersten Smoke-Tests — wir wollen
-  // deterministische Logs. Sobald ≥10 Tests da sind und sie state-
-  // unabhängig laufen, kann das auf `true` (Phase-1.5-Light-Pass).
-  fullyParallel: false,
+  // Aktiviert in Code-Session 75 (Light-Pass): Tests sind im
+  // Demo-Mode state-unabhängig (jeder Test öffnet eine eigene
+  // Page, kein Backend-State). 4 Worker passen auf typische
+  // Dev-Maschinen + CI-Runner.
+  fullyParallel: true,
   forbidOnly: Boolean(process.env["CI"]),
   retries: process.env["CI"] ? 2 : 0,
-  workers: 1,
+  workers: process.env["CI"] ? 2 : 4,
   reporter: process.env["CI"] ? "github" : "list",
   use: {
     baseURL: BASE_URL,
@@ -43,8 +44,15 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
-    // Firefox / WebKit kommen in Phase-1.5-Light-Pass (Session 75),
-    // sobald die Smoke-Tests stabil laufen.
+    // Firefox aktiviert in Code-Session 75 (Light-Pass) für
+    // Cross-Browser-Coverage. WebKit kommt in einer Phase-2-
+    // Session, sobald die Production-Site auf Vercel deployt
+    // ist (WebKit-spezifische Quirks tauchen meist erst in
+    // Production auf).
+    {
+      name: "firefox",
+      use: { ...devices["Desktop Firefox"] },
+    },
   ],
   webServer: {
     command: "npm run dev",

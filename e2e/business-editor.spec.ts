@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { DEMO } from "./_helpers";
 
 /**
  * Business-Editor E2E (Code-Session 73).
@@ -9,7 +10,7 @@ import { expect, test } from "@playwright/test";
  * Save-Pfad kommt in Session 75 mit `storageState`-Setup.
  */
 
-const DEMO_SLUG = "studio-haarlinie";
+const DEMO_SLUG = DEMO.silber;
 const EDITOR_URL = `/dashboard/${DEMO_SLUG}/business`;
 
 test.describe(`Business-Editor /dashboard/${DEMO_SLUG}/business`, () => {

@@ -100,22 +100,24 @@ Pfade brauchen einen gemockten Auth-State. Strategie:
 `test.use({ storageState: ... })` mit einer vorberechneten
 Cookie-Session. Implementation in Session 72.
 
-### Test-Inventur (Stand Session 74)
+### Test-Inventur (Stand Session 75)
 
 | File | Tests | Coverage |
 | --- | --- | --- |
+| `e2e/_helpers.ts` | – | Shared utilities: DEMO-Slugs, openCard, serviceCards, statusBarHeading, visibleNavLink, waitForFormHydration |
 | `e2e/smoke-landing.spec.ts` | 3 | Hero, Header-Nav, Site-Footer |
 | `e2e/smoke-login.spec.ts` | 4 | Form-Render, Submit-Aktivierung, Demo-Link, Submit-Robustheit |
 | `e2e/smoke-public-site.spec.ts` | 3 | Hero+Services, Lead-Form, anderer Demo-Slug |
 | `e2e/smoke-account.spec.ts` | 1 | Heading + Demo/Guest-Card |
 | `e2e/onboarding-flow.spec.ts` | 7 | Form-Felder, Slug-Suggest, Selects, Branche+Theme, Submit-Validation |
 | `e2e/business-editor.spec.ts` | 8 | Heading, alle 6 Sektionen, Felder, Save/Discard-Logic, Theme-Picker |
-| `e2e/dashboard-shell.spec.ts` | 4 | Tab-Nav (Desktop+Mobile-aware), Public-Site-Link |
+| `e2e/dashboard-shell.spec.ts` | 4 | Tab-Nav (Desktop+Mobile-aware via `:visible`), Public-Site-Link |
 | `e2e/services-edit.spec.ts` | 9 | Silber-CRUD, Reorder, Delete-Confirm, UUID-Gating, Tier-Gating Bronze-ComingSoon |
+| `e2e/settings-danger.spec.ts` | 7 | Slug-/Publish-/Locale-Form, Save-Dirty, Danger-Zone-Slug-Confirmation |
 
-**39 Tests, ~72 s, alle grün** ✅ — **56 % über
-Erfolgskriterium ≥25**. Sessions 75–76 schließen Settings-
-und Public-Site-Flows ab.
+**45 Tests × 2 Browser (Chromium + Firefox) = 90 grün**,
+~1:48 min. **Phase-1.5-Ziel ≥25 mit 80 % Excess** ✅.
+Session 76 schließt mit Public-Site + Lead-Retry-Queue ab.
 
 ### Pattern + Best-Practices
 

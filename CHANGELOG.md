@@ -6,10 +6,106 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1.5 → End-to-End-Tests (Sessions 75–~76)
-- **75** (5er-Light-Pass): Settings + Danger-Zone E2E +
-  Test-Helper-Refactor + storageState-Auth-Mock.
-- **76**: Public-Site + Lead-Retry-Queue E2E.
+### Phase 1.5 → End-to-End-Tests (Session 76)
+- **76**: Public-Site E2E + Lead-Retry-Queue (online/
+  offline). Letzte Phase-1.5-Session.
+
+## [0.16.49] – Code-Session 75 – 2026-04-27 (5er-Light-Pass)
+
+5er-Light-Pass nach Sessions 71–74. Settings + Danger-Zone
+E2E (7 Tests), Test-Helper extrahiert, **Parallelität +
+Firefox-Browser-Project aktiviert**, simplify-Skill auf alle
+E2E-Files. Gesamt **45 E2E-Tests × 2 Browser = 90 grün** in
+1:48 min. Phase-1.5-Erfolgskriterium ≥25 mit 80 % Excess
+erreicht.
+
+- ✚ `e2e/settings-danger.spec.ts` (7 Tests):
+  - Settings-Page-Heading, Slug-Input mit aktuellem Slug
+    pre-filled, Publish-Toggle, Locale-Select.
+  - Save-Button initial disabled, aktiviert nach Slug-/
+    Locale-Change.
+  - Danger-Zone-Heading „Gefahrenzone" + Slug-Confirm-
+    Input + Delete-Button initial disabled.
+  - Delete-Button bleibt disabled bei falschem Slug
+    (Tippfehler, Präfix).
+  - Delete-Button aktiviert sich exakt bei korrektem
+    Slug; bei Tippfehler wieder disabled.
+- ✚ `e2e/_helpers.ts` (~80 Zeilen, neuer Helper-Modul):
+  - `DEMO`-Konstante (silber/gold/bronze-Slugs).
+  - `SERVICE_CARD_SELECTOR = "ul details"` als geteilter
+    Selektor (filtert Business-Header-Switcher raus).
+  - `serviceCards(page)`-Locator-Factory.
+  - `openCard(card)` — DOM-API für `<details>.open = true`
+    (umgeht Sticky-Top-Bar-Click-Blockaden).
+  - `statusBarHeading(page, text)` — Container-Selektor
+    `main p, body > div p` (umgeht `<title>`-Tag-Strict-
+    Mode-Konflikt).
+  - `visibleNavLink(page, href)` — `:visible`-Filter für
+    Mobile-Nav-Hidden-Element-Workaround.
+  - `waitForFormHydration(input)` — RHF-Demo-Daten-Wait
+    (semantischer als `not.toHaveValue("")`).
+- 🔄 `playwright.config.ts`: **`fullyParallel: true`** +
+  **`workers: 4`** (CI: 2). **Firefox-Browser-Project**
+  ergänzt (Chromium + Firefox parallel).
+- 🔄 `e2e/services-edit.spec.ts`: 3× inline `<details>.open`
+  → `openCard()`. Magic-Slugs → `DEMO.silber`/`DEMO.bronze`.
+  Ungenutzten `serviceCards`-Import entfernt.
+- 🔄 `e2e/business-editor.spec.ts`: `DEMO_SLUG` aus
+  `DEMO.silber` statt Magic-String.
+- 🔄 `e2e/dashboard-shell.spec.ts`: `DEMO_SLUG` aus
+  `DEMO.silber`. Tab-Navigation auf `Promise.all([
+  waitForURL, click])` umgestellt — fixt Race-Condition
+  unter Parallel-Workern.
+- 🔄 `e2e/smoke-login.spec.ts`: `waitForTimeout(500)` →
+  expect-Polling mit `toBeEnabled({ timeout: 5_000 })`.
+  Anti-Pattern eliminiert.
+
+**simplify-Skill auf alle 8 E2E-Files**: Findings:
+- ✅ Helper-Reuse: 3× inline `<details>.open` → `openCard()`.
+- ✅ Magic-Strings: 3 Files auf `DEMO.*`-Konstanten.
+- ✅ Anti-Pattern: 1× `waitForTimeout` → expect-Polling.
+- 🟡 `beforeEach`-Migration für `goto()`-Wiederholung
+  vertagt auf Session 80 (nächster Light-Pass) — Scope-
+  Begrenzung in dieser Session.
+- 🟢 Selektoren clean: kein fragile Label-Match mehr nach
+  S72-Refactor.
+
+**Test-Findings dieser Session**:
+- 🟢 **Race-Condition unter Parallel-Workern**: Tab-
+  Navigation-Test verlor unter `workers: 4` zwischen
+  `click()` und `toHaveURL()` die Synchronität — Page
+  loaded aus alten goto. Fix: `Promise.all([waitForURL,
+  click])` statt `click + toHaveURL`. **Lesson**: bei
+  Parallel-Tests immer `waitForURL` als Companion zu
+  Navigations-Clicks.
+
+**Phase-1.5-Bilanz Sessions 71–75**:
+- Setup (S71): Playwright-Config, 4 Smoke-Files, 11 Tests.
+- Onboarding (S72): 7 Tests + 1 Login-Test.
+- Editor (S73): Business-Editor 8 + Dashboard-Shell 4.
+- Services (S74): 9 Tests, Tier-Gating verifiziert.
+- Settings + Light-Pass (S75): Settings 7 + Helpers +
+  Parallelität + Firefox.
+- **Gesamt 45 Tests × 2 Browser = 90 grün** in 1:48 min.
+- 5 Phase-2-Backlog-Items aus Test-Findings.
+
+45/45 Smoketests grün. **90/90 E2E-Tests** grün
+(Chromium 45 + Firefox 45). typecheck ✅, lint ✅, beide
+Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: Phase 1.5 fast abgeschlossen. Session 76
+schließt mit Public-Site E2E + Lead-Retry-Queue ab. Phase 2
+ab Session 77.
+
+**Phase-2-Backlog (UX-Polish, Stand S75)**:
+1. Default-Tier `silber` → `bronze`? (S72)
+2. Branche → Theme-Auto-Empfehlung? (S72)
+3. Verwerfen-isDirty-Reset (S73)
+4. Status-Bar-Heading `<p>` → `<h2>` (S73)
+5. Sticky-Status-Bar überdeckt Card-Summary-Click (S74,
+   Touch/Mobile)
+6. `beforeEach`-Migration für E2E-`goto()`-Wiederholung
+   (S75-Light-Pass-Skip, für S80).
 
 ## [0.16.48] – Code-Session 74 – 2026-04-27
 

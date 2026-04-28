@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { DEMO, openCard, SERVICE_CARD_SELECTOR } from "./_helpers";
 
 /**
- * Service-Liste E2E (Code-Session 74).
+ * Service-Liste E2E (Code-Session 74, Light-Pass S75:
+ * Helper-Reuse für DEMO-Slugs, openCard, serviceCards).
  *
  * Tests im Demo-Mode:
  * - studio-haarlinie (silber-Tier) → voller Editor
@@ -12,13 +14,13 @@ import { expect, test } from "@playwright/test";
  * für Pseudo-IDs (Mock-Daten aus `src/data/`).
  */
 
-const SILBER_SLUG = "studio-haarlinie";
-const BRONZE_SLUG = "meisterbau-schneider";
+const SILBER_SLUG = DEMO.silber;
+const BRONZE_SLUG = DEMO.bronze;
 
-// Service-Cards sind <details>-Elements innerhalb einer <ul>-
-// Liste. Der Business-Header hat auch ein <details>-Switcher
-// — daher immer auf `ul details` filtern.
-const SERVICE_CARDS = "ul details";
+// Service-Cards-Selektor liegt in `_helpers.ts` als
+// SERVICE_CARD_SELECTOR (= "ul details"). Hier nur Re-Export
+// als kurze Alias für In-File-Lesbarkeit.
+const SERVICE_CARDS = SERVICE_CARD_SELECTOR;
 
 test.describe(`Service-Liste /dashboard/${SILBER_SLUG}/services (silber)`, () => {
   test("Editor lädt mit Service-Cards für Silber-Tier", async ({ page }) => {
@@ -42,13 +44,7 @@ test.describe(`Service-Liste /dashboard/${SILBER_SLUG}/services (silber)`, () =>
     await page.goto(`/dashboard/${SILBER_SLUG}/services`);
 
     const firstCard = page.locator(SERVICE_CARDS).first();
-
-    // Card direkt per JS öffnen — robust gegen Sticky-Status-
-    // Bar-Overlap auf der Summary. `<details>.open = true`
-    // ist die kanonische API.
-    await firstCard.evaluate((el) => {
-      (el as HTMLDetailsElement).open = true;
-    });
+    await openCard(firstCard);
     await expect(firstCard).toHaveAttribute("open", "");
 
     // Im offenen State ist das Title-Input mit
@@ -124,11 +120,8 @@ test.describe(`Service-Liste /dashboard/${SILBER_SLUG}/services (silber)`, () =>
   }) => {
     await page.goto(`/dashboard/${SILBER_SLUG}/services`);
 
-    // Card per JS öffnen
     const firstCard = page.locator(SERVICE_CARDS).first();
-    await firstCard.evaluate((el) => {
-      (el as HTMLDetailsElement).open = true;
-    });
+    await openCard(firstCard);
 
     // „Entfernen"-Button drücken — Confirm-Inline-State
     // erscheint („Wirklich entfernen?")
@@ -151,11 +144,8 @@ test.describe(`Service-Liste /dashboard/${SILBER_SLUG}/services (silber)`, () =>
   }) => {
     await page.goto(`/dashboard/${SILBER_SLUG}/services`);
 
-    // Erste Card öffnen
     const firstCard = page.locator(SERVICE_CARDS).first();
-    await firstCard.evaluate((el) => {
-      (el as HTMLDetailsElement).open = true;
-    });
+    await openCard(firstCard);
 
     // Image-Upload-Field rendert „Bild" + Hint, wenn ID
     // keine UUID ist. Demo-Cards haben Pseudo-IDs aus dem

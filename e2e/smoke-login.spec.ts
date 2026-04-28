@@ -56,9 +56,10 @@ test.describe("Login-Page", () => {
     await submitButton.click();
 
     // Form-Submit darf nicht zu einer Page-Navigation oder
-    // Crash führen. Wir bleiben auf /login, das Heading ist
-    // weiter sichtbar — egal welcher StatusBlock erscheint.
-    await page.waitForTimeout(500);
+    // Crash führen. Submit-Button geht von „enabled" auf
+    // „disabled" oder zurück (RHF/Auth-Flow), das warten wir
+    // mit auto-retry-Polling ab — kein fester sleep nötig.
+    await expect(submitButton).toBeEnabled({ timeout: 5_000 });
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByRole("heading", { name: /anmelden/i })).toBeVisible();
   });
