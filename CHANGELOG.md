@@ -6,13 +6,77 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1.5 → End-to-End-Tests (Sessions 74–~76)
-- **74**: Service-Liste-E2E.
+### Phase 1.5 → End-to-End-Tests (Sessions 75–~76)
 - **75** (5er-Light-Pass): Settings + Danger-Zone E2E +
   Test-Helper-Refactor + storageState-Auth-Mock.
 - **76**: Public-Site + Lead-Retry-Queue E2E.
-- **Erfolgskriterium ✅ erreicht** (Session 73): 30 grüne
-  E2E-Tests, Ziel war ≥25.
+
+## [0.16.48] – Code-Session 74 – 2026-04-27
+
+Service-Liste E2E. 9 neue Tests in einem File. **Gesamt 39
+grüne E2E-Tests** in 72 s. Tier-Gating verifiziert (Bronze
+zeigt ComingSoon, Silber/Gold zeigen Editor). UUID-Gating-
+Hint im Image-Upload-Field für Demo-Cards bestätigt.
+
+- ✚ `e2e/services-edit.spec.ts` (9 Tests):
+  - **Silber-Tier** (`studio-haarlinie`):
+    - Editor lädt mit Service-Cards.
+    - Card öffnet sich + Title-Input wird sichtbar (Card
+      via JS `<details>.open = true` öffnen — robust gegen
+      Sticky-Status-Bar-Overlap auf der Summary).
+    - „Neue Leistung anlegen/hinzufügen" fügt eine Card
+      hinzu (Count steigt).
+    - Neue Card hat Header „(noch ohne Titel)".
+    - Reorder-Buttons sichtbar via aria-label „Nach oben/
+      unten verschieben"; erste Card hat Up-disabled,
+      letzte Down-disabled.
+    - Delete-Button öffnet Confirm-Inline-State, Abbrechen
+      schließt ihn.
+    - Image-Upload-Field zeigt UUID-Gating-Hint („sobald
+      die Leistung einmal gespeichert ist") für Demo-Cards
+      mit Pseudo-IDs.
+    - Speichern-Button initial disabled, aktiviert nach Add.
+  - **Bronze-Tier** (`meisterbau-schneider`):
+    - Zeigt ComingSoonSection statt Editor; keine Service-
+      Cards in `ul`, Hint „Im Paket Bronze gesperrt." sichtbar.
+- 🔧 **Selektor-Pattern eingeführt**: `SERVICE_CARDS = "ul
+  details"` — der Business-Header hat ein `<details>`-
+  Switcher-Menü, das auf jeder Dashboard-Page rendert.
+  Service-Cards leben in `<ul>`. Spezifischer Selektor
+  filtert das Header-Element automatisch raus.
+
+**Test-Findings dieser Session**:
+- 🟢 **`<details>`-Mehrfach-Match**: Business-Header hat
+  einen Switcher als `<details>`. Service-Cards auch. Fix:
+  `ul details` als Service-spezifischer Selektor. **Lesson**:
+  generische Tag-Selektoren sind fragil bei Komponenten-
+  Wiederverwendung.
+- 🟢 **Sticky-Status-Bar überdeckt Summary-Click**:
+  `summary.click()` traf nicht zuverlässig. Fix: Card per
+  JS öffnen (`<details>.open = true`). **Lesson**: für
+  `<details>`-Cards immer DOM-API benutzen, nicht User-
+  Click simulieren — gilt für jeden sticky-überdeckten
+  Container.
+- 🟢 **Tier-Gating funktioniert** (Bronze ↔ Silber+):
+  ComingSoonSection greift korrekt; UI zeigt klaren
+  Upgrade-Hinweis. UX-bestätigt.
+
+45/45 Smoketests grün. **39/39 E2E-Tests grün** (~72 s).
+typecheck ✅, lint ✅, beide Builds ✅. Bundle 102 KB
+shared unverändert.
+
+🛣️ Roadmap: 39 von ≥25 angepeilten E2E-Tests — das ist 56%
+mehr als das Erfolgskriterium. Sessions 75 (Settings +
+Auth-Mock) und 76 (Public-Site + Lead-Retry) bringen die
+restlichen Owner-Flows.
+
+**Phase-2-Backlog (UX-Polish, Stand S74)**:
+1. Default-Tier `silber` → `bronze`? (S72)
+2. Branche → Theme-Auto-Empfehlung? (S72)
+3. Verwerfen-isDirty-Reset (S73)
+4. Status-Bar-Heading `<p>` → `<h2>` (S73)
+5. Sticky-Status-Bar überdeckt Card-Summary-Click (S74,
+   eher A11y/Touch-UX-Item — auf Mobile relevanter).
 
 ## [0.16.47] – Code-Session 73 – 2026-04-27
 

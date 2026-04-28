@@ -8483,3 +8483,96 @@ Bronze-Tier (max 10 Services), UUID-Gating-Hint im
 Image-Upload-Field (Pseudo-IDs zeigen „erst speichern,
 dann hochladen"). Auth-Mock weiter in S75.
 
+## Code-Session 74 – Service-Liste E2E
+2026-04-27 · `claude/setup-localpilot-foundation-xx0GE` · Phase 1.5
+
+**Was**: 9 neue E2E-Tests in einem File. Gesamt **39 grüne
+E2E-Tests** in 72 s — 56% über dem Erfolgskriterium ≥25.
+Silber-Tier-Editor + Bronze-Tier-ComingSoon, CRUD, Reorder,
+Delete-Confirm, UUID-Gating-Hint.
+
+**Architektur-Entscheidung — Service-spezifischer Selektor
+`ul details`**: Beim ersten Lauf scheiterte `details`-Selector,
+weil der Business-Header (auf jeder Dashboard-Page) ein
+`<details>`-Switcher-Menü rendert. Service-Cards leben in
+einer `<ul>`-Liste. Selektor `ul details` filtert das Header-
+Element automatisch raus. Diese Erkenntnis wird Phase-2
+relevant: jedes Refactoring der Service-Card-Struktur muss
+das `<ul>`-Wrapper-Element behalten, sonst brechen die
+Tests.
+
+**Architektur-Entscheidung — Card per JS öffnen statt
+Click-Simulation**: `<details>`-Card-Summary war von der
+sticky Top-Bar überdeckt; `summary.click()` traf nicht
+konsistent. Fix: `firstCard.evaluate((el) => { (el as
+HTMLDetailsElement).open = true })`. Das ist die kanonische
+DOM-API für `<details>`-Toggle. **Lesson für Phase 1.5+**:
+für UI-State, der **deterministisch** sein muss
+(„Card ist auf"), DOM-API nutzen; für UX-Verifikation
+(„User kann tatsächlich klicken") separater Test mit
+Scroll + Click. Aktuell brauchen wir den UX-Test nicht,
+weil der Test-Zweck ist „Inhalt der geöffneten Card".
+
+**Architektur-Entscheidung — Tier-Gating via separater
+Test-Group**: Silber-Suite (8 Tests) und Bronze-Suite
+(1 Test) als getrennte `test.describe()`-Blocks. Bronze
+nutzt einen anderen Demo-Slug
+(`meisterbau-schneider`). Klare Trennung der Test-
+Annahmen — kein „in einem Test ist Demo-Mode silber, in
+einem anderen bronze"-Verwirrung.
+
+**WebSearch (Track C)**: bestätigt
+- [react-hook-form/issues/3132](https://github.com/react-hook-form/react-hook-form/issues/3132)
+  Reorder-Bugs in `useFieldArray` sind bekannt — wir
+  testen das Verhalten via Pfeil-Buttons (swap), nicht
+  via Drag&Drop, das ist robuster.
+- [react-hook-form – useFieldArray](https://react-hook-form.com/docs/usefieldarray)
+  `field.id` (auto-generated) als React-Key, nicht
+  `index` — das ist schon im Code (`keyName: "_rhfId"`).
+
+**Dateien**:
+- ✚ `e2e/services-edit.spec.ts` (9 Tests).
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **39/39 E2E-Tests** grün
+(~72 s). Bundle 102 KB shared unverändert.
+
+**Roadmap Phase 1.5**: 39 von ≥25 erreicht ✅.
+- **75** (5er-Light-Pass): Settings + Danger-Zone E2E +
+  `storageState`-Auth-Mock + Test-Helper-Refactor +
+  Parallelität anschalten + Firefox-Browser-Project +
+  Phase-1.5-Recap-Doku.
+- **76**: Public-Site E2E + Lead-Retry-Queue (online/
+  offline-Events).
+
+**Phase-2-Backlog (UX-Polish, Stand S74)**:
+1. Default-Tier `silber` → `bronze`? (S72)
+2. Branche → Theme-Auto-Empfehlung? (S72)
+3. Verwerfen-isDirty-Reset (S73)
+4. Status-Bar-Heading `<p>` → `<h2>` (S73)
+5. Sticky-Status-Bar überdeckt Card-Summary-Click (S74,
+   eher A11y/Touch-UX-Item).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — `useFieldArray`-
+Patterns 2026.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 läuft (Ziel ≥25
+erreicht mit 39 — Excess-Coverage hilft bei Phase-2-Polish-
+Sessions als Regression-Schutz). Phase-2-Backlog wächst
+mit konkreten UX-Items aus den Test-Findings.
+
+**Nächste Session**: Code-Session 75 (5er-Light-Pass) =
+**Settings + Danger-Zone E2E + Auth-Mock + Helper-
+Refactor**. Begründung: Light-Pass nach 5 Phase-1.5-
+Sessions. Inhalt:
+1. Settings-Page-E2E (Slug-Wechsel-Form, Publish-Toggle,
+   Locale, Danger-Zone-Slug-Confirmation).
+2. `storageState`-Setup für Auth-gemockten Submit (für
+   Sessions 76+).
+3. Test-Helpers extrahieren (`getServiceCards()`,
+   `openCard(idx)`, `addNewService()`).
+4. Parallelität (`workers: 4`) aktivieren — Tests sind
+   state-unabhängig.
+5. Firefox-Browser-Project ergänzen.
+6. Phase-1.5-Bilanz in `TESTING.md` aktualisieren.
+

@@ -100,7 +100,7 @@ Pfade brauchen einen gemockten Auth-State. Strategie:
 `test.use({ storageState: ... })` mit einer vorberechneten
 Cookie-Session. Implementation in Session 72.
 
-### Test-Inventur (Stand Session 73)
+### Test-Inventur (Stand Session 74)
 
 | File | Tests | Coverage |
 | --- | --- | --- |
@@ -111,10 +111,11 @@ Cookie-Session. Implementation in Session 72.
 | `e2e/onboarding-flow.spec.ts` | 7 | Form-Felder, Slug-Suggest, Selects, Branche+Theme, Submit-Validation |
 | `e2e/business-editor.spec.ts` | 8 | Heading, alle 6 Sektionen, Felder, Save/Discard-Logic, Theme-Picker |
 | `e2e/dashboard-shell.spec.ts` | 4 | Tab-Nav (Desktop+Mobile-aware), Public-Site-Link |
+| `e2e/services-edit.spec.ts` | 9 | Silber-CRUD, Reorder, Delete-Confirm, UUID-Gating, Tier-Gating Bronze-ComingSoon |
 
-**30 Tests, ~60 s, alle grün** ✅ — **Phase-1.5-Ziel ≥25
-erreicht** in Session 73. Sessions 74–76 erweitern auf
-volle User-Flow-Coverage.
+**39 Tests, ~72 s, alle grün** ✅ — **56 % über
+Erfolgskriterium ≥25**. Sessions 75–76 schließen Settings-
+und Public-Site-Flows ab.
 
 ### Pattern + Best-Practices
 

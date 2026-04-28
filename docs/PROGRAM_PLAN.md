@@ -419,9 +419,15 @@ CI-Umgebung).
   Phase-2-Items dokumentiert (Verwerfen-Button bleibt
   nach Discard enabled — RHF-isDirty-Reset; Status-Bar-
   Heading als `<p>` statt `<h2>` — A11y).
-- **74**: Service-Liste-E2E. Neuer Service, Edit, Delete
-  mit Confirm, Reorder via Pfeile, Limit-Verhalten, Service-
-  Bild-Upload mit UUID-Gating-Hint.
+- **74** ✅: Service-Liste E2E. 9 Tests: Silber-Editor (CRUD,
+  Reorder via Pfeil-Buttons, Delete-Confirm-Inline, UUID-
+  Gating-Hint im Image-Upload-Field, Save-isDirty) +
+  Bronze-ComingSoon-Lock („Im Paket Bronze gesperrt").
+  **39 grüne E2E-Tests** insgesamt — 56% über dem
+  Erfolgskriterium ≥25. Selektor-Pattern `ul details`
+  filtert Business-Header-Switcher raus; `<details>`-Cards
+  per DOM-API geöffnet (sticky Top-Bar überdeckt Summary-
+  Click — Phase-2-Item für Touch/Mobile).
 - **75** (5er-Multiple, Light-Pass + E2E): Settings-E2E
   (Slug-Wechsel mit Storage-Move-Indikator, Publish-Toggle,
   Locale, Danger-Zone-Löschen mit Slug-Confirm) + Light-
