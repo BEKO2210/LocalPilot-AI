@@ -10,7 +10,46 @@ mit jeder Phase-3-Session aktualisiert.
 - Phase 2 (Sessions 77–84) ✅ UI/UX-Polish + Brand + A11y + Mobile
 - **Phase 3 (Sessions 85–100) → Verkaufsreife** (in Arbeit)
 
-> Stand 2026-04-28 · Sessions 1–84.
+> Stand 2026-04-28 · Sessions 1–87.
+
+---
+
+## Verkaufs-Infrastruktur (Phase-3-Tracker)
+
+Operative Verkaufsbereitschaft. Wird in S100 final zu 12/12
+auditiert.
+
+### Domain + Email
+
+| Punkt                                | Status | Plan-Session | Wo dokumentiert |
+| ------------------------------------ | ------ | ------------ | --------------- |
+| Domain registriert                   | ❌     | S87 → S94    | `DOMAIN_SETUP.md` Schritt 1 |
+| Vercel-Custom-Domain verbunden       | ❌     | S87 → S94    | `DOMAIN_SETUP.md` Schritt 2-5 |
+| Email-Postfach `kontakt@<domain>`    | ❌     | S87 → S94    | `DOMAIN_SETUP.md` Schritt 6-7 |
+| Magic-Link-Auth-Smoketest Production | ❌     | S87 → S94    | `DOMAIN_SETUP.md` Schritt 8 |
+
+Anleitung steht (S87) — operative Durchführung wandert nach
+S94 (Production-Deploy-Pipeline final), wo der Auftraggeber
+die Schritte abarbeitet und die Häkchen setzt.
+
+### Verkaufs-Checkpunkte (12 für S100)
+
+| #  | Punkt                                                  | Status | Plan-Session |
+| -- | ------------------------------------------------------ | ------ | ------------ |
+| 1  | Pitch-PDF produktionsreif                              | ❌     | S88          |
+| 2  | Pilot-Vertrag-Template DSGVO-konform                   | ❌     | S88 → S96    |
+| 3  | Erstgespräch-Kalender-Link aktiv                       | ❌     | S88          |
+| 4  | 3 Hero-Branchen klar fokussiert                        | ❌     | S91          |
+| 5  | Demo-Sites prominent als „Demo" markiert               | ❌     | S90          |
+| 6  | Echte Domain + Email-Inbox aktiv                       | ❌     | S87 → S94    |
+| 7  | Onboarding < 60 Min real getestet                      | ❌     | S92          |
+| 8  | Production-Deploy-Pipeline grün                        | ❌     | S94          |
+| 9  | Vertrag + Legal final                                  | ❌     | S96          |
+| 10 | Customer-Support-Inbox eingerichtet                    | ❌     | S97          |
+| 11 | Sales-Material final (Screenshots/Video/PDF)           | ❌     | S98          |
+| 12 | End-to-End-Verkauf-Probelauf bestanden                 | ❌     | S99          |
+
+**Ziel S100**: 12/12 ✅.
 
 ---
 

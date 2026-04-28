@@ -10049,4 +10049,105 @@ Setup-Doku**. Inhalt:
    sobald Hotline aktiv.
 5. README + SALES_PLAYBOOK + PRODUCT_STATUS aktualisieren.
 
+---
+
+## Code-Session 87 – Phase 3: Domain + Email-Setup-Doku
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 3 · Doku
+
+**Was**: Operative Schritt-für-Schritt-Anleitung für die
+Production-Domain und ein DSGVO-konformes Email-Postfach.
+9 Schritte, eine Datei (`docs/DOMAIN_SETUP.md`). Der
+Auftraggeber arbeitet die Schritte ab, sobald die
+Pilotkunden-Welle operativ wird (geplant ab S94).
+Plus: Verkaufs-Infrastruktur-Tabelle in `PRODUCT_STATUS.md`
+macht die Verkaufsreife messbar (12 Checkpunkte für S100).
+
+**Architektur-Entscheidung — Anleitung statt Durchführung**:
+Die operative Domain-Arbeit (Domain registrieren, DNS-TTL
+abwarten, mailbox.org-Account, Magic-Link-Smoketest auf
+Production) braucht reale Zugänge und Wartezeit. Beides
+passt nicht in eine atomare Session. Trennen:
+- S87: Anleitung schreiben (jetzt erledigt)
+- S94: Anleitung ausführen (Auftraggeber + Live-Smoketest)
+
+**Architektur-Entscheidung — mailbox.org als Email-Provider**:
+Drei Kandidaten: Google Workspace (€7/m), Fastmail (USD 3/m),
+mailbox.org (€3/m). Entscheidung mailbox.org weil:
+- Deutscher Anbieter (Berlin), volle BDSG- + DSGVO-
+  Konformität, eigene Server in DE.
+- Footer-Impressum „Email-Hosting: mailbox.org, Berlin"
+  ist Vertrauenssignal für DE-Pilotkunden (Friseur,
+  Werkstatt, Reinigung) — Google-Workspace-Mailadressen
+  können bei kleinen DE-Betrieben Skepsis auslösen.
+- Preis: ~3 €/Monat für Custom-Domain-Hosting.
+- Office-Suite (OnlyOffice) inklusive — falls Kollaboration
+  später gebraucht wird, kein Provider-Wechsel.
+
+Quellen: [European Purpose – mailbox.org Review 2026](https://europeanpurpose.com/tool/mailbox-org), [mailbox.org Business-Tarife](https://mailbox.org/en/business/).
+
+**Architektur-Entscheidung — Verkaufs-Infrastruktur in
+PRODUCT_STATUS statt SALES_PLAYBOOK**: Die 12 Verkaufs-
+Checkpunkte standen vorher nur in SALES_PLAYBOOK §10
+(operatives Playbook). PRODUCT_STATUS ist die
+Single-Source-of-Truth-Datei für „können wir das, ja oder
+nein?". Dort gehören die Checkpunkte hin — bei jeder
+Phase-3-Session sieht man auf einen Blick, was noch ❌
+ist. Plus: Domain-Tracker (4 Punkte) als eigene Sub-Tabelle
+in PRODUCT_STATUS.
+
+**Architektur-Entscheidung — DNS-Records exakt mit Beispiel-
+Werten dokumentiert**: Vercel-Anycast-IP `76.76.21.21`,
+mailbox.org-MX `mxext1.mailbox.org.`, SPF/DKIM/DMARC mit
+exakten Strings. Operative Genauigkeit > Allgemein-
+Heitsanspruch. Falls Vercel die IP ändert, wird die Doku
+in S94 aktualisiert (Live-Werte aus Vercel-Dashboard).
+
+**WebSearch (Track C)**:
+- [Vercel – Adding a Custom Domain](https://vercel.com/docs/domains/working-with-domains/add-a-domain) — A-Record für Apex, CNAME für Subdomain (87).
+- [Vercel – Managing DNS Records](https://vercel.com/docs/domains/managing-dns-records) — CNAME mit abschließendem Punkt (87).
+- [Vercel – A-Record + CAA](https://vercel.com/kb/guide/a-record-and-caa-with-vercel) — Anycast-IP-Strategie (87).
+- [Vercel – Troubleshooting Domains](https://vercel.com/docs/domains/troubleshooting) — Misconfigured-Domain-Diagnose (87).
+- [mailbox.org Business-Tarife](https://mailbox.org/en/business/) — Custom-Domain-Hosting + DKIM + DMARC (87).
+- [European Purpose – mailbox.org Review 2026](https://europeanpurpose.com/tool/mailbox-org) — DSGVO + BDSG + deutsche Jurisdiktion (87).
+
+**Dateien**:
+- ✚ `docs/DOMAIN_SETUP.md` (~250 Zeilen, 9 Schritte +
+  Troubleshooting + 6 Quellen).
+- 🔄 `docs/PRODUCT_STATUS.md`: Verkaufs-Infrastruktur-
+  Tabelle (4 Domain-Punkte + 12 Verkaufs-Checkpunkte).
+- 🔄 `docs/SALES_PLAYBOOK.md`: §5b Domain+Email-Setup
+  zwischen Onboarding und Vertragsstruktur.
+- 🔄 `README.md`: DOMAIN_SETUP.md in Doku-Liste.
+- 🔄 `src/components/marketing/cta-contact.tsx`:
+  Demo-Hinweis konkretisiert (S87 → S94 für Live).
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/RESEARCH_INDEX.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:24 min). Bundle 102 KB
+shared unverändert (Doku + 1 Marketing-Component-Edit).
+**`npm run audit:themes` → 0 Failures**.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 ✅,
+Phase 3 läuft (3/16 Sessions, S85–100 → Verkaufsreife).
+Verkaufs-Infrastruktur: 0/12 ✅ (Plan-Sessions zugeordnet).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Vercel-Custom-
+Domain + DNS-Management 2026 + mailbox.org-DSGVO-Email.
+
+**Nächste Session**: Code-Session 88 = **Pilotkunden-
+Acquisition-Pack**. Inhalt:
+1. 1-Seiten-Pitch-PDF erzeugen (via `document-suite`-
+   Skill — Outcome-dominant, Tech-Stack-invisible).
+2. Pilot-Vertrag-Template (DSGVO-konform, deutsche
+   Vertragsstruktur) — Erst-Entwurf, finale Version
+   in S96.
+3. Outbound-E-Mail-Template aus SALES_PLAYBOOK §3
+   produktionsreif machen.
+4. Erstgespräch-Kalender-Link-Setup-Doku (Cal.com,
+   Calendly oder SimplyBook).
+5. Pitch-Deck-Vorlage als Markdown (kann in S98 zu
+   echtem PDF/Slide-Deck werden).
+
 

@@ -55,8 +55,10 @@ export function CtaContact() {
             Direkt sprechen
           </p>
           <p className="mt-2 text-xs text-white/70">
-            Aktuell laufen die ersten Pilotkunden-Onboardings.
-            Echter Kontakt-Kanal kommt mit Phase 3 (bis Session 100).
+            Aktuell laufen die ersten Pilotkunden-Onboardings. Echter
+            Kontakt-Kanal wird in Session 94 aktiviert (Production-
+            Deploy-Pipeline) — Anleitung steht in{" "}
+            <code className="font-mono">docs/DOMAIN_SETUP.md</code>.
             Bis dahin: GitHub-Issue oder direkter Auftraggeber-Kontakt.
           </p>
           <ul className="mt-4 space-y-3 text-sm text-white/90">
@@ -78,7 +80,7 @@ export function CtaContact() {
               <span className="min-w-0">
                 <span className="block font-medium">Telefon (Demo)</span>
                 <span className="block truncate text-xs text-white/70">
-                  Echte Hotline ab Session 87 (Domain-Setup)
+                  Hotline aktiv ab S94 (Production-Deploy-Pipeline)
                 </span>
               </span>
             </li>

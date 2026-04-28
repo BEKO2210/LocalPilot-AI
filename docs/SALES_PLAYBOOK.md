@@ -158,6 +158,21 @@ LocalPilot AI
   - Kündigungs-/Datenexport-Pfad gezeigt
 - Pilotkunde-Feedback-Form ausgefüllt
 
+## 5b) Domain + Email-Setup (operativ, S87)
+
+Volle Schritt-für-Schritt-Anleitung in
+[`DOMAIN_SETUP.md`](./DOMAIN_SETUP.md). Empfohlene Konfig:
+- Domain bei INWX (DE) oder Cloudflare-Registrar
+- Vercel-Custom-Domain (Apex + WWW-Subdomain mit Redirect)
+- Email-Hosting bei **mailbox.org** (DSGVO-konform, deutscher
+  Anbieter, 3 €/Monat) — Vertrauenssignal für DE-Pilotkunden
+- Postfach `kontakt@<domain>` + Aliase
+  (`hello@`, `support@`, `dpa@`)
+- SPF + DKIM + DMARC vollständig konfiguriert
+
+Nach Durchführung: `docs/PRODUCT_STATUS.md` Sektion „Domain"
+auf 4/4 ✅.
+
 ## 6) Vertragsstruktur (final ab Session 96)
 
 `docs/LEGAL/`-Ordner enthält:

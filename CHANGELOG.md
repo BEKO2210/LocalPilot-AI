@@ -6,6 +6,86 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.19.2] – Code-Session 87 – 2026-04-28 (Phase 3: Domain + Email-Setup-Doku)
+
+Operative Schritt-für-Schritt-Anleitung für Production-Domain
+und DSGVO-konformes Email-Postfach. Anleitung steht — operative
+Durchführung wandert in S94 (Production-Deploy-Pipeline final).
+Verkaufs-Infrastruktur-Tracker in `PRODUCT_STATUS.md` ergänzt
+(12 Verkaufs-Checkpunkte für S100, jeder mit Plan-Session).
+
+- ✚ **`docs/DOMAIN_SETUP.md`** (~250 Zeilen, 9 Schritte):
+  1. Domain registrieren (INWX/Hetzner/Cloudflare-Registrar)
+  2. Vercel-Custom-Domain verbinden (Apex + WWW)
+  3. DNS-Records beim Registrar (A + CNAME + 2× CAA)
+  4. DNS-Propagation prüfen (`dig` + Browser-DNS-Cache)
+  5. Production-ENV (NEXT_PUBLIC_APP_URL +
+     NEXT_PUBLIC_ALLOWED_ORIGINS für CSRF aus S66)
+  6. Email-Postfach bei mailbox.org (DSGVO + DKIM + SPF +
+     DMARC vollständig)
+  7. Email-Empfang-Smoketest
+  8. Magic-Link-Auth-Smoketest auf Production-Domain
+  9. Sales-Material aktualisieren (CTA-Contact, README,
+     SALES_PLAYBOOK Outbound-Template, PRODUCT_STATUS)
+  Plus Troubleshooting (Misconfigured-Domain, Email-Spam,
+  Greylisting). 6 externe Quellen (Vercel-Docs +
+  mailbox.org).
+- ✚ **`docs/PRODUCT_STATUS.md` Verkaufs-Infrastruktur-
+  Tabelle**: 4-Punkt-Domain-Tracker (alle ❌ aktuell, je
+  Plan-Session zugeordnet) + 12 Verkaufs-Checkpunkte mit
+  Plan-Session-Mapping. Macht die Verkaufsreife **messbar**
+  bei S100 = 12/12.
+- 🔄 **`docs/SALES_PLAYBOOK.md` §5b**: Domain+Email-Setup
+  als operative Sektion zwischen 7-Tage-Onboarding und
+  Vertragsstruktur. Empfehlung mailbox.org als deutscher
+  DSGVO-Anbieter (Vertrauenssignal für DE-Pilotkunden im
+  Footer-Impressum).
+- 🔄 **`README.md`**: DOMAIN_SETUP.md in Doku-Liste ergänzt.
+- 🔄 **`cta-contact.tsx`**: Phone-Demo-Hinweis von „ab S87"
+  auf „ab S94 (Production-Deploy-Pipeline)" konkretisiert
+  + Verweis auf `docs/DOMAIN_SETUP.md` für Anleitung.
+
+**Architektur-Entscheidungen**:
+- **Anleitung != Durchführung**: Eine Code-Session schreibt
+  die Anleitung, eine spätere Session führt sie aus. Das
+  trennt Doku-Arbeit von operativer Domain-Arbeit (DNS-TTL
+  abwarten, Email-Provider-Setup, etc.) — ist atomic.
+- **mailbox.org statt Google Workspace**: DSGVO-Standort-
+  Argument ist für DE-Friseur-/Werkstatt-/Reinigungsfirma-
+  Kunden ein echtes Vertrauenssignal (Footer: „Email-
+  Hosting: mailbox.org, Berlin" wirkt anders als „Email:
+  Google Workspace"). Plus 3 €/Monat vs. 7 €/Monat.
+- **Verkaufs-Infrastruktur als Tabelle in PRODUCT_STATUS**:
+  Vorher waren die 12 Verkaufs-Checkpunkte nur in
+  SALES_PLAYBOOK.md §10 versteckt. Jetzt prominent in
+  PRODUCT_STATUS mit Plan-Session-Mapping — bei jeder
+  Phase-3-Session sieht man auf einen Blick, was noch
+  ❌ ist.
+
+**Was NICHT in dieser Session passiert** (kommt in S94):
+- Echte Domain-Registrierung
+- Vercel-DNS-Verbindung
+- mailbox.org-Account-Anlage
+- Live-Smoketest
+
+→ Auftraggeber arbeitet `DOMAIN_SETUP.md` Schritt 1–9 ab,
+sobald er die Pilotkunden-Welle starten will. Aktuell:
+keine Eile, weil Pilot-Welle erst ab S88 (Acquisition-
+Pack) operativ wird.
+
+**45/45 Smoketests grün, 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 2:24 min). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert (Doku + 1 Marketing-
+Component-Edit, kein Code-Logic-Change).
+
+🛣️ Roadmap: Phase 3 Sessions 3/16. **Nächste Session 88** =
+Pilotkunden-Acquisition-Pack (Pitch-PDF, Vertrag-Template,
+Outbound-Email-Template, Erstgespräch-Kalender-Setup).
+
+**Manueller Test**: Auftraggeber liest
+`docs/DOMAIN_SETUP.md` einmal komplett — wenn alle Schritte
+klar sind, ist die Doku ready für S94-Durchführung.
+
 ## [0.19.1] – Code-Session 86 – 2026-04-28 (Phase 3: Marketing-Copy + Hero-Refokus)
 
 Marketing-Copy auf konkrete USP umgestellt: „In 7 Tagen

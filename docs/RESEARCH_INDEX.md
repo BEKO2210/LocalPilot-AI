@@ -178,6 +178,14 @@
 - [Tailwind UI Marketing Page Examples](https://tailwindcss.com/plus/ui-blocks/marketing/page-examples/landing-pages) — Spacing/Hierarchy-Patterns für Landing-Pages 2026 (77).
 - [WCAG 2.2 – Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) — `:focus-visible` ist 2026-Pflicht für Tastatur-Nav, theme-aware Outline ist Best-Practice (77).
 
+### Phase-3 Domain + Email-Setup-Doku (Code-Session 87)
+- [Vercel – Adding a Custom Domain](https://vercel.com/docs/domains/working-with-domains/add-a-domain) — Apex via A-Record + Subdomain via CNAME (87).
+- [Vercel – Managing DNS Records](https://vercel.com/docs/domains/managing-dns-records) — CNAME mit abschließendem Punkt für FQDN (87).
+- [Vercel – A-Record + CAA mit Vercel](https://vercel.com/kb/guide/a-record-and-caa-with-vercel) — Anycast-IP-Pool, CAA empfohlen (87).
+- [Vercel – Troubleshooting Domains](https://vercel.com/docs/domains/troubleshooting) — Misconfigured-Domain-Diagnose, DNS-Cache-Flush (87).
+- [mailbox.org Business-Tarife](https://mailbox.org/en/business/) — Custom-Domain-Hosting für 3 €/Monat, DKIM/SPF/DMARC inkl. (87).
+- [European Purpose – mailbox.org Review 2026](https://europeanpurpose.com/tool/mailbox-org) — DSGVO + BDSG + deutsche Server-Jurisdiktion (87).
+
 ### Phase-2 Mobile/Tablet-Responsive-Audit (Code-Session 84)
 - [WCAG 2.5.5 Target Size (W3C)](https://www.w3.org/WAI/WCAG21/Understanding/target-size.html) — 44×44 CSS-px Minimum für Level AAA (84).
 - [WCAG 2.5.8 Target Size Minimum (W3C)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html) — 24×24 als Pflicht für Level AA (84).

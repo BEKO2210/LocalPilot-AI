@@ -164,6 +164,7 @@ ist alles übergabefähig.
 - [`docs/SUPABASE_SCHEMA.md`](./docs/SUPABASE_SCHEMA.md)
 - [`docs/TESTING.md`](./docs/TESTING.md) — Smoketests + E2E
 - [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) — Vercel + GitHub Pages
+- [`docs/DOMAIN_SETUP.md`](./docs/DOMAIN_SETUP.md) — Production-Domain + Email-Postfach (Phase 3)
 - [`docs/RESEARCH_INDEX.md`](./docs/RESEARCH_INDEX.md) — Quellen-Bibliothek
 
 ### Deployment

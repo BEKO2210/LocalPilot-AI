@@ -518,11 +518,16 @@ nicht in S85–100.
   Setup-Rabatt) explizit kommuniziert. FAQ neu mit 8
   konkreten Pilotkunden-Fragen. **116/116 E2E grün, Bundle
   unverändert** — Phase-1.5-Tests waren strukturell genug.
-- **87**: **Domain + Email-Setup-Doku**. Echte Brand-Domain
-  registrieren-Anleitung (oder bestehende Domain
-  dokumentieren), Vercel-Custom-Domain-Setup,
-  MX-Records für `kontakt@`-Mail. Live-Smoketest des
-  Auth-Magic-Link-Flow auf Production-Domain.
+- **87** ✅: **Domain + Email-Setup-Doku**. Operative
+  9-Schritt-Anleitung in `docs/DOMAIN_SETUP.md` (Domain-
+  Reg, Vercel-Custom-Domain, DNS A+CNAME+CAA, Production-
+  ENV mit CSRF-Allowed-Origins, mailbox.org-Email-Hosting
+  inkl. SPF+DKIM+DMARC, Magic-Link-Auth-Smoketest,
+  Sales-Material-Update). Plus Verkaufs-Infrastruktur-
+  Tabelle in `PRODUCT_STATUS.md` (4 Domain-Punkte + 12
+  Verkaufs-Checkpunkte mit Plan-Session-Mapping).
+  Operative Durchführung wandert nach S94 (Production-
+  Deploy-Pipeline). **Bundle unverändert, 116/116 E2E grün**.
 - **88**: **Pilotkunden-Acquisition-Pack**. Outbound-E-Mail-
   Template, 1-Seiten-Pitch-PDF (Tech-Stack invisible,
   Outcome dominant), Erstgespräch-Kalender-Link, Pilot-
