@@ -30,7 +30,7 @@ export default async function ImpressumPage({ params }: PageProps) {
   const business = await loadBusinessOrNotFound(slug);
 
   return (
-    <main className="lp-container max-w-3xl py-10">
+    <main id="main-content" className="lp-container max-w-3xl py-10">
       <h1 className="text-3xl font-semibold tracking-tight text-ink-900">
         Impressum
       </h1>

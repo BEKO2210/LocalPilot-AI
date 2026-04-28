@@ -9,7 +9,7 @@ export default function PublicSiteNotFound() {
   return (
     <>
       <SiteHeader />
-      <main>
+      <main id="main-content">
         <Section>
           <Container>
             <div className="mx-auto max-w-xl text-center">

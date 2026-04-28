@@ -48,7 +48,7 @@ export default function PricingPage() {
   return (
     <>
       <SiteHeader />
-      <main>
+      <main id="main-content">
         {/* Hero */}
         <Section bg="muted">
           <Container>

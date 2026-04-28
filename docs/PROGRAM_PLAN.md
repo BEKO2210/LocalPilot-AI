@@ -538,8 +538,17 @@ als Regression-Schutz.
   Galerie ist jetzt compliant — kein Customer-Theme-
   Switch kann mehr WCAG-Verstoß auslösen.
   **116/116 E2E grün, Bundle unverändert**.
-- **83**: A11y-Audit. Tab-Order, ARIA-Labels, Contrast-
-  Ratios (WCAG 2.2 AA), Focus-States, Reduced-Motion-Pfad.
+- **83** ✅: A11y-Audit (globaler Sweep). 4-Kategorien-
+  Audit via Explore-Agent. Sessions 77–82 hatten
+  Icon-Only-Buttons schon systematisch gefixt (0
+  Findings). 2 globale Gaps geschlossen: **Skip-to-
+  Content-Link** (`lp-skip-link`-Utility in `RootLayout`
+  greift überall — auch Dashboard-Pages ohne SiteHeader)
+  + **`prefers-reduced-motion: reduce`-Regel** (globaler
+  CSS-Wildcard, 15 `animate-spin`-Loader bleiben als
+  statische Icons sichtbar). 16 `<main>`-Elemente mit
+  `id="main-content"` versehen für Skip-Link-Target.
+  **116/116 E2E grün, Bundle unverändert** (CSS-only).
 - **84**: Mobile/Tablet-Responsive-Audit. Breakpoints
   (sm/md/lg/xl), Touch-Targets (≥44×44), Mobile-CTA-
   Streifen, Tab-Bars.

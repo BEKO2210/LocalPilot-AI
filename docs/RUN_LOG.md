@@ -9568,4 +9568,125 @@ WCAG-AA-compliant.
    für Loader-Animationen.
 5. Lighthouse-A11y-Score auf allen Routes ≥ 95.
 
+---
+
+## Code-Session 83 – Phase 2: A11y-Audit (globaler Sweep)
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · A11y
+
+**Was**: A11y-Audit per Explore-Agent über `src/`. 51 Files
+mit Lucide-Icons systematisch geprüft. **0 Icon-Only-Buttons
+ohne aria-label** (S77–S82 hat das systematisch gefixt) — 2
+globale A11y-Gaps geschlossen: Skip-Link + reduced-motion.
+16 `<main>`-Elemente mit `id="main-content"` versehen.
+
+**Audit-Methodik — Strukturiert via Explore-Agent**:
+4-Kategorien-Audit (Icon-Only-Buttons, animate-* ohne
+reduced-motion, Skip-to-Content, main-Landmarks). Agent
+liefert Befunds-Tabelle, Hauptkontext implementiert. Pattern
+aus S79 (Editoren-Audit) wiederverwendet.
+
+**Audit-Ergebnis**:
+| Kategorie | Status |
+| --- | --- |
+| Icon-Only-Buttons ohne aria-label | ✅ 0 (S77–S82 sweep wirkt) |
+| `animate-*` (15× `animate-spin`) ohne reduced-motion-Guard | ❌ Globaler Gap |
+| Skip-to-Content-Link | ❌ Globaler Gap |
+| `<main>`-Landmarks vorhanden | ✅ 16 von 16 |
+| `<main id="main-content">` | ❌ keine IDs |
+
+**Architektur-Entscheidung — Skip-Link in `RootLayout`,
+nicht in `SiteHeader`**: Dashboard-Pages haben
+`DashboardShell` (kein SiteHeader), Public-Site hat
+`PublicSiteHeader`. Skip-Link muss aber überall greifen.
+`RootLayout` (`app/layout.tsx`) ist die einzige Komponente,
+die JEDE Page wrappt — eine Stelle, ein Skip-Link, alle
+16 Pages abgedeckt.
+
+**Architektur-Entscheidung — `lp-skip-link`-Utility in
+`globals.css`-Component-Layer**: Konsistent mit
+`lp-focus-ring`/`lp-container`/etc. CSS-only-Ansatz, kein
+Tailwind-Sondernutzung. Visuell verborgen via
+`transform: translateY(-200%)` (statt `display:none`,
+weil Tastatur-Fokus auf `display:none`-Elements nicht
+greift). Bei `:focus` springt der Link mit
+150ms-Transition ins Viewport — theme-aware Farben +
+Accent-Outline beim Fokus.
+
+**Architektur-Entscheidung — Globaler
+`prefers-reduced-motion`-Wildcard statt
+pro-Komponente-Guard**: 15 `animate-spin`-Stellen + alle
+Tailwind-`transition-*`-Klassen müssten sonst einzeln mit
+`motion-reduce:`-Prefix gewrappt werden. Stattdessen
+einmal global:
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    ...
+  }
+}
+```
+Loader-Icons (alle `aria-hidden`) bleiben als statische
+Glyphen sichtbar — User merken den „loading"-State an
+deaktivierten Buttons + „Speichere …"-Text. Kein
+Vestibular-Disorder-Trigger mehr.
+
+**Architektur-Entscheidung — `id="main-content"` auf JEDEM
+`<main>`-Element**: 16 Pages haben jeweils ein eigenes
+`<main>` (Marketing/Public-Site/Editoren). Eine
+DashboardShell-Wrapper-Komponente teilt sich `<main>` über
+4 Sub-Routen — eine ID dort genügt. Alternative wäre eine
+zentrale `<MainContentWrapper>`-Komponente, aber das wäre
+ein größerer Refactor; 16 Edits sind atomic.
+
+**WebSearch (Track C)**:
+- [WCAG SCR40 - prefers-reduced-motion JS (W3C)](https://www.w3.org/WAI/WCAG21/Techniques/client-side-script/SCR40) — Globaler-CSS-Wildcard ist 2026-Standard (83).
+- [MDN prefers-reduced-motion](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion) — `0.01ms` (statt `0`) verhindert Browser-Spec-Inconsistencies (83).
+- [Pope Tech – Accessible Animation 2026](https://blog.pope.tech/2025/12/08/design-accessible-animation-and-movement/) — Reduce-Motion-Standards für SaaS (83).
+- [CSS-Tricks prefers-reduced-motion](https://css-tricks.com/almanac/rules/m/media/prefers-reduced-motion/) — Wildcard-Pattern + scroll-behavior (83).
+
+**Dateien**:
+- 🔄 `src/app/layout.tsx`: Skip-Link als erstes `<body>`-Child.
+- 🔄 `src/app/globals.css`: `lp-skip-link`-Utility +
+  globale `@media (prefers-reduced-motion: reduce)`-Regel.
+- 🔄 `src/components/dashboard/dashboard-shell.tsx`:
+  `id="main-content"`.
+- 🔄 11 Page-Files: `id="main-content"` auf `<main>`.
+- 🔄 4 not-found/special-Pages: `id="main-content"`.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/RESEARCH_INDEX.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:06 min). Bundle 102 KB
+shared unverändert (CSS-only-Änderungen).
+
+**Phase-2-Backlog (3 neue Items aus S83)**:
+1. Lighthouse-A11y-Score-Messung auf allen Routes ≥ 95
+   (eigene Session via `webapp-testing`-Skill).
+2. `aria-live="polite"` explicit auf Save-/Error-Banner
+   (S79-Backlog #15 wieder hochpriorisieren).
+3. Visual-Regression-Test für reduced-motion-Pfad in
+   Playwright (Browser-DevTools-Emulation).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — WCAG 2.3.3
+prefers-reduced-motion + WCAG 2.4.1 Skip-Links + 2026-CSS-
+Wildcards.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(7/≥10 Sessions, davon 1 Light-Pass). A11y-Foundation
+komplett.
+
+**Nächste Session**: Code-Session 84 = **Mobile/Tablet-
+Responsive-Audit**. Inhalt:
+1. Breakpoints (sm 640px / md 768px / lg 1024px / xl 1280px)
+   pro Page testen.
+2. Touch-Targets ≥ 44×44 px (WCAG 2.5.5 AAA, aber 2026-
+   Mobile-Best-Practice).
+3. Mobile-CTA-Streifen auf Public-Site.
+4. Dashboard-Mobile-Nav (horizontal-scroll-Strip vs.
+   Bottom-Nav-Migration aus S78-Backlog).
+5. Content-Reflow bei 320px viewport.
+
 

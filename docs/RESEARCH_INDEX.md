@@ -178,6 +178,13 @@
 - [Tailwind UI Marketing Page Examples](https://tailwindcss.com/plus/ui-blocks/marketing/page-examples/landing-pages) — Spacing/Hierarchy-Patterns für Landing-Pages 2026 (77).
 - [WCAG 2.2 – Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) — `:focus-visible` ist 2026-Pflicht für Tastatur-Nav, theme-aware Outline ist Best-Practice (77).
 
+### Phase-2 A11y-Audit (globaler Sweep) (Code-Session 83)
+- [WCAG SCR40 prefers-reduced-motion JS (W3C)](https://www.w3.org/WAI/WCAG21/Techniques/client-side-script/SCR40) — globaler-CSS-Wildcard ist 2026-Standard (83).
+- [MDN prefers-reduced-motion](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion) — `0.01ms` (nicht `0`) verhindert Browser-Spec-Inconsistencies (83).
+- [Pope Tech Accessible Animation 2026](https://blog.pope.tech/2025/12/08/design-accessible-animation-and-movement/) — Reduce-Motion-Standards für SaaS-Apps (83).
+- [CSS-Tricks prefers-reduced-motion](https://css-tricks.com/almanac/rules/m/media/prefers-reduced-motion/) — Wildcard-Pattern + scroll-behavior (83).
+- [WCAG 2.4.1 Bypass Blocks (W3C)](https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks.html) — Skip-Link-Pflicht für Tastatur-Nav, Level A (83).
+
 ### Phase-2 Theme-Polish + WCAG-AA-Sweep (Code-Session 82)
 - [Color Consistency in Design Systems (UXPin)](https://www.uxpin.com/studio/blog/color-consistency-design-systems/) — semantische Tokens („action-primary" statt „blue-500"), audit-by-design (82).
 - [WCAG 2.2 Contrast Testing (Accessibility-Test)](https://accessibility-test.org/blog/support/advanced-guides/color-contrast-in-wcag-2-2-testing-and-fixes-that-actually-work/) — 4.5:1 für Text, 3:1 für UI-Components inkl. Borders (82).

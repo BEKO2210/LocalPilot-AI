@@ -142,7 +142,7 @@ export default function AccountPage() {
   }
 
   return (
-    <main className="lp-container max-w-3xl py-12">
+    <main id="main-content" className="lp-container max-w-3xl py-12">
       <h1 className="text-3xl font-semibold tracking-tight text-ink-900">
         Dein Account
       </h1>

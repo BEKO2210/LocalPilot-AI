@@ -6,6 +6,78 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.18.2] – Code-Session 83 – 2026-04-28 (Phase 2: A11y-Audit — globaler Sweep)
+
+A11y-Audit per Explore-Agent über das gesamte `src/`. Sessions
+77–82 hatten bereits viel A11y-Arbeit gemacht (lp-focus-ring,
+FormField-zentrale ARIA-Wiring, Theme-WCAG-AA-Sweep) — S83
+schließt die letzten globalen Lücken. **0 Icon-Only-Buttons
+ohne aria-label gefunden** (S77–S82 hat das systematisch
+gefixt). 2 globale Gaps geschlossen.
+
+- ✚ **Skip-to-Content-Link** (`src/app/layout.tsx` +
+  `globals.css` `.lp-skip-link`-Utility): WCAG 2.4.1 Level A.
+  In `RootLayout` als erstes `<body>`-Child platziert. Visuell
+  via `transform: translateY(-200%)` versteckt, springt bei
+  Tastatur-Fokus per `transform: translateY(0)` ins Viewport.
+  Theme-aware Farben (`rgb(var(--theme-primary))`) +
+  Accent-Outline beim Fokus.
+- ✚ **`prefers-reduced-motion: reduce`-Regel**
+  (`globals.css` global-scope): WCAG 2.3.3. Setzt
+  `animation-duration: 0.01ms`, `animation-iteration-count: 1`,
+  `transition-duration: 0.01ms`, `scroll-behavior: auto` für
+  alle Elemente. Greift bei OS-Setting „Reduzierte Bewegung"
+  (macOS, Windows, GNOME). 15 `animate-spin`-Loader bleiben
+  als statische Icons sichtbar (alle bereits `aria-hidden`),
+  Vestibular-Disorder-Trigger sind weg.
+- ✚ **`id="main-content"` auf 16 `<main>`-Elementen**:
+  `app/page.tsx`, `themes/`, `pricing/`, `dashboard/`,
+  `account/`, `login/`, `onboarding/`, `demo/`, `impressum/`,
+  `datenschutz/`, `site/[slug]/page` + Impressum + Datenschutz
+  + 404, `dashboard/[slug]/not-found`, plus
+  `dashboard-shell.tsx`. Skip-Link springt jetzt
+  überall korrekt zum Hauptinhalt.
+
+**Architektur-Entscheidungen**:
+- **Skip-Link in `RootLayout`, nicht in `SiteHeader`**:
+  Dashboard-Pages, Public-Sites und Editor-Pages haben
+  keinen `SiteHeader` — der Skip-Link muss aber überall
+  greifen. RootLayout ist die einzige Komponente, die jede
+  Page wrappt → eine Stelle, ein Skip-Link.
+- **Globaler `prefers-reduced-motion`-Wildcard statt
+  pro-Komponente-Guard**: Alternative wäre `motion-reduce:`
+  Tailwind-Prefix auf jeder `animate-spin`-Stelle (15+
+  Edits). Globaler `*`-Wildcard via Media-Query ist
+  CSS-2026-Standard und greift auch für künftige
+  Animationen automatisch.
+- **`id="main-content"` statt `<main role="main">`**:
+  `<main>` ist bereits semantischer Landmark — `role="main"`
+  wäre redundant. `id` ist nur für den Skip-Link-Anker
+  nötig.
+
+**Verbleibende A11y-Themen (Phase-2-Backlog)**:
+1. Lighthouse-A11y-Score auf allen Routes ≥ 95 messen +
+   pro Route validieren (eigene Session via
+   `webapp-testing`-Skill).
+2. Form-Validation `aria-live="polite"` auf Save-/Error-
+   Banner explicit setzen (S79-Backlog #15).
+3. Visual-Regression-Tests für reduced-motion-Pfad — Browser-
+   DevTools-Emulation in Playwright.
+
+**45/45 Smoketests grün, 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 2:06 min). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert (CSS-only Changes).
+
+🛣️ Roadmap: Phase 2 Sessions 7/≥10. Nächste Session 84 =
+**Mobile/Tablet-Responsive-Audit**: Breakpoints (sm/md/lg/xl),
+Touch-Targets ≥ 44×44 (WCAG 2.5.5), Mobile-CTA-Streifen,
+Tab-Bars, Content-Reflow.
+
+**Manueller Test**: `npm run dev` → `/` → Tab drücken →
+Skip-Link erscheint oben links als prominenter Brand-
+Button. Enter springt zum Hauptinhalt. macOS „Reduce
+Motion" einschalten → Loader-Spinning steht still.
+
 ## [0.18.1] – Code-Session 82 – 2026-04-28 (Phase 2: Theme-Polish — WCAG-AA-Sweep)
 
 Contrast-Audit-Script + 25 Hex-Fixes über 10 Themes. Alle 70

@@ -112,7 +112,7 @@ export default async function PublicSitePage({ params }: PageProps) {
   return (
     <ThemeProvider theme={theme} as="div" className="min-h-screen">
       <PublicSiteHeader business={business} />
-      <main className="pb-24 md:pb-0">
+      <main id="main-content" className="pb-24 md:pb-0">
         {sectionOrder.map((sectionKey) => {
           switch (sectionKey) {
             case "hero":

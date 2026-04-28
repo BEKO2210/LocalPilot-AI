@@ -33,7 +33,7 @@ export default async function DatenschutzPage({ params }: PageProps) {
   const business = await loadBusinessOrNotFound(slug);
 
   return (
-    <main className="lp-container max-w-3xl py-10">
+    <main id="main-content" className="lp-container max-w-3xl py-10">
       <p className="text-xs font-medium uppercase tracking-wide text-ink-500">
         Stand: {PRIVACY_POLICY_VERSION}
       </p>
