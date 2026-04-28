@@ -6,6 +6,71 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.17.1] – Code-Session 78 – 2026-04-28 (Phase 2: Dashboard-Shell-Audit)
+
+Zweite Phase-2-Session. Dashboard-Audit: 1 echter Bug
+(Stale-Stub-Drift in `nav-config.ts`) + A11y-Sweep mit
+`lp-focus-ring` auf 13 weitere interaktive Elemente.
+
+- 🐛 **Stale-Stub-Bug behoben**: `nav-config.ts` markierte
+  4 Sidebar-Items mit `comingInSession` (ai=13, reviews=16,
+  social=17, settings=18). Diese Pages **sind alle live**
+  seit Sessions 13–69. Sidebar + Mobile-Nav zeigten
+  fälschlich „Vorschau"-Lock-Badges, was Owner verwirrte
+  („Wieso steht da Vorschau, wenn ich auf KI-Assistent klicken
+  kann und alles funktioniert?"). 4× `comingInSession`
+  entfernt → Lock-Badges weg. Bronze-Tier-Locks in den
+  Pages selbst (`coming-soon-section.tsx` mit eigenen
+  `comingInSession`-Props) sind unangetastet — die sind
+  separate Logik, kein Drift.
+- ✚ **`lp-focus-ring` auf Dashboard-Shell**: 13 weitere
+  interaktive Elemente bekommen den Theme-aware Tastatur-
+  Fokus-Ring aus S77:
+  - `DashboardSidebar` — 8 Nav-Links.
+  - `DashboardMobileNav` — 8 Mobile-Nav-Pills.
+  - `BusinessHeader` — Switcher-`<summary>` + 6 Demo-Switch-
+    Links + Public-Site-CTA.
+  - `account/page.tsx` — Logout-Button, „Neuer Betrieb",
+    „Betrieb anlegen", „Dashboard öffnen", „Public-Site",
+    „Zum Login", „Demo-Betriebe ansehen".
+- 🟢 **Stub-Audit (`grep "comingInSession="` in
+  `src/app/dashboard`)**: Bronze-Lock-Stubs in
+  `services/page.tsx` und `leads/page.tsx` zeigen weiterhin
+  `comingInSession={11}` / `={12}` als Tier-Lock-Hinweis —
+  der ist konsistent mit der Tier-Logik (Bronze = locked,
+  Silber+ = freigeschaltet) und bleibt. Der Drift war nur
+  in der Sidebar-Nav-Config.
+
+**Phase-2-Backlog aus diesem Audit**:
+1. `BusinessHeader`-`<details>`-Switcher: kein
+   Click-Outside-Close-Pattern. CSS-only-Disclosure ist
+   bewusst (keine Client-JS), aber UX-mäßig ungewöhnlich.
+2. Mobile-Nav ist horizontal-scroll-Strip — 2026-Pattern
+   bevorzugt sticky-Bottom-Nav für Touch-Zone-Optimierung.
+3. `account/page.tsx` zeigt User-ID als sichtbaren
+   Code-Block — eigentlich Debug-Info, sollte hinter
+   Dev-Toggle.
+4. `BusinessCard` (Account) zeigt Tier nur als Text-Badge,
+   kein Color-Coding wie `BusinessHeader.TIER_BADGE_CLASS`.
+   Inkonsistenz zwischen Account-Liste und Dashboard.
+5. `BusinessHeader`-Switcher: aria-Attribute fehlen
+   (`aria-expanded` ist bei `<details>` zwar implizit,
+   aber Screenreader-Test wäre Phase-2-Item).
+
+**45/45 Smoketests grün, 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 2:18 min). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: Phase 2 Sessions 2/≥10. Nächste Session 79 =
+Editor-Audits (alle 5 Editoren auf Form-System, Validation-
+Hints, Save-/Discard-Konsistenz, Banner-Patterns).
+
+**Manueller Test**: `npm run dev` →
+`/dashboard/studio-haarlinie` → Sidebar zeigt KEINE
+„Vorschau"-Badges mehr für KI-Assistent / Bewertungen /
+Social Media / Einstellungen. Tab-durch alle Sidebar-Links →
+sichtbarer Accent-Outline. Account-Page genauso.
+
 ## [0.17.0] – Code-Session 77 – 2026-04-28 (Phase-2-Auftakt: Public-Site-Audit)
 
 Phase 2 startet. Erste Public-Site-Audit-Session: Footer-Link-

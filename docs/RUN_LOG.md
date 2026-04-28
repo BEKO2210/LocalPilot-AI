@@ -8952,4 +8952,119 @@ Audit**. Inhalt:
 5. `lp-focus-ring`-Migration auf Dashboard-Komponenten.
 6. UX-Findings ins Phase-2-Backlog.
 
+---
+
+## Code-Session 78 – Phase 2: Dashboard-Shell-Audit
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · Polish + A11y
+
+**Was**: Zweite Phase-2-Session. Audit von Dashboard-Sidebar,
+Mobile-Nav, Business-Header (mit Switcher) und Account-Page.
+1 echter Bug (Stale-Stub-Drift) + A11y-Sweep mit
+`lp-focus-ring` auf 13 weitere interaktive Elemente.
+5 neue Phase-2-Backlog-Items.
+
+**Audit-Ergebnis (Code-Read von 8 Dashboard-Komponenten)**:
+
+| # | Befund | Schweregrad | Fix |
+| --- | --- | --- | --- |
+| 1 | `nav-config.ts` markiert ai/reviews/social/settings mit `comingInSession`, obwohl alle 4 Pages live sind (S13–S69) → Sidebar zeigt fälschlich „Vorschau"-Lock-Badge | 🔴 Bug (UX-Verwirrung) | inline ✅ |
+| 2 | `DashboardSidebar` 8 Nav-Links ohne `:focus-visible` | 🟡 A11y | inline ✅ |
+| 3 | `DashboardMobileNav` 8 Pills ohne `:focus-visible` | 🟡 A11y | inline ✅ |
+| 4 | `BusinessHeader` Switcher + Public-Site-CTA + 6 Switch-Links ohne `:focus-visible` | 🟡 A11y | inline ✅ |
+| 5 | `account/page.tsx` 7 interaktive Elemente ohne `:focus-visible` | 🟡 A11y | inline ✅ |
+| 6 | `<details>`-Switcher kein Click-Outside-Close (CSS-only) | 🟢 UX | Backlog |
+| 7 | Mobile-Nav ist horizontal-scroll-Strip statt Bottom-Nav (2026-Pattern für Touch-Zone) | 🟢 UX | Backlog |
+| 8 | `account/page.tsx` zeigt User-ID als Debug-Info | 🟢 UX | Backlog |
+| 9 | `BusinessCard` Tier-Badge nur Text, `BusinessHeader.TIER_BADGE_CLASS` hat Color-Coding — Inkonsistenz | 🟢 UX | Backlog |
+
+**Architektur-Entscheidung — Stale-Stub-Marker entfernen,
+nicht „auf erledigt" setzen**: Codex-Backlog #12 (S35) hatte
+schon das Pattern „Bronze-Lock vs Coming-Soon-Drift"
+festgehalten. Der nav-config-Drift ist eine andere Klasse:
+hier ist die Implementation komplett da, der Marker ist
+schlicht veraltet. Beide Komponenten (`DashboardSidebar` +
+`DashboardMobileNav`) prüfen `typeof item.comingInSession
+=== "number"` — ohne den Wert ist das `false`, also kein
+Lock-Render. Sauber durch reine Daten-Änderung in
+`nav-config.ts`, kein Komponenten-Code angefasst.
+
+**Architektur-Entscheidung — Bronze-Lock-Stubs in
+services/page.tsx und leads/page.tsx UNANGETASTET**: Das
+ist eine andere Logik-Schicht. Die `<ComingSoonSection
+comingInSession={11}>` in den Pages bedeuten „bei Bronze
+gesperrt, ab Silber freigeschaltet" — also Tier-Lock-UX,
+nicht Coming-Soon. Codex-Backlog #12 schlägt den Split in
+`<FeatureLockedSection>` vor; das ist eine eigene
+Phase-2-Session mit Komponenten-Refactor (nicht atomic
+genug für S78).
+
+**Architektur-Entscheidung — `lp-focus-ring` auf
+Account-Page-Buttons rangeklebt, nicht in einer
+Wrapper-Komponente**: Account-Page hat 7 unique-styled
+Buttons (Logout-Tertiary, „Neuer Betrieb"-Text-Link,
+„Betrieb anlegen"-Primary, „Dashboard öffnen"-Primary,
+„Public-Site"-Secondary, „Zum Login"-Primary, „Demo-
+Betriebe ansehen"-Underline). Eine eigene
+`<DashboardButton>`-Komponente einzuführen wäre eine
+Phase-2-Refactor-Session (S80-Light-Pass-Item). Hier
+einfach `lp-focus-ring` auf jede vorhandene Klassenliste
+draufklatschen.
+
+**Stub-Audit (`grep "comingInSession=" src/app/dashboard`)**:
+- ✅ `services/page.tsx`, `leads/page.tsx`: Bronze-Lock-
+  Stubs unangetastet (gewollt).
+- ✅ `nav-config.ts`: 4× Drift entfernt.
+
+**WebSearch (Track C)**:
+- [SaaS Dashboard Navigation 2026 (TailAdmin)](https://tailadmin.com/blog/saas-dashboard-templates) — Sidebar collapsible ist 2026-Standard für komplexe Hierarchien.
+- [Mobile Bottom Nav UX 2026 (DesignStudio)](https://www.designstudiouiux.com/blog/mobile-navigation-ux/) — Bottom-Nav (≤5 Items) ist Touch-Zone-Standard für Web-Apps.
+- [WAI-ARIA Tabs Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) — `role=tablist` mit Pfeiltasten-Navigation; aktuell nutzen wir aber Routing-Links (kein Tablist-Pattern), `aria-current="page"` ist hier korrekt.
+
+**Dateien**:
+- 🔄 `src/components/dashboard/nav-config.ts`: 4×
+  `comingInSession` entfernt.
+- 🔄 `src/components/dashboard/dashboard-sidebar.tsx`:
+  `lp-focus-ring`.
+- 🔄 `src/components/dashboard/dashboard-mobile-nav.tsx`:
+  `lp-focus-ring`.
+- 🔄 `src/components/dashboard/business-header.tsx`:
+  `lp-focus-ring` × 3 Stellen.
+- 🔄 `src/app/account/page.tsx`: `lp-focus-ring` × 7.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:18 min). Bundle 102 KB
+shared unverändert. E2E-Suite hat den Stale-Stub-Bug nie
+aufgedeckt — das war ein **Visual-Audit-Win**, nicht ein
+Test-Win. Bestätigt User-Anweisung „erst alle Tests, dann
+visueller Audit ist nötig".
+
+**Phase-2-Backlog (5 neue Items aus S78-Audit)**:
+1. `<details>`-Switcher Click-Outside-Close.
+2. Mobile-Nav als sticky-Bottom-Nav (Touch-Zone).
+3. User-ID-Debug-Info hinter Dev-Toggle.
+4. `BusinessCard` Tier-Color-Coding (Konsistenz mit
+   `BusinessHeader.TIER_BADGE_CLASS`).
+5. `<DashboardButton>` Wrapper-Komponente (S80-Light-Pass).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — SaaS-Dashboard-
+Navigation 2026 + Mobile-Bottom-Nav-Patterns + WAI-ARIA-
+Tabs.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(2/≥10 Sessions).
+
+**Nächste Session**: Code-Session 79 = **Editor-Audits**.
+Inhalt:
+1. `BusinessEditForm` (Stammdaten, Logo, Cover).
+2. `ServicesEditForm` (Bulk-CRUD, Reorder, UUID-Gating).
+3. `SettingsForm` (Slug, Publish, Locale, Danger-Zone).
+4. `ReviewsRequestPanel` (Templates, Channel-Picker).
+5. `SocialPostPanel` (Plattform-Limits).
+6. Form-System-Konsistenz: Save/Discard-Buttons, Banner,
+   Validation-Hints, `lp-focus-ring`-Migration.
+7. UX-Findings ins Phase-2-Backlog.
+
 

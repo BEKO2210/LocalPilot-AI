@@ -173,6 +173,18 @@
 - [TestDino – Parallel Execution](https://testdino.com/blog/playwright-parallel-execution/) — CI-Worker-Limit auf 2 ist Best-Practice für Stability (75).
 - [Playwright – Browsers](https://playwright.dev/docs/browsers) — Firefox-Project ergänzt Chromium für 2026-Cross-Browser-Coverage (75).
 
+### Phase-2 Public-Site-Audit + Theme-aware Focus-Visible (Code-Session 77)
+- [Hero Section Design 2026 (Perfect Afternoon)](https://www.perfectafternoon.com/2025/hero-section-design/) — 4 Hero-Frameworks (Problem-Solution, Benefit-Driven, Question-Hook, Bold-Statement); Specificity → +23 % Conversion (77).
+- [Tailwind UI Marketing Page Examples](https://tailwindcss.com/plus/ui-blocks/marketing/page-examples/landing-pages) — Spacing/Hierarchy-Patterns für Landing-Pages 2026 (77).
+- [WCAG 2.2 – Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) — `:focus-visible` ist 2026-Pflicht für Tastatur-Nav, theme-aware Outline ist Best-Practice (77).
+
+### Phase-2 Dashboard-Shell-Audit + Stub-Drift-Detection (Code-Session 78)
+- [SaaS Dashboard Templates 2026 (TailAdmin)](https://tailadmin.com/blog/saas-dashboard-templates) — Collapsible Sidebar ist 2026-Standard für komplexe Hierarchien (78).
+- [Mobile Navigation UX 2026 (DesignStudio)](https://www.designstudiouiux.com/blog/mobile-navigation-ux/) — Bottom-Nav (≤5 Items) ist Touch-Zone-Standard für Mobile-Web-Apps (78).
+- [Sidebar Design for Web Apps 2026 (AlfDesign)](https://www.alfdesigngroup.com/post/improve-your-sidebar-design-for-web-apps) — Active-State-Patterns + Hierarchie-Tiefe (78).
+- [WAI-ARIA Tabs Pattern (W3C)](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) — `role=tablist` mit Pfeiltasten-Nav; bei Routing-Links ist `aria-current="page"` der korrekte Pattern (78).
+- [ARIA Tab Panel Accessibility (Deque)](https://www.deque.com/blog/a11y-support-series-part-1-aria-tab-panel-accessibility/) — Tab vs Routing-Links Distinktion (78).
+
 ### Public-Site E2E + addInitScript + Mobile-Viewport (Code-Session 76)
 - [Playwright – addInitScript](https://playwright.dev/docs/api/class-page#page-add-init-script) — Läuft vor jedem `goto()`, ideal für localStorage-Pre-Population vor Form-Mount-`useEffect` (76).
 - [Playwright – Test Options: viewport](https://playwright.dev/docs/api/class-testoptions#test-options-viewport) — Per-`describe` `test.use({viewport})` ist der saubere Weg für Mobile-Tests (76).

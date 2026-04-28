@@ -476,12 +476,18 @@ als Regression-Schutz.
   S75-Pattern `Promise.all([waitForURL, click])`.
   5 neue Phase-2-Backlog-Items aus dem Audit.
   **116/116 E2E grün, Bundle unverändert**.
-- **78**: Dashboard-Shell-Audit. Header (Brand-Logo,
-  User-Menü, Active-Business-Switcher), Sidebar/Tab-Nav
-  (Desktop + Mobile-Bottom-Nav), Empty-States für
-  Erst-User (kein Betrieb), Auth-Card `/account` (Demo
-  vs Authed). `lp-focus-ring`-Migration auf Dashboard-
-  Komponenten.
+- **78** ✅: Dashboard-Shell-Audit. 1 echter Bug behoben
+  (Stale-Stub-Drift: `nav-config.ts` markierte
+  ai/reviews/social/settings als `comingInSession`,
+  obwohl alle 4 Pages live sind seit S13–S69 → Sidebar
+  zeigte fälschlich „Vorschau"-Lock-Badges). A11y-Sweep
+  mit `lp-focus-ring` auf 13 weitere Elemente
+  (DashboardSidebar 8, DashboardMobileNav 8 Pills,
+  BusinessHeader 3, account/page.tsx 7). 5 neue
+  Phase-2-Backlog-Items aus dem Audit.
+  **116/116 E2E grün** — der Bug war ein Visual-Audit-Win,
+  nicht ein Test-Win (E2E-Suite hat ihn nie aufgedeckt,
+  weil sie keine Vorschau-Badge-Asserts hatte).
 - **79**: Editor-Audits — alle 5 Editoren (Business,
   Services, Settings, Reviews, Social) auf Buttons, Spacing,
   Validation-Hints, Banner-Konsistenz.
@@ -746,9 +752,19 @@ aktiven Session.
      Upload-Pfad steht bereits, UI fehlt).
   4. Service-Card als Whole-Card-Click (Touch-UX),
      statt nur Anfrage-Anchor unten.
-  5. `lp-focus-ring`-Migration auf nicht-Public-Pages
-     (Login/Onboarding/Account/Editoren — eigene Audits
-     in S78–S80).
+- **Phase-2-UI/UX-Backlog aus S78-Audit** (Dashboard):
+  5. `<details>`-Switcher in `BusinessHeader` braucht
+     Click-Outside-Close (aktuell CSS-only, ungewöhnlich).
+  6. Mobile-Nav als sticky-Bottom-Nav (≤5 Items) statt
+     horizontal-scroll-Strip — 2026-Touch-Zone-Pattern.
+  7. User-ID-Debug-Info auf `account/page.tsx` hinter
+     Dev-Toggle (aktuell jeder authed User sieht UUID).
+  8. `BusinessCard` (Account) Tier-Color-Coding analog zu
+     `BusinessHeader.TIER_BADGE_CLASS` für Konsistenz.
+  9. `<DashboardButton>`-Wrapper-Komponente einführen
+     (Account-Page hat 7 unique-styled Buttons mit
+     identischem `lp-focus-ring`-Pattern). Light-Pass-Item
+     für S80.
 - Strukturierte Telemetrie der Mock-Provider-Aufrufe (Welche Methode,
   welche Branche, welche Variante), damit später echte Calls mit
   derselben Pipeline angezeigt werden können.

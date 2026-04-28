@@ -31,7 +31,7 @@ export function DashboardMobileNav({ slug, active }: DashboardMobileNavProps) {
                 href={href}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                  "lp-focus-ring flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                   isActive
                     ? "bg-brand-600 text-white"
                     : "bg-ink-100 text-ink-700",
