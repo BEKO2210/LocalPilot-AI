@@ -24,7 +24,10 @@ export function PublicSiteHeader({ business }: PublicSiteHeaderProps) {
       }}
     >
       <div className="lp-container flex h-16 items-center justify-between gap-3">
-        <a href="#top" className="flex min-w-0 items-center gap-3">
+        <a
+          href="#top"
+          className="lp-focus-ring flex min-w-0 items-center gap-3 rounded-sm"
+        >
           <span
             aria-hidden
             className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-theme-button text-base font-bold"
@@ -43,21 +46,21 @@ export function PublicSiteHeader({ business }: PublicSiteHeaderProps) {
         <nav className="hidden items-center gap-5 text-sm md:flex">
           <a
             href="#leistungen"
-            className="hover:underline"
+            className="lp-focus-ring rounded-sm hover:underline"
             style={{ color: "rgb(var(--theme-muted-fg))" }}
           >
             Leistungen
           </a>
           <a
             href="#bewertungen"
-            className="hover:underline"
+            className="lp-focus-ring rounded-sm hover:underline"
             style={{ color: "rgb(var(--theme-muted-fg))" }}
           >
             Bewertungen
           </a>
           <a
             href="#kontakt"
-            className="hover:underline"
+            className="lp-focus-ring rounded-sm hover:underline"
             style={{ color: "rgb(var(--theme-muted-fg))" }}
           >
             Kontakt
@@ -68,7 +71,7 @@ export function PublicSiteHeader({ business }: PublicSiteHeaderProps) {
           {phone && (
             <a
               href={telLink(phone)}
-              className="hidden h-10 items-center gap-1.5 rounded-theme-button border px-3 text-sm font-medium sm:inline-flex"
+              className="lp-focus-ring hidden h-10 items-center gap-1.5 rounded-theme-button border px-3 text-sm font-medium sm:inline-flex"
               style={{
                 borderColor: "rgb(var(--theme-border))",
                 color: "rgb(var(--theme-foreground))",
@@ -80,7 +83,7 @@ export function PublicSiteHeader({ business }: PublicSiteHeaderProps) {
           )}
           <a
             href="#kontakt"
-            className="inline-flex h-10 items-center gap-1.5 rounded-theme-button px-4 text-sm font-medium shadow-theme transition-opacity hover:opacity-90"
+            className="lp-focus-ring inline-flex h-10 items-center gap-1.5 rounded-theme-button px-4 text-sm font-medium shadow-theme transition-opacity hover:opacity-90"
             style={{
               backgroundColor: "rgb(var(--theme-primary))",
               color: "rgb(var(--theme-primary-fg))",

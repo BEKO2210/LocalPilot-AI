@@ -401,30 +401,61 @@ CI-Umgebung).
   aufgedeckt + gefixt (Footer-Selector Demo-Card-Kollision,
   Lead-Form branchenspezifische Felder) — exakt der
   Mehrwert, den E2E-Tests liefern sollen.
-- **72**: Onboarding-Flow E2E. Magic-Link-Page → Onboarding-
-  Form → Slug-Validation (kollidieren, reserviert, ok) →
-  erster Betrieb angelegt → Auto-Redirect zu Dashboard
-  (Session-63-Logik).
-- **73**: Business-Editor-E2E. Alle Sektionen
-  (Basisdaten / Branche / Adresse / Kontakt /
-  Öffnungszeiten / Branding), Logo+Cover-Upload-UI
-  (Mock-Mode), Speichern, Verwerfen, Demo-Defaults laden.
-- **74**: Service-Liste-E2E. Neuer Service, Edit, Delete
-  mit Confirm, Reorder via Pfeile, Limit-Verhalten, Service-
-  Bild-Upload mit UUID-Gating-Hint.
-- **75** (5er-Multiple, Light-Pass + E2E): Settings-E2E
-  (Slug-Wechsel mit Storage-Move-Indikator, Publish-Toggle,
-  Locale, Danger-Zone-Löschen mit Slug-Confirm) + Light-
-  Pass auf E2E-Test-Helpers (Stable Selectors, Test-Data-
-  Builders, Page-Objects).
-- **76**: Public-Site-E2E + Lead-Retry-Queue. Lead-Form
-  ausfüllen, Hero/Services/FAQ rendern, Mobile-CTA-
-  Streifen, Theme-Wechsel, Lead-Retry-Queue-Verhalten
-  bei `online`/`offline`-Events.
+- **72** ✅: Onboarding-Flow E2E. 7 Tests: Form-Render mit
+  ID-Selector (Asterisk-Spans brechen `getByLabel`-strict),
+  Slug-Vorschlag, Select-Optionen-Counts, Branche+Theme-
+  Unabhängigkeit, Submit ohne Pflicht-Felder. + 1 Login-
+  Submit-Test. **18/18 E2E grün**. 2 Phase-2-UX-Items
+  dokumentiert: Default-Tier ist `silber` statt `bronze`
+  (gewollt? — Bronze als Free-Tier wäre Standard-SaaS),
+  Branche-Auswahl koppelt nicht automatisch ans Theme
+  (Auto-Empfehlung wäre UX-Win). Auth-gemockter Submit
+  wandert in Session 75 (storageState-Setup).
+- **73** ✅: Business-Editor + Dashboard-Shell E2E.
+  12 Tests in 2 Files. **30 grüne E2E-Tests insgesamt** —
+  Phase-1.5-Ziel ≥25 erreicht. Alle 6 Sektionen, Save-/
+  Discard-Disabled-Logic, Tab-Navigation mit `:visible`-
+  Filter (Mobile-Nav rendert hidden auf Desktop). 2
+  Phase-2-Items dokumentiert (Verwerfen-Button bleibt
+  nach Discard enabled — RHF-isDirty-Reset; Status-Bar-
+  Heading als `<p>` statt `<h2>` — A11y).
+- **74** ✅: Service-Liste E2E. 9 Tests: Silber-Editor (CRUD,
+  Reorder via Pfeil-Buttons, Delete-Confirm-Inline, UUID-
+  Gating-Hint im Image-Upload-Field, Save-isDirty) +
+  Bronze-ComingSoon-Lock („Im Paket Bronze gesperrt").
+  **39 grüne E2E-Tests** insgesamt — 56% über dem
+  Erfolgskriterium ≥25. Selektor-Pattern `ul details`
+  filtert Business-Header-Switcher raus; `<details>`-Cards
+  per DOM-API geöffnet (sticky Top-Bar überdeckt Summary-
+  Click — Phase-2-Item für Touch/Mobile).
+- **75** (5er-Light-Pass) ✅: Settings + Danger-Zone E2E
+  (7 Tests), Test-Helper-Modul `_helpers.ts` (DEMO-Slugs,
+  openCard, statusBarHeading, visibleNavLink),
+  **Parallelität (`fullyParallel: true`, `workers: 4`)**
+  + **Firefox-Browser-Project** ergänzt. simplify-Skill
+  auf alle E2E-Files (3 Hot-Wins angewendet, beforeEach-
+  Migration vertagt auf S80). Tab-Navigation-Race-
+  Condition unter Parallel-Workern gefixt
+  (`Promise.all([waitForURL, click])`). **45 Tests × 2
+  Browser = 90 grün** in 1:48 min — Phase-1.5-Ziel mit
+  80 % Excess.
+- **76** ✅: Public-Site-E2E + Lead-Retry-Queue. 13 Tests
+  in `e2e/public-site.spec.ts`: 6 parametrisierte Render-
+  Tests (alle Demo-Slugs Hero+Services+Footer), Lead-Form
+  Consent-Gating (Submit-disabled-without-Consent als
+  DSGVO-UX-Win bestätigt), Retry-Queue-Badge per
+  `addInitScript`-Pre-Population (post-goto-evaluate
+  würde den Mount-`useEffect` verpassen), Mobile-CTA-
+  Streifen mit `test.use({viewport: 390×844})` +
+  Desktop-Negativ-Test. Singular/Plural-Regex-Fix:
+  `(wartet|warten)` für N=1-Banner. **58 Tests × 2 Browser
+  = 116 grün** in 2:18 min — **Phase-1.5-Ziel mit 132 %
+  Excess erreicht ✅**.
 
 Erfolgskriterium Phase 1.5: ≥25 grüne E2E-Tests, alle
 kritischen User-Flows abgedeckt, `TESTING.md`-Doku mit
-Anleitung „lokal testen" + „CI-Setup".
+Anleitung „lokal testen" + „CI-Setup". **Erreicht mit 58
+Tests, 9 Files, 2 Browser, ~2:18 min Full-Run-Zeit ✅**.
 
 ### Phase 2 → UI/UX-Polish (Sessions ~77–~86+)
 
@@ -434,11 +465,23 @@ abgegrenzter Audit-Bereich mit (a) Snapshot des Ist-Stands,
 (b) Issue-Liste, (c) Fixes, (d) E2E-Tests aus Phase 1.5
 als Regression-Schutz.
 
-- **77**: Public-Site-Audit. Hero-Section, Service-Cards,
-  Lead-Form, Theme-Anwendung, Footer. Theme-Token-
-  Konsistenz prüfen.
-- **78**: Dashboard-Shell-Audit. Header, Sidebar/Tabs,
-  Mobile-Nav, Empty-States, Auth-Card.
+- **77** ✅: Public-Site-Audit. 1 Bug behoben (Footer-Links
+  Impressum/Datenschutz zeigten auf nicht-existierende
+  Anchors statt auf echte Routes), 1 A11y-Hole gefixt
+  (`:focus-visible` fehlte überall — neue
+  `lp-focus-ring`-Utility in `globals.css` mit
+  `outline: 2px solid rgb(var(--theme-accent))`, auf 13
+  interaktive Public-Site-Elemente angewendet).
+  E2E-Stabilisierung: `smoke-login` Demo-Link auf
+  S75-Pattern `Promise.all([waitForURL, click])`.
+  5 neue Phase-2-Backlog-Items aus dem Audit.
+  **116/116 E2E grün, Bundle unverändert**.
+- **78**: Dashboard-Shell-Audit. Header (Brand-Logo,
+  User-Menü, Active-Business-Switcher), Sidebar/Tab-Nav
+  (Desktop + Mobile-Bottom-Nav), Empty-States für
+  Erst-User (kein Betrieb), Auth-Card `/account` (Demo
+  vs Authed). `lp-focus-ring`-Migration auf Dashboard-
+  Komponenten.
 - **79**: Editor-Audits — alle 5 Editoren (Business,
   Services, Settings, Reviews, Social) auf Buttons, Spacing,
   Validation-Hints, Banner-Konsistenz.
@@ -693,6 +736,19 @@ aktiven Session.
     grob für Abrechnung.
 
 ### Track C · Observability & Qualität
+- **Phase-2-UI/UX-Backlog aus S77-Audit** (Public-Site):
+  1. Trust-Badge (Hero-Bottom) prominenter zwischen
+     Headline + Subtitle platzieren — 2026-Pattern
+     „Specificity drives 23 % Conversion-Win".
+  2. Hero rendert `business.coverImage` als Background-
+     Layer (aktuell nur Solid-Color via Theme-Token).
+  3. Service-Cards mit `service.imageUrl` rendern (S58-
+     Upload-Pfad steht bereits, UI fehlt).
+  4. Service-Card als Whole-Card-Click (Touch-UX),
+     statt nur Anfrage-Anchor unten.
+  5. `lp-focus-ring`-Migration auf nicht-Public-Pages
+     (Login/Onboarding/Account/Editoren — eigene Audits
+     in S78–S80).
 - Strukturierte Telemetrie der Mock-Provider-Aufrufe (Welche Methode,
   welche Branche, welche Variante), damit später echte Calls mit
   derselben Pipeline angezeigt werden können.

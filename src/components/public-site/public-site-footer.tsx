@@ -33,13 +33,19 @@ export function PublicSiteFooter({ business }: PublicSiteFooterProps) {
             className="flex flex-wrap justify-end gap-x-6 gap-y-2 text-xs"
             style={{ color: "rgb(var(--theme-secondary-fg) / 0.85)" }}
           >
-            <a className="hover:underline" href="#impressum">
+            <Link
+              className="lp-focus-ring rounded-sm hover:underline"
+              href={`/site/${business.slug}/impressum/`}
+            >
               Impressum
-            </a>
-            <a className="hover:underline" href="#datenschutz">
+            </Link>
+            <Link
+              className="lp-focus-ring rounded-sm hover:underline"
+              href={`/site/${business.slug}/datenschutz/`}
+            >
               Datenschutz
-            </a>
-            <a className="hover:underline" href="#kontakt">
+            </Link>
+            <a className="lp-focus-ring rounded-sm hover:underline" href="#kontakt">
               Kontakt
             </a>
           </div>

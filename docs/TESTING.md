@@ -3,7 +3,7 @@
 Zwei Test-Schichten. Beide müssen vor jedem `main`-Merge
 grün sein.
 
-> Stand 2026-04-27 · Phase 1.5 ab Session 71.
+> Stand 2026-04-28 · Phase 1.5 abgeschlossen mit Session 76.
 
 ---
 
@@ -100,16 +100,27 @@ Pfade brauchen einen gemockten Auth-State. Strategie:
 `test.use({ storageState: ... })` mit einer vorberechneten
 Cookie-Session. Implementation in Session 72.
 
-### Test-Inventur (Stand Session 71)
+### Test-Inventur (Stand Session 76 · Phase 1.5 abgeschlossen)
 
-| File | Asserts | Coverage |
+| File | Tests | Coverage |
 | --- | --- | --- |
+| `e2e/_helpers.ts` | – | Shared utilities: DEMO-Slugs, openCard, serviceCards, statusBarHeading, visibleNavLink, waitForFormHydration |
 | `e2e/smoke-landing.spec.ts` | 3 | Hero, Header-Nav, Site-Footer |
-| `e2e/smoke-login.spec.ts` | 3 | Form-Render, Submit-Aktivierung, Demo-Link |
+| `e2e/smoke-login.spec.ts` | 4 | Form-Render, Submit-Aktivierung, Demo-Link, Submit-Robustheit |
 | `e2e/smoke-public-site.spec.ts` | 3 | Hero+Services, Lead-Form, anderer Demo-Slug |
 | `e2e/smoke-account.spec.ts` | 1 | Heading + Demo/Guest-Card |
+| `e2e/onboarding-flow.spec.ts` | 7 | Form-Felder, Slug-Suggest, Selects, Branche+Theme, Submit-Validation |
+| `e2e/business-editor.spec.ts` | 8 | Heading, alle 6 Sektionen, Felder, Save/Discard-Logic, Theme-Picker |
+| `e2e/dashboard-shell.spec.ts` | 4 | Tab-Nav (Desktop+Mobile-aware via `:visible`), Public-Site-Link |
+| `e2e/services-edit.spec.ts` | 9 | Silber-CRUD, Reorder, Delete-Confirm, UUID-Gating, Tier-Gating Bronze-ComingSoon |
+| `e2e/settings-danger.spec.ts` | 7 | Slug-/Publish-/Locale-Form, Save-Dirty, Danger-Zone-Slug-Confirmation |
+| `e2e/public-site.spec.ts` | 13 | 6 Demo-Slugs Render, Lead-Form Consent-Gating (DSGVO-UX), Retry-Queue Badge via `addInitScript`, Mobile-CTA-Visibility (390×844 vs 1280×800) |
 
-**10 Tests, ~22 s, alle grün** auf einer ersten Lauf-Iteration.
+**58 Tests × 2 Browser (Chromium + Firefox) = 116 grün**,
+~2:18 min. **Phase-1.5-Ziel ≥25 mit 132 % Excess ✅**.
+Phase 1.5 abgeschlossen — Phase 2 startet mit Session 77
+(UI/UX-Polish + Demo-Logo via `algorithmic-art`-Skill in
+S81).
 
 ### Pattern + Best-Practices
 
@@ -134,13 +145,14 @@ Cookie-Session. Implementation in Session 72.
 | Session | Inhalt |
 | --- | --- |
 | **71** ✅ | Setup + Smoke-Tests (10 Tests, Demo-Modus) |
-| **72** | Onboarding-Flow E2E (Magic-Link → Form → Slug → Auto-Redirect) |
-| **73** | Business-Editor E2E (alle Sektionen, Logo+Cover-Upload, Save/Discard) |
-| **74** | Service-Liste E2E (CRUD, Reorder, UUID-Gating, Bild-Upload) |
-| **75** (5er-Light-Pass) | Settings + Danger-Zone E2E + Test-Helper-Refactor |
-| **76** | Public-Site E2E + Lead-Retry-Queue (online/offline) |
+| **72** ✅ | Onboarding-Flow E2E (7 Tests, ID-Selectors, Branche+Theme) |
+| **73** ✅ | Business-Editor + Dashboard-Shell E2E (12 Tests, Tab-Nav `:visible`) |
+| **74** ✅ | Service-Liste E2E (9 Tests, Silber-CRUD, Bronze-Lock, `<details>`-DOM-API) |
+| **75** ✅ (5er-Light-Pass) | Settings/Danger-Zone E2E (7) + `_helpers.ts` + Firefox + Parallel |
+| **76** ✅ | Public-Site E2E + Lead-Retry-Queue (13 Tests, `addInitScript`, Mobile-Viewport) |
 
-**Erfolgskriterium Phase 1.5**: ≥25 grüne E2E-Tests.
+**Erfolgskriterium Phase 1.5**: ≥25 grüne E2E-Tests —
+**erreicht mit 58 Tests / 116 Runs (132 % Excess) ✅**.
 
 ---
 

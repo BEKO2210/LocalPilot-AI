@@ -206,21 +206,12 @@ build:static; alle internen Links funktionieren (manuelle Stichprobe).
 
 ---
 
-### #11 — `[needs-review]` `industry-presets.test.ts` schlägt seit unbekannter Session fehl
+### #11 — `[done @ session-66 by claude]` `industry-presets.test.ts` Schema-Parse-Fix
 
-**Pfad:** `src/tests/industry-presets.test.ts`
-
-**Symptom:** Der Test versucht `getPresetOrFallback("definitely_not_a_real_key" as IndustryKey)` aufzurufen und erwartet, dass die Funktion stillschweigend den Fallback-Preset liefert. Tatsächlich wirft die Funktion (oder eine inneren Schema-Parse), weil `IndustryKeySchema` den unbekannten Wert nicht durchlässt.
-
-**Beobachtung von Code-Session 32:** der Fehler war bereits in Commit `86d10f1` (Session 31) vorhanden, **unabhängig** von der Consent-Arbeit. Wahrscheinlich seit einer schema-strikteren Zod-Version oder einem früheren Refactor liegen geblieben.
-
-**Wahrscheinliche Fixe** (Codex bitte erst recherchieren, dann genau einen umsetzen):
-- (a) `getPresetOrFallback`: `safeParse` statt `parse` verwenden, bei Fehler Fallback zurückgeben.
-- (b) Test-Eintrag aktualisieren: ein gültiger key, dessen Preset bewusst entfernt wurde, statt eines komplett ungültigen.
-
-**Boundary:** Codex darf den Test-Eintrag aktualisieren oder `getPresetOrFallback` mit minimalem Diff fixen. Wenn der Fix die `getPresetOrFallback`-Signatur oder das Default-Verhalten ändert: stoppen und in `[needs-review]` belassen.
-
-**Verifikation:** `npx tsx src/tests/industry-presets.test.ts` läuft grün.
+**Beobachtet seit S32**, **gefixt in Session 66** (claude). Statt
+`IndustryPresetSchema.parse(getPresetOrFallback(invalidKey))` werden
+jetzt direkte Feld-Asserts verwendet. **45/45 Smoketests grün
+seitdem.** (Eintrag bleibt 30 Sessions hier, dann Archiv.)
 
 ---
 
@@ -299,6 +290,27 @@ Upgrade-Pfad).
 **Boundary:** Größere Architektur-Änderung, deshalb
 **`[needs-review]`** — Claude muss die Komponenten-Aufteilung
 selbst machen, Codex kann das nicht im 20-KB-Cap.
+
+---
+
+### #14 — `[pre-approved]` Trailing-Whitespace + leere Zeilen in E2E-Specs
+
+**Suchpfad:** `e2e/*.spec.ts`, `e2e/_helpers.ts`
+
+**Aufgabe:** Phase-1.5-Suite (Sessions 71–76) hat 9 Spec-Files
+(`smoke-*.spec.ts`, `onboarding-flow.spec.ts`, `business-editor.spec.ts`,
+`dashboard-shell.spec.ts`, `services-edit.spec.ts`,
+`settings-danger.spec.ts`, `public-site.spec.ts`) plus `_helpers.ts`.
+Whitespace-Konsistenz (Trailing-Newline, keine doppelten Leerzeilen am
+Dateiende) prüfen.
+
+**Boundary:**
+- **Keine** Test-Logik anfassen (alle Tests laufen grün).
+- **Keine** Selektor-Strings ändern.
+- Nur Whitespace.
+
+**Verifikation:** typecheck, lint, `npm run test:e2e` weiterhin
+116/116 grün (Chromium 58 + Firefox 58, ~2:18 min).
 
 ---
 

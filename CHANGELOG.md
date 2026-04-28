@@ -6,14 +6,427 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1.5 → End-to-End-Tests (Sessions 72–~76)
-- **72**: Onboarding-Flow E2E.
-- **73**: Business-Editor-E2E.
-- **74**: Service-Liste-E2E.
-- **75** (5er-Light-Pass): Settings + Danger-Zone E2E +
-  Test-Helper-Refactor.
-- **76**: Public-Site + Lead-Retry-Queue E2E.
-- Erfolgskriterium: ≥25 grüne E2E-Tests.
+## [0.17.0] – Code-Session 77 – 2026-04-28 (Phase-2-Auftakt: Public-Site-Audit)
+
+Phase 2 startet. Erste Public-Site-Audit-Session: Footer-Link-
+Bug fix, Theme-aware Tastatur-Fokus-Ring (`lp-focus-ring`-Utility)
+auf alle interaktiven Public-Site-Elemente. Doku-Sweep über alle
+.md-Index-Files vorab erledigt.
+
+- 🐛 **Footer-Link-Bug behoben**: Impressum + Datenschutz im
+  `PublicSiteFooter` zeigten via `#impressum` / `#datenschutz`
+  auf nicht-existente Anchors statt auf die echten Routes
+  `/site/<slug>/impressum/` und `/site/<slug>/datenschutz/`.
+  Beide Pages existieren seit S36 (Impressums-Pflicht), waren
+  aber vom Footer aus unreachable. Jetzt `<Link>` mit slug-
+  basiertem Href; Build-SSG generiert die Pages weiterhin
+  pro-Demo-Slug (alle 12 Static-Routes).
+- ✚ **`lp-focus-ring` Theme-aware Focus-Visible-Utility**
+  (`src/app/globals.css`, `@layer components`): `outline: 2px
+  solid rgb(var(--theme-accent)); outline-offset: 2px;`. Greift
+  nur bei Tastatur-Fokus (`:focus-visible`), nicht bei Maus-
+  Click — A11y-Standard ohne Sichtbarkeits-Noise für Maus-User.
+- ✚ **`lp-focus-ring` auf 4 Komponenten angewandt**:
+  - `PublicSiteHeader` — 6 Links (Logo-Anchor, 3 Nav-Links,
+    Anrufen-Button, Anfragen-Primär-CTA).
+  - `PublicHero` — bis zu 3 CTAs (Primary + Secondary).
+  - `PublicMobileCtaBar` — 3 Buttons (Anrufen, WhatsApp, Anfrage).
+  - `PublicSiteFooter` — 3 Footer-Links.
+- 🔧 **E2E-Test stabilisiert**: `e2e/smoke-login.spec.ts` Demo-
+  Link-Test war flaky unter Parallel-Workers
+  (`click()` + `toHaveURL` race). Auf S75-Pattern
+  `Promise.all([waitForURL, click])` umgestellt — selbe Lösung
+  wie damals für Tab-Navigation.
+
+**Phase-2-Backlog aus diesem Audit**:
+1. Trust-Badge prominenter (zwischen Headline + Subtitle, nicht
+   darunter) — 2026-Pattern „specificity drives results".
+2. Hero könnte `business.coverImage` als Background-Layer
+   einbinden — aktuell nur Solid-Color.
+3. Service-Cards mit `imageUrl` rendern (UUID-gated, S58-Upload-
+   Pfad steht).
+4. Service-Card-Whole-Click (statt nur Anfrage-Link) als
+   touch-freundlicher Pattern.
+5. Nicht-Public-Pages (Account, Login, Onboarding, Editoren) auf
+   `lp-focus-ring` migrieren (S78 Dashboard-Audit).
+
+**Doku-Sweep vorab (Commit `b0debb7`)**: README.md Status-Tabelle
+(Phase 1.5 ✅, Phase 2 🔄), MVP_RECAP.md auf Stand S76,
+RESEARCH_INDEX.md +5 Sub-Sektionen Track C (S72–S76),
+CODEX_BACKLOG.md #11 als done markiert + #14 ergänzt.
+
+**45/45 Smoketests grün. 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 2:12 min). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: Phase 2 läuft. Nächste Session 78 = Dashboard-Shell-
+Audit (Header, Tabs, Mobile-Nav, Empty-States). Demo-Logo +
+Brand-Identity in Session 81 via `algorithmic-art`-Skill.
+
+**Manueller Test**: `npm run dev` → `/site/studio-haarlinie` →
+Tab-Taste durchsteppen, jeder Link/Button hat sichtbaren Accent-
+Outline. Footer-Links Impressum/Datenschutz öffnen die echten
+Pages.
+
+## [0.16.50] – Code-Session 76 – 2026-04-27 (Phase-1.5-Abschluss)
+
+Letzte Phase-1.5-Session. Public-Site E2E (alle 6 Demo-
+Slugs), Lead-Form-Submit-Verhalten, Retry-Queue-UI,
+Mobile-CTA-Streifen-Visibility. Gesamt **58 E2E-Tests × 2
+Browser = 116 grün** in 2:18 min — Phase-1.5-Ziel ≥25 mit
+**132 % Excess** erreicht.
+
+- ✚ `e2e/public-site.spec.ts` (13 Tests):
+  - **6 parametrisierte Tests** (einer pro Demo-Slug):
+    Hero + Services + Footer rendern.
+  - **Lead-Form-Validation**:
+    - Form rendert mit Pflicht-Feldern + Consent-Checkbox.
+    - Submit-Button ohne Consent disabled (DSGVO-UX-Win).
+    - Submit-Button aktiviert sich nach Consent (kein
+      echtes Submit — Field-Validation ist branchen-
+      spezifisch und verschiedene Demo-Slugs haben
+      unterschiedliche Pflicht-Felder).
+  - **Retry-Queue-UI**:
+    - Pre-populated localStorage zeigt amber Badge:
+      `addInitScript` setzt vor dem ersten Page-Load
+      einen fake-Lead in der Queue, Form-Mount liest
+      die Queue-Stats und zeigt das Badge.
+    - Online-Event (`context.setOffline(false)`)
+      triggert Queue-Flush ohne Page-Crash.
+  - **Mobile-CTA-Streifen** (per `test.use({viewport:
+    390x844})`):
+    - Auf Mobile-Viewport ist sticky-bottom-CTA sichtbar.
+    - Auf Desktop-Viewport (1280×800) ist `md:hidden`
+      aktiv, CTA versteckt.
+
+**Test-Findings dieser Session**:
+- 🟢 **DSGVO-UX-Win bestätigt**: Submit-Button bleibt
+  disabled, bis Consent-Checkbox aktiviert ist. Form-
+  Submit ist erst nach explizitem Consent möglich.
+- 🟢 **`addInitScript` für localStorage-Pre-Population**:
+  läuft vor jedem Document-Load, Form-`useEffect` sieht
+  den Wert beim Mount. Lesson für zukünftige Tests, die
+  Demo-Mode-Persistenz prüfen wollen.
+- 🟡 **Singular vs. Plural in Banner-Text**: Mein Regex
+  matched initial nur „warten" (Plural), nicht „wartet"
+  (Singular). Bei N=1 Item zeigt das Banner Singular —
+  Test wäre nie grün geworden ohne Real-Run-Debug. Lesson:
+  bei pluralen UI-Texten den Regex IMMER beidseitig
+  matchen (`(wartet|warten)`).
+
+**Phase-1.5-Final-Bilanz (Sessions 71–76)**:
+- 6 Sessions, 9 Test-Files, 1 Helper-Modul, 58 E2E-Tests.
+- 2 Browser-Projects (Chromium + Firefox) → 116 Test-Runs.
+- 6 Phase-2-Backlog-Items aus Test-Findings.
+- ~2:18 min full-suite-Lauf, ~22 s pro File, ≥25-Ziel mit
+  132 % Excess.
+- Demo-Mode-Coverage komplett für alle Owner-Pages
+  (Onboarding, Editor, Services, Settings, Dashboard-
+  Shell) und Public-Site-Pages.
+- Bundle/Smoketest-Counts unverändert während aller 6
+  Sessions.
+
+**45/45 Smoketests grün. 116/116 E2E-Tests grün
+(Chromium 58 + Firefox 58)**. typecheck ✅, lint ✅, beide
+Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: **Phase 1.5 abgeschlossen ✅**. Phase 2 startet
+mit Session 77 (Public-Site-Audit). Phase-2-Backlog-Items
+aus Sessions 71–76:
+
+1. Default-Tier `silber` → `bronze`? (S72)
+2. Branche → Theme-Auto-Empfehlung? (S72)
+3. Verwerfen-isDirty-Reset (S73)
+4. Status-Bar-Heading `<p>` → `<h2>` (A11y, S73)
+5. Sticky-Status-Bar überdeckt Card-Summary-Click — Touch/
+   Mobile-UX (S74)
+6. `beforeEach`-Migration für E2E-`goto()`-Wiederholung
+   (S80-Light-Pass-Item)
+
+**Manueller Test**: `npm run test:e2e` → 116 Tests grün in
+~2:18 min. `npm run test:e2e:ui` → interaktiver Mode mit
+Trace-Viewer für Debug.
+
+## [0.16.49] – Code-Session 75 – 2026-04-27 (5er-Light-Pass)
+
+5er-Light-Pass nach Sessions 71–74. Settings + Danger-Zone
+E2E (7 Tests), Test-Helper extrahiert, **Parallelität +
+Firefox-Browser-Project aktiviert**, simplify-Skill auf alle
+E2E-Files. Gesamt **45 E2E-Tests × 2 Browser = 90 grün** in
+1:48 min. Phase-1.5-Erfolgskriterium ≥25 mit 80 % Excess
+erreicht.
+
+- ✚ `e2e/settings-danger.spec.ts` (7 Tests):
+  - Settings-Page-Heading, Slug-Input mit aktuellem Slug
+    pre-filled, Publish-Toggle, Locale-Select.
+  - Save-Button initial disabled, aktiviert nach Slug-/
+    Locale-Change.
+  - Danger-Zone-Heading „Gefahrenzone" + Slug-Confirm-
+    Input + Delete-Button initial disabled.
+  - Delete-Button bleibt disabled bei falschem Slug
+    (Tippfehler, Präfix).
+  - Delete-Button aktiviert sich exakt bei korrektem
+    Slug; bei Tippfehler wieder disabled.
+- ✚ `e2e/_helpers.ts` (~80 Zeilen, neuer Helper-Modul):
+  - `DEMO`-Konstante (silber/gold/bronze-Slugs).
+  - `SERVICE_CARD_SELECTOR = "ul details"` als geteilter
+    Selektor (filtert Business-Header-Switcher raus).
+  - `serviceCards(page)`-Locator-Factory.
+  - `openCard(card)` — DOM-API für `<details>.open = true`
+    (umgeht Sticky-Top-Bar-Click-Blockaden).
+  - `statusBarHeading(page, text)` — Container-Selektor
+    `main p, body > div p` (umgeht `<title>`-Tag-Strict-
+    Mode-Konflikt).
+  - `visibleNavLink(page, href)` — `:visible`-Filter für
+    Mobile-Nav-Hidden-Element-Workaround.
+  - `waitForFormHydration(input)` — RHF-Demo-Daten-Wait
+    (semantischer als `not.toHaveValue("")`).
+- 🔄 `playwright.config.ts`: **`fullyParallel: true`** +
+  **`workers: 4`** (CI: 2). **Firefox-Browser-Project**
+  ergänzt (Chromium + Firefox parallel).
+- 🔄 `e2e/services-edit.spec.ts`: 3× inline `<details>.open`
+  → `openCard()`. Magic-Slugs → `DEMO.silber`/`DEMO.bronze`.
+  Ungenutzten `serviceCards`-Import entfernt.
+- 🔄 `e2e/business-editor.spec.ts`: `DEMO_SLUG` aus
+  `DEMO.silber` statt Magic-String.
+- 🔄 `e2e/dashboard-shell.spec.ts`: `DEMO_SLUG` aus
+  `DEMO.silber`. Tab-Navigation auf `Promise.all([
+  waitForURL, click])` umgestellt — fixt Race-Condition
+  unter Parallel-Workern.
+- 🔄 `e2e/smoke-login.spec.ts`: `waitForTimeout(500)` →
+  expect-Polling mit `toBeEnabled({ timeout: 5_000 })`.
+  Anti-Pattern eliminiert.
+
+**simplify-Skill auf alle 8 E2E-Files**: Findings:
+- ✅ Helper-Reuse: 3× inline `<details>.open` → `openCard()`.
+- ✅ Magic-Strings: 3 Files auf `DEMO.*`-Konstanten.
+- ✅ Anti-Pattern: 1× `waitForTimeout` → expect-Polling.
+- 🟡 `beforeEach`-Migration für `goto()`-Wiederholung
+  vertagt auf Session 80 (nächster Light-Pass) — Scope-
+  Begrenzung in dieser Session.
+- 🟢 Selektoren clean: kein fragile Label-Match mehr nach
+  S72-Refactor.
+
+**Test-Findings dieser Session**:
+- 🟢 **Race-Condition unter Parallel-Workern**: Tab-
+  Navigation-Test verlor unter `workers: 4` zwischen
+  `click()` und `toHaveURL()` die Synchronität — Page
+  loaded aus alten goto. Fix: `Promise.all([waitForURL,
+  click])` statt `click + toHaveURL`. **Lesson**: bei
+  Parallel-Tests immer `waitForURL` als Companion zu
+  Navigations-Clicks.
+
+**Phase-1.5-Bilanz Sessions 71–75**:
+- Setup (S71): Playwright-Config, 4 Smoke-Files, 11 Tests.
+- Onboarding (S72): 7 Tests + 1 Login-Test.
+- Editor (S73): Business-Editor 8 + Dashboard-Shell 4.
+- Services (S74): 9 Tests, Tier-Gating verifiziert.
+- Settings + Light-Pass (S75): Settings 7 + Helpers +
+  Parallelität + Firefox.
+- **Gesamt 45 Tests × 2 Browser = 90 grün** in 1:48 min.
+- 5 Phase-2-Backlog-Items aus Test-Findings.
+
+45/45 Smoketests grün. **90/90 E2E-Tests** grün
+(Chromium 45 + Firefox 45). typecheck ✅, lint ✅, beide
+Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: Phase 1.5 fast abgeschlossen. Session 76
+schließt mit Public-Site E2E + Lead-Retry-Queue ab. Phase 2
+ab Session 77.
+
+**Phase-2-Backlog (UX-Polish, Stand S75)**:
+1. Default-Tier `silber` → `bronze`? (S72)
+2. Branche → Theme-Auto-Empfehlung? (S72)
+3. Verwerfen-isDirty-Reset (S73)
+4. Status-Bar-Heading `<p>` → `<h2>` (S73)
+5. Sticky-Status-Bar überdeckt Card-Summary-Click (S74,
+   Touch/Mobile)
+6. `beforeEach`-Migration für E2E-`goto()`-Wiederholung
+   (S75-Light-Pass-Skip, für S80).
+
+## [0.16.48] – Code-Session 74 – 2026-04-27
+
+Service-Liste E2E. 9 neue Tests in einem File. **Gesamt 39
+grüne E2E-Tests** in 72 s. Tier-Gating verifiziert (Bronze
+zeigt ComingSoon, Silber/Gold zeigen Editor). UUID-Gating-
+Hint im Image-Upload-Field für Demo-Cards bestätigt.
+
+- ✚ `e2e/services-edit.spec.ts` (9 Tests):
+  - **Silber-Tier** (`studio-haarlinie`):
+    - Editor lädt mit Service-Cards.
+    - Card öffnet sich + Title-Input wird sichtbar (Card
+      via JS `<details>.open = true` öffnen — robust gegen
+      Sticky-Status-Bar-Overlap auf der Summary).
+    - „Neue Leistung anlegen/hinzufügen" fügt eine Card
+      hinzu (Count steigt).
+    - Neue Card hat Header „(noch ohne Titel)".
+    - Reorder-Buttons sichtbar via aria-label „Nach oben/
+      unten verschieben"; erste Card hat Up-disabled,
+      letzte Down-disabled.
+    - Delete-Button öffnet Confirm-Inline-State, Abbrechen
+      schließt ihn.
+    - Image-Upload-Field zeigt UUID-Gating-Hint („sobald
+      die Leistung einmal gespeichert ist") für Demo-Cards
+      mit Pseudo-IDs.
+    - Speichern-Button initial disabled, aktiviert nach Add.
+  - **Bronze-Tier** (`meisterbau-schneider`):
+    - Zeigt ComingSoonSection statt Editor; keine Service-
+      Cards in `ul`, Hint „Im Paket Bronze gesperrt." sichtbar.
+- 🔧 **Selektor-Pattern eingeführt**: `SERVICE_CARDS = "ul
+  details"` — der Business-Header hat ein `<details>`-
+  Switcher-Menü, das auf jeder Dashboard-Page rendert.
+  Service-Cards leben in `<ul>`. Spezifischer Selektor
+  filtert das Header-Element automatisch raus.
+
+**Test-Findings dieser Session**:
+- 🟢 **`<details>`-Mehrfach-Match**: Business-Header hat
+  einen Switcher als `<details>`. Service-Cards auch. Fix:
+  `ul details` als Service-spezifischer Selektor. **Lesson**:
+  generische Tag-Selektoren sind fragil bei Komponenten-
+  Wiederverwendung.
+- 🟢 **Sticky-Status-Bar überdeckt Summary-Click**:
+  `summary.click()` traf nicht zuverlässig. Fix: Card per
+  JS öffnen (`<details>.open = true`). **Lesson**: für
+  `<details>`-Cards immer DOM-API benutzen, nicht User-
+  Click simulieren — gilt für jeden sticky-überdeckten
+  Container.
+- 🟢 **Tier-Gating funktioniert** (Bronze ↔ Silber+):
+  ComingSoonSection greift korrekt; UI zeigt klaren
+  Upgrade-Hinweis. UX-bestätigt.
+
+45/45 Smoketests grün. **39/39 E2E-Tests grün** (~72 s).
+typecheck ✅, lint ✅, beide Builds ✅. Bundle 102 KB
+shared unverändert.
+
+🛣️ Roadmap: 39 von ≥25 angepeilten E2E-Tests — das ist 56%
+mehr als das Erfolgskriterium. Sessions 75 (Settings +
+Auth-Mock) und 76 (Public-Site + Lead-Retry) bringen die
+restlichen Owner-Flows.
+
+**Phase-2-Backlog (UX-Polish, Stand S74)**:
+1. Default-Tier `silber` → `bronze`? (S72)
+2. Branche → Theme-Auto-Empfehlung? (S72)
+3. Verwerfen-isDirty-Reset (S73)
+4. Status-Bar-Heading `<p>` → `<h2>` (S73)
+5. Sticky-Status-Bar überdeckt Card-Summary-Click (S74,
+   eher A11y/Touch-UX-Item — auf Mobile relevanter).
+
+## [0.16.47] – Code-Session 73 – 2026-04-27
+
+Business-Editor + Dashboard-Shell E2E. 12 neue Tests in 2
+Files. **30 E2E-Tests insgesamt grün**, Phase-1.5-Ziel von
+≥25 erreicht. Annahmen-Audit deckte 1 echtes UX-Polish-
+Item auf (Verwerfen-Button bleibt enabled nach Discard).
+
+- ✚ `e2e/business-editor.spec.ts` (8 Tests):
+  - Page lädt mit Heading + Status-Bar.
+  - Alle 6 Form-Sektionen rendern (Basisdaten / Branche+
+    Paket / Adresse / Kontakt / Öffnungszeiten / Branding).
+  - Basisdaten-Felder + Name vorausgefüllt (tagline/
+    description nicht garantiert pre-filled bei Demo-
+    Daten).
+  - Adresse-Felder (street/postalCode/city/country) +
+    Kontakt-Felder (phone/email) sichtbar via Dot-Notation
+    ID-Selector (`#address\\.street` etc.).
+  - Speichern-Button initial disabled (nicht dirty).
+  - Speichern-Button aktiviert sich nach Feld-Änderung
+    (RHF isDirty greift).
+  - Verwerfen-Button setzt Werte zurück auf Demo-Defaults.
+  - Theme-Picker rendert im Branding-Block.
+- ✚ `e2e/dashboard-shell.spec.ts` (4 Tests):
+  - Übersichts-Page lädt mit allen 8 Sidebar-Tabs
+    (Übersicht/Betriebsdaten/Leistungen/Anfragen/KI-Assistent/
+    Bewertungen/Social Media/Einstellungen).
+  - Tab-Navigation: Übersicht → Betriebsdaten via
+    `:visible`-Selector (Mobile-Nav rendert hidden auf
+    Desktop-Viewport).
+  - Tab-Navigation: Betriebsdaten → Leistungen.
+  - Public-Site-Link öffnet `/site/<slug>`.
+
+**Test-Findings dieser Session**:
+- **Strict-Mode-Violation bei Text-Match**: „Betriebsdaten
+  bearbeiten" matched sowohl `<p>` (Status-Bar) als auch
+  `<title>` (page-meta). Fix: Selektor auf
+  `main p, body > div p` einschränken. **Lesson**:
+  Plain-Text-Selektoren haben strikt-Modus mit `<title>`-
+  Tag-Konflikten — bessere Anker via Role oder Container.
+- **Mobile-Nav rendert hidden bei Desktop-Viewport**:
+  `.first()` traf den hidden Mobile-Link, Click-Timeout.
+  Fix: `:visible`-CSS-Selector. **Lesson**: bei mehrfach
+  rendernden Komponenten (Sidebar+Mobile-Nav) immer
+  visibility-filtern.
+- **🟡 UX-Polish-Item für Phase 2**: Verwerfen-Button
+  bleibt nach Discard enabled. RHF `methods.reset(stored)`
+  setzt isDirty nicht zuverlässig zurück, wenn ein
+  localStorage-Override vorhanden ist. Test toleriert das
+  Verhalten (prüft nur den restored Wert), Issue im
+  PROGRAM_PLAN-Phase-2-Backlog notiert.
+
+45/45 Smoketests grün (unverändert). **30/30 E2E-Tests
+grün** (~60 s). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: Phase-1.5-Ziel ≥25 E2E-Tests **erreicht** mit
+30. Wir machen weiter Sessions 74–76 zur vollständigen
+User-Flow-Coverage; danach beginnt Phase 2 (UI/UX-Polish)
+mit den dokumentierten Phase-2-Items als Backlog.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 läuft mit
+Mehrwert-Findings. 30 E2E-Tests, 45 Smoketests, 102 KB
+Bundle, alles clean. Phase-2-Backlog wächst um konkrete
+UX-Polish-Items aus den Test-Annahmen-Audits.
+
+## [0.16.46] – Code-Session 72 – 2026-04-27
+
+Onboarding-Flow E2E. 7 neue Tests + 1 Login-Submit-Test
+ergänzt — gesamt **18 E2E-Tests** in 37 s, alle grün.
+Annahmen-Audit deckte 2 echte Form-Verhaltens-Fakten auf
+(Default-Tier ist `silber` nicht `bronze`; Branche koppelt
+nicht automatisch ans Theme), die als Phase-2-UX-Polish-
+Items im PROGRAM_PLAN dokumentiert bleiben.
+
+- ✚ `e2e/onboarding-flow.spec.ts` (7 Tests):
+  - Form rendert mit allen 7 Pflicht-/Optional-Feldern via
+    ID-Selector (Labels haben Asterisk-Spans, die
+    `getByLabel`-strict-Match brechen).
+  - Slug-Vorschlag aus Name funktioniert + erzeugt
+    URL-safe-Wert (lowercase + nur `[a-z0-9-]`).
+  - Branchen-Select hat ≥10 Optionen, Theme-Select ≥5.
+  - Paket-Select hat exakt 4 Tiers (Bronze/Silber/Gold/
+    Platin) + Default ist einer davon.
+  - Branche + Theme sind unabhängig wählbar (UX-Insight:
+    keine Auto-Empfehlung — Phase-2-Item).
+  - Submit ohne Pflicht-Felder bleibt im Form (Client-
+    Validation greift, kein Crash).
+- 🔄 `e2e/smoke-login.spec.ts`: + 1 Test „Submit ohne
+  Backend wirft die UI nicht ab". Klickt mit gefüllter
+  Email, prüft dass URL und Heading erhalten bleiben.
+
+**Test-Findings dieser Session**:
+- 5 Tests scheiterten beim ersten Lauf — alle 5 echte
+  Annahmen-Fehler:
+  - 4× Asterisk-Span im Label-Text → `getByLabel`-strict-
+    Anchor matched nicht. **Lesson**: ID-Selector
+    bevorzugen für Form-Felder, `getByLabel` nur bei
+    sauberen Plain-Text-Labels.
+  - 1× erwartet bronze-Default, real silber → Default-
+    Annahme zu spezifisch. **Lesson**: tolerante Asserts
+    bei Domain-Werten („einer aus dem Enum").
+  - 1× erwartet Branche→Theme-Auto-Kopplung, real
+    unabhängig → Logik-Annahme falsch. **Lesson**:
+    Form-Verhalten lesen, nicht raten.
+
+45/45 Smoketests grün. **18/18 E2E-Tests grün** (~37 s).
+typecheck ✅, lint ✅, beide Builds ✅. Bundle 102 KB
+shared unverändert.
+
+🛣️ Roadmap: 18 von ≥25 angepeilten E2E-Tests erreicht.
+Nächste Session 73 (Business-Editor-E2E) bringt
+voraussichtlich 6-10 weitere Tests.
+
+**Status-Update**: Phase 1.5 läuft. Test-Coverage-Aufbau
+nach Plan, mit echten Annahmen-Fakten als Bonus
+(form-Verhalten ist jetzt verifiziert + dokumentiert).
 
 ### Phase 2 → UI/UX-Polish (Sessions ~77–~86+)
 Demo-Logo via `algorithmic-art`-Skill in Session 81. Details

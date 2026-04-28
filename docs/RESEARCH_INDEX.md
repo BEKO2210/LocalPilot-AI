@@ -151,6 +151,34 @@
 - [Autonoma AI – Next.js Playwright Testing 2026](https://getautonoma.com/blog/nextjs-playwright-testing-guide) — App-Router-Patterns, Auth-Setup mit `storageState` (71-Vorbereitung für 72).
 - [InfiniteTable – Best Testing Setup Playwright + NextJS](https://infinite-table.com/blog/2024/04/18/the-best-testing-setup-for-frontends-playwright-nextjs) — Workers-Strategie + Trace-Viewer-Empfehlungen (71).
 
+### Onboarding-Flow E2E + Form-Selektoren (Code-Session 72)
+- [Playwright – Locators](https://playwright.dev/docs/locators) — `getByLabel`-strict, accessible-name inkl. Asterisk-Spans → ID-Selektoren als Fallback (72).
+- [Testing Library – RHF Locators](https://testing-library.com/docs/queries/about) — accessible name composition rules; Asterisk-Span bricht strict-anchor (72).
+- [Playwright – Best Practices](https://playwright.dev/docs/best-practices) — User-facing locators bevorzugen, ID-Fallback erlaubt (72).
+- [react-hook-form – Validation Modes](https://react-hook-form.com/docs/useform#mode) — `onSubmit`-Mode lässt Disabled erst beim Click greifen (72).
+
+### Business-Editor + Tab-Navigation E2E (Code-Session 73)
+- [Playwright – Visibility CSS](https://playwright.dev/docs/api/class-locator#locator-visible) — `:visible`-Pseudo-Filter für Mobile-Twins (73).
+- [Playwright – Strict Mode](https://playwright.dev/docs/api/class-locator#locator-locator-option-has-text) — Strict-Mode-Violation bei Multi-Match → Container-Selektor erforderlich (73).
+- [MDN – `<details>` element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/details) — `open`-Attribut als DOM-API für nicht-interaktive Tests (73).
+
+### Service-Liste E2E + DOM-API für `<details>` (Code-Session 74)
+- [Playwright – evaluate](https://playwright.dev/docs/evaluating) — `page.evaluate(el => el.open = true)` für sticky-overdecked Summary-Toggle (74).
+- [Playwright – CSS Selectors](https://playwright.dev/docs/selectors) — `ul details`-Container-Selector filtert Header-Switcher raus (74).
+- [Inline-Confirm vs. Modal Patterns 2026](https://www.smashingmagazine.com/2025/12/inline-destructive-confirmation-patterns/) — Delete-Confirm inline ist 2026-Standard für non-blocking UX (74).
+
+### Parallel-Execution + Firefox + Test-Helpers (Code-Session 75)
+- [Playwright – Parallelism](https://playwright.dev/docs/test-parallel) — `fullyParallel: true` + `workers: 4` ist 2026-Standard für state-unabhängige Tests (75).
+- [Playwright – Fixtures](https://playwright.dev/docs/test-fixtures) — Worker-scoped Fixtures für Shared-Setup; flat Helper-Funktionen reichen bis ≥100 Tests (75).
+- [TestDino – Parallel Execution](https://testdino.com/blog/playwright-parallel-execution/) — CI-Worker-Limit auf 2 ist Best-Practice für Stability (75).
+- [Playwright – Browsers](https://playwright.dev/docs/browsers) — Firefox-Project ergänzt Chromium für 2026-Cross-Browser-Coverage (75).
+
+### Public-Site E2E + addInitScript + Mobile-Viewport (Code-Session 76)
+- [Playwright – addInitScript](https://playwright.dev/docs/api/class-page#page-add-init-script) — Läuft vor jedem `goto()`, ideal für localStorage-Pre-Population vor Form-Mount-`useEffect` (76).
+- [Playwright – Test Options: viewport](https://playwright.dev/docs/api/class-testoptions#test-options-viewport) — Per-`describe` `test.use({viewport})` ist der saubere Weg für Mobile-Tests (76).
+- [W3C ARIA – Live Regions](https://www.w3.org/WAI/ARIA/apg/patterns/alert/) — Banner mit `role="status"` für Pending-Queue-Hinweis ist barrierearm (76).
+- [Playwright – Assertions: toBeHidden vs toBeVisible](https://playwright.dev/docs/api/class-locatorassertions#locator-assertions-to-be-hidden) — `toBeHidden` ist tolerant gegen `display:none`-Elemente, die im DOM existieren (Tailwind `md:hidden`-Verhalten) (76).
+
 ### Pre-MVP-Audit + E2E-Test-Strategie (Code-Session 70)
 - [Next.js – Playwright Testing](https://nextjs.org/docs/pages/guides/testing/playwright) — offizielle Setup-Doku (Session 70-Vorbereitung für 71).
 - [MakerKit – End-to-End Testing Your SaaS with Playwright](https://makerkit.dev/blog/tutorials/playwright-testing) — SaaS-Pattern mit ~25 Tests in 3 Min, Critical-Paths-Fokus (70).
