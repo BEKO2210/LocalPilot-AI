@@ -1,5 +1,13 @@
 # Codex-Backlog (vorab freigegebene Junior-Aufgaben)
 
+> **Phase-3-Hinweis (ab Session 85):** Codex-Tasks sind in
+> Phase 3 (Verkaufsreife, S85–100) **nur dann erlaubt**, wenn sie
+> einen direkten Verkaufs-Bezug haben (Tippfehler in
+> Kunden-sichtbaren Marketing-Texten, A11y-Polish vor Pilotkunden-
+> Demo, etc.). Größere Junior-Polish-Themen (#1, #2, #4, #5, #7,
+> #8, #14) sind **bis nach Session 100 pausiert** — sie sind nicht
+> verkaufsrelevant.
+
 > Diese Datei listet Aufgaben, die **Codex** ohne Rückfrage übernehmen
 > darf. Jeder Eintrag folgt einem festen Format und hat einen
 > Status. Spielregeln stehen in [`../codex.md`](../codex.md).

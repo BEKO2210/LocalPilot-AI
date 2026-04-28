@@ -28,7 +28,7 @@ export function DashboardShell({
         <aside className="hidden w-60 flex-none md:block">
           <DashboardSidebar business={business} active={active} />
         </aside>
-        <main className="min-w-0 flex-1">{children}</main>
+        <main id="main-content" className="min-w-0 flex-1">{children}</main>
       </div>
     </div>
   );

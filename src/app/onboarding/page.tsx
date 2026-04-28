@@ -19,7 +19,7 @@ export const metadata = {
 
 export default function OnboardingPage() {
   return (
-    <main className="lp-container max-w-2xl py-12">
+    <main id="main-content" className="lp-container max-w-2xl py-12">
       <p className="text-xs font-medium uppercase tracking-wide text-ink-500">
         Schnellstart
       </p>

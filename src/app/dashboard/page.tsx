@@ -27,7 +27,7 @@ export default function DashboardPickerPage() {
   return (
     <>
       <SiteHeader />
-      <main>
+      <main id="main-content">
         <Section bg="muted">
           <Container>
             <div className="mx-auto max-w-2xl text-center">

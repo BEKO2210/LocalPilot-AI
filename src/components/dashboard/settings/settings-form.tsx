@@ -242,7 +242,7 @@ export function SettingsForm({ business }: { readonly business: Business }) {
         <button
           type="submit"
           disabled={!isDirty || submitting}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="lp-focus-ring inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {submitting ? (
             <>
@@ -357,7 +357,7 @@ function DangerZone({
               type="button"
               onClick={() => void handleDelete()}
               disabled={!canDelete}
-              className="inline-flex items-center gap-2 rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white transition-opacity hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="lp-focus-ring inline-flex items-center gap-2 rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white transition-opacity hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {deleting ? (
                 <>

@@ -66,7 +66,7 @@ export function ThemePreviewCard({ theme, className }: ThemePreviewCardProps) {
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-theme-button px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
+            className="lp-focus-ring inline-flex items-center gap-1.5 rounded-theme-button px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
             style={{
               backgroundColor: "rgb(var(--theme-primary))",
               color: "rgb(var(--theme-primary-fg))",

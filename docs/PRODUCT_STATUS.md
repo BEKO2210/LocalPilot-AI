@@ -1,13 +1,16 @@
-# MVP-Recap – LocalPilot AI
+# Produkt-Status – LocalPilot AI
 
-Architektur-Übersicht. **Phase 1 (Sessions 1–70) ✅
-abgeschlossen** — Betrieb-fertiges Produkt. **Phase 1.5
-(Sessions 71–76) ✅ abgeschlossen** — 58 E2E-Tests × 2
-Browser = 116 grün (132 % über ≥25-Ziel), 2:18 min Full-
-Run. **Phase 2 startet ab Session 77** (UI/UX-Polish +
-Demo-Logo via `algorithmic-art`-Skill in S81).
+Was das Produkt **JETZT** kann (Stand Session 85). Single-
+Source-of-Truth für „können wir das, ja oder nein?". Wird
+mit jeder Phase-3-Session aktualisiert.
 
-> Stand 2026-04-28 · Sessions 1–76.
+**Phasen-Stand**:
+- Phase 1 (Sessions 1–70) ✅ MVP-funktional
+- Phase 1.5 (Sessions 71–76) ✅ E2E-Tests (116 grün)
+- Phase 2 (Sessions 77–84) ✅ UI/UX-Polish + Brand + A11y + Mobile
+- **Phase 3 (Sessions 85–100) → Verkaufsreife** (in Arbeit)
+
+> Stand 2026-04-28 · Sessions 1–84.
 
 ---
 

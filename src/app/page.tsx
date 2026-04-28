@@ -16,7 +16,7 @@ export default function HomePage() {
   return (
     <>
       <SiteHeader />
-      <main>
+      <main id="main-content">
         {/* 1. Hook + Versprechen */}
         <MarketingHero />
         {/* 2. Problem & Lösung – warum überhaupt? */}

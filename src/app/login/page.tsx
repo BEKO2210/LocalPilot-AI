@@ -19,7 +19,7 @@ export const metadata = {
 
 export default function LoginPage() {
   return (
-    <main className="lp-container max-w-md py-16">
+    <main id="main-content" className="lp-container max-w-md py-16">
       <h1 className="text-3xl font-semibold tracking-tight text-ink-900">
         Anmelden
       </h1>

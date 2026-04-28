@@ -5,33 +5,33 @@ import { Clock, ShieldCheck, Sparkles, Smartphone, Wand2, TrendingUp } from "luc
 const ITEMS = [
   {
     icon: Clock,
-    title: "Schnell startklar",
-    text: "Branchen-Preset auswählen, Daten eintragen, fertig. Erste Version in unter einer Stunde.",
+    title: "7 Tage bis live",
+    text: "Tag 0 Briefing, Tag 7 Übergabe. Keine wochenlangen Schleifen, keine offenen Enden.",
   },
   {
     icon: Smartphone,
-    title: "Mobile First",
-    text: "Über 80 % Ihrer Kundinnen und Kunden öffnen die Seite am Handy – dafür ist alles optimiert.",
+    title: "Mobile zuerst",
+    text: "Über 80 % Ihrer Kunden öffnen die Seite am Handy. Touch-Targets, Schriften, Lesbarkeit — alles dafür gemacht.",
   },
   {
     icon: Wand2,
-    title: "KI-Texte ohne Risiko",
-    text: "Mock-Modus für Demos, echte Provider optional. Keine Heilversprechen, keine Buzzwords.",
+    title: "KI-Texte, wenn Sie sie wollen",
+    text: "Service-Beschreibungen, FAQ, Social-Media-Posts auf Knopfdruck. Sie können auch alles selbst schreiben — die KI ist optional.",
   },
   {
     icon: TrendingUp,
-    title: "Mehr Anfragen",
-    text: "Klare Calls-to-Action und ein dynamisches Lead-Formular pro Branche.",
+    title: "Anfragen statt verlorener Anrufe",
+    text: "DSGVO-konformes Formular pro Branche. Anfragen landen sortiert in Ihrer Inbox, nicht im Tresen-Zettelchaos.",
   },
   {
     icon: ShieldCheck,
-    title: "Seriös & wartbar",
-    text: "Sauberer Code, klare Architektur, dokumentiert. Keine Demo-Optik, kein Vendor-Lock.",
+    title: "DSGVO-konform & wartbar",
+    text: "Impressum, Datenschutz, Lead-Consent — alles am Stand 2026. Daten-Export auf Knopfdruck (Art. 20 DSGVO).",
   },
   {
     icon: Sparkles,
-    title: "Wächst mit dem Betrieb",
-    text: "Bronze startet klein, Silber bringt KI-Tools, Gold liefert ein vollständiges Marketing-System.",
+    title: "Wächst mit Ihrem Betrieb",
+    text: "Bronze startet klein (Website + Anfragen), Silber bringt KI + Dashboard, Gold liefert das volle Marketing-System mit Social.",
   },
 ];
 
@@ -42,7 +42,7 @@ export function Benefits() {
         <div className="mx-auto max-w-2xl text-center">
           <span className="lp-eyebrow">Vorteile</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Warum LocalPilot AI?
+            Was Sie davon haben
           </h2>
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

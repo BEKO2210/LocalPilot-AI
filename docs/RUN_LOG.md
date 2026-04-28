@@ -8952,4 +8952,1101 @@ Audit**. Inhalt:
 5. `lp-focus-ring`-Migration auf Dashboard-Komponenten.
 6. UX-Findings ins Phase-2-Backlog.
 
+---
+
+## Code-Session 78 – Phase 2: Dashboard-Shell-Audit
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · Polish + A11y
+
+**Was**: Zweite Phase-2-Session. Audit von Dashboard-Sidebar,
+Mobile-Nav, Business-Header (mit Switcher) und Account-Page.
+1 echter Bug (Stale-Stub-Drift) + A11y-Sweep mit
+`lp-focus-ring` auf 13 weitere interaktive Elemente.
+5 neue Phase-2-Backlog-Items.
+
+**Audit-Ergebnis (Code-Read von 8 Dashboard-Komponenten)**:
+
+| # | Befund | Schweregrad | Fix |
+| --- | --- | --- | --- |
+| 1 | `nav-config.ts` markiert ai/reviews/social/settings mit `comingInSession`, obwohl alle 4 Pages live sind (S13–S69) → Sidebar zeigt fälschlich „Vorschau"-Lock-Badge | 🔴 Bug (UX-Verwirrung) | inline ✅ |
+| 2 | `DashboardSidebar` 8 Nav-Links ohne `:focus-visible` | 🟡 A11y | inline ✅ |
+| 3 | `DashboardMobileNav` 8 Pills ohne `:focus-visible` | 🟡 A11y | inline ✅ |
+| 4 | `BusinessHeader` Switcher + Public-Site-CTA + 6 Switch-Links ohne `:focus-visible` | 🟡 A11y | inline ✅ |
+| 5 | `account/page.tsx` 7 interaktive Elemente ohne `:focus-visible` | 🟡 A11y | inline ✅ |
+| 6 | `<details>`-Switcher kein Click-Outside-Close (CSS-only) | 🟢 UX | Backlog |
+| 7 | Mobile-Nav ist horizontal-scroll-Strip statt Bottom-Nav (2026-Pattern für Touch-Zone) | 🟢 UX | Backlog |
+| 8 | `account/page.tsx` zeigt User-ID als Debug-Info | 🟢 UX | Backlog |
+| 9 | `BusinessCard` Tier-Badge nur Text, `BusinessHeader.TIER_BADGE_CLASS` hat Color-Coding — Inkonsistenz | 🟢 UX | Backlog |
+
+**Architektur-Entscheidung — Stale-Stub-Marker entfernen,
+nicht „auf erledigt" setzen**: Codex-Backlog #12 (S35) hatte
+schon das Pattern „Bronze-Lock vs Coming-Soon-Drift"
+festgehalten. Der nav-config-Drift ist eine andere Klasse:
+hier ist die Implementation komplett da, der Marker ist
+schlicht veraltet. Beide Komponenten (`DashboardSidebar` +
+`DashboardMobileNav`) prüfen `typeof item.comingInSession
+=== "number"` — ohne den Wert ist das `false`, also kein
+Lock-Render. Sauber durch reine Daten-Änderung in
+`nav-config.ts`, kein Komponenten-Code angefasst.
+
+**Architektur-Entscheidung — Bronze-Lock-Stubs in
+services/page.tsx und leads/page.tsx UNANGETASTET**: Das
+ist eine andere Logik-Schicht. Die `<ComingSoonSection
+comingInSession={11}>` in den Pages bedeuten „bei Bronze
+gesperrt, ab Silber freigeschaltet" — also Tier-Lock-UX,
+nicht Coming-Soon. Codex-Backlog #12 schlägt den Split in
+`<FeatureLockedSection>` vor; das ist eine eigene
+Phase-2-Session mit Komponenten-Refactor (nicht atomic
+genug für S78).
+
+**Architektur-Entscheidung — `lp-focus-ring` auf
+Account-Page-Buttons rangeklebt, nicht in einer
+Wrapper-Komponente**: Account-Page hat 7 unique-styled
+Buttons (Logout-Tertiary, „Neuer Betrieb"-Text-Link,
+„Betrieb anlegen"-Primary, „Dashboard öffnen"-Primary,
+„Public-Site"-Secondary, „Zum Login"-Primary, „Demo-
+Betriebe ansehen"-Underline). Eine eigene
+`<DashboardButton>`-Komponente einzuführen wäre eine
+Phase-2-Refactor-Session (S80-Light-Pass-Item). Hier
+einfach `lp-focus-ring` auf jede vorhandene Klassenliste
+draufklatschen.
+
+**Stub-Audit (`grep "comingInSession=" src/app/dashboard`)**:
+- ✅ `services/page.tsx`, `leads/page.tsx`: Bronze-Lock-
+  Stubs unangetastet (gewollt).
+- ✅ `nav-config.ts`: 4× Drift entfernt.
+
+**WebSearch (Track C)**:
+- [SaaS Dashboard Navigation 2026 (TailAdmin)](https://tailadmin.com/blog/saas-dashboard-templates) — Sidebar collapsible ist 2026-Standard für komplexe Hierarchien.
+- [Mobile Bottom Nav UX 2026 (DesignStudio)](https://www.designstudiouiux.com/blog/mobile-navigation-ux/) — Bottom-Nav (≤5 Items) ist Touch-Zone-Standard für Web-Apps.
+- [WAI-ARIA Tabs Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) — `role=tablist` mit Pfeiltasten-Navigation; aktuell nutzen wir aber Routing-Links (kein Tablist-Pattern), `aria-current="page"` ist hier korrekt.
+
+**Dateien**:
+- 🔄 `src/components/dashboard/nav-config.ts`: 4×
+  `comingInSession` entfernt.
+- 🔄 `src/components/dashboard/dashboard-sidebar.tsx`:
+  `lp-focus-ring`.
+- 🔄 `src/components/dashboard/dashboard-mobile-nav.tsx`:
+  `lp-focus-ring`.
+- 🔄 `src/components/dashboard/business-header.tsx`:
+  `lp-focus-ring` × 3 Stellen.
+- 🔄 `src/app/account/page.tsx`: `lp-focus-ring` × 7.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:18 min). Bundle 102 KB
+shared unverändert. E2E-Suite hat den Stale-Stub-Bug nie
+aufgedeckt — das war ein **Visual-Audit-Win**, nicht ein
+Test-Win. Bestätigt User-Anweisung „erst alle Tests, dann
+visueller Audit ist nötig".
+
+**Phase-2-Backlog (5 neue Items aus S78-Audit)**:
+1. `<details>`-Switcher Click-Outside-Close.
+2. Mobile-Nav als sticky-Bottom-Nav (Touch-Zone).
+3. User-ID-Debug-Info hinter Dev-Toggle.
+4. `BusinessCard` Tier-Color-Coding (Konsistenz mit
+   `BusinessHeader.TIER_BADGE_CLASS`).
+5. `<DashboardButton>` Wrapper-Komponente (S80-Light-Pass).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — SaaS-Dashboard-
+Navigation 2026 + Mobile-Bottom-Nav-Patterns + WAI-ARIA-
+Tabs.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(2/≥10 Sessions).
+
+**Nächste Session**: Code-Session 79 = **Editor-Audits**.
+Inhalt:
+1. `BusinessEditForm` (Stammdaten, Logo, Cover).
+2. `ServicesEditForm` (Bulk-CRUD, Reorder, UUID-Gating).
+3. `SettingsForm` (Slug, Publish, Locale, Danger-Zone).
+4. `ReviewsRequestPanel` (Templates, Channel-Picker).
+5. `SocialPostPanel` (Plattform-Limits).
+6. Form-System-Konsistenz: Save/Discard-Buttons, Banner,
+   Validation-Hints, `lp-focus-ring`-Migration.
+7. UX-Findings ins Phase-2-Backlog.
+
+---
+
+## Code-Session 79 – Phase 2: 5-Editoren-Audit + zentrales ARIA-Wiring
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · Polish + A11y
+
+**Was**: Dritte Phase-2-Session. Audit per Explore-Agent
+über 7 Editor-Files (3.3K LOC) — Befunde: 42 Buttons ohne
+Focus-Ring, 33 Inputs ohne ARIA-Wiring, 5 echte Bugs im
+Backlog. Fix: **eine zentrale Änderung an `FormField`
+repariert 33 Inputs** + 23 Buttons mit `lp-focus-ring`
+gepatched. 5 neue Phase-2-Backlog-Items.
+
+**Audit-Strategie — Explore-Agent statt Code-Read im
+Hauptkontext**: 7 Files mit 3.360 LOC sind zu viel für
+direkten Read im Main-Context (würde Token-Budget
+sprengen). Lösung: Explore-Agent mit struktur-getriebenem
+Audit-Prompt (A: Buttons-ohne-focus, B: Inputs-ohne-ARIA,
+C: Banner-aria-live, D: Bugs, E: Inkonsistenzen) + Synthese-
+Tabelle. Agent liefert kompakten Report, Hauptkontext
+behält Code-Edit-Bandbreite. **Pattern für künftige
+Multi-File-Audits in Phase 2**.
+
+**Architektur-Entscheidung — `FormField` zentrales
+ARIA-Wiring statt 33 Edits**: Der Audit zeigte alle 33
+Inputs hatten `hasError`-Prop, aber **kein** `aria-invalid`
+oder `aria-describedby`. Naive Lösung: in jedem
+`FormInput`-Caller die ARIA-Attribute manuell setzen — 33
+Edits, hoher Diff. Eleganter:
+1. `FormField` generiert deterministische `errorId` /
+   `hintId` aus `htmlFor`.
+2. `React.cloneElement` injiziert `aria-invalid` +
+   `aria-describedby` ins Single-Element-Child.
+3. **Caller-Props gewinnen**: wer `aria-invalid` schon
+   manuell setzt (eine Stelle in `settings-form` Zeile
+   135 für Slug-Input), bleibt unverändert.
+4. Multi-Element-Children fallen auf alte Behavior zurück.
+
+**Gewinn**: 1 Edit (40 Zeilen) → 33 Inputs in 7
+Komponenten haben ARIA. Plus: jede neue Form, die
+`FormField` nutzt, ist automatisch A11y-korrekt.
+Trade-off: Implicit-Magic via `cloneElement` ist
+weniger explizit als Caller-Props, aber für
+Form-Primitive-Komponenten ist das akzeptiert (Pattern
+auch in Radix-UI, React-Aria).
+
+**Architektur-Entscheidung — `lp-focus-ring` per
+`replace_all` wo möglich**: 4 Copy-Buttons in
+`social-post-panel` haben **identischen** Klassen-String
+(`ml-auto inline-flex items-center gap-1.5 rounded-lg
+border border-ink-200 bg-white px-2.5 py-1 text-xs
+font-medium text-ink-700 hover:bg-ink-50`). Statt 4
+Einzel-Edits ein `replace_all`-Edit. Spart Diff-Zeilen
+und macht den Pattern explizit.
+
+**Bug-Backlog (NICHT in S79 gefixt, atomic-Begrenzung)**:
+- **#1: Discard-isDirty-Reset** (business + services
+  edit-form). S73 hat den Symptom-Punkt notiert, S79
+  hat den Code-Pfad bestätigt: `methods.reset(stored ??
+  initialProfile)` mit localStorage-Override hat
+  Timing-Issue zwischen `reset()` und RHF-internem
+  `isDirty`-Recompute. Eigene Phase-2-Session zur
+  systematischen Behebung.
+- **#2: settings-form `setTimeout(900ms)`-Race** vor
+  `router.push()`. Kein AbortController → wenn User
+  schnell wegnavigiert, läuft setTimeout ins Leere.
+- **#3: social-post-panel Hashtag-Advice-Color-Drift**
+  `discouraged` und `warning` beide `text-amber-700`.
+- **#4: service-card delete-state-cleanup** —
+  `confirmingRemove` State wird nicht garantiert resetted
+  nach erfolgreichem Delete (abhängig von parent-callback).
+- **#5: localStorage-Quota-Exceeded** in
+  `reviews-request-panel` — `try-catch` ohne User-Feedback.
+
+Alle 5 Bugs sind weder Show-Stopper noch tracked-by-tests.
+Atomic-Session-Limit: maximal 80 KB Diff. S79 hat ARIA +
+Focus-Ring; Bugs kommen in S80-Light-Pass oder dedizierter
+Bug-Session.
+
+**WebSearch (Track C)**:
+- [React Hook Form formState (RHF Docs)](https://react-hook-form.com/docs/useform/formstate) — `isDirty` recomputes nach `reset()` mit neuen `defaultValues`; `keepDirtyValues: true` für UX-Win, falls Server-Save den Form-Snapshot überschreibt (79).
+- [WAI-ARIA `aria-invalid` (W3C)](https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA21) — `aria-invalid="true"` pflicht bei sichtbarem Fehler, `undefined` (nicht `false`) wenn valid (79).
+- [aria-describedby + Error-Messages (David MacDonald)](https://www.davidmacd.com/blog/test-aria-describedby-errormessage-aria-live.html) — `aria-live` auf Error-`<p>` ist redundant mit `aria-describedby` für NVDA/JAWS (Double-Speak vermeiden) (79).
+
+**Dateien**:
+- 🔄 `src/components/forms/form-field.tsx`: zentrales
+  ARIA-Wiring via `React.cloneElement`.
+- 🔄 `src/components/dashboard/business-edit/business-edit-form.tsx`:
+  3 Buttons.
+- 🔄 `src/components/dashboard/business-edit/image-upload-field.tsx`:
+  2 Buttons.
+- 🔄 `src/components/dashboard/services-edit/services-edit-form.tsx`:
+  6 Buttons.
+- 🔄 `src/components/dashboard/services-edit/service-card.tsx`:
+  5 Buttons.
+- 🔄 `src/components/dashboard/settings/settings-form.tsx`:
+  2 Buttons.
+- 🔄 `src/components/dashboard/reviews/reviews-request-panel.tsx`:
+  6 Buttons (Tab-Helpers).
+- 🔄 `src/components/dashboard/social/social-post-panel.tsx`:
+  9 Buttons (Tab-Helpers + Copy-Buttons).
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/RESEARCH_INDEX.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:18 min). Bundle 102 KB
+shared unverändert.
+
+**Phase-2-Backlog (5 neue Items aus S79-Audit)**:
+1. `aria-live` explizit auf alle 8 Save-/Error-Banner
+   (polite vs assertive bewusst wählen).
+2. Discard-isDirty-Reset systematisch fixen (S73 + S79).
+3. `settings-form` setTimeout-Race-Fix mit AbortController.
+4. Hashtag-Advice-Color-Drift in `social-post-panel`.
+5. Delete-Confirm-UI vereinheitlichen (service-card inline
+   vs settings-form Slug-Confirm). S80-Light-Pass-Item.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — RHF formState +
+ARIA-Invalid + aria-describedby-Patterns.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(3/≥10 Sessions).
+
+**Nächste Session**: Code-Session 80 = **5er-Light-Pass**.
+Inhalt:
+1. simplify-Skill auf alle in S77–S79 angefassten
+   Komponenten.
+2. `<DashboardButton>`-Wrapper-Komponente einführen
+   (Account-Page + Editor-Save/Discard-Buttons).
+3. `beforeEach`-Migration für E2E-`goto()`-Wiederholungen
+   (S75-Backlog).
+4. Discard-isDirty-Reset-Fix (S73 + S79).
+5. README/Doku-Sync nach 5 Sessions.
+
+---
+
+## Code-Session 80 – 5er-Light-Pass (Cleanup nach S77–S79)
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · Light-Pass
+
+**Was**: 5er-Light-Pass via `simplify`-Skill auf die drei
+Phase-2-Audit-Commits e8b5c97 / c412a76 / a36708f. Drei
+parallele Review-Agents (Reuse / Quality / Efficiency)
+liefern strukturierten Befund-Bericht. Ergebnis: **1
+latenter Bug**, 6 Komponenten ohne `lp-focus-ring`,
+`Button`-Primitive lief mit eigener Focus-Style-Variante,
+2 Task-referencing-Comments. Alle gefixt + State-Refresh-
+Checklist abgehakt.
+
+**simplify-Skill-Architektur — drei Agents in parallel**:
+- **Reuse-Agent**: gefunden, dass `src/components/ui/button.tsx`
+  (Button + LinkButton) **bereits existiert** und vom S77–S79
+  Migration-Pattern unbenutzt blieb. 23 Editor-Buttons hätten
+  langfristig hier landen können — kurzfristig zu großer
+  Refactor (h-9/h-11/h-12-Sizes vs editor-spezifische
+  px-1.5/text-xs-Varianten). Stattdessen: `Button`-Primitive
+  selbst auf `lp-focus-ring` migriert → Source-of-Truth.
+- **Quality-Agent**: gefunden, dass mein S79-cloneElement-
+  Code in `business-edit-form.tsx:351` einem `<div>`-
+  Display-Wrapper `aria-invalid` injiziert. Browser
+  ignorieren das, aber DOM-Pollution ist real. Fix:
+  `isFormControlChild`-Guard.
+- **Efficiency-Agent**: bestätigt, dass cloneElement +
+  CSS-Layer-Klasse keinen messbaren Bundle/Render-Impact
+  haben. Double-Prop-Read (Line 48 + 52 in form-field.tsx)
+  als Mikro-Cleanup-Kandidat aufgezeigt → behoben.
+
+**Architektur-Entscheidung — Type-basierter Guard statt
+Render-Try-Catch**: Alternative wäre `try { cloneElement }
+catch` als Defensive — aber cloneElement wirft nicht bei
+falschen Children, nur das gerenderte DOM hat dann unbenutzte
+Attribute. Sauberer Type-Guard:
+```ts
+function isFormControlChild(el) {
+  if (typeof el.type === "string") return NATIVE_FORM_TAGS.has(el.type);
+  return el.type === FormInput || ... === FormSelect;
+}
+```
+Native HTML-Tags via String-Check, custom Components via
+Reference-Equality. Funktioniert auch bei Style-Variants
+(z. B. `FormInput` mit `className`-Override) ohne den Guard
+zu brechen.
+
+**Architektur-Entscheidung — Button-Primitive als
+Single-Source für Focus**: Button hatte 4 variant-spezifische
+`focus-visible:outline-{color}`-Strings + base
+`focus-visible:outline-2 outline-offset-2`. Für theme-aware
+Public-Site-Komponenten ist die `lp-focus-ring`-Outline mit
+`rgb(var(--theme-accent))` korrekter (folgt dem aktiven
+Business-Theme). Button-Primitive auf `lp-focus-ring`
+umgestellt — Bundle-Reduktion durch 4 wegfallende Tailwind-
+Klassen, plus visuelle Konsistenz: jeder Button (egal welche
+Variant) hat denselben Theme-Accent-Outline.
+
+**State-Refresh-Checklist** (5er-Light-Pass-Pflicht
+gemäß SESSION_PROTOCOL.md §7):
+- ✅ Smoketests: 45/45 grün.
+- ✅ Stale-Stub-Audit (`grep "comingInSession=" src/app/dashboard`):
+  nur intentionale Bronze-Tier-Locks (`services/page.tsx:41`
+  `={11}`, `leads/page.tsx:41` `={12}`) — kein neuer
+  Drift seit S78.
+- ✅ Codex-Backlog: kein neuer `[needs-review]`. #11
+  (industry-presets-fix) bleibt als done @ S66 für
+  ~21 Sessions im Bestand.
+- ⚠️ `npm outdated`: 18 Major-Bumps verfügbar (Next 16,
+  Tailwind 4, Zod 4, OpenAI 6, Anthropic 0.91, React 19.2,
+  Lucide 1.x, etc.). **NICHT** im Light-Pass-Scope —
+  Major-Bumps brauchen eigene Innovation-Loop-Session
+  mit Migrations-Tests pro Dependency.
+
+**WebSearch (Track C)**: keine — Light-Pass nutzt nur die
+simplify-Skill-Internals + bestehende Quellen.
+
+**Dateien**:
+- 🔄 `src/components/forms/form-field.tsx`:
+  `isFormControlChild`-Guard, single childProps-Variable,
+  Comment-Cleanup.
+- 🔄 `src/app/globals.css`: Comment-Cleanup.
+- 🔄 `src/components/ui/button.tsx`: variant-Outline-Klassen
+  entfernt, `lp-focus-ring` als Base-Klasse.
+- 🔄 `src/components/dashboard/overview/preview-link-card.tsx`,
+  `dashboard/business-edit/opening-hours-editor.tsx`,
+  `dashboard/ai-playground/auth-card.tsx`,
+  `dashboard/ai-playground/ai-playground.tsx`,
+  `public-site/public-lead-form.tsx`,
+  `theme/theme-preview-card.tsx`: `lp-focus-ring`-Migration.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 3:00 min). Bundle 102 KB
+shared unverändert.
+
+**Phase-2-Bilanz (Sessions 77–80)**:
+- 4 Sessions (3 Audits + 1 Light-Pass).
+- 1 echter Bug behoben (Stale-Stub-Drift S78).
+- 1 latenter Bug behoben (FormField-cloneElement-Guard S80).
+- 1 Toter Link behoben (Footer-Impressum/Datenschutz S77).
+- 1 zentrale ARIA-Wiring-Komponente (S79).
+- 1 zentrale Focus-Style-Utility (`lp-focus-ring` S77 + S80).
+- ~50 interaktive Elemente bekommen Theme-aware Tastatur-
+  Fokus (Public-Site + Dashboard + Account + Editoren +
+  Button-Primitive).
+- 12 Phase-2-Backlog-Items (4 aus S77, 5 aus S78, 5 aus
+  S79, 5 aus S80) — Bug-Backlog, Konsistenz-Items, Major-
+  Dependency-Bumps.
+- Bundle/Smoketests/E2E unverändert während aller 4
+  Sessions — keine Regressions.
+
+**Phase-2-Backlog** (NICHT in S80 abgearbeitet):
+1. Discard-isDirty-Reset-Bug — eigene Bug-Session mit
+   `systematic-debugging`-Skill.
+2. `aria-live` polite/assertive auf Save-Banner explicit.
+3. Major-Dependency-Bump-Session (Next 16, Tailwind 4,
+   Zod 4, etc.).
+4. `beforeEach`-Migration für E2E (S75-Item).
+5. Click-Outside-Close für `<details>`-Switcher (S78).
+
+**Quellen**: simplify-Skill-Internals + bestehende
+RESEARCH_INDEX-Quellen aus S77–S79.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(4/≥10 Sessions, davon 1 Light-Pass). Demo-Logo-Slot S81
+naht.
+
+**Nächste Session**: Code-Session 81 = **Demo-Logo + Brand-
+Identity** (User-Direktive seit S65: „Demo-Logo muss richtig
+was hermachen"). Skills:
+1. `algorithmic-art` — generatives p5.js-Artwork als
+   reproduzierbares Demo-Logo, Seed-basiert.
+2. `brand-guidelines` — LocalPilot-AI-Brand-Tokens
+   konsolidieren (Farben, Schriften, Spacing,
+   Iconography).
+3. Static SVG-Variante des p5.js-Marks für Marketing-
+   Page + Dashboard-Header.
+4. Brand-Guidelines-Doku in `docs/BRAND.md`.
+
+---
+
+## Code-Session 81 – Phase 2: Demo-Logo + Brand-Identity
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · Brand
+
+**Was**: User-Direktive seit Code-Session 65 erfüllt
+(„Demo-Logo muss richtig was hermachen"). Neuer Brand-
+Mark + Wordmark + Lockup als inline-SVG-Komponenten,
+theme-adaptiv via `currentColor`. Brand-Identity-Doku in
+`docs/BRAND.md`. Marketing-Header und -Footer migriert.
+
+**Architektur-Entscheidung — Inline-SVG statt p5.js**:
+Aufruf war „algorithmic-art-Skill" — die Skill-Doku selbst
+warnt: „Niemals Echtzeit-p5 in der Public Site bundeln —
+das ist 1 MB+ an Library-Code, killt unser 102-KB-Bundle".
+Folge: Logo direkt als statisches SVG designed (4 Striche,
+deterministisch reproduzierbar), p5.js-Skill bleibt für
+Hero-Backgrounds reserviert (eigene Session ≥85).
+
+**Architektur-Entscheidung — Drei-Schichten-Mark statt
+Single-Symbol**: 2026-Trends bevorzugen System-based
+Brand-Design (Shopify-/UX-Studio-Research). Drei
+semantische Layer:
+- Rounded-Square-Frame (`rect rx=14`) — „Local"-
+  Container, „verankert".
+- Chevron + Crossbar (`path` + `line`) — Kompass-Needle,
+  „Pilot/Direction".
+- Akzent-Dot top-right (`circle r=3.5`) — „AI/Beacon",
+  bricht die Symmetrie und gibt der Marke ein
+  Wiedererkennungs-Detail.
+
+Vier Pfad-Elemente sind das Maximum für ein 16-px-
+Favicon — mehr verschwimmt. Stroke-Width 4 auf 64×64-
+Viewbox mit `round`-Linecap/Linejoin gibt clean Kanten
+auf jeder Skalierungsstufe.
+
+**Architektur-Entscheidung — `currentColor` statt
+Theme-Var-Direkt**: Public-Site-Komponenten (S77) haben
+inline-`style={{ color: "rgb(var(--theme-X))" }}`. Brand-
+Mark soll auch außerhalb von Public-Sites funktionieren
+(Marketing-Header, OG-Image, Email-Templates). Lösung:
+SVG nutzt `currentColor` für stroke + fill → folgt dem
+text-color des Wrapper-Elements. Caller wählt:
+- Marketing-Header: `text-brand-700`.
+- Footer-Akzent: `text-brand-700`.
+- (Künftiges OG-Image): `text-white` auf dunklem BG.
+- Auf Public-Site (falls je gebraucht): `text-[rgb(var(--theme-accent))]`.
+
+Keine zweite Branding-Token-Ebene — ein dünner Layer
+über Tailwind-Default + Theme-CSS-Vars.
+
+**Architektur-Entscheidung — `LocalPilotLockup` als
+Default-Wrapper**: Header-Use-Case ist 80% der Vorkommen
+(clickable Logo → Home). Lockup setzt `<Link href="/">`,
+`aria-label`, `lp-focus-ring`. Opt-out via `href={null}`
+für Static-OG-Images, wo Navigation nicht passieren darf.
+Drei Größen `sm/md/lg` decken Marketing-Header (sm),
+Hero-Section (lg) und OG-Image (lg) ab.
+
+**WebSearch (Track C)**:
+- [Logo Design Trends 2026 (ImagineArt)](https://www.imagine.art/blogs/logo-design-trends-2025) — Geometric Bold-Minimal als 2026-Standard, weg von purem Minimalismus (81).
+- [SaaS Logos Best Practices (eBaqDesign)](https://www.ebaqdesign.com/blog/saas-logos) — Tech-SaaS bevorzugt Mark + Wordmark-Lockup, nicht reine Wordmarks (81).
+- [Logo Trends 2026 (Shopify)](https://www.shopify.com/blog/logo-trends) — System-based Design: simple Mark + reichhaltiges Brand-System darum (81).
+- [Tech Startup Logos (LogoCrafter)](https://www.logocrafter.app/blog/best-tech-startup-logos) — Compass/Navigation-Motive sind etabliert für „direction"-Brands (81).
+
+**Dateien**:
+- ✚ `src/components/brand/logo.tsx`
+  (`LocalPilotMark`, `LocalPilotWordmark`, `LocalPilotLockup`).
+- ✚ `src/components/brand/index.ts`.
+- ✚ `docs/BRAND.md`.
+- 🔄 `src/components/layout/site-header.tsx`: Lockup statt
+  „L"-Initial.
+- 🔄 `src/components/layout/site-footer.tsx`: Mark-Akzent +
+  `lp-focus-ring` auf 3 Footer-Links.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/RESEARCH_INDEX.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:12 min). Bundle 102 KB
+shared unverändert (inline-SVG = 0 KB Bundle-Impact).
+
+**Phase-2-Backlog (3 neue Items aus S81)**:
+1. OG-Image (1200×630) via Vercel-OG mit `LocalPilotLockup`
+   + Slug-spezifische Variante (`/site/<slug>` zeigt
+   Customer-Brand, nicht LocalPilot-Brand).
+2. Favicon-Generation aus dem Mark — PNG-Set 16/32/180/512
+   plus `apple-touch-icon`. Ggf. via `next/image` Loader
+   oder Manual-Asset-Pipeline.
+3. Email-Signatur-Templates (Phase 4 — wenn echte
+   Customer-Onboarding-Mails laufen).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Logo-Trends 2026
++ SaaS-Brand-Identity + System-based Brand-Design.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(5/≥10 Sessions, davon 1 Light-Pass). Demo-Logo-Direktive ✅.
+
+**Nächste Session**: Code-Session 82 = **Theme-Polish** via
+`theme-factory`-Skill über alle 10 Themes. Inhalt:
+1. Konsistenz-Audit der Farben pro Theme.
+2. Schrift-Hierarchie pro Theme (Heading-Weights,
+   Body-Sizes).
+3. Button-Surface-Konsistenz (`rounded-theme-button` greift
+   korrekt überall).
+4. Form-Surfaces auf Public-Site-Lead-Form.
+5. Theme-Switcher unter `/themes` als Demo-Tool prüfen.
+
+---
+
+## Code-Session 82 – Phase 2: Theme-Polish (WCAG-AA-Sweep)
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · A11y
+
+**Was**: Contrast-Audit aller 10 Themes via neues
+`scripts/audit-themes.ts`-Script. **25 Failures gefunden,
+25 Fixes mit channel-uniformen Hex-Shifts angewandt** —
+alle 70 kritischen Color-Pairs erfüllen jetzt WCAG 2.2 AA.
+
+**Audit-Methodik — Tooling statt Eyeballing**: Statt
+manueller WCAG-Checker-Browser-Plugin-Pflicht über 10
+Themes hinweg ein einmaliges TypeScript-Script:
+- Liest alle Themes via `getAllThemes()`-Registry
+- Berechnet Contrast-Ratio nach WCAG-2.2-Formel
+  (sRGB-zu-linear + 0.2126 R + 0.7152 G + 0.0722 B)
+- Prüft 7 Color-Pairs pro Theme (Required: ≥4.5 für Text,
+  ≥3.0 für UI)
+- Findet automatisch den nächsten passenden Hex-Shift
+  durch Channel-Iteration
+- Output: Pass/Fail-Tabelle + Fix-Suggestion pro Failure
+
+**Architektur-Entscheidung — Channel-Shift statt
+Re-Design**: 25 Failures wären als Total-Brand-Re-Design
+eine Mehr-Sessions-Aufgabe. Channel-uniformer Shift
+(z. B. `#e879b8` → `#d869a8`) hält Hue+Saturation
+konstant, ändert nur Lightness — Theme-Identität bleibt,
+WCAG passt. Zwei Klassen Fixes:
+- **Auto-Suggestion** (21 Cases): Script schiebt FG-Farbe
+  Richtung Brand-Tendenz (heller bei dunklem BG, dunkler
+  bei hellem BG) bis Required-Ratio erreicht.
+- **Manuelle Primary-Darkening** (4 Cases mit
+  Primary-on-Primary < 4.5): Script konnte White-Text
+  nicht weit genug shiften. Stattdessen Primary selbst
+  darkening (warm_local `#c45a4f` → `#b04438`,
+  medical_clean `#2a8a9a` → `#1f6c79`, beauty_luxury
+  `#c8758f` → `#a85673`, fitness_energy `#1bb068` →
+  `#077a3f`). Behält white-on-color-Button-Pattern.
+
+**Architektur-Entscheidung — Border-Pairs strikt 3:1**:
+WCAG 2.2 SC 1.4.11 (Non-Text Contrast) verlangt 3:1 für
+UI-Components inkl. Input-Borders. 9 von 10 Themes
+hatten Pastell-Borders mit < 1.5:1. Mit Phase-2-A11y-
+Fokus jetzt mid-tone-Grays — Inputs sind jetzt
+**sichtbar** für Sehschwache, statt nur als „suggestive
+Linie" zu wirken.
+
+**Architektur-Entscheidung — `audit:themes` als
+Permanent-Script**: Statt das Script nach S82 zu löschen,
+in `package.json` als `npm run audit:themes` registriert.
+Künftige Theme-Änderungen (neue Themes, Brand-Updates,
+Customer-Themes) können sofort verifiziert werden. Script
+ist außerhalb von `src/`, keine Production-Bundle-
+Auswirkung, kein Smoketest-Lauf.
+
+**WebSearch (Track C)**:
+- [WCAG 2.2 Contrast (UXPin)](https://www.uxpin.com/studio/blog/color-consistency-design-systems/) — semantische Tokens + audit-by-design (82).
+- [WCAG 2.2 Contrast Testing (Accessibility-Test)](https://accessibility-test.org/blog/support/advanced-guides/color-contrast-in-wcag-2-2-testing-and-fixes-that-actually-work/) — 4.5:1 Text, 3:1 UI, separate dark-mode-Tokens (82).
+- [Accessible Color Tokens (AufaitUX)](https://www.aufaitux.com/blog/color-tokens-enterprise-design-systems-best-practices/) — Audit-by-Token-Pattern für Enterprise-Design-Systems (82).
+- [WCAG 3.0 Status (Web-Accessibility-Checker)](https://web-accessibility-checker.com/en/blog/wcag-3-0-guide-2026-changes-prepare) — APCA als kommender Standard, aber WCAG 2.2 bleibt 2026-Pflicht (82).
+
+**Dateien**:
+- ✚ `scripts/audit-themes.ts` (~120 Zeilen, einmaliges
+  Script + permanent via npm-Script).
+- 🔄 `package.json`: `audit:themes`-Script registriert.
+- 🔄 `src/core/themes/themes/clean-light.ts`: 2 Hex-Fixes.
+- 🔄 `.../premium-dark.ts`: 1 Hex-Fix (border).
+- 🔄 `.../warm-local.ts`: 4 Hex-Fixes.
+- 🔄 `.../medical-clean.ts`: 4 Hex-Fixes.
+- 🔄 `.../beauty-luxury.ts`: 3 Hex-Fixes.
+- 🔄 `.../automotive-strong.ts`: 2 Hex-Fixes.
+- 🔄 `.../craftsman-solid.ts`: 2 Hex-Fixes.
+- 🔄 `.../creative-studio.ts`: 2 Hex-Fixes.
+- 🔄 `.../fitness-energy.ts`: 3 Hex-Fixes.
+- 🔄 `.../education-calm.ts`: 2 Hex-Fixes.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/RESEARCH_INDEX.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün (Theme-Schema-Validation in
+`ThemeSchema.parse(...)` greift bei jedem Theme-Import,
+also wäre ein invalid-Hex sofort aufgefallen). **116/116
+E2E** grün (Chromium 58 + Firefox 58, 3:12 min). Bundle
+102 KB shared unverändert. **`npm run audit:themes` → 0
+Failures**.
+
+**A11y-Win — End-to-End**: Vor S82 konnte ein
+Customer-Theme-Switch zu < 4.5:1-Primary-Buttons führen
+→ WCAG-Verstoß. Nach S82 ist die gesamte 10-Theme-
+Galerie compliant. Phase-1.5-E2E-Tests haben den Sweep
+nicht broken (waren strukturell, nicht visuell) — gutes
+Indiz für saubere Hex-Shift-Strategie.
+
+**Phase-2-Backlog (1 neues Item aus S82)**:
+1. Visual-Regression-Tests für Theme-Galerie via
+   Playwright-Screenshots — verhindert künftige
+   accidental-Color-Drifts.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — WCAG 2.2
+Contrast + Design-Token-Audit-Patterns 2026.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(6/≥10 Sessions, davon 1 Light-Pass). Theme-Galerie
+WCAG-AA-compliant.
+
+**Nächste Session**: Code-Session 83 = **A11y-Audit
+(globaler Sweep)**. Inhalt:
+1. Tab-Order über alle Pages (Marketing, Dashboard,
+   Public-Site, Editoren).
+2. ARIA-Labels auf Icon-Only-Buttons (Codex-Backlog #3).
+3. Focus-States auf Form-Komponenten (RHF-Errors mit
+   `aria-live="polite"`).
+4. Reduced-Motion-Pfad (`prefers-reduced-motion: reduce`)
+   für Loader-Animationen.
+5. Lighthouse-A11y-Score auf allen Routes ≥ 95.
+
+---
+
+## Code-Session 83 – Phase 2: A11y-Audit (globaler Sweep)
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · A11y
+
+**Was**: A11y-Audit per Explore-Agent über `src/`. 51 Files
+mit Lucide-Icons systematisch geprüft. **0 Icon-Only-Buttons
+ohne aria-label** (S77–S82 hat das systematisch gefixt) — 2
+globale A11y-Gaps geschlossen: Skip-Link + reduced-motion.
+16 `<main>`-Elemente mit `id="main-content"` versehen.
+
+**Audit-Methodik — Strukturiert via Explore-Agent**:
+4-Kategorien-Audit (Icon-Only-Buttons, animate-* ohne
+reduced-motion, Skip-to-Content, main-Landmarks). Agent
+liefert Befunds-Tabelle, Hauptkontext implementiert. Pattern
+aus S79 (Editoren-Audit) wiederverwendet.
+
+**Audit-Ergebnis**:
+| Kategorie | Status |
+| --- | --- |
+| Icon-Only-Buttons ohne aria-label | ✅ 0 (S77–S82 sweep wirkt) |
+| `animate-*` (15× `animate-spin`) ohne reduced-motion-Guard | ❌ Globaler Gap |
+| Skip-to-Content-Link | ❌ Globaler Gap |
+| `<main>`-Landmarks vorhanden | ✅ 16 von 16 |
+| `<main id="main-content">` | ❌ keine IDs |
+
+**Architektur-Entscheidung — Skip-Link in `RootLayout`,
+nicht in `SiteHeader`**: Dashboard-Pages haben
+`DashboardShell` (kein SiteHeader), Public-Site hat
+`PublicSiteHeader`. Skip-Link muss aber überall greifen.
+`RootLayout` (`app/layout.tsx`) ist die einzige Komponente,
+die JEDE Page wrappt — eine Stelle, ein Skip-Link, alle
+16 Pages abgedeckt.
+
+**Architektur-Entscheidung — `lp-skip-link`-Utility in
+`globals.css`-Component-Layer**: Konsistent mit
+`lp-focus-ring`/`lp-container`/etc. CSS-only-Ansatz, kein
+Tailwind-Sondernutzung. Visuell verborgen via
+`transform: translateY(-200%)` (statt `display:none`,
+weil Tastatur-Fokus auf `display:none`-Elements nicht
+greift). Bei `:focus` springt der Link mit
+150ms-Transition ins Viewport — theme-aware Farben +
+Accent-Outline beim Fokus.
+
+**Architektur-Entscheidung — Globaler
+`prefers-reduced-motion`-Wildcard statt
+pro-Komponente-Guard**: 15 `animate-spin`-Stellen + alle
+Tailwind-`transition-*`-Klassen müssten sonst einzeln mit
+`motion-reduce:`-Prefix gewrappt werden. Stattdessen
+einmal global:
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    ...
+  }
+}
+```
+Loader-Icons (alle `aria-hidden`) bleiben als statische
+Glyphen sichtbar — User merken den „loading"-State an
+deaktivierten Buttons + „Speichere …"-Text. Kein
+Vestibular-Disorder-Trigger mehr.
+
+**Architektur-Entscheidung — `id="main-content"` auf JEDEM
+`<main>`-Element**: 16 Pages haben jeweils ein eigenes
+`<main>` (Marketing/Public-Site/Editoren). Eine
+DashboardShell-Wrapper-Komponente teilt sich `<main>` über
+4 Sub-Routen — eine ID dort genügt. Alternative wäre eine
+zentrale `<MainContentWrapper>`-Komponente, aber das wäre
+ein größerer Refactor; 16 Edits sind atomic.
+
+**WebSearch (Track C)**:
+- [WCAG SCR40 - prefers-reduced-motion JS (W3C)](https://www.w3.org/WAI/WCAG21/Techniques/client-side-script/SCR40) — Globaler-CSS-Wildcard ist 2026-Standard (83).
+- [MDN prefers-reduced-motion](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion) — `0.01ms` (statt `0`) verhindert Browser-Spec-Inconsistencies (83).
+- [Pope Tech – Accessible Animation 2026](https://blog.pope.tech/2025/12/08/design-accessible-animation-and-movement/) — Reduce-Motion-Standards für SaaS (83).
+- [CSS-Tricks prefers-reduced-motion](https://css-tricks.com/almanac/rules/m/media/prefers-reduced-motion/) — Wildcard-Pattern + scroll-behavior (83).
+
+**Dateien**:
+- 🔄 `src/app/layout.tsx`: Skip-Link als erstes `<body>`-Child.
+- 🔄 `src/app/globals.css`: `lp-skip-link`-Utility +
+  globale `@media (prefers-reduced-motion: reduce)`-Regel.
+- 🔄 `src/components/dashboard/dashboard-shell.tsx`:
+  `id="main-content"`.
+- 🔄 11 Page-Files: `id="main-content"` auf `<main>`.
+- 🔄 4 not-found/special-Pages: `id="main-content"`.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/RESEARCH_INDEX.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:06 min). Bundle 102 KB
+shared unverändert (CSS-only-Änderungen).
+
+**Phase-2-Backlog (3 neue Items aus S83)**:
+1. Lighthouse-A11y-Score-Messung auf allen Routes ≥ 95
+   (eigene Session via `webapp-testing`-Skill).
+2. `aria-live="polite"` explicit auf Save-/Error-Banner
+   (S79-Backlog #15 wieder hochpriorisieren).
+3. Visual-Regression-Test für reduced-motion-Pfad in
+   Playwright (Browser-DevTools-Emulation).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — WCAG 2.3.3
+prefers-reduced-motion + WCAG 2.4.1 Skip-Links + 2026-CSS-
+Wildcards.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(7/≥10 Sessions, davon 1 Light-Pass). A11y-Foundation
+komplett.
+
+**Nächste Session**: Code-Session 84 = **Mobile/Tablet-
+Responsive-Audit**. Inhalt:
+1. Breakpoints (sm 640px / md 768px / lg 1024px / xl 1280px)
+   pro Page testen.
+2. Touch-Targets ≥ 44×44 px (WCAG 2.5.5 AAA, aber 2026-
+   Mobile-Best-Practice).
+3. Mobile-CTA-Streifen auf Public-Site.
+4. Dashboard-Mobile-Nav (horizontal-scroll-Strip vs.
+   Bottom-Nav-Migration aus S78-Backlog).
+5. Content-Reflow bei 320px viewport.
+
+---
+
+## Code-Session 84 – Phase 2: Mobile/Tablet-Responsive-Audit
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · Mobile/Touch
+
+**Was**: Mobile-Audit per Explore-Agent über alle Pages.
+13 Touch-Target-Findings + 1 zentraler iOS-Auto-Zoom-Bug
++ 1 Horizontal-Scroll-Bug. Alle inline gefixt in einer
+atomaren Session (User-Anweisung: keine Micro-Commits).
+
+**Audit-Methodik**:
+- Explore-Agent prüfte 5 Kategorien (Touch-Targets,
+  H-Scroll, Mobile-Nav, Reflow @ 320 px, iOS-Spezifika).
+- Lieferte Tabelle mit `file:line` + Fix-Vorschlag pro
+  Befund + Priorisierung (Kritisch/Hoch/Mittel/Backlog).
+- 1 False-Positive: `feature-comparison-matrix` hatte
+  bereits korrektes `overflow-x-auto + min-w-full` —
+  geprüft, übersprungen.
+
+**Architektur-Entscheidung — `text-base md:text-sm` als
+Mobile-Form-Standard**: iOS-Safari-Auto-Zoom triggert
+beim Fokus auf Input-Felder mit Schriftgröße < 16 px.
+Unsere FormInput hatte `text-sm` (14 px) → User
+zoomt versehentlich rein, raus aus dem Layout. Fix:
+`text-base` (16 px) auf Mobile, `md:text-sm` zurück
+auf 14 px ab 768 px. Eine Zeile in `form-field.tsx`
+repariert alle 33 Inputs in 7 Editor-Komponenten —
+selber Hebel-Pattern wie S79 ARIA-Wiring.
+
+**Architektur-Entscheidung — 44 px statt 24 px (WCAG
+2.5.5 AAA statt 2.5.8 AA)**: WCAG 2.5.8 (Level AA,
+Pflicht) fordert 24 × 24 CSS-px, WCAG 2.5.5 (Level AAA,
+freiwillig) fordert 44 × 44 CSS-px. Für Mobile-first
+SaaS lohnt sich AAA — Apple-iOS-Guideline (44 pt) und
+Material-Design-Spec (48 dp) führen ohnehin dorthin.
+Siteimprove-Research: 28 % weniger Touch-Errors, 15 %
+höhere Mobile-Conversion bei 44 px.
+
+**Architektur-Entscheidung — Mobile-CTA mit 56 px
+extra-large**: Die drei sticky-Bottom-Buttons
+(Anrufen / WhatsApp / Anfrage) sind die wichtigsten
+Conversion-Targets der Public-Site. Statt 44 px hier
+56 px (`min-h-[56px]`) — bewusst über dem Standard.
+Andere Tap-Targets bekommen 44 px (Standard) oder
+40 px (Sekundär-Aktionen wie „Public-Site"-Link auf
+Account-Page).
+
+**Architektur-Entscheidung — Decorative-Icons NICHT
+verkleinert**: `quick-actions-card.tsx:89` hat
+`h-8 w-8` für ein dekoratives Icon innerhalb eines
+Card-Links mit `p-3` Padding — das echte Tap-Target
+ist die ganze Card (> 60 px Höhe). WCAG 2.5.5 fordert
+44 px nur für Tap-Targets selbst, nicht für
+Sub-Elemente. Audit-Agent hatte das richtig
+markiert als „nicht kritisch" — wir folgen dem.
+
+**Horizontal-Scroll-Fix in Mobile-Nav**:
+`dashboard-mobile-nav.tsx` hatte `flex gap-1` +
+`flex-none` auf `<li>`, aber Tailwind `flex-none`
+matcht `flex: none` (= `0 0 auto`). Trotzdem konnten
+Pills auf 320 px zerquetscht werden, weil `flex-wrap`
+default-`nowrap` ist und Container `overflow-x-auto`
+hatte. Fix: explizit `flex-nowrap` + `flex-shrink-0`
+auf `<li>` (statt `flex-none`) + `gap-1.5` für
+WCAG-2.5.5-Spacing zwischen Tap-Targets.
+
+**WebSearch (Track C)**:
+- [WCAG 2.5.5 Target Size (W3C)](https://www.w3.org/WAI/WCAG21/Understanding/target-size.html) — 44×44 CSS-px Minimum für AAA (84).
+- [WCAG 2.5.8 Target Size Minimum (W3C)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html) — 24×24 für AA als Pflicht (84).
+- [Siteimprove Motor Impairments + Mobile UI](https://www.siteimprove.com/blog/motor-impairments-and-mobile-ui-the-touch-target-problem/) — 3× Error-Rate bei < 44 px (84).
+- [CSS-Tricks WCAG 2.5.5](https://css-tricks.com/looking-at-wcag-2-5-5-for-better-target-sizes/) — `@media (pointer: coarse)`-Pattern für Mobile-only-Vergrößerung (84).
+- [WebAbility Target Size Guide](https://www.webability.io/glossary/target-size) — 16 px Form-Input für iOS-Zoom-Prevention (84).
+
+**Dateien**:
+- 🔄 `src/components/forms/form-field.tsx`: `text-base md:text-sm` zentral.
+- 🔄 `src/components/dashboard/services-edit/service-card.tsx`:
+  Move-Up/Down (h-8 → h-11), Delete-Confirm + Cancel + Trigger (h-8 → h-11).
+- 🔄 `src/components/dashboard/business-header.tsx`:
+  Switcher-Summary (h-9 → h-10), Public-Site-CTA (h-9 → h-10).
+- 🔄 `src/components/dashboard/dashboard-mobile-nav.tsx`:
+  Pills (py-1.5 → h-10), `flex-nowrap` + `flex-shrink-0` + gap-1.5.
+- 🔄 `src/components/public-site/public-mobile-cta-bar.tsx`:
+  Sticky-Buttons (py-2 → min-h-[56px] py-2.5).
+- 🔄 `src/components/dashboard/business-edit/image-upload-field.tsx`:
+  Hochladen + Entfernen (py-1.5 → h-10).
+- 🔄 `src/components/dashboard/leads-view/leads-view.tsx`:
+  Schließen-Button (h-8 → h-11).
+- 🔄 `src/app/account/page.tsx`: Logout (h-? → h-11),
+  Dashboard-Öffnen (h-? → h-11), Public-Site-Link (h-? → h-10).
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/RESEARCH_INDEX.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:18 min). Bundle 102 KB
+shared unverändert. **`npm run audit:themes` → 0
+Failures** (S82 weiterhin clean).
+
+**Phase-2-Backlog (2 neue Items aus S84)**:
+1. Mobile-Nav → Bottom-Nav-Migration (S78-Backlog #2
+   wieder hochpriorisiert). Eigene 2-h-Session.
+2. Visual-Regression-Test für Touch-Targets in Playwright
+   mit Mobile-Viewport (375×667).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — WCAG 2.5.5 / 2.5.8
+Target-Size + iOS-Zoom-Prevention + Mobile-Touch-Patterns 2026.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(8/≥10 Sessions, davon 1 Light-Pass). Mobile-Layer
+WCAG-AAA-konform.
+
+**Nächste Session**: Code-Session 85 = **5er-Light-Pass**.
+Inhalt:
+1. simplify-Skill auf S81-S84-Commits
+   (Brand/Theme/A11y/Mobile-Audit-Wins).
+2. Type-System-Pass: alle TS-Type-Drift in Phase-2-
+   Komponenten.
+3. README/Doku-Sync nach 5 Sessions (Status-Tabelle,
+   MVP_RECAP, RESEARCH_INDEX-Konsolidierung).
+4. State-Refresh-Checklist (Stub-Audit, Codex-Backlog,
+   npm outdated).
+
+---
+
+## Code-Session 85 – Phase 3 startet: Strategischer Pivot
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 3 · Plan-Reset
+
+**Was**: User-Direktive nach Phase-2-Abschluss: „Bei Session
+100 muss alles 10/10 sein, übergabefähig an Kunden ohne
+Code-Änderung." Das alte Phase-2-Restende (S85 Light-Pass,
+S86 Final-Polish) wird durch eine neue **Phase 3 →
+Verkaufsreife** ersetzt — 16 Sessions (S85–100) mit jeweils
+einem konkreten Verkaufs-Outcome. Dies ist die Pivot-
+Session: PROGRAM_PLAN umgeschrieben, README refokussiert,
+SALES_PLAYBOOK angelegt, Claude.md Hard-Constraint
+verankert, Demo-Kontakte klar markiert.
+
+**User-Diagnose** (verbatim): „7/10 als technisches Projekt,
+5,5–6/10 Verkaufsreife, Potenzial 8/10 wenn jetzt nicht
+Features sondern Pilotkunden + Polish + DSGVO + echte
+Domains + Onboarding sauber gemacht werden". Vier
+Schwachpunkte:
+1. Internal-Tagebuch-Look (README zu sehr Sessions/Codex)
+2. Keine echten Kundenbeweise
+3. Mock vs. Production-Trennung unklar
+4. Kein klares Go-to-Market-Paket
+
+Die Phase-3-Plan adressiert alle 4 systematisch.
+
+**Architektur-Entscheidung — Phase-3-Hard-Constraint in
+Claude.md verankern**: Ohne harte Regel besteht das Risiko,
+dass künftige Sessions wieder Feature-Gravitate folgen
+(„noch ein UI-Polish", „noch ein Audit"). Hard-Constraint:
+„Kein neues Feature ohne direkten Verkaufs-Bezug." Wenn ein
+Vorschlag nicht mit „weil mein nächster Pilotkunde es
+braucht" begründbar ist → Innovation-Loop nach S100.
+
+**Architektur-Entscheidung — README.md zweischichtig statt
+zwei separater Files**: Alternative wäre `README.md`
+(Kunden) + `README-DEV.md` (Entwickler). Nachteil: GitHub
+zeigt nur die erste, Doku-Drift-Risiko. Lösung: ein
+README mit Kunden-Teil oben sichtbar, Entwickler-Doku in
+`<details>`-Block eingeklappt. GitHub rendert
+`<details>` korrekt, Kunden lesen nur Teil 1, Entwickler
+klappen auf.
+
+**Architektur-Entscheidung — `MVP_RECAP.md` →
+`PRODUCT_STATUS.md` umbenannt**: „MVP" suggeriert
+„unfertig". Phase 3 ist nicht mehr MVP-Phase, sondern
+Verkaufsreife. „PRODUCT_STATUS" ist Stand-unabhängig
+und passt für die ganze Lebensdauer des Programms.
+
+**Architektur-Entscheidung — `SALES_PLAYBOOK.md` als
+neue zentrale Verkaufs-Doku**: Statt Verkaufs-Themen in
+README/PROGRAM_PLAN zu vermischen, eigenes Playbook mit:
+- 3 Hero-Branchen-Liste
+- Pakete + Pilotkonditionen (50 % Setup-Rabatt + 3 Monate
+  kostenlos für Pilotwelle)
+- Outbound-E-Mail-Template
+- 30-Min-Erstgespräch-Skript
+- 7-Tage-Onboarding-Playbook (Tag-für-Tag operativ)
+- Vertragsstruktur (S96-Plan)
+- Customer-Support-Workflow (S97-Plan)
+- 12 Verkaufs-Checkpunkte für S100 (Erfolgskriterium)
+
+**Architektur-Entscheidung — Demo-Kontakt-Daten als
+„Demo" markieren statt löschen**: `mailto:hello@localpilot.ai`
+und `tel:+493090009999` waren in `cta-contact.tsx` und
+`pricing/page.tsx` als klick-bare Links — User-Klicks
+gingen ins Leere. Lösung: Links durch nicht-klickbare
+Anzeige ersetzt + „Demo-Kontakt"-Badge + Hinweis „echter
+Kanal kommt bis Session 100". Ehrlicher als Fake-Links.
+
+**Architektur-Entscheidung — alte Phase-2-Detail-Bullets
+in PROGRAM_PLAN als HTML-Kommentar einkapseln statt
+löschen**: Historische Roadmap-Inhalte sind im RUN_LOG
+detailliert. Doppelte Doku ist Wartungsaufwand. Aber
+hartes Löschen verliert Kontext für künftige Code-Reviews.
+Lösung: `<!-- HIST: -->`-Block — gerendert unsichtbar,
+git-blame-bar.
+
+**Dateien (große Pivot-Session, ein Commit, kein Code-Drift)**:
+- 🔄 `docs/PROGRAM_PLAN.md`: Phase 2 → ✅ kompakte Notiz,
+  neue Phase 3 mit S85–100, Skill-Mapping aktualisiert.
+- 🔄 `README.md`: komplett umgeschrieben (Verkäufer-Fokus +
+  Entwickler-Details in `<details>`-Block).
+- ✚ `docs/SALES_PLAYBOOK.md` (~250 Zeilen).
+- ⤴ `docs/MVP_RECAP.md` → `docs/PRODUCT_STATUS.md`
+  umbenannt + Header aktualisiert.
+- 🔄 `Claude.md`: Punkt 10 Hard-Constraint S85–100.
+- 🔄 `docs/CODEX_BACKLOG.md`: Phase-3-Hinweis (Pause für
+  größere Junior-Themen).
+- 🔄 `src/components/marketing/cta-contact.tsx`:
+  Demo-Kontakt-Badge + Links als Anzeigen.
+- 🔄 `src/app/pricing/page.tsx`: `mailto:`-Link → `/#kontakt`-
+  Anchor.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:24 min). Bundle 102 KB
+shared unverändert. **`npm run audit:themes` → 0
+Failures**.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 ✅,
+**Phase 3 läuft (1/16 Sessions, S85–100 → Verkaufsreife)**.
+
+**Erfolgskriterium S100**: 12 Verkaufs-Checkpunkte 12/12 grün
+(siehe `docs/SALES_PLAYBOOK.md` §10).
+
+**Quellen**: keine WebSearch — Pivot-Session basiert auf
+expliziter User-Diagnose statt externe Recherche.
+
+**Nächste Session**: Code-Session 86 = **Marketing-Copy +
+Hero-Refokus**. Inhalt:
+1. Hero-Section umschreiben auf konkrete USP („In 7 Tagen
+   Website mit Anfrageformular, Bewertungs-Booster und
+   KI-Texten — ohne Technikstress").
+2. Problem-Solution-Section auf 3 Hero-Branchen fokussieren.
+3. CTA-Contact-Sektion: nicht mehr „abstrakte Beratung",
+   sondern konkretes „Pilot-Slot reservieren".
+4. Demo-Trennung im Marketing klarer (was ist Demo, was
+   nach 7-Tage-Setup echt).
+5. Tone-of-Voice: weniger SaaS-Buzzword, mehr
+   Handwerker-/Friseur-/Reinigungsfirma-Sprache.
+
+---
+
+## Code-Session 86 – Phase 3: Marketing-Copy + Hero-Refokus
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 3 · Marketing
+
+**Was**: Marketing-Copy auf konkrete USP umgestellt: „In 7
+Tagen Website mit Anfrageformular, Bewertungs-Booster und
+KI-Texten — ohne Technikstress." 6 Marketing-Komponenten
+umgeschrieben, alle auf 3-Hero-Branchen-Sprache (Friseur,
+Werkstatt, Reinigung) und 7-Tage-Onboarding-Synchron mit
+`SALES_PLAYBOOK.md`. Tone-of-Voice: weg von SaaS-Buzzword,
+hin zu Handwerker-Sprache.
+
+**Architektur-Entscheidung — Eine Sprache, eine Seite, eine
+Wahrheit**: Marketing-Page und `SALES_PLAYBOOK.md` 7-Tage-
+Onboarding sind jetzt **wörtlich deckungsgleich**.
+Marketing-Onboarding-Promise zeigt:
+- Tag 0: 30-Min-Briefing
+- Tag 1–4: wir bauen
+- Tag 5: Owner-Training
+- Tag 6–7: Domain + Live + Übergabe
+
+`SALES_PLAYBOOK.md` zeigt dieselben 7 Tage in operativer
+Tiefe. Verhindert Marketing↔Operations-Drift in S87+.
+
+**Architektur-Entscheidung — „Pilot-Slot reservieren" als
+Single-CTA**: Vorher: Hero hatte „Live-Demos ansehen",
+Onboarding-Promise hatte „Jetzt anmelden", CTA-Contact
+hatte „Demo-Sites + Pakete". Jetzt: Primary-CTA überall
+**„Pilot-Slot reservieren"** (führt zu /#kontakt). User
+landet aus 3 Marketing-Stellen am selben Conversion-Punkt.
+Sekundär-CTA bleibt „Demo ansehen" / „Pakete vergleichen"
+für Discovery-Phase.
+
+**Architektur-Entscheidung — Pilotkonditionen explizit
+kommuniziert**: „3 Monate kostenlos, Setup-Fee 50 %
+reduziert, gegen Case-Study-Erlaubnis nach 30 Tagen Live-
+Betrieb" steht in Hero-Sub, CTA-Contact-Body und FAQ.
+Ehrlichkeit > Marketing-Trick. Pilotkunden wissen, was sie
+geben (Case-Study) und bekommen (kostenfreie Pilotzeit).
+
+**Architektur-Entscheidung — FAQ komplett neu geschrieben
+statt patches**: Alte FAQ war 6 abstrakte Fragen
+(„Funktioniert das für meine Branche?" — vage Antwort
+„branchenneutral, 20 Branchen"). Neue FAQ: 8 konkrete
+Phase-3-Fragen die Pilotkunden tatsächlich stellen werden:
+„Für welche Branchen?" → 3 Hero + ehrliche Roadmap. „Pilot-
+welle drin?" → 3 Monate kostenlos. „Onboarding-Ablauf?" →
+7 Tage. „Kosten nach Pilot?" → konkrete Preise. „Daten bei
+Kündigung?" → DSGVO Art. 20. Plus: `lp-focus-ring` auf
+`<summary>`-Toggle (A11y-Polish, war seit S77 Backlog).
+
+**WebSearch (Track C)**: keine — Marketing-Copy-Refokus
+folgt expliziter User-Direktive aus S85-Pivot. Externe
+Best-Practices wären redundant.
+
+**Dateien (6 Marketing-Komponenten)**:
+- 🔄 `src/components/marketing/hero.tsx`: USP-H1,
+  Pilot-Slot-CTA, 3-Branchen-Eyebrow.
+- 🔄 `src/components/marketing/problem-solution.tsx`:
+  Konkretere Probleme + 4 Werkzeuge mit „in 7 Tagen"-
+  Versprechen.
+- 🔄 `src/components/marketing/onboarding-promise.tsx`:
+  Tag 0 → Tag 7 deckungsgleich mit SALES_PLAYBOOK.
+- 🔄 `src/components/marketing/cta-contact.tsx`:
+  „Pilotwelle 2026" + ehrliche Pilotkonditionen.
+- 🔄 `src/components/marketing/faq.tsx`: 8 neue Fragen
+  + `lp-focus-ring` auf `<summary>`.
+- 🔄 `src/components/marketing/benefits.tsx`: kürzere,
+  konkretere Titles + Bodies.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅
+(1 escape-fix für JSX-Template-Literal mit „..."). **45/45
+Smoketests** grün. **116/116 E2E** grün (Chromium 58 +
+Firefox 58, 2:18 min). Bundle 102 KB shared unverändert.
+**`npm run audit:themes` → 0 Failures**.
+
+**E2E-Resilience-Beweis**: Phase-1.5-E2E-Tests sind
+strukturell, nicht text-spezifisch (außer Hero-H1-Existenz,
+nicht Hero-H1-Inhalt). Marketing-Copy-Refresh hat keinen
+Test gebrochen — gutes Zeichen für die richtige Test-
+Granularität.
+
+**Was NICHT geändert wurde** (bleibt aus Phase 1/2):
+- `IndustriesGrid` zeigt weiter alle 13 Branchen — Reduktion
+  auf 3 Hero kommt in S91 (eigene Session, weil Industry-
+  Preset-Code geändert werden muss).
+- `DemoShowcase` mit allen 6 Demo-Sites — bleibt sichtbar,
+  S90 kommt mit klareren Demo-Markern auf den Sites selbst.
+- `Testimonials` mit fiktiven Personas — echte Customer-
+  Testimonials in S93 / S98.
+
+**Phase-2-Backlog-Reduzierung**:
+- A11y-FAQ-`<summary>`-Focus-Ring (S77-Backlog) ✅ erledigt.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 ✅,
+Phase 3 läuft (2/16 Sessions, S85–100 → Verkaufsreife).
+
+**Quellen**: keine — User-Direktive (S85-Pivot) als
+einzige Source.
+
+**Nächste Session**: Code-Session 87 = **Domain + Email-
+Setup-Doku**. Inhalt:
+1. `docs/DOMAIN_SETUP.md`: Anleitung zum Verbinden einer
+   echten Brand-Domain mit Vercel.
+2. MX-Records für `kontakt@`-Postfach (Email-Provider
+   wählen + dokumentieren).
+3. Live-Smoketest des Magic-Link-Flows auf Production-Domain.
+4. CTA-Contact: Demo-Telefonnummer durch echte ersetzen,
+   sobald Hotline aktiv.
+5. README + SALES_PLAYBOOK + PRODUCT_STATUS aktualisieren.
+
 

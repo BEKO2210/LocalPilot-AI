@@ -4,24 +4,24 @@ import { LinkButton } from "@/components/ui/button";
 
 const STEPS = [
   {
-    n: "1",
-    title: "Login per Magic-Link",
-    text: "E-Mail eingeben, einmal-Link klicken — fertig. Kein Passwort, kein Drittanbieter-Tracking.",
+    n: "Tag 0",
+    title: "30-Min-Briefing",
+    text: "Wir hören zu: Was macht Ihren Betrieb aus, welche Leistungen, welche Bilder. Sie sammeln Texte und Fotos.",
   },
   {
-    n: "2",
-    title: "Branche & Paket wählen",
-    text: "20 Branchen-Presets bringen Texte, Felder und Tonalität mit. Bronze für klein, Silber für laufend, Gold für groß.",
+    n: "Tag 1–4",
+    title: "Wir bauen Ihre Seite",
+    text: "Branche, Theme, Inhalte, Anfrageformular, Bewertungs-Booster, Social-Texte — alles passend zu Ihrem Betrieb.",
   },
   {
-    n: "3",
-    title: "Inhalte einsetzen oder per KI generieren",
-    text: "Leistungen, Adresse, Logo, Hero-Bild eintragen. Beschreibungen, FAQs und Posts erzeugt der KI-Assistent auf Knopfdruck.",
+    n: "Tag 5",
+    title: "Owner-Training",
+    text: "30-Min-Video-Call: alle Editoren durchgeklickt. Ein Service ändern, ein Bild tauschen, eine FAQ ergänzen — gemeinsam.",
   },
   {
-    n: "4",
-    title: "Veröffentlichen unter Ihrem Slug",
-    text: `Theme aus 10 Vorlagen wählen, Slug einstellen, Schalter auf „veröffentlicht". Live unter /site/ihr-slug.`,
+    n: "Tag 6–7",
+    title: "Domain, SSL, Live + Übergabe",
+    text: "Ihre eigene Domain, DSGVO-Texte, Impressum geprüft, Site live geschaltet. 45-Min-Übergabe-Termin mit Walkthrough.",
   },
 ];
 
@@ -30,18 +30,20 @@ export function OnboardingPromise() {
     <Section id="onboarding">
       <Container>
         <div className="mx-auto max-w-2xl text-center">
-          <span className="lp-eyebrow">Onboarding</span>
+          <span className="lp-eyebrow">7-Tage-Onboarding</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-            In 4 Schritten startklar.
+            Tag 0 bis Tag 7 — feste Schritte, klare Übergabe.
           </h2>
           <p className="mt-4 text-ink-600">
-            {`Wir versprechen kein „in 5 Minuten online". Aber: in 60 Minuten haben Sie eine präsentierbare Seite. In 1–2 Wochen ist sie produktionsreif.`}
+            {`Kein „in 5 Minuten online" und keine Wochenendschicht
+            am Baukasten. Eine Woche fokussierte Arbeit, am Ende
+            geben wir die Seite an Sie zurück.`}
           </p>
         </div>
         <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step) => (
             <li key={step.n} className="lp-card flex h-full flex-col">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white text-sm font-bold">
+              <span className="inline-flex h-9 items-center justify-center rounded-lg bg-brand-600 px-3 text-sm font-bold text-white">
                 {step.n}
               </span>
               <h3 className="mt-4 text-base font-semibold text-ink-900">
@@ -53,8 +55,8 @@ export function OnboardingPromise() {
         </ol>
 
         <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <LinkButton href="/login" size="lg">
-            Jetzt anmelden
+          <LinkButton href="/#kontakt" size="lg">
+            Pilot-Slot reservieren
           </LinkButton>
           <LinkButton href="/pricing" size="lg" variant="outline">
             Pakete vergleichen

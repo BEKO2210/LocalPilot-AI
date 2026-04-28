@@ -11,7 +11,31 @@ type FormFieldProps = {
   children: React.ReactNode;
 };
 
-/** Wrapper: Label + Hilfetext + Inline-Fehler in konsistenter Optik. */
+const NATIVE_FORM_TAGS = new Set(["input", "select", "textarea"]);
+
+function isFormControlChild(
+  el: React.ReactElement,
+): el is React.ReactElement<{
+  "aria-invalid"?: boolean | "true" | "false";
+  "aria-describedby"?: string;
+}> {
+  if (typeof el.type === "string") return NATIVE_FORM_TAGS.has(el.type);
+  return el.type === FormInput || el.type === FormTextarea || el.type === FormSelect;
+}
+
+/**
+ * Wrapper: Label + Hilfetext + Inline-Fehler in konsistenter Optik.
+ *
+ * Wenn das Children ein einzelnes Form-Control-Element ist
+ * (`<input>` / `<select>` / `<textarea>` oder eine der hier
+ * exportierten Form*-Komponenten), klonen wir es und injizieren
+ * `aria-invalid` + `aria-describedby` automatisch. Bestehende
+ * Caller-Props gewinnen.
+ *
+ * Bei Display-Wrappern (z. B. `<div>` mit Read-only-Anzeige)
+ * passiert nichts — der Caller bekommt einfach Label + Hint
+ * gerendert.
+ */
 export function FormField({
   label,
   htmlFor,
@@ -21,6 +45,24 @@ export function FormField({
   className,
   children,
 }: FormFieldProps) {
+  const errorId = `${htmlFor}-error`;
+  const hintId = `${htmlFor}-hint`;
+  const describedBy = error ? errorId : hint ? hintId : undefined;
+
+  let wired: React.ReactNode = children;
+  if (
+    React.isValidElement(children) &&
+    React.Children.count(children) === 1 &&
+    isFormControlChild(children)
+  ) {
+    const childProps = children.props;
+    wired = React.cloneElement(children, {
+      "aria-invalid":
+        childProps["aria-invalid"] ?? (error ? true : undefined),
+      "aria-describedby": childProps["aria-describedby"] ?? describedBy,
+    });
+  }
+
   return (
     <div className={cn("space-y-1.5", className)}>
       <label
@@ -30,20 +72,28 @@ export function FormField({
         {label}
         {required ? <span className="text-rose-600"> *</span> : null}
       </label>
-      {children}
+      {wired}
       {error ? (
-        <p className="text-xs font-medium text-rose-600" role="alert">
+        <p
+          id={errorId}
+          className="text-xs font-medium text-rose-600"
+          role="alert"
+        >
           {error}
         </p>
       ) : hint ? (
-        <p className="text-xs text-ink-500">{hint}</p>
+        <p id={hintId} className="text-xs text-ink-500">
+          {hint}
+        </p>
       ) : null}
     </div>
   );
 }
 
+// `text-base` (16px) auf Mobile verhindert iOS-Auto-Zoom beim
+// Fokus auf Input. Auf md+ via `md:text-sm` zurück auf 14px.
 const baseInputClass =
-  "block w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200 disabled:opacity-60";
+  "block w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-base text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200 disabled:opacity-60 md:text-sm";
 
 export const FormInput = React.forwardRef<
   HTMLInputElement,

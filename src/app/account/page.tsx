@@ -142,7 +142,7 @@ export default function AccountPage() {
   }
 
   return (
-    <main className="lp-container max-w-3xl py-12">
+    <main id="main-content" className="lp-container max-w-3xl py-12">
       <h1 className="text-3xl font-semibold tracking-tight text-ink-900">
         Dein Account
       </h1>
@@ -173,7 +173,7 @@ export default function AccountPage() {
               </h2>
               <Link
                 href="/onboarding"
-                className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
+                className="lp-focus-ring inline-flex items-center gap-1 rounded-sm text-sm font-medium text-brand-700 hover:text-brand-800"
               >
                 <Plus className="h-4 w-4" aria-hidden />
                 Neuer Betrieb
@@ -218,7 +218,7 @@ function AuthedHeader({
       <button
         type="button"
         onClick={onSignOut}
-        className="inline-flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-800 hover:bg-ink-50 sm:self-start"
+        className="lp-focus-ring inline-flex h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 text-sm font-medium text-ink-800 hover:bg-ink-50 sm:self-start"
       >
         <LogOut className="h-4 w-4" aria-hidden />
         Abmelden
@@ -278,7 +278,7 @@ function EmptyBusinessesCard() {
       </p>
       <Link
         href="/onboarding"
-        className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
+        className="lp-focus-ring mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
       >
         <Plus className="h-4 w-4" aria-hidden />
         Betrieb anlegen
@@ -309,17 +309,17 @@ function BusinessCard({ membership }: { membership: BusinessMembership }) {
       <div className="flex flex-col gap-2 sm:items-end">
         <Link
           href={`/dashboard/${membership.slug}`}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-800"
+          className="lp-focus-ring inline-flex h-11 items-center gap-1.5 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"
         >
           Dashboard öffnen
-          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          <ExternalLink className="h-4 w-4" aria-hidden />
         </Link>
         <Link
           href={`/site/${membership.slug}`}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50"
+          className="lp-focus-ring inline-flex h-10 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 text-sm font-medium text-ink-700 hover:bg-ink-50"
         >
           Public-Site
-          <ExternalLink className="h-3 w-3" aria-hidden />
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
         </Link>
       </div>
     </article>
@@ -368,7 +368,7 @@ function GuestCard() {
       <p className="text-sm text-ink-700">Du bist nicht eingeloggt.</p>
       <Link
         href="/login"
-        className="inline-flex items-center justify-center rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
+        className="lp-focus-ring inline-flex items-center justify-center rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
       >
         Zum Login
       </Link>
@@ -392,7 +392,7 @@ function UnconfiguredCard() {
       </p>
       <Link
         href="/demo"
-        className="mt-4 inline-flex items-center gap-2 text-sm font-medium underline underline-offset-2"
+        className="lp-focus-ring mt-4 inline-flex items-center gap-2 rounded-sm text-sm font-medium underline underline-offset-2"
       >
         → Demo-Betriebe ansehen
       </Link>

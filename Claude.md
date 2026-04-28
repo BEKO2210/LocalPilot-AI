@@ -77,6 +77,16 @@ Konkret:
    - **CHANGELOG = Release-Notes (kurz)**, RUN_LOG = chronologischer
      Technical-Log. Keine Doppelung; CHANGELOG-Einträge bleiben
      auf 5–10 Bullets pro Session.
+10. **Phase 3 Hard-Constraint** — verbindlich von Code-Session 85
+    bis 100: **Kein neues Feature ohne direkten Verkaufs-Bezug.**
+    Bei Session 100 muss alles 10/10 sein — übergabefähig an
+    echte Kunden ohne Code-Änderung. Wenn ein Vorschlag nicht mit
+    „weil mein nächster Pilotkunde es braucht" begründbar ist,
+    gehört er ins Innovation-Loop-Backlog (Meilenstein 7), nicht
+    in S85–100. Pflichtlektüre vor jeder Phase-3-Session:
+    `docs/PROGRAM_PLAN.md` Sektion „Phase 3 → Verkaufsreife"
+    und `docs/SALES_PLAYBOOK.md`. Jede Session hat dort einen
+    konkreten Verkaufs-Outcome — wir liefern den, nichts anderes.
 
 Diese Philosophie hat Vorrang vor jeder Detail-Anweisung weiter unten,
 wenn es Konflikte gibt.

@@ -33,7 +33,7 @@ export function DashboardSidebar({ business, active }: DashboardSidebarProps) {
                 href={href}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
+                  "lp-focus-ring group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                   isActive
                     ? "bg-brand-600 text-white shadow-soft"
                     : "text-ink-700 hover:bg-ink-100",

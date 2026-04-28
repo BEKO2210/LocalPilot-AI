@@ -106,9 +106,49 @@
     padding-bottom: var(--theme-section-padding);
   }
 
-  /* Theme-aware Tastatur-Fokus für Links + Buttons (A11y, Phase 2). */
   .lp-focus-ring:focus-visible {
     outline: 2px solid rgb(var(--theme-accent));
     outline-offset: 2px;
+  }
+
+  /* Skip-to-Content-Link (WCAG 2.4.1). Visuell verborgen bis
+     Tastatur-Fokus, dann sichtbar oben links als prominenter
+     Sprung-Anker zum <main id="main-content">. */
+  .lp-skip-link {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 100;
+    padding: 0.625rem 1rem;
+    background-color: rgb(var(--theme-primary));
+    color: rgb(var(--theme-primary-fg));
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.25);
+    transform: translateY(-200%);
+    transition: transform 150ms ease-out;
+  }
+  .lp-skip-link:focus,
+  .lp-skip-link:focus-visible {
+    transform: translateY(0);
+    outline: 2px solid rgb(var(--theme-accent));
+    outline-offset: 2px;
+  }
+}
+
+/* Reduced-Motion-Pfad (WCAG 2.3.3). Greift OS-Setting
+   `prefers-reduced-motion: reduce` ab und neutralisiert
+   alle Animations/Transitions. animate-spin (Loader)
+   bleibt sichtbar als statisches Icon, dreht aber nicht
+   mehr — vermeidet vestibular-disorder-Trigger. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

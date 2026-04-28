@@ -48,7 +48,7 @@ export default function PricingPage() {
   return (
     <>
       <SiteHeader />
-      <main>
+      <main id="main-content">
         {/* Hero */}
         <Section bg="muted">
           <Container>
@@ -162,8 +162,8 @@ export default function PricingPage() {
                 wenn das nicht das größte Paket ist.
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <LinkButton href="mailto:hello@localpilot.ai" size="lg" variant="secondary">
-                  Beratung per E-Mail
+                <LinkButton href="/#kontakt" size="lg" variant="secondary">
+                  Beratung anfragen
                 </LinkButton>
                 <LinkButton href="/demo" size="lg" variant="outline" className="bg-white text-ink-900">
                   Demo-Sites ansehen

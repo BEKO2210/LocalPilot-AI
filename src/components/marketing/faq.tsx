@@ -3,28 +3,36 @@ import { Section } from "@/components/ui/section";
 
 const QUESTIONS = [
   {
-    q: "Ist das eine normale Website?",
-    a: "Ja – für Ihre Kundinnen und Kunden ist es eine ganz normale Website. Im Hintergrund liegt ein flexibles System, mit dem sich Inhalte, Design und Kontaktwege einfach ändern lassen.",
+    q: "Für welche Branchen funktioniert das?",
+    a: "Aktuell richten wir uns mit der Pilotwelle gezielt an Friseure / Barber, Auto-Werkstätten und Reinigungsfirmen. Das System kann technisch mehr Branchen, aber wir konzentrieren uns auf diese drei, damit jeder Pilotkunde die volle Aufmerksamkeit bekommt. Andere Branchen folgen, sobald wir pro Hero-Branche 3 echte Pilotkunden haben.",
+  },
+  {
+    q: "Was ist in der Pilotwelle drin?",
+    a: "3 Monate komplett kostenlos, Setup-Fee 50 % reduziert. Im Gegenzug erlauben Sie uns nach 30 Tagen Live-Betrieb eine schriftliche Case-Study (Vorher/Nachher, Anfragen-Zahl, Zitat). Sie können jederzeit zum Monatsende kündigen — kein Lock-in.",
+  },
+  {
+    q: "Wie läuft das Onboarding ab?",
+    a: "Sieben Tage. Tag 0 ist ein 30-Min-Briefing, danach bauen wir die Seite, Tag 5 zeigen wir Ihnen die Editoren, Tag 6–7 sind Domain, SSL, Impressum und Live-Schaltung. Tag 7 endet mit einem 45-Min-Übergabe-Termin.",
   },
   {
     q: "Kann ich Inhalte selbst ändern?",
-    a: "Ja. Über das Dashboard ändern Sie Texte, Leistungen, Öffnungszeiten und Bilder selbst. Bei Bedarf hilft die KI mit Textvorschlägen.",
+    a: "Ja. Über das Dashboard ändern Sie Texte, Leistungen, Öffnungszeiten und Bilder selbst. Die KI-Tools schlagen Texte vor (Service-Beschreibungen, FAQ, Social-Media-Posts), Sie übernehmen oder schreiben selbst.",
   },
   {
     q: "Brauche ich technische Kenntnisse?",
-    a: "Nein. Die Oberfläche ist bewusst einfach gehalten. Wir verwenden keine Entwicklerbegriffe und führen Sie Schritt für Schritt durch das Onboarding.",
+    a: "Nein. Wir verwenden keine Entwicklerbegriffe und führen Sie Schritt für Schritt durch das Setup. Wer Email schreiben kann und Bilder vom Handy hochlädt, kann das System bedienen.",
   },
   {
-    q: "Funktioniert das für meine Branche?",
-    a: "Sehr wahrscheinlich. LocalPilot AI ist branchenneutral und bringt Vorlagen für Friseur, Werkstatt, Reinigung, Kosmetik, Handwerk, Fahrschule, Fitness, Foto und viele mehr mit. Neue Branchen lassen sich in unter 30 Minuten ergänzen.",
+    q: "Was kostet das nach den 3 Pilotmonaten?",
+    a: "Bronze 49 €/Monat (Website + Anfrageformular), Silber 99 €/Monat (+ KI-Texte + Dashboard + Bewertungs-Booster), Gold 199 €/Monat (+ Social-Media-Generator + Domain + Premium-Themes). Setup-Fee einmalig 499–1.999 € — in der Pilotwelle 50 % reduziert. Monatlich kündbar.",
   },
   {
-    q: "Gibt es monatliche Kosten?",
-    a: "Ja – ab 49 € pro Monat. Die Einrichtungsgebühr deckt das Onboarding ab. Sie können jederzeit zwischen Bronze, Silber und Gold wechseln.",
+    q: "Was passiert mit meinen Daten, wenn ich kündige?",
+    a: "DSGVO Art. 20: Sie bekommen alle Daten als Export (Texte, Bilder, Anfragen, Bewertungen). Die Site geht offline, Ihre Daten gehen mit. Kein Lock-in.",
   },
   {
     q: "Ist KI verpflichtend?",
-    a: "Nein. Die KI ist eine Hilfe, kein Zwang. Sie können alle Texte selbst schreiben. Ohne API-Key läuft das System im Mock-Modus weiter – ideal für Demos.",
+    a: "Nein. Die KI-Tools sind eine Hilfe, kein Zwang. Sie können alle Texte selbst schreiben. Im Demo-Modus läuft das System mit deterministischen Beispieltexten weiter.",
   },
 ];
 
@@ -41,7 +49,7 @@ export function MarketingFAQ() {
         <div className="mx-auto mt-10 max-w-3xl divide-y divide-ink-200 rounded-2xl border border-ink-200 bg-white">
           {QUESTIONS.map(({ q, a }) => (
             <details key={q} className="group p-6">
-              <summary className="flex cursor-pointer items-start justify-between gap-4 text-left text-base font-medium text-ink-900">
+              <summary className="lp-focus-ring flex cursor-pointer items-start justify-between gap-4 rounded-md text-left text-base font-medium text-ink-900">
                 {q}
                 <span
                   aria-hidden

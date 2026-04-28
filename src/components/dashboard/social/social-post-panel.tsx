@@ -342,7 +342,7 @@ export function SocialPostPanel({
           type="button"
           onClick={() => void handleGenerate()}
           disabled={state.kind === "loading"}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="lp-focus-ring inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {state.kind === "loading" ? (
             <>
@@ -422,7 +422,7 @@ export function SocialPostPanel({
                   onClick={() =>
                     void copyToClipboard(state.output.hashtags.join(" "), "hashtags")
                   }
-                  className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50"
+                  className="lp-focus-ring ml-auto inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50"
                 >
                   {copiedKey === "hashtags" ? (
                     <>
@@ -460,7 +460,7 @@ export function SocialPostPanel({
               <button
                 type="button"
                 onClick={() => void copyToClipboard(state.output.imageIdea, "image")}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50"
+                className="lp-focus-ring ml-auto inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50"
               >
                 {copiedKey === "image" ? (
                   <>
@@ -484,7 +484,7 @@ export function SocialPostPanel({
               <button
                 type="button"
                 onClick={() => void copyToClipboard(state.output.cta, "cta")}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50"
+                className="lp-focus-ring ml-auto inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50"
               >
                 {copiedKey === "cta" ? (
                   <>
@@ -527,7 +527,7 @@ function PlatformTabs({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(p)}
-            className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+            className={`lp-focus-ring rounded-lg border px-3 py-1.5 text-sm transition-colors ${
               active
                 ? "border-brand-500 bg-brand-50 text-brand-800"
                 : "border-ink-200 bg-white text-ink-700 hover:bg-ink-50"
@@ -559,7 +559,7 @@ function ProviderTabs({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(opt.value)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+            className={`lp-focus-ring rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               active
                 ? "border-emerald-500 bg-emerald-50 text-emerald-800"
                 : "border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
@@ -591,7 +591,7 @@ function GoalPills({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(g)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+            className={`lp-focus-ring rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               active
                 ? "border-brand-500 bg-brand-50 text-brand-800"
                 : "border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
@@ -625,7 +625,7 @@ function LengthPicker({
               role="radio"
               aria-checked={active}
               onClick={() => onChange(l)}
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+              className={`lp-focus-ring flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
                 active
                   ? "border-brand-500 bg-brand-50 text-brand-800"
                   : "border-ink-200 bg-white text-ink-700 hover:bg-ink-50"
@@ -705,7 +705,7 @@ function PostCard({
         <button
           type="button"
           onClick={() => onCopy(body, copyKey)}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50"
+          className="lp-focus-ring ml-auto inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50"
         >
           {copiedKey === copyKey ? (
             <>

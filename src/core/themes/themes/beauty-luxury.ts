@@ -7,16 +7,16 @@ export const beautyLuxuryTheme: Theme = ThemeSchema.parse({
   description:
     "Soft, sophisticated, mit gedämpftem Rosé. Für Beauty, Nails, Hair und Boutique-Studios.",
   colors: {
-    primary: "#c8758f",
+    primary: "#a85673",
     primaryForeground: "#ffffff",
     secondary: "#2a1b21",
     secondaryForeground: "#fff9fa",
-    accent: "#d99eb1",
+    accent: "#b97e91",
     background: "#fff9fa",
     foreground: "#2a1b21",
     muted: "#faecf0",
     mutedForeground: "#7a5a64",
-    border: "#ecd2da",
+    border: "#a48a92",
   },
   typography: {
     headingFontFamily: "'Cormorant Garamond', 'Playfair Display', serif",

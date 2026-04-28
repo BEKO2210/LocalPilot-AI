@@ -128,7 +128,7 @@ function DaySlotsEditor({ dayIndex }: DaySlotsEditorProps) {
           <button
             type="button"
             onClick={() => append({ open: "09:00", close: "18:00" })}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-ink-300 px-3 py-1.5 text-xs font-medium text-ink-700 hover:border-brand-400 hover:text-brand-700"
+            className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg border border-dashed border-ink-300 px-3 py-1.5 text-xs font-medium text-ink-700 hover:border-brand-400 hover:text-brand-700"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />
             Slot hinzufügen

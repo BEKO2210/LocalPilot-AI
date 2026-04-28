@@ -457,14 +457,160 @@ kritischen User-Flows abgedeckt, `TESTING.md`-Doku mit
 Anleitung „lokal testen" + „CI-Setup". **Erreicht mit 58
 Tests, 9 Files, 2 Browser, ~2:18 min Full-Run-Zeit ✅**.
 
-### Phase 2 → UI/UX-Polish (Sessions ~77–~86+)
+### Phase 2 → UI/UX-Polish (Sessions 77–84) ✅ abgeschlossen
 
-Nach Phase-1.5 (E2E-Coverage steht) folgt die mindestens
-10-Sessions-tiefe Polish-Phase. Pro Session ein klar
-abgegrenzter Audit-Bereich mit (a) Snapshot des Ist-Stands,
-(b) Issue-Liste, (c) Fixes, (d) E2E-Tests aus Phase 1.5
-als Regression-Schutz.
+8 Sessions Audit + Polish (Public-Site, Dashboard-Shell, 5
+Editoren, Light-Pass, Brand-Identity, Theme-WCAG-AA, A11y,
+Mobile-Touch). Ergebnisse: 1 echter Bug + 1 latenter Bug + 1
+toter Link gefixt, ~50 interaktive Elemente mit theme-aware
+Tastatur-Fokus, FormField zentral mit ARIA-Wiring (33 Inputs),
+Brand-Mark als inline-SVG, alle 10 Themes WCAG-2.2-AA-konform,
+Skip-Link + reduced-motion + 11 Touch-Targets ≥ 44 px,
+iOS-Auto-Zoom-Prevention. Bundle: 102 KB unverändert über
+alle 8 Sessions, 116/116 E2E grün durchgehend.
 
+Detail-Log siehe `docs/RUN_LOG.md` Sessions 77–84.
+
+---
+
+### Phase 3 → Verkaufsreife (Sessions 85–100)
+
+**Ziel:** Bei Session 100 ist LocalPilot AI ein **fertig
+verkaufbares SaaS / Agentur-System**. „Ich kann morgen einen
+Kunden onboarden ohne Code-Änderung." — keine internen
+Unklarheiten, keine Demo-only-Workarounds, keine offenen
+Verträge, keine fehlenden Domains. **10/10 bei S100.**
+
+**Hard-Constraint** (verbindlich ab Session 85): Jede Session
+muss einen konkreten Verkaufs-Schritt liefern. **Kein neues
+Feature ohne direkten Verkaufs-Bezug.** Wenn ein Feature
+nicht mit „weil mein nächster Kunde es braucht" begründbar
+ist, gehört es ins Innovation-Loop-Backlog (Meilenstein 7),
+nicht in S85–100.
+
+**Status (Anfang Session 85):**
+- ✅ Code/Architektur (Phase 1, 1.5, 2 abgeschlossen)
+- ✅ Tests (45 Smoketests + 116 E2E grün)
+- ✅ A11y/Mobile/Brand (Phase 2 abgeschlossen)
+- ❌ Echte Pilotkunden / Vorher-Nachher-Stories
+- ❌ Klare Verkaufsspur (7-Tage-Onboarding-Playbook)
+- ❌ Echte Domain + Email + Vertragsstruktur
+- ❌ Marketing-Sprache vom Entwickler-Tagebuch entkoppelt
+- ❌ 3-Branchen-Fokus statt 13-Branchen-Versprechen
+- ❌ Kunden-Sales-Material (Pitch-PDF, Video-Walkthrough)
+
+**Plan (Sessions 85–100):**
+
+- **85**: **Strategischer Pivot + MD-Sweep**. PROGRAM_PLAN.md
+  umgeschrieben (Phase 3 detailliert), README.md auf
+  Verkäufer-Fokus refokussiert, neue `SALES_PLAYBOOK.md`
+  (Pakete + Vertragsstruktur + 7-Tage-Onboarding skizziert),
+  `Claude.md`-Hard-Constraint „kein Feature ohne Verkaufs-
+  Bezug" verankert, veraltete Doku-Files identifiziert.
+- **86** ✅: **Marketing-Copy + Hero-Refokus**. 6 Marketing-
+  Komponenten (Hero, Problem-Solution, Onboarding-Promise,
+  CTA-Contact, FAQ, Benefits) komplett umgeschrieben auf
+  USP („In 7 Tagen Website mit Anfrageformular, Bewertungs-
+  Booster und KI-Texten — ohne Technikstress"), 3-Hero-
+  Branchen-Sprache, 7-Tage-Onboarding deckungsgleich mit
+  `SALES_PLAYBOOK.md`. Single-CTA „Pilot-Slot reservieren"
+  überall. Pilotkonditionen (3 Monate kostenlos, 50 %
+  Setup-Rabatt) explizit kommuniziert. FAQ neu mit 8
+  konkreten Pilotkunden-Fragen. **116/116 E2E grün, Bundle
+  unverändert** — Phase-1.5-Tests waren strukturell genug.
+- **87**: **Domain + Email-Setup-Doku**. Echte Brand-Domain
+  registrieren-Anleitung (oder bestehende Domain
+  dokumentieren), Vercel-Custom-Domain-Setup,
+  MX-Records für `kontakt@`-Mail. Live-Smoketest des
+  Auth-Magic-Link-Flow auf Production-Domain.
+- **88**: **Pilotkunden-Acquisition-Pack**. Outbound-E-Mail-
+  Template, 1-Seiten-Pitch-PDF (Tech-Stack invisible,
+  Outcome dominant), Erstgespräch-Kalender-Link, Pilot-
+  Vertrag-Template (DSGVO-konform, deutsche Vertragsstruktur).
+- **89**: **7-Tage-Onboarding-Playbook**. Schritt-für-Schritt
+  von Tag 0 (Briefing) bis Tag 7 (Live + Übergabe). Pro
+  Tag: was passiert, wer macht was, welcher Output.
+  Inkl. Foto-/Logo-Anforderungs-Checklist für den Kunden.
+- **90** (5er-Light-Pass): **Demo-Daten-Sweep**. Alle 6
+  Mock-Betriebe als Demo unmissverständlich gekennzeichnet
+  (Banner „Demo-Site, fiktive Daten" prominent). Fake-
+  Telefonnummern entfernt oder als „Demo-Nummer"-Tag.
+  Public-Site rendert klar erkennbar das „Demo"-Attribut.
+  State-Refresh-Checklist.
+- **91**: **3-Branchen-Fokus**. Von 13 Industry-Presets auf
+  3 Hero-Branchen fokussieren (Friseur/Barber, Auto-
+  Werkstatt, Reinigung). Andere 10 Presets bleiben im
+  Code aber als „Coming Soon" markiert. Marketing-Page
+  zeigt nur die 3 Hero-Branchen prominent.
+- **92**: **Onboarding-UX < 60 Min**. Owner-Onboarding-Flow
+  optimieren: bessere Defaults aus Branchen-Preset, Pre-
+  fill von typischen Services, Logo-Upload-Smoothing,
+  Slug-Vorschlag aus Name. Stoppuhr-Test: kann ein neuer
+  Owner in 60 Min einen kompletten Betrieb live bringen?
+- **93**: **Case-Study-Template**. `docs/CASE_STUDIES/`-
+  Ordner mit Vorher/Nachher-Pattern, Customer-Logo-Ablage,
+  Feedback-Loop-Doku. Ziel: pro Pilotkunde eine
+  Case-Study-Page schreiben (publishable Auf-`/cases`).
+- **94**: **Production-Deploy-Pipeline final**. Vercel.json,
+  ENV-Doku komplett (was muss wo gesetzt sein),
+  GitHub-Actions-CI für Smoketests + Builds + E2E,
+  Domain-Deployment-Anleitung, Health-Check-Endpoint
+  kalt-getestet auf Production.
+- **95** (5er-Light-Pass): **Doku-Konsolidierung**. Interne
+  Sessions/Codex-/Roadmap-Dokus in `docs/_internal/`
+  verschoben (für mich). Externe Doku
+  (`README.md`/`SALES_PLAYBOOK.md`/`docs/PRODUCT.md`) klar
+  vom Entwickler-Tagebuch getrennt. State-Refresh-Checklist.
+- **96**: **Vertrag + Legal final**. DSGVO-konformer
+  Vertrag-Template, AGB, Widerrufsbelehrung, Auftrags-
+  verarbeitungs-Vereinbarung — alle in `docs/LEGAL/`.
+  Pricing-Page mit klar bezahlbaren Setup-Fees + monatliche
+  Beträge. Rechnung-Template (Stripe oder PDF-Generator).
+- **97**: **Customer-Support-Workflow**. Email-Templates für
+  Standard-Anfragen, SLA-Antwortzeit, Kunden-Übergabe-
+  Doku-Template, Kündigungs- + Datenexport-Pfad
+  (DSGVO Art. 20). Helpdesk-Inbox eingerichtet.
+- **98**: **Sales-Material final**. Echte Screenshots (von
+  echtem Pilotkunde wenn möglich, sonst hochwertige
+  Demo-Renderings), 90-Sekunden-Video-Walkthrough
+  (Loom-fähig), 1-Seiten-Pitch-PDF, Pricing-Page final.
+  Customer-Logos-Footer für Marketing-Page (sobald 1+
+  Pilot live).
+- **99** (5er-Light-Pass): **End-to-End-Verkauf-Probelauf**.
+  Kompletter Verkaufs-Flow gespielt: Erstkontakt →
+  Pitch-Call → Vertrag → Onboarding → Live → Übergabe →
+  laufender Support. Friction-Punkte dokumentiert + gefixt.
+  State-Refresh-Checklist.
+- **100**: **Launch-Readiness-Audit + Übergabe-Probe**. 12
+  Verkaufs-Checkpunkte (Domain ✅ aktiv, 1 Pilotkunde
+  live ✅, Lighthouse ≥95 ✅, Sentry-Inbox leer ✅,
+  Verträge ready ✅, README extern + intern getrennt ✅,
+  3-Branchen-Fokus ✅, Pitch-Material live ✅, Onboarding
+  ≤60 Min real getestet ✅, Vertrag DSGVO-konform ✅,
+  Backup/Datenexport-Pfad ✅, Custom-Support-Inbox aktiv ✅).
+  **Erfolgskriterium: 12/12 grün.**
+
+**Erfolgskriterium Phase 3 (S100):** *Ein neuer Pilotkunde
+kann morgen vollständig onboarded werden — Vertrag, Setup,
+Live-Site, Übergabe, Support — ohne dass eine Zeile Code
+angefasst werden muss. Alle Schritte folgen dokumentierten
+Playbooks.*
+
+**Was NICHT in Phase 3 gehört** (wandert in Innovation-Loop /
+Meilenstein 7):
+- Neue Branchen-Presets über die 3 Hero-Branchen hinaus
+- Neue Themes über die 10 vorhandenen hinaus
+- Major-Dependency-Bumps (Next 16, Tailwind 4, Zod 4 — eigene
+  Innovation-Loop-Session post-S100)
+- Bottom-Nav-Migration (S78-Backlog #2)
+- Visual-Regression-Tests für Mobile (S84-Backlog)
+- OG-Image / Favicon (S81-Backlog) — KOMMT in S94 als
+  Sales-Material-Teil
+- Discard-isDirty-Reset (S73+S79+S80-Backlog) — nur fixen
+  wenn Pilotkunde es echt beißt; sonst Backlog
+
+<!-- HIST: alte Phase-2-Detail-Bullets nach RUN_LOG verschoben -->
+<!--
 - **77** ✅: Public-Site-Audit. 1 Bug behoben (Footer-Links
   Impressum/Datenschutz zeigten auf nicht-existierende
   Anchors statt auf echte Routes), 1 A11y-Hole gefixt
@@ -476,50 +622,111 @@ als Regression-Schutz.
   S75-Pattern `Promise.all([waitForURL, click])`.
   5 neue Phase-2-Backlog-Items aus dem Audit.
   **116/116 E2E grün, Bundle unverändert**.
-- **78**: Dashboard-Shell-Audit. Header (Brand-Logo,
-  User-Menü, Active-Business-Switcher), Sidebar/Tab-Nav
-  (Desktop + Mobile-Bottom-Nav), Empty-States für
-  Erst-User (kein Betrieb), Auth-Card `/account` (Demo
-  vs Authed). `lp-focus-ring`-Migration auf Dashboard-
-  Komponenten.
-- **79**: Editor-Audits — alle 5 Editoren (Business,
-  Services, Settings, Reviews, Social) auf Buttons, Spacing,
-  Validation-Hints, Banner-Konsistenz.
-- **80** (5er-Multiple, Light-Pass): Form-System-
-  Konsistenz + Component-Reuse-Pass mit `simplify`-Skill.
-- **81**: **Demo-Logo + Brand-Identity**. Aktuelles Logo
-  ist text-only (LocalPilot AI). Mit `algorithmic-art`-Skill
-  ein generatives p5.js-Mark + statische SVG-Variante
-  produzieren. Brand-Tokens (`brand-guidelines`-Skill)
-  definieren: Farben, Schriften, Spacing, Iconography.
-- **82**: Theme-Polish. `theme-factory`-Skill anwenden auf
-  alle 10 Themes — Konsistenz-Audit der Farben, Schrift-
-  Hierarchie, Buttons, Form-Surfaces. Public-Site-Theme-
-  Switcher als Demo-Tool.
-- **83**: A11y-Audit. Tab-Order, ARIA-Labels, Contrast-
-  Ratios (WCAG 2.2 AA), Focus-States, Reduced-Motion-Pfad.
-- **84**: Mobile/Tablet-Responsive-Audit. Breakpoints
-  (sm/md/lg/xl), Touch-Targets (≥44×44), Mobile-CTA-
-  Streifen, Tab-Bars.
+- **78** ✅: Dashboard-Shell-Audit. 1 echter Bug behoben
+  (Stale-Stub-Drift: `nav-config.ts` markierte
+  ai/reviews/social/settings als `comingInSession`,
+  obwohl alle 4 Pages live sind seit S13–S69 → Sidebar
+  zeigte fälschlich „Vorschau"-Lock-Badges). A11y-Sweep
+  mit `lp-focus-ring` auf 13 weitere Elemente
+  (DashboardSidebar 8, DashboardMobileNav 8 Pills,
+  BusinessHeader 3, account/page.tsx 7). 5 neue
+  Phase-2-Backlog-Items aus dem Audit.
+  **116/116 E2E grün** — der Bug war ein Visual-Audit-Win,
+  nicht ein Test-Win (E2E-Suite hat ihn nie aufgedeckt,
+  weil sie keine Vorschau-Badge-Asserts hatte).
+- **79** ✅: Editor-Audits — alle 5 Editoren (Business,
+  Services, Settings, Reviews, Social) plus Image-Upload-
+  Field via Explore-Agent auditiert (3.3K LOC, 7 Files).
+  **Zentrales ARIA-Wiring in `FormField`** via
+  `React.cloneElement` — 1 Edit repariert 33 Inputs
+  (`aria-invalid` + `aria-describedby` automatisch). 23
+  Buttons mit `lp-focus-ring`. 5 Bugs ins Backlog (Discard-
+  isDirty-Reset, settings-form setTimeout-Race,
+  Hashtag-Color-Drift, service-card delete-state, lokal-
+  Storage-Quota-Feedback) — atomic-Session-Limit hat
+  Bug-Fix in S80-Light-Pass verschoben.
+  **116/116 E2E grün** — strukturelle Tests übersehen den
+  ARIA-Win (gute Indikator: zentrale Form-Verbesserung
+  ohne Test-Regression).
+- **80** ✅ (5er-Multiple, Light-Pass): `simplify`-Skill
+  via 3 parallel-Review-Agents (Reuse / Quality /
+  Efficiency) auf S77–S79-Commits. Ergebnisse:
+  (1) FormField cloneElement-Guard ergänzt — verhinderte
+  ARIA-Pollution bei Display-Wrapper-Children
+  (`business-edit-form.tsx:351`); (2) Button-Primitive
+  auf `lp-focus-ring` migriert — eine Source-of-Truth
+  für Focus statt 4 variant-spezifischer Outlines;
+  (3) 6 weitere Komponenten mit `lp-focus-ring`
+  (preview-link-card, opening-hours-editor, auth-card,
+  ai-playground, public-lead-form, theme-preview-card);
+  (4) Task-referencing-Comments aufgeräumt;
+  (5) State-Refresh-Checklist abgehakt (Stub-Audit
+  clean, npm outdated zeigt 18 Major-Bumps für
+  künftige Innovation-Loop-Session).
+  **116/116 E2E grün, Bundle unverändert**.
+- **81** ✅: **Demo-Logo + Brand-Identity**. User-Direktive
+  seit S65 erfüllt. Statisches inline-SVG-Mark (Rounded-
+  Square-Frame + Kompass-Chevron + AI-Akzent-Dot, alle in
+  `currentColor`), `LocalPilotMark`/`LocalPilotWordmark`/
+  `LocalPilotLockup`-Komponenten in
+  `src/components/brand/`, Marketing-Header und Footer
+  migriert, `docs/BRAND.md` mit Brand-Token-Mapping +
+  API-Doku. p5.js explizit NICHT bundled (Skill-Doku rät
+  davon ab — 1 MB+ Library-Bloat). 0 KB Bundle-Impact.
+  3 neue Phase-2-Backlog-Items (OG-Image, Favicon, Email-
+  Templates). **116/116 E2E grün**.
+- **82** ✅: Theme-Polish. **WCAG-2.2-AA-Sweep** über alle
+  10 Themes via neues `scripts/audit-themes.ts`-Tool. 25
+  Failures gefunden + behoben mit channel-uniformen Hex-
+  Shifts (Theme-Identität bleibt erkennbar, Kontrast
+  passt). Audit-Script bleibt als `npm run audit:themes`
+  für künftige Theme-Verifikation. Gesamte 10-Theme-
+  Galerie ist jetzt compliant — kein Customer-Theme-
+  Switch kann mehr WCAG-Verstoß auslösen.
+  **116/116 E2E grün, Bundle unverändert**.
+- **83** ✅: A11y-Audit (globaler Sweep). 4-Kategorien-
+  Audit via Explore-Agent. Sessions 77–82 hatten
+  Icon-Only-Buttons schon systematisch gefixt (0
+  Findings). 2 globale Gaps geschlossen: **Skip-to-
+  Content-Link** (`lp-skip-link`-Utility in `RootLayout`
+  greift überall — auch Dashboard-Pages ohne SiteHeader)
+  + **`prefers-reduced-motion: reduce`-Regel** (globaler
+  CSS-Wildcard, 15 `animate-spin`-Loader bleiben als
+  statische Icons sichtbar). 16 `<main>`-Elemente mit
+  `id="main-content"` versehen für Skip-Link-Target.
+  **116/116 E2E grün, Bundle unverändert** (CSS-only).
+- **84** ✅: Mobile/Tablet-Responsive-Audit. Per
+  Explore-Agent über alle Pages. **iOS-Auto-Zoom-
+  Prevention zentral** in FormField (`text-base md:text-sm`
+  → 33 Inputs auf einen Schlag). 11 Touch-Targets auf
+  44×44 px erhöht (service-card Move/Delete, business-
+  header Switcher + Public-Site-CTA, dashboard-mobile-nav
+  Pills, public-mobile-cta-bar Sticky-Buttons mit 56 px
+  extra-large, image-upload-field, leads-view-Close,
+  account/page.tsx Logout/Dashboard/Public-Site-Links).
+  Mobile-Nav Horizontal-Scroll-Fix (`flex-nowrap` +
+  `flex-shrink-0`). 2 neue Backlog-Items (Bottom-Nav-
+  Migration, Mobile-Visual-Regression-Tests).
+  **116/116 E2E grün, Bundle unverändert**.
 - **85** (5er-Multiple, Light-Pass): Type-System-Pass.
 - **86**: Finaler Polish-Pass + Lighthouse-Run + Bundle-
   Cleanup + Production-Deploy-Doku.
+-->
 
-### Skill-Mapping (Phase 2)
+### Skill-Mapping (Phase 3)
 
-Verfügbare Claude-Code-Skills, die in der UI/UX-Phase zentral
-werden:
+Verfügbare Skills für die Verkaufs-Phase:
 
-| Skill                  | Einsatz in Phase 1.5/2                              |
-| ---------------------- | ----------------------------------------------- |
-| `webapp-testing`       | **Phase 1.5 (Sessions 71–76)** — Playwright-Tests pro User-Flow. Regression-Schutz für Phase 2. |
-| `simplify`             | Light-Pass-Sessions (65 ✅, 70 ✅, 75, 80, 85) — Code-Diff-Review für Reuse + Quality + Efficiency. |
-| `algorithmic-art`      | Session 81 — Demo-Logo als generatives p5.js-Artwork mit Seed (reproduzierbar). |
-| `theme-factory`        | Sessions 81+82 — Brand-Tokens auf alle Artefakte (HTML/CSS/Slides/PDF) anwenden. |
-| `brand-guidelines`     | Session 81 — Brand-Definition (Farben, Schriften, Voice, Iconography) als Single-Source-of-Truth. |
-| `systematic-debugging` | Bei Bug-Hunting in Audit-Phasen — Senior-Dev-Pipeline statt Rumprobieren. |
-| `security-review`      | Session 70 (Pre-MVP) ✅ + vor Production-Deploy — Branch-weiter Security-Scan. |
-| `review`               | PR-Reviews vor `main`-Merge. |
+| Skill                  | Einsatz in Phase 3                                  |
+| ---------------------- | --------------------------------------------------- |
+| `simplify`             | Light-Pass-Sessions (90, 95, 99) — Code-Diff-Review. |
+| `webapp-testing`       | Regression-Schutz pro Session, plus Onboarding-UX-Stoppuhr-Test (S92). |
+| `document-suite`       | Sales-Material (S88, S98) — Pitch-PDF, Vertrag-Templates, Onboarding-Playbook als echte Word/PDF. |
+| `security-review`      | Pre-Production-Deploy (S94, S100). |
+
+`algorithmic-art` / `brand-guidelines` / `theme-factory`
+sind in Phase 2 ausgereizt — bleiben als Backup für Innovation-
+Loop nach S100.
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant
@@ -746,9 +953,37 @@ aktiven Session.
      Upload-Pfad steht bereits, UI fehlt).
   4. Service-Card als Whole-Card-Click (Touch-UX),
      statt nur Anfrage-Anchor unten.
-  5. `lp-focus-ring`-Migration auf nicht-Public-Pages
-     (Login/Onboarding/Account/Editoren — eigene Audits
-     in S78–S80).
+- **Phase-2-UI/UX-Backlog aus S78-Audit** (Dashboard):
+  5. `<details>`-Switcher in `BusinessHeader` braucht
+     Click-Outside-Close (aktuell CSS-only, ungewöhnlich).
+  6. Mobile-Nav als sticky-Bottom-Nav (≤5 Items) statt
+     horizontal-scroll-Strip — 2026-Touch-Zone-Pattern.
+  7. User-ID-Debug-Info auf `account/page.tsx` hinter
+     Dev-Toggle (aktuell jeder authed User sieht UUID).
+  8. `BusinessCard` (Account) Tier-Color-Coding analog zu
+     `BusinessHeader.TIER_BADGE_CLASS` für Konsistenz.
+  9. `<DashboardButton>`-Wrapper-Komponente einführen
+     (Account-Page hat 7 unique-styled Buttons mit
+     identischem `lp-focus-ring`-Pattern). Light-Pass-Item
+     für S80.
+- **Phase-2-Bug-Backlog aus S79-Audit** (Editoren, atomic-
+  Limit hat Fix in S80-Light-Pass verschoben):
+  10. Discard-isDirty-Reset (S73 + S79) — `methods.reset()`
+      mit localStorage-Override hat Timing-Issue.
+  11. `settings-form` `setTimeout(900ms)` vor
+      `router.push()` braucht AbortController.
+  12. `social-post-panel` Hashtag-Advice-Color-Drift —
+      `discouraged` und `warning` beide `text-amber-700`,
+      visuell ununterscheidbar.
+  13. `service-card` `confirmingRemove`-State wird nicht
+      garantiert resetted nach Delete.
+  14. `reviews-request-panel` localStorage-Quota-
+      Exceeded ohne User-Feedback.
+  15. `aria-live` explizit auf alle 8 Save-/Error-Banner
+      (polite vs assertive bewusst wählen).
+  16. Delete-Confirm-UI vereinheitlichen (`service-card`
+      inline vs `settings-form` Slug-Confirm). S80-
+      Light-Pass-Item.
 - Strukturierte Telemetrie der Mock-Provider-Aufrufe (Welche Methode,
   welche Branche, welche Variante), damit später echte Calls mit
   derselben Pipeline angezeigt werden können.

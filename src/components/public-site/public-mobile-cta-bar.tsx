@@ -65,7 +65,7 @@ export function PublicMobileCtaBar({ business }: PublicMobileCtaBarProps) {
               href={btn.href}
               target={btn.external ? "_blank" : undefined}
               rel={btn.external ? "noopener noreferrer" : undefined}
-              className="lp-focus-ring flex flex-1 flex-col items-center justify-center gap-0.5 rounded-theme-button py-2 text-[11px] font-medium"
+              className="lp-focus-ring flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-theme-button py-2.5 text-xs font-medium"
               style={
                 btn.primary
                   ? {

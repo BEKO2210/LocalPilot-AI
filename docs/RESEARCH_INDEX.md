@@ -173,6 +173,54 @@
 - [TestDino – Parallel Execution](https://testdino.com/blog/playwright-parallel-execution/) — CI-Worker-Limit auf 2 ist Best-Practice für Stability (75).
 - [Playwright – Browsers](https://playwright.dev/docs/browsers) — Firefox-Project ergänzt Chromium für 2026-Cross-Browser-Coverage (75).
 
+### Phase-2 Public-Site-Audit + Theme-aware Focus-Visible (Code-Session 77)
+- [Hero Section Design 2026 (Perfect Afternoon)](https://www.perfectafternoon.com/2025/hero-section-design/) — 4 Hero-Frameworks (Problem-Solution, Benefit-Driven, Question-Hook, Bold-Statement); Specificity → +23 % Conversion (77).
+- [Tailwind UI Marketing Page Examples](https://tailwindcss.com/plus/ui-blocks/marketing/page-examples/landing-pages) — Spacing/Hierarchy-Patterns für Landing-Pages 2026 (77).
+- [WCAG 2.2 – Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) — `:focus-visible` ist 2026-Pflicht für Tastatur-Nav, theme-aware Outline ist Best-Practice (77).
+
+### Phase-2 Mobile/Tablet-Responsive-Audit (Code-Session 84)
+- [WCAG 2.5.5 Target Size (W3C)](https://www.w3.org/WAI/WCAG21/Understanding/target-size.html) — 44×44 CSS-px Minimum für Level AAA (84).
+- [WCAG 2.5.8 Target Size Minimum (W3C)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html) — 24×24 als Pflicht für Level AA (84).
+- [Siteimprove Motor Impairments + Mobile UI](https://www.siteimprove.com/blog/motor-impairments-and-mobile-ui-the-touch-target-problem/) — 3× höhere Error-Rate bei Tap-Targets unter 44 px (84).
+- [CSS-Tricks WCAG 2.5.5](https://css-tricks.com/looking-at-wcag-2-5-5-for-better-target-sizes/) — `@media (pointer: coarse)`-Pattern für Mobile-only-Vergrößerung (84).
+- [WebAbility Target Size Guide](https://www.webability.io/glossary/target-size) — 16 px Form-Inputs verhindern iOS-Auto-Zoom (84).
+
+### Phase-2 A11y-Audit (globaler Sweep) (Code-Session 83)
+- [WCAG SCR40 prefers-reduced-motion JS (W3C)](https://www.w3.org/WAI/WCAG21/Techniques/client-side-script/SCR40) — globaler-CSS-Wildcard ist 2026-Standard (83).
+- [MDN prefers-reduced-motion](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion) — `0.01ms` (nicht `0`) verhindert Browser-Spec-Inconsistencies (83).
+- [Pope Tech Accessible Animation 2026](https://blog.pope.tech/2025/12/08/design-accessible-animation-and-movement/) — Reduce-Motion-Standards für SaaS-Apps (83).
+- [CSS-Tricks prefers-reduced-motion](https://css-tricks.com/almanac/rules/m/media/prefers-reduced-motion/) — Wildcard-Pattern + scroll-behavior (83).
+- [WCAG 2.4.1 Bypass Blocks (W3C)](https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks.html) — Skip-Link-Pflicht für Tastatur-Nav, Level A (83).
+
+### Phase-2 Theme-Polish + WCAG-AA-Sweep (Code-Session 82)
+- [Color Consistency in Design Systems (UXPin)](https://www.uxpin.com/studio/blog/color-consistency-design-systems/) — semantische Tokens („action-primary" statt „blue-500"), audit-by-design (82).
+- [WCAG 2.2 Contrast Testing (Accessibility-Test)](https://accessibility-test.org/blog/support/advanced-guides/color-contrast-in-wcag-2-2-testing-and-fixes-that-actually-work/) — 4.5:1 für Text, 3:1 für UI-Components inkl. Borders (82).
+- [Accessible Color Tokens (AufaitUX)](https://www.aufaitux.com/blog/color-tokens-enterprise-design-systems-best-practices/) — Audit-by-Token-Pattern für Enterprise-Design-Systems, separate Light/Dark-Themes (82).
+- [Accessible Color Systems in Block Themes (Brndle)](https://brndle.com/accessible-color-system-block-themes-wcag/) — Theme-Token-Architektur mit Approved-Pairs pro Theme + State (82).
+- [WCAG 3.0 Status 2026 (Web-Accessibility-Checker)](https://web-accessibility-checker.com/en/blog/wcag-3-0-guide-2026-changes-prepare) — APCA als nächster Standard, aber WCAG 2.2 bleibt 2026-Pflicht (82).
+
+### Phase-2 Demo-Logo + Brand-Identity (Code-Session 81)
+- [Logo Design Trends 2026 (ImagineArt)](https://www.imagine.art/blogs/logo-design-trends-2025) — Geometric Bold-Minimal als 2026-Standard, weg von purem Minimalismus (81).
+- [SaaS Logos Best Practices (eBaqDesign)](https://www.ebaqdesign.com/blog/saas-logos) — Tech-SaaS bevorzugt Mark + Wordmark-Lockup, nicht reine Wordmarks (81).
+- [Logo Trends 2026 (Shopify)](https://www.shopify.com/blog/logo-trends) — System-based Brand-Design: simple Mark + reichhaltiges Brand-System (81).
+- [Tech Startup Logos (LogoCrafter)](https://www.logocrafter.app/blog/best-tech-startup-logos) — Compass/Navigation-Motive für „direction"-Brands (81).
+- [SaaS Brand Identity (Arounda)](https://arounda.agency/blog/branding-examples) — Adaptive Logos via context-color (kontext-spezifische Farben) (81).
+
+### Phase-2 5-Editoren-Audit + zentrales ARIA-Wiring (Code-Session 79)
+- [React Hook Form formState (Docs)](https://react-hook-form.com/docs/useform/formstate) — `isDirty` recomputes nach `reset()`; `keepDirtyValues: true` als UX-Pattern (79).
+- [React Hook Form Discussion #3948 — manuelles isDirty](https://github.com/orgs/react-hook-form/discussions/3948) — `reset()` mit aktuellen Values setzt `defaultValues` + clear-isDirty (79).
+- [WAI-ARIA `aria-invalid` (W3C)](https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA21) — `aria-invalid="true"` pflicht; `undefined` (nicht `false`) wenn valid (79).
+- [aria-describedby + Error-Messages (David MacDonald)](https://www.davidmacd.com/blog/test-aria-describedby-errormessage-aria-live.html) — `aria-live` auf Error-`<p>` ist redundant mit `aria-describedby` (NVDA/JAWS Double-Speak vermeiden) (79).
+- [ARIA: aria-invalid (MDN)](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-invalid) — Valid-State sollte das Attribut **entfernen**, nicht `false` setzen (79).
+- [Reform.app — Common ARIA Mistakes in Forms](https://www.reform.app/blog/common-aria-mistakes-in-forms-and-fixes) — `aria-describedby` muss auf existierende ID zeigen (79).
+
+### Phase-2 Dashboard-Shell-Audit + Stub-Drift-Detection (Code-Session 78)
+- [SaaS Dashboard Templates 2026 (TailAdmin)](https://tailadmin.com/blog/saas-dashboard-templates) — Collapsible Sidebar ist 2026-Standard für komplexe Hierarchien (78).
+- [Mobile Navigation UX 2026 (DesignStudio)](https://www.designstudiouiux.com/blog/mobile-navigation-ux/) — Bottom-Nav (≤5 Items) ist Touch-Zone-Standard für Mobile-Web-Apps (78).
+- [Sidebar Design for Web Apps 2026 (AlfDesign)](https://www.alfdesigngroup.com/post/improve-your-sidebar-design-for-web-apps) — Active-State-Patterns + Hierarchie-Tiefe (78).
+- [WAI-ARIA Tabs Pattern (W3C)](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) — `role=tablist` mit Pfeiltasten-Nav; bei Routing-Links ist `aria-current="page"` der korrekte Pattern (78).
+- [ARIA Tab Panel Accessibility (Deque)](https://www.deque.com/blog/a11y-support-series-part-1-aria-tab-panel-accessibility/) — Tab vs Routing-Links Distinktion (78).
+
 ### Public-Site E2E + addInitScript + Mobile-Viewport (Code-Session 76)
 - [Playwright – addInitScript](https://playwright.dev/docs/api/class-page#page-add-init-script) — Läuft vor jedem `goto()`, ideal für localStorage-Pre-Population vor Form-Mount-`useEffect` (76).
 - [Playwright – Test Options: viewport](https://playwright.dev/docs/api/class-testoptions#test-options-viewport) — Per-`describe` `test.use({viewport})` ist der saubere Weg für Mobile-Tests (76).

@@ -45,6 +45,9 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body className="min-h-screen bg-white text-ink-900 antialiased">
+        <a href="#main-content" className="lp-skip-link">
+          Zum Hauptinhalt springen
+        </a>
         {children}
       </body>
     </html>

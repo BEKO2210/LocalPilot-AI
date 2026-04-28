@@ -65,28 +65,24 @@ export const DASHBOARD_NAV: readonly DashboardNavItem[] = [
     pathSuffix: "/ai",
     label: "KI-Assistent",
     icon: Sparkles,
-    comingInSession: 13,
   },
   {
     key: "reviews",
     pathSuffix: "/reviews",
     label: "Bewertungen",
     icon: Star,
-    comingInSession: 16,
   },
   {
     key: "social",
     pathSuffix: "/social",
     label: "Social Media",
     icon: Megaphone,
-    comingInSession: 17,
   },
   {
     key: "settings",
     pathSuffix: "/settings",
     label: "Einstellungen",
     icon: Settings,
-    comingInSession: 18,
   },
 ];
 
