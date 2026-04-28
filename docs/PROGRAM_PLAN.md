@@ -529,10 +529,15 @@ als Regression-Schutz.
   davon ab — 1 MB+ Library-Bloat). 0 KB Bundle-Impact.
   3 neue Phase-2-Backlog-Items (OG-Image, Favicon, Email-
   Templates). **116/116 E2E grün**.
-- **82**: Theme-Polish. `theme-factory`-Skill anwenden auf
-  alle 10 Themes — Konsistenz-Audit der Farben, Schrift-
-  Hierarchie, Buttons, Form-Surfaces. Public-Site-Theme-
-  Switcher als Demo-Tool.
+- **82** ✅: Theme-Polish. **WCAG-2.2-AA-Sweep** über alle
+  10 Themes via neues `scripts/audit-themes.ts`-Tool. 25
+  Failures gefunden + behoben mit channel-uniformen Hex-
+  Shifts (Theme-Identität bleibt erkennbar, Kontrast
+  passt). Audit-Script bleibt als `npm run audit:themes`
+  für künftige Theme-Verifikation. Gesamte 10-Theme-
+  Galerie ist jetzt compliant — kein Customer-Theme-
+  Switch kann mehr WCAG-Verstoß auslösen.
+  **116/116 E2E grün, Bundle unverändert**.
 - **83**: A11y-Audit. Tab-Order, ARIA-Labels, Contrast-
   Ratios (WCAG 2.2 AA), Focus-States, Reduced-Motion-Pfad.
 - **84**: Mobile/Tablet-Responsive-Audit. Breakpoints

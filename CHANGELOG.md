@@ -6,6 +6,82 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.18.1] – Code-Session 82 – 2026-04-28 (Phase 2: Theme-Polish — WCAG-AA-Sweep)
+
+Contrast-Audit-Script + 25 Hex-Fixes über 10 Themes. Alle 70
+kritischen Color-Pairs erfüllen jetzt **WCAG 2.2 AA**
+(≥4.5:1 für Text, ≥3:1 für UI-Elemente).
+
+- ✚ **`scripts/audit-themes.ts`**: WCAG-Contrast-Audit für
+  alle 10 Themes. 7 Color-Pairs pro Theme (primary-on-primary,
+  secondary-on-secondary, fg-on-bg, muted-fg-on-muted,
+  muted-fg-on-bg, accent-on-bg, border-on-bg). Liefert
+  Pass/Fail-Tabelle plus automatische Fix-Suggestion via
+  Channel-Shift. Wiederverwendbar via
+  `npm run audit:themes`.
+- 🎨 **25 Hex-Fixes über 10 Theme-Files**:
+  - **clean_light** (2 fix): `mutedForeground` 4.46→4.72,
+    `border` 1.40→3.13.
+  - **premium_dark** (1 fix): `border` 1.40→3.10.
+  - **warm_local** (4 fix): `primary` 4.27→5.30,
+    `accent` 2.85→3.13, `mutedForeground` 4.47→4.75,
+    `border` 1.39→3.13.
+  - **medical_clean** (4 fix): `primary` 4.04→5.50,
+    `accent` 2.14→3.09, `mutedForeground` 4.37→4.63,
+    `border` 1.39→3.09.
+  - **beauty_luxury** (3 fix): `primary` 3.28→5.20,
+    `accent` 2.13→3.13, `border` 1.36→3.04.
+  - **automotive_strong** (2 fix): `accent` 1.65→3.12
+    (heller Senf → Gold), `border` 1.39→3.02.
+  - **craftsman_solid** (2 fix): `accent` 2.02→3.09
+    (Senf-Gold → kräftiger Goldton), `border` 1.47→3.07.
+  - **creative_studio** (2 fix): `accent` 2.56→3.09,
+    `border` 1.47→3.04.
+  - **fitness_energy** (3 fix): `primary` 2.82→5.16
+    (Mintgrün → kräftigeres Grün), `accent` 2.81→3.08,
+    `border` 1.37→3.01.
+  - **education_calm** (2 fix): `accent` 1.61→3.01
+    (Pastell-Orange → Honig-Gold), `border` 1.40→3.15.
+- ✚ **`audit:themes` npm-Script** für künftige Theme-
+  Verifikation.
+
+**Architektur-Entscheidungen**:
+- **Hex-Shifts statt Re-Design**: 25 Fixes wären als Total-
+  Re-Design eine eigene Brand-Session. Stattdessen
+  channel-uniformer Shift (Hue+Saturation bleibt erhalten,
+  Lightness wird angepasst) — Theme-Identität bleibt
+  erkennbar, nur etwas dunkler/sättiger.
+- **Border-Pairs erhöht**: WCAG 2.2 SC 1.4.11 verlangt 3:1
+  für UI-Components (auch Borders). Borders waren in 9 von
+  10 Themes < 1.5:1 (decorative-Pastell). Jetzt mid-tone-
+  Grays mit ≥3:1 — Inputs/Cards sind jetzt sichtbar
+  begrenzt.
+- **Primary-Darkening über White-Text**: bei Themes mit zu
+  hellen Primaries (warm_local Korall, beauty_luxury Rosé,
+  fitness_energy Mintgrün, medical_clean Türkis) wurde der
+  Primary darken statt Foreground auf dunkle Schrift zu
+  flippen. Behält den „white-on-color"-Button-Look.
+
+**A11y-Win**: Bisher konnten Customer-Public-Sites mit
+diesen Themes WCAG-AA verletzen, sobald sie Lead-Form-
+Buttons oder Hint-Text rendern. Mit S82 ist die gesamte
+Theme-Galerie compliant — kein einziger Customer-Theme-
+Switch kann mehr accidental-rot.
+
+**45/45 Smoketests grün, 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 3:12 min). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: Phase 2 Sessions 6/≥10. Nächste Session 83 =
+**A11y-Audit** (Tab-Order, ARIA-Labels, Focus-States,
+Reduced-Motion-Pfad, vollständiger WCAG-2.2-AA-Sweep
+auch für Komponenten ohne Theme-Bezug).
+
+**Manueller Test**: `npm run audit:themes` → 0 Failures.
+`npm run dev` → `/themes` → Theme-Switcher anklicken,
+jedes Theme rendert mit lesbaren Buttons + sichtbaren
+Borders + erkennbaren Hint-Texten.
+
 ## [0.18.0] – Code-Session 81 – 2026-04-28 (Phase 2: Demo-Logo + Brand-Identity)
 
 User-Direktive seit S65 erfüllt: „Demo-Logo muss richtig was

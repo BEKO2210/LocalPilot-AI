@@ -9452,4 +9452,120 @@ shared unverändert (inline-SVG = 0 KB Bundle-Impact).
 4. Form-Surfaces auf Public-Site-Lead-Form.
 5. Theme-Switcher unter `/themes` als Demo-Tool prüfen.
 
+---
+
+## Code-Session 82 – Phase 2: Theme-Polish (WCAG-AA-Sweep)
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · A11y
+
+**Was**: Contrast-Audit aller 10 Themes via neues
+`scripts/audit-themes.ts`-Script. **25 Failures gefunden,
+25 Fixes mit channel-uniformen Hex-Shifts angewandt** —
+alle 70 kritischen Color-Pairs erfüllen jetzt WCAG 2.2 AA.
+
+**Audit-Methodik — Tooling statt Eyeballing**: Statt
+manueller WCAG-Checker-Browser-Plugin-Pflicht über 10
+Themes hinweg ein einmaliges TypeScript-Script:
+- Liest alle Themes via `getAllThemes()`-Registry
+- Berechnet Contrast-Ratio nach WCAG-2.2-Formel
+  (sRGB-zu-linear + 0.2126 R + 0.7152 G + 0.0722 B)
+- Prüft 7 Color-Pairs pro Theme (Required: ≥4.5 für Text,
+  ≥3.0 für UI)
+- Findet automatisch den nächsten passenden Hex-Shift
+  durch Channel-Iteration
+- Output: Pass/Fail-Tabelle + Fix-Suggestion pro Failure
+
+**Architektur-Entscheidung — Channel-Shift statt
+Re-Design**: 25 Failures wären als Total-Brand-Re-Design
+eine Mehr-Sessions-Aufgabe. Channel-uniformer Shift
+(z. B. `#e879b8` → `#d869a8`) hält Hue+Saturation
+konstant, ändert nur Lightness — Theme-Identität bleibt,
+WCAG passt. Zwei Klassen Fixes:
+- **Auto-Suggestion** (21 Cases): Script schiebt FG-Farbe
+  Richtung Brand-Tendenz (heller bei dunklem BG, dunkler
+  bei hellem BG) bis Required-Ratio erreicht.
+- **Manuelle Primary-Darkening** (4 Cases mit
+  Primary-on-Primary < 4.5): Script konnte White-Text
+  nicht weit genug shiften. Stattdessen Primary selbst
+  darkening (warm_local `#c45a4f` → `#b04438`,
+  medical_clean `#2a8a9a` → `#1f6c79`, beauty_luxury
+  `#c8758f` → `#a85673`, fitness_energy `#1bb068` →
+  `#077a3f`). Behält white-on-color-Button-Pattern.
+
+**Architektur-Entscheidung — Border-Pairs strikt 3:1**:
+WCAG 2.2 SC 1.4.11 (Non-Text Contrast) verlangt 3:1 für
+UI-Components inkl. Input-Borders. 9 von 10 Themes
+hatten Pastell-Borders mit < 1.5:1. Mit Phase-2-A11y-
+Fokus jetzt mid-tone-Grays — Inputs sind jetzt
+**sichtbar** für Sehschwache, statt nur als „suggestive
+Linie" zu wirken.
+
+**Architektur-Entscheidung — `audit:themes` als
+Permanent-Script**: Statt das Script nach S82 zu löschen,
+in `package.json` als `npm run audit:themes` registriert.
+Künftige Theme-Änderungen (neue Themes, Brand-Updates,
+Customer-Themes) können sofort verifiziert werden. Script
+ist außerhalb von `src/`, keine Production-Bundle-
+Auswirkung, kein Smoketest-Lauf.
+
+**WebSearch (Track C)**:
+- [WCAG 2.2 Contrast (UXPin)](https://www.uxpin.com/studio/blog/color-consistency-design-systems/) — semantische Tokens + audit-by-design (82).
+- [WCAG 2.2 Contrast Testing (Accessibility-Test)](https://accessibility-test.org/blog/support/advanced-guides/color-contrast-in-wcag-2-2-testing-and-fixes-that-actually-work/) — 4.5:1 Text, 3:1 UI, separate dark-mode-Tokens (82).
+- [Accessible Color Tokens (AufaitUX)](https://www.aufaitux.com/blog/color-tokens-enterprise-design-systems-best-practices/) — Audit-by-Token-Pattern für Enterprise-Design-Systems (82).
+- [WCAG 3.0 Status (Web-Accessibility-Checker)](https://web-accessibility-checker.com/en/blog/wcag-3-0-guide-2026-changes-prepare) — APCA als kommender Standard, aber WCAG 2.2 bleibt 2026-Pflicht (82).
+
+**Dateien**:
+- ✚ `scripts/audit-themes.ts` (~120 Zeilen, einmaliges
+  Script + permanent via npm-Script).
+- 🔄 `package.json`: `audit:themes`-Script registriert.
+- 🔄 `src/core/themes/themes/clean-light.ts`: 2 Hex-Fixes.
+- 🔄 `.../premium-dark.ts`: 1 Hex-Fix (border).
+- 🔄 `.../warm-local.ts`: 4 Hex-Fixes.
+- 🔄 `.../medical-clean.ts`: 4 Hex-Fixes.
+- 🔄 `.../beauty-luxury.ts`: 3 Hex-Fixes.
+- 🔄 `.../automotive-strong.ts`: 2 Hex-Fixes.
+- 🔄 `.../craftsman-solid.ts`: 2 Hex-Fixes.
+- 🔄 `.../creative-studio.ts`: 2 Hex-Fixes.
+- 🔄 `.../fitness-energy.ts`: 3 Hex-Fixes.
+- 🔄 `.../education-calm.ts`: 2 Hex-Fixes.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/RESEARCH_INDEX.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün (Theme-Schema-Validation in
+`ThemeSchema.parse(...)` greift bei jedem Theme-Import,
+also wäre ein invalid-Hex sofort aufgefallen). **116/116
+E2E** grün (Chromium 58 + Firefox 58, 3:12 min). Bundle
+102 KB shared unverändert. **`npm run audit:themes` → 0
+Failures**.
+
+**A11y-Win — End-to-End**: Vor S82 konnte ein
+Customer-Theme-Switch zu < 4.5:1-Primary-Buttons führen
+→ WCAG-Verstoß. Nach S82 ist die gesamte 10-Theme-
+Galerie compliant. Phase-1.5-E2E-Tests haben den Sweep
+nicht broken (waren strukturell, nicht visuell) — gutes
+Indiz für saubere Hex-Shift-Strategie.
+
+**Phase-2-Backlog (1 neues Item aus S82)**:
+1. Visual-Regression-Tests für Theme-Galerie via
+   Playwright-Screenshots — verhindert künftige
+   accidental-Color-Drifts.
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — WCAG 2.2
+Contrast + Design-Token-Audit-Patterns 2026.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(6/≥10 Sessions, davon 1 Light-Pass). Theme-Galerie
+WCAG-AA-compliant.
+
+**Nächste Session**: Code-Session 83 = **A11y-Audit
+(globaler Sweep)**. Inhalt:
+1. Tab-Order über alle Pages (Marketing, Dashboard,
+   Public-Site, Editoren).
+2. ARIA-Labels auf Icon-Only-Buttons (Codex-Backlog #3).
+3. Focus-States auf Form-Komponenten (RHF-Errors mit
+   `aria-live="polite"`).
+4. Reduced-Motion-Pfad (`prefers-reduced-motion: reduce`)
+   für Loader-Animationen.
+5. Lighthouse-A11y-Score auf allen Routes ≥ 95.
+
 

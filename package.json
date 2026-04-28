@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "audit:themes": "tsx scripts/audit-themes.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.62.0",

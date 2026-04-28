@@ -7,16 +7,16 @@ export const fitnessEnergyTheme: Theme = ThemeSchema.parse({
   description:
     "Vital, motivierend, mit Grünton und warmem Akzent. Für Trainer, Studios, Coaches.",
   colors: {
-    primary: "#1bb068",
+    primary: "#077a3f",
     primaryForeground: "#ffffff",
     secondary: "#0a1f15",
     secondaryForeground: "#ffffff",
-    accent: "#f3754f",
+    accent: "#eb6d47",
     background: "#ffffff",
     foreground: "#0a1f15",
     muted: "#eef7f0",
     mutedForeground: "#56705f",
-    border: "#cfe1d4",
+    border: "#87998c",
   },
   typography: {
     headingFontFamily: "'Manrope', Inter, ui-sans-serif, system-ui",

@@ -178,6 +178,13 @@
 - [Tailwind UI Marketing Page Examples](https://tailwindcss.com/plus/ui-blocks/marketing/page-examples/landing-pages) — Spacing/Hierarchy-Patterns für Landing-Pages 2026 (77).
 - [WCAG 2.2 – Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) — `:focus-visible` ist 2026-Pflicht für Tastatur-Nav, theme-aware Outline ist Best-Practice (77).
 
+### Phase-2 Theme-Polish + WCAG-AA-Sweep (Code-Session 82)
+- [Color Consistency in Design Systems (UXPin)](https://www.uxpin.com/studio/blog/color-consistency-design-systems/) — semantische Tokens („action-primary" statt „blue-500"), audit-by-design (82).
+- [WCAG 2.2 Contrast Testing (Accessibility-Test)](https://accessibility-test.org/blog/support/advanced-guides/color-contrast-in-wcag-2-2-testing-and-fixes-that-actually-work/) — 4.5:1 für Text, 3:1 für UI-Components inkl. Borders (82).
+- [Accessible Color Tokens (AufaitUX)](https://www.aufaitux.com/blog/color-tokens-enterprise-design-systems-best-practices/) — Audit-by-Token-Pattern für Enterprise-Design-Systems, separate Light/Dark-Themes (82).
+- [Accessible Color Systems in Block Themes (Brndle)](https://brndle.com/accessible-color-system-block-themes-wcag/) — Theme-Token-Architektur mit Approved-Pairs pro Theme + State (82).
+- [WCAG 3.0 Status 2026 (Web-Accessibility-Checker)](https://web-accessibility-checker.com/en/blog/wcag-3-0-guide-2026-changes-prepare) — APCA als nächster Standard, aber WCAG 2.2 bleibt 2026-Pflicht (82).
+
 ### Phase-2 Demo-Logo + Brand-Identity (Code-Session 81)
 - [Logo Design Trends 2026 (ImagineArt)](https://www.imagine.art/blogs/logo-design-trends-2025) — Geometric Bold-Minimal als 2026-Standard, weg von purem Minimalismus (81).
 - [SaaS Logos Best Practices (eBaqDesign)](https://www.ebaqdesign.com/blog/saas-logos) — Tech-SaaS bevorzugt Mark + Wordmark-Lockup, nicht reine Wordmarks (81).

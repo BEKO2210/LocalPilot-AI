@@ -15,8 +15,8 @@ export const cleanLightTheme: Theme = ThemeSchema.parse({
     background: "#ffffff",
     foreground: "#0f1320",
     muted: "#f6f7f9",
-    mutedForeground: "#67738a",
-    border: "#d5dae2",
+    mutedForeground: "#636f86",
+    border: "#8d929a",
   },
   typography: {
     headingFontFamily: "Inter, ui-sans-serif, system-ui",

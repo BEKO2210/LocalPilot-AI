@@ -7,16 +7,16 @@ export const warmLocalTheme: Theme = ThemeSchema.parse({
   description:
     "Warme Erdtöne, familiäre Note. Für Cafés, Restaurants, lokale Shops und persönliche Studios.",
   colors: {
-    primary: "#c45a4f",
+    primary: "#b04438",
     primaryForeground: "#ffffff",
     secondary: "#4a3326",
     secondaryForeground: "#fdf8f3",
-    accent: "#e07857",
+    accent: "#d8704f",
     background: "#fdf8f3",
     foreground: "#2b1f15",
     muted: "#f3e8db",
-    mutedForeground: "#7a6750",
-    border: "#e3d3bf",
+    mutedForeground: "#76634c",
+    border: "#9b8b77",
   },
   typography: {
     headingFontFamily: "'Lora', Inter, serif",

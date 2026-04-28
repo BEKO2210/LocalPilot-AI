@@ -16,7 +16,7 @@ export const premiumDarkTheme: Theme = ThemeSchema.parse({
     foreground: "#f5f5f5",
     muted: "#1c1c1c",
     mutedForeground: "#a0a0a0",
-    border: "#2b2b2b",
+    border: "#5f5f5f",
   },
   typography: {
     headingFontFamily: "'Playfair Display', Inter, serif",
