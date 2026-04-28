@@ -6,10 +6,67 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 2 → UI/UX-Polish startet (Session 77+)
-Phase 1.5 ist abgeschlossen. Phase 2 startet mit Session 77
-(Public-Site-Audit). Demo-Logo via `algorithmic-art`-Skill
-in Session 81. Details in `docs/PROGRAM_PLAN.md`.
+## [0.17.0] – Code-Session 77 – 2026-04-28 (Phase-2-Auftakt: Public-Site-Audit)
+
+Phase 2 startet. Erste Public-Site-Audit-Session: Footer-Link-
+Bug fix, Theme-aware Tastatur-Fokus-Ring (`lp-focus-ring`-Utility)
+auf alle interaktiven Public-Site-Elemente. Doku-Sweep über alle
+.md-Index-Files vorab erledigt.
+
+- 🐛 **Footer-Link-Bug behoben**: Impressum + Datenschutz im
+  `PublicSiteFooter` zeigten via `#impressum` / `#datenschutz`
+  auf nicht-existente Anchors statt auf die echten Routes
+  `/site/<slug>/impressum/` und `/site/<slug>/datenschutz/`.
+  Beide Pages existieren seit S36 (Impressums-Pflicht), waren
+  aber vom Footer aus unreachable. Jetzt `<Link>` mit slug-
+  basiertem Href; Build-SSG generiert die Pages weiterhin
+  pro-Demo-Slug (alle 12 Static-Routes).
+- ✚ **`lp-focus-ring` Theme-aware Focus-Visible-Utility**
+  (`src/app/globals.css`, `@layer components`): `outline: 2px
+  solid rgb(var(--theme-accent)); outline-offset: 2px;`. Greift
+  nur bei Tastatur-Fokus (`:focus-visible`), nicht bei Maus-
+  Click — A11y-Standard ohne Sichtbarkeits-Noise für Maus-User.
+- ✚ **`lp-focus-ring` auf 4 Komponenten angewandt**:
+  - `PublicSiteHeader` — 6 Links (Logo-Anchor, 3 Nav-Links,
+    Anrufen-Button, Anfragen-Primär-CTA).
+  - `PublicHero` — bis zu 3 CTAs (Primary + Secondary).
+  - `PublicMobileCtaBar` — 3 Buttons (Anrufen, WhatsApp, Anfrage).
+  - `PublicSiteFooter` — 3 Footer-Links.
+- 🔧 **E2E-Test stabilisiert**: `e2e/smoke-login.spec.ts` Demo-
+  Link-Test war flaky unter Parallel-Workers
+  (`click()` + `toHaveURL` race). Auf S75-Pattern
+  `Promise.all([waitForURL, click])` umgestellt — selbe Lösung
+  wie damals für Tab-Navigation.
+
+**Phase-2-Backlog aus diesem Audit**:
+1. Trust-Badge prominenter (zwischen Headline + Subtitle, nicht
+   darunter) — 2026-Pattern „specificity drives results".
+2. Hero könnte `business.coverImage` als Background-Layer
+   einbinden — aktuell nur Solid-Color.
+3. Service-Cards mit `imageUrl` rendern (UUID-gated, S58-Upload-
+   Pfad steht).
+4. Service-Card-Whole-Click (statt nur Anfrage-Link) als
+   touch-freundlicher Pattern.
+5. Nicht-Public-Pages (Account, Login, Onboarding, Editoren) auf
+   `lp-focus-ring` migrieren (S78 Dashboard-Audit).
+
+**Doku-Sweep vorab (Commit `b0debb7`)**: README.md Status-Tabelle
+(Phase 1.5 ✅, Phase 2 🔄), MVP_RECAP.md auf Stand S76,
+RESEARCH_INDEX.md +5 Sub-Sektionen Track C (S72–S76),
+CODEX_BACKLOG.md #11 als done markiert + #14 ergänzt.
+
+**45/45 Smoketests grün. 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 2:12 min). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: Phase 2 läuft. Nächste Session 78 = Dashboard-Shell-
+Audit (Header, Tabs, Mobile-Nav, Empty-States). Demo-Logo +
+Brand-Identity in Session 81 via `algorithmic-art`-Skill.
+
+**Manueller Test**: `npm run dev` → `/site/studio-haarlinie` →
+Tab-Taste durchsteppen, jeder Link/Button hat sichtbaren Accent-
+Outline. Footer-Links Impressum/Datenschutz öffnen die echten
+Pages.
 
 ## [0.16.50] – Code-Session 76 – 2026-04-27 (Phase-1.5-Abschluss)
 

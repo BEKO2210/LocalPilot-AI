@@ -465,11 +465,23 @@ abgegrenzter Audit-Bereich mit (a) Snapshot des Ist-Stands,
 (b) Issue-Liste, (c) Fixes, (d) E2E-Tests aus Phase 1.5
 als Regression-Schutz.
 
-- **77**: Public-Site-Audit. Hero-Section, Service-Cards,
-  Lead-Form, Theme-Anwendung, Footer. Theme-Token-
-  Konsistenz prüfen.
-- **78**: Dashboard-Shell-Audit. Header, Sidebar/Tabs,
-  Mobile-Nav, Empty-States, Auth-Card.
+- **77** ✅: Public-Site-Audit. 1 Bug behoben (Footer-Links
+  Impressum/Datenschutz zeigten auf nicht-existierende
+  Anchors statt auf echte Routes), 1 A11y-Hole gefixt
+  (`:focus-visible` fehlte überall — neue
+  `lp-focus-ring`-Utility in `globals.css` mit
+  `outline: 2px solid rgb(var(--theme-accent))`, auf 13
+  interaktive Public-Site-Elemente angewendet).
+  E2E-Stabilisierung: `smoke-login` Demo-Link auf
+  S75-Pattern `Promise.all([waitForURL, click])`.
+  5 neue Phase-2-Backlog-Items aus dem Audit.
+  **116/116 E2E grün, Bundle unverändert**.
+- **78**: Dashboard-Shell-Audit. Header (Brand-Logo,
+  User-Menü, Active-Business-Switcher), Sidebar/Tab-Nav
+  (Desktop + Mobile-Bottom-Nav), Empty-States für
+  Erst-User (kein Betrieb), Auth-Card `/account` (Demo
+  vs Authed). `lp-focus-ring`-Migration auf Dashboard-
+  Komponenten.
 - **79**: Editor-Audits — alle 5 Editoren (Business,
   Services, Settings, Reviews, Social) auf Buttons, Spacing,
   Validation-Hints, Banner-Konsistenz.
@@ -724,6 +736,19 @@ aktiven Session.
     grob für Abrechnung.
 
 ### Track C · Observability & Qualität
+- **Phase-2-UI/UX-Backlog aus S77-Audit** (Public-Site):
+  1. Trust-Badge (Hero-Bottom) prominenter zwischen
+     Headline + Subtitle platzieren — 2026-Pattern
+     „Specificity drives 23 % Conversion-Win".
+  2. Hero rendert `business.coverImage` als Background-
+     Layer (aktuell nur Solid-Color via Theme-Token).
+  3. Service-Cards mit `service.imageUrl` rendern (S58-
+     Upload-Pfad steht bereits, UI fehlt).
+  4. Service-Card als Whole-Card-Click (Touch-UX),
+     statt nur Anfrage-Anchor unten.
+  5. `lp-focus-ring`-Migration auf nicht-Public-Pages
+     (Login/Onboarding/Account/Editoren — eigene Audits
+     in S78–S80).
 - Strukturierte Telemetrie der Mock-Provider-Aufrufe (Welche Methode,
   welche Branche, welche Variante), damit später echte Calls mit
   derselben Pipeline angezeigt werden können.

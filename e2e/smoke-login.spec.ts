@@ -41,8 +41,10 @@ test.describe("Login-Page", () => {
 
   test("Demo-Link funktioniert (kein Backend nötig)", async ({ page }) => {
     await page.goto("/login");
-    await page.getByRole("link", { name: /zur demo/i }).click();
-    await expect(page).toHaveURL(/\/demo$/);
+    await Promise.all([
+      page.waitForURL(/\/demo$/),
+      page.getByRole("link", { name: /zur demo/i }).click(),
+    ]);
   });
 
   test("Submit ohne Backend wirft die UI nicht ab", async ({ page }) => {

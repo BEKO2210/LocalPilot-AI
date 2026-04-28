@@ -100,7 +100,7 @@ export function PublicHero({
                 <a
                   key={cta.key}
                   href={ctaHref(business, cta)}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-theme-button px-6 text-base font-medium transition-opacity hover:opacity-90"
+                  className="lp-focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-theme-button px-6 text-base font-medium transition-opacity hover:opacity-90"
                   style={
                     isPrimary
                       ? {

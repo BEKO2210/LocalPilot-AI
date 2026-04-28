@@ -8840,3 +8840,116 @@ Public-Site-UI/UX-Audit**. Inhalt:
 5. Demo-Logo-Brief-Vorbereitung für S81 (algorithmic-
    art-Skill).
 
+---
+
+## Code-Session 77 – Phase-2-Auftakt: Public-Site-UI/UX-Audit
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · Polish + A11y
+
+**Was**: Erste Phase-2-Session. Public-Site-Audit per
+Code-Read, 1 echter Bug + 1 A11y-Hole gefunden + behoben,
+Backlog mit 5 Phase-2-UX-Items angereichert. Zusätzlich
+ein Doku-Sweep über alle .md-Index-Files vorab im selben
+Session-Block (Commit `b0debb7`).
+
+**Audit-Ergebnis (Code-Read von 7 Public-Site-Komponenten)**:
+
+| # | Befund | Schweregrad | Fix |
+| --- | --- | --- | --- |
+| 1 | Footer-Links `#impressum` / `#datenschutz` zeigen auf nicht-existierende Anchors statt auf echte Routes | 🔴 Bug (toter Link) | inline ✅ |
+| 2 | Header/Hero/Mobile-CTA/Footer-Links haben keinen `:focus-visible`-Style (Tailwind-Reset entfernt Browser-Default) | 🟡 A11y (Tastatur-User sehen Fokus nicht) | inline ✅ |
+| 3 | Trust-Badge (avg. Rating + Reviews) ist sehr klein (`text-sm`) und unter den CTAs — 2026-Pattern bevorzugt prominent über/zwischen Headline + Subtitle | 🟢 UX-Polish | Backlog |
+| 4 | Hero rendert `business.coverImage` nicht als Background-Layer | 🟢 UX-Polish | Backlog |
+| 5 | Service-Cards rendern `service.imageUrl` nicht (S58-Upload-Pfad steht aber) | 🟢 UX-Polish | Backlog |
+| 6 | Service-Card ist nicht als Ganzes klickbar (nur Anfrage-Anchor unten) — Touch-UX | 🟢 UX-Polish | Backlog |
+
+**Architektur-Entscheidung — `lp-focus-ring` als CSS-
+Utility statt Tailwind-Ring-Mix**: Theme-aware Fokus-Ring
+braucht den Accent-Color aus CSS-Variablen. Tailwind-
+`focus-visible:ring-2 ring-[rgb(var(--theme-accent))]`
+funktioniert nicht zuverlässig wegen JIT-Parsing. Cleaner:
+EINE CSS-Regel in `globals.css` (`@layer components`)
+mit native `outline` — CSS-Variable greift, browser-native
+Outline ist barrieren-konform, keine Pseudo-Element-Tricks.
+
+```css
+.lp-focus-ring:focus-visible {
+  outline: 2px solid rgb(var(--theme-accent));
+  outline-offset: 2px;
+}
+```
+
+Auf 4 Komponenten angewendet, 13 interaktive Elemente
+abgedeckt. Wiederverwendbar für alle weiteren Audits
+(Dashboard S78, Editor S79). Bundle-Impact: 0 (eine CSS-
+Regel, ~80 Bytes).
+
+**Architektur-Entscheidung — Footer-Links als `<Link>`,
+nicht `<a>`**: Next.js-`<Link>` macht client-side Routing
++ Prefetch. Bei Anchor-Targets (`#kontakt`) bleibt `<a>`,
+weil `<Link>` für `#`-Hash-Targets schlechtere Semantik
+hat (kein Routing nötig).
+
+**Architektur-Entscheidung — Demo-Logo-Brief verschoben
+auf S81**: Audit hätte ein Mini-Sketch des Demo-Logos
+liefern können, aber: a) Logo-Vorbereitung ist eine
+eigene Session (S81 mit `algorithmic-art`-Skill), b) S77
+muss atomar bleiben. Statt früher Skizzen lieber strikten
+Audit + Backlog.
+
+**E2E-Test-Stabilisierung**: `e2e/smoke-login.spec.ts`
+Demo-Link-Test war flaky unter Parallel-Workers — selbe
+Race-Condition-Klasse wie S75 für Tab-Navigation.
+`click() + toHaveURL` ersetzt durch
+`Promise.all([waitForURL, click])`. Beweis: 9× retried
+in einem Run (chromium), grün ab Erstem Run nach Fix.
+
+**WebSearch (Track C)**:
+- [Hero Section Design 2026 (Perfect Afternoon)](https://www.perfectafternoon.com/2025/hero-section-design/) — 2026-Hero-Patterns: Bold Statement, Question Hook, Specificity drives 23 % Conversion-Win.
+- [Tailwind CSS Marketing Page Examples 2026](https://tailwindcss.com/plus/ui-blocks/marketing/page-examples/landing-pages) — Spacing/Hierarchy-Patterns für Marketing-Sections.
+- [WCAG 2.2 – Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) — `:focus-visible` ist 2026-Pflicht für Tastatur-Nav.
+
+**Dateien**:
+- ✚ `src/app/globals.css`: `lp-focus-ring`-Utility
+  (5 Zeilen, `@layer components`).
+- 🔄 `src/components/public-site/public-site-footer.tsx`:
+  Anchor → `<Link>` mit slug-Route, `lp-focus-ring`.
+- 🔄 `src/components/public-site/public-site-header.tsx`:
+  6 Links bekommen `lp-focus-ring`.
+- 🔄 `src/components/public-site/public-hero.tsx`:
+  CTA-Buttons (bis 3) bekommen `lp-focus-ring`.
+- 🔄 `src/components/public-site/public-mobile-cta-bar.tsx`:
+  3 Mobile-CTAs bekommen `lp-focus-ring`.
+- 🔄 `e2e/smoke-login.spec.ts`: Race-Condition-Fix.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:12 min). Bundle 102 KB
+shared unverändert. Static-SSG generiert weiterhin alle
+6 Impressum + 6 Datenschutz-Pages.
+
+**Phase-2-Backlog (5 neue Items aus S77-Audit)**:
+1. Trust-Badge prominenter (zwischen Headline+Subtitle).
+2. Hero-`coverImage`-Background-Layer.
+3. Service-Card `imageUrl`-Rendering.
+4. Service-Card Whole-Click-Pattern.
+5. Nicht-Public-Pages auf `lp-focus-ring` migrieren
+   (Login/Onboarding/Account/Editoren — eigene Audits).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Hero-Design
+2026, Tailwind-Marketing-Patterns, WCAG 2.2 Focus-Visible.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(1/≥10 Sessions).
+
+**Nächste Session**: Code-Session 78 = **Dashboard-Shell-
+Audit**. Inhalt:
+1. Header (Brand-Logo, User-Menü, Active-Business-Switcher).
+2. Sidebar/Tab-Nav (Desktop + Mobile-Bottom-Nav).
+3. Empty-States für Erst-User (kein Betrieb).
+4. Auth-Card auf `/account` (Demo vs Authed).
+5. `lp-focus-ring`-Migration auf Dashboard-Komponenten.
+6. UX-Findings ins Phase-2-Backlog.
+
+
