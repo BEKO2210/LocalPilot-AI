@@ -502,8 +502,22 @@ als Regression-Schutz.
   **116/116 E2E grün** — strukturelle Tests übersehen den
   ARIA-Win (gute Indikator: zentrale Form-Verbesserung
   ohne Test-Regression).
-- **80** (5er-Multiple, Light-Pass): Form-System-
-  Konsistenz + Component-Reuse-Pass mit `simplify`-Skill.
+- **80** ✅ (5er-Multiple, Light-Pass): `simplify`-Skill
+  via 3 parallel-Review-Agents (Reuse / Quality /
+  Efficiency) auf S77–S79-Commits. Ergebnisse:
+  (1) FormField cloneElement-Guard ergänzt — verhinderte
+  ARIA-Pollution bei Display-Wrapper-Children
+  (`business-edit-form.tsx:351`); (2) Button-Primitive
+  auf `lp-focus-ring` migriert — eine Source-of-Truth
+  für Focus statt 4 variant-spezifischer Outlines;
+  (3) 6 weitere Komponenten mit `lp-focus-ring`
+  (preview-link-card, opening-hours-editor, auth-card,
+  ai-playground, public-lead-form, theme-preview-card);
+  (4) Task-referencing-Comments aufgeräumt;
+  (5) State-Refresh-Checklist abgehakt (Stub-Audit
+  clean, npm outdated zeigt 18 Major-Bumps für
+  künftige Innovation-Loop-Session).
+  **116/116 E2E grün, Bundle unverändert**.
 - **81**: **Demo-Logo + Brand-Identity**. Aktuelles Logo
   ist text-only (LocalPilot AI). Mit `algorithmic-art`-Skill
   ein generatives p5.js-Mark + statische SVG-Variante

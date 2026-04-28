@@ -6,6 +6,93 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.17.3] – Code-Session 80 – 2026-04-28 (5er-Light-Pass nach S77–S79)
+
+5er-Light-Pass via `simplify`-Skill nach den drei Phase-2-
+Audits. Ergebnis: 1 latenter Bug im FormField-cloneElement-
+Pattern (Display-Wrapper bekamen `aria-invalid` injiziert),
+6 Komponenten ohne `lp-focus-ring`, das `Button`/`LinkButton`-
+Primitive lief mit eigener Focus-Style-Variante neben der
+neuen `lp-focus-ring`-Utility.
+
+- 🐛 **FormField cloneElement-Guard** (S79-Pattern verfeinert):
+  In `business-edit-form.tsx:351` wird `<FormField label="Aktuelles Paket">`
+  um eine `<div>`-Display-Card gewrappt. Mein S79-Code hat
+  in JEDES Single-Element-Child `aria-invalid` injiziert —
+  auch in den `<div>`. Browser ignorieren die ARIA-Attribute
+  auf nicht-Form-Elements, aber das pollutet das DOM. Fix:
+  neuer `isFormControlChild`-Guard prüft, ob das Child eine
+  native `<input>`/`<select>`/`<textarea>` oder eine der
+  exportierten `FormInput`/`FormTextarea`/`FormSelect`-
+  Komponenten ist. Display-Wrapper kriegen Label + Hint,
+  aber kein cloneElement.
+- ✚ **`Button`/`LinkButton`-Primitive auf `lp-focus-ring`
+  migriert** (`src/components/ui/button.tsx`): hatten vorher
+  variant-spezifische `focus-visible:outline-{brand-600|ink-900|...}`
+  — jede Variante mit eigener Outline-Color. Jetzt zentral
+  `lp-focus-ring` (theme-accent), 4 Variant-Strings um die
+  outline-Klassen reduziert. **Eine Source of Truth** für
+  Tastatur-Fokus über alle Komponenten, die `<Button>`
+  nutzen.
+- ✚ **6 weitere `lp-focus-ring`-Migrationen** (vom Audit
+  identifiziert):
+  - `dashboard/overview/preview-link-card.tsx` (2 Links).
+  - `dashboard/business-edit/opening-hours-editor.tsx` (Slot-
+    Add-Button).
+  - `dashboard/ai-playground/auth-card.tsx` (Login-Button).
+  - `dashboard/ai-playground/ai-playground.tsx` (Generate-
+    Button).
+  - `public-site/public-lead-form.tsx` (Submit-Button).
+  - `theme/theme-preview-card.tsx` (Preview-CTA-Button).
+- 🧹 **Task-referencing-Comments entfernt** (CLAUDE.md-
+  Pflicht: Kommentare nicht auf Sessions referenzieren):
+  - `globals.css:109`: „(A11y, Phase 2)" entfernt.
+  - `forms/form-field.tsx:18`: „A11y (Phase 2, Code-Session
+    79)" + Hinweis auf Code-Session ersetzt durch
+    funktionalen Doc-Comment.
+- 🧹 **FormField double-prop-read aufgelöst**: Statt zwei
+  Type-Casts auf `children.props` jetzt eine Variable
+  `childProps`. Mikro-Cleanup, aber konsistent mit
+  Code-Style.
+
+**State-Refresh-Checklist**:
+- ✅ Smoketest-Regression: 45/45 grün.
+- ✅ Stale-Stub-Audit: `grep "comingInSession="
+  src/app/dashboard` zeigt nur die intentionalen Bronze-
+  Tier-Locks (`services/page.tsx:41` `={11}`,
+  `leads/page.tsx:41` `={12}`) — kein neuer Drift seit S78.
+- ✅ Codex-Backlog-Sweep: keine neuen `[needs-review]`-
+  Items, #11 (industry-presets) bleibt als done @ S66 für
+  noch ~21 Sessions im Bestand bevor er ins Archiv geht.
+- ⚠️ `npm outdated`: 18 Major-Bumps verfügbar (Next 15→16,
+  React 19→19.2, Tailwind 3→4, Zod 3→4, OpenAI 5→6,
+  Anthropic 0.62→0.91, lucide 0.469→1.11). **NICHT** im
+  Light-Pass-Scope — Major-Bumps brauchen eine eigene
+  Innovation-Loop-Session mit Migrations-Test.
+
+**Phase-2-Backlog (NICHT in S80 abgearbeitet, atomic-Limit)**:
+1. Discard-isDirty-Reset-Bug (S73 + S79) — eigene
+   Bug-Session mit `systematic-debugging`-Skill.
+2. `aria-live` polite/assertive auf Save-Banner explicit.
+3. Major-Dependency-Bump-Session (Next 16, Tailwind 4,
+   Zod 4 — alle haben Breaking-Changes).
+4. `<DashboardButton>`-Wrapper-Komponente — ist mit S80-
+   Button-Primitive-Migration teilweise erledigt
+   (`<Button>` + `<LinkButton>` sind die Wrapper, jetzt
+   theme-konsistent).
+5. `beforeEach`-Migration für E2E-`goto()` (S75-Item).
+
+**45/45 Smoketests grün, 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 3:00 min — Firefox war heute langsamer, sonst
+2:18). typecheck ✅, lint ✅, beide Builds ✅. Bundle 102 KB
+shared unverändert.
+
+🛣️ Roadmap: Phase 2 Sessions 4/≥10 (S80 als Light-Pass
+zählt voll). Nächste Session 81 = **Demo-Logo + Brand-
+Identity** mit `algorithmic-art`-Skill (p5.js-Mark) +
+`brand-guidelines`-Skill (Brand-Tokens). User-Direktive
+seit S65: „Demo-Logo muss richtig was hermachen".
+
 ## [0.17.2] – Code-Session 79 – 2026-04-28 (Phase 2: 5-Editoren-Audit)
 
 Dritte Phase-2-Session. Audit aller 5 Dashboard-Editoren

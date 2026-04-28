@@ -9201,4 +9201,147 @@ Inhalt:
 4. Discard-isDirty-Reset-Fix (S73 + S79).
 5. README/Doku-Sync nach 5 Sessions.
 
+---
+
+## Code-Session 80 – 5er-Light-Pass (Cleanup nach S77–S79)
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · Light-Pass
+
+**Was**: 5er-Light-Pass via `simplify`-Skill auf die drei
+Phase-2-Audit-Commits e8b5c97 / c412a76 / a36708f. Drei
+parallele Review-Agents (Reuse / Quality / Efficiency)
+liefern strukturierten Befund-Bericht. Ergebnis: **1
+latenter Bug**, 6 Komponenten ohne `lp-focus-ring`,
+`Button`-Primitive lief mit eigener Focus-Style-Variante,
+2 Task-referencing-Comments. Alle gefixt + State-Refresh-
+Checklist abgehakt.
+
+**simplify-Skill-Architektur — drei Agents in parallel**:
+- **Reuse-Agent**: gefunden, dass `src/components/ui/button.tsx`
+  (Button + LinkButton) **bereits existiert** und vom S77–S79
+  Migration-Pattern unbenutzt blieb. 23 Editor-Buttons hätten
+  langfristig hier landen können — kurzfristig zu großer
+  Refactor (h-9/h-11/h-12-Sizes vs editor-spezifische
+  px-1.5/text-xs-Varianten). Stattdessen: `Button`-Primitive
+  selbst auf `lp-focus-ring` migriert → Source-of-Truth.
+- **Quality-Agent**: gefunden, dass mein S79-cloneElement-
+  Code in `business-edit-form.tsx:351` einem `<div>`-
+  Display-Wrapper `aria-invalid` injiziert. Browser
+  ignorieren das, aber DOM-Pollution ist real. Fix:
+  `isFormControlChild`-Guard.
+- **Efficiency-Agent**: bestätigt, dass cloneElement +
+  CSS-Layer-Klasse keinen messbaren Bundle/Render-Impact
+  haben. Double-Prop-Read (Line 48 + 52 in form-field.tsx)
+  als Mikro-Cleanup-Kandidat aufgezeigt → behoben.
+
+**Architektur-Entscheidung — Type-basierter Guard statt
+Render-Try-Catch**: Alternative wäre `try { cloneElement }
+catch` als Defensive — aber cloneElement wirft nicht bei
+falschen Children, nur das gerenderte DOM hat dann unbenutzte
+Attribute. Sauberer Type-Guard:
+```ts
+function isFormControlChild(el) {
+  if (typeof el.type === "string") return NATIVE_FORM_TAGS.has(el.type);
+  return el.type === FormInput || ... === FormSelect;
+}
+```
+Native HTML-Tags via String-Check, custom Components via
+Reference-Equality. Funktioniert auch bei Style-Variants
+(z. B. `FormInput` mit `className`-Override) ohne den Guard
+zu brechen.
+
+**Architektur-Entscheidung — Button-Primitive als
+Single-Source für Focus**: Button hatte 4 variant-spezifische
+`focus-visible:outline-{color}`-Strings + base
+`focus-visible:outline-2 outline-offset-2`. Für theme-aware
+Public-Site-Komponenten ist die `lp-focus-ring`-Outline mit
+`rgb(var(--theme-accent))` korrekter (folgt dem aktiven
+Business-Theme). Button-Primitive auf `lp-focus-ring`
+umgestellt — Bundle-Reduktion durch 4 wegfallende Tailwind-
+Klassen, plus visuelle Konsistenz: jeder Button (egal welche
+Variant) hat denselben Theme-Accent-Outline.
+
+**State-Refresh-Checklist** (5er-Light-Pass-Pflicht
+gemäß SESSION_PROTOCOL.md §7):
+- ✅ Smoketests: 45/45 grün.
+- ✅ Stale-Stub-Audit (`grep "comingInSession=" src/app/dashboard`):
+  nur intentionale Bronze-Tier-Locks (`services/page.tsx:41`
+  `={11}`, `leads/page.tsx:41` `={12}`) — kein neuer
+  Drift seit S78.
+- ✅ Codex-Backlog: kein neuer `[needs-review]`. #11
+  (industry-presets-fix) bleibt als done @ S66 für
+  ~21 Sessions im Bestand.
+- ⚠️ `npm outdated`: 18 Major-Bumps verfügbar (Next 16,
+  Tailwind 4, Zod 4, OpenAI 6, Anthropic 0.91, React 19.2,
+  Lucide 1.x, etc.). **NICHT** im Light-Pass-Scope —
+  Major-Bumps brauchen eigene Innovation-Loop-Session
+  mit Migrations-Tests pro Dependency.
+
+**WebSearch (Track C)**: keine — Light-Pass nutzt nur die
+simplify-Skill-Internals + bestehende Quellen.
+
+**Dateien**:
+- 🔄 `src/components/forms/form-field.tsx`:
+  `isFormControlChild`-Guard, single childProps-Variable,
+  Comment-Cleanup.
+- 🔄 `src/app/globals.css`: Comment-Cleanup.
+- 🔄 `src/components/ui/button.tsx`: variant-Outline-Klassen
+  entfernt, `lp-focus-ring` als Base-Klasse.
+- 🔄 `src/components/dashboard/overview/preview-link-card.tsx`,
+  `dashboard/business-edit/opening-hours-editor.tsx`,
+  `dashboard/ai-playground/auth-card.tsx`,
+  `dashboard/ai-playground/ai-playground.tsx`,
+  `public-site/public-lead-form.tsx`,
+  `theme/theme-preview-card.tsx`: `lp-focus-ring`-Migration.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 3:00 min). Bundle 102 KB
+shared unverändert.
+
+**Phase-2-Bilanz (Sessions 77–80)**:
+- 4 Sessions (3 Audits + 1 Light-Pass).
+- 1 echter Bug behoben (Stale-Stub-Drift S78).
+- 1 latenter Bug behoben (FormField-cloneElement-Guard S80).
+- 1 Toter Link behoben (Footer-Impressum/Datenschutz S77).
+- 1 zentrale ARIA-Wiring-Komponente (S79).
+- 1 zentrale Focus-Style-Utility (`lp-focus-ring` S77 + S80).
+- ~50 interaktive Elemente bekommen Theme-aware Tastatur-
+  Fokus (Public-Site + Dashboard + Account + Editoren +
+  Button-Primitive).
+- 12 Phase-2-Backlog-Items (4 aus S77, 5 aus S78, 5 aus
+  S79, 5 aus S80) — Bug-Backlog, Konsistenz-Items, Major-
+  Dependency-Bumps.
+- Bundle/Smoketests/E2E unverändert während aller 4
+  Sessions — keine Regressions.
+
+**Phase-2-Backlog** (NICHT in S80 abgearbeitet):
+1. Discard-isDirty-Reset-Bug — eigene Bug-Session mit
+   `systematic-debugging`-Skill.
+2. `aria-live` polite/assertive auf Save-Banner explicit.
+3. Major-Dependency-Bump-Session (Next 16, Tailwind 4,
+   Zod 4, etc.).
+4. `beforeEach`-Migration für E2E (S75-Item).
+5. Click-Outside-Close für `<details>`-Switcher (S78).
+
+**Quellen**: simplify-Skill-Internals + bestehende
+RESEARCH_INDEX-Quellen aus S77–S79.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(4/≥10 Sessions, davon 1 Light-Pass). Demo-Logo-Slot S81
+naht.
+
+**Nächste Session**: Code-Session 81 = **Demo-Logo + Brand-
+Identity** (User-Direktive seit S65: „Demo-Logo muss richtig
+was hermachen"). Skills:
+1. `algorithmic-art` — generatives p5.js-Artwork als
+   reproduzierbares Demo-Logo, Seed-basiert.
+2. `brand-guidelines` — LocalPilot-AI-Brand-Tokens
+   konsolidieren (Farben, Schriften, Spacing,
+   Iconography).
+3. Static SVG-Variante des p5.js-Marks für Marketing-
+   Page + Dashboard-Header.
+4. Brand-Guidelines-Doku in `docs/BRAND.md`.
+
 

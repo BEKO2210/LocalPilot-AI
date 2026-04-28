@@ -593,7 +593,7 @@ export function PublicLeadForm({ business, fields }: PublicLeadFormProps) {
         <button
           type="submit"
           disabled={submitting || !consentChecked}
-          className="inline-flex items-center gap-1.5 rounded-theme-button px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="lp-focus-ring inline-flex items-center gap-1.5 rounded-theme-button px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
           style={{
             backgroundColor: "rgb(var(--theme-primary))",
             color: "rgb(var(--theme-primary-fg))",

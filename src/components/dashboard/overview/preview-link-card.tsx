@@ -31,14 +31,14 @@ export function PreviewLinkCard({ business }: PreviewLinkCardProps) {
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         <Link
           href={`/site/${business.slug}`}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          className="lp-focus-ring inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
         >
           <Eye className="h-4 w-4" aria-hidden />
           Public Site öffnen
         </Link>
         <Link
           href={`/dashboard/${business.slug}/settings`}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50"
+          className="lp-focus-ring inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50"
         >
           Einstellungen
           <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />

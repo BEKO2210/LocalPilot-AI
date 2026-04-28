@@ -11,14 +11,30 @@ type FormFieldProps = {
   children: React.ReactNode;
 };
 
+const NATIVE_FORM_TAGS = new Set(["input", "select", "textarea"]);
+
+function isFormControlChild(
+  el: React.ReactElement,
+): el is React.ReactElement<{
+  "aria-invalid"?: boolean | "true" | "false";
+  "aria-describedby"?: string;
+}> {
+  if (typeof el.type === "string") return NATIVE_FORM_TAGS.has(el.type);
+  return el.type === FormInput || el.type === FormTextarea || el.type === FormSelect;
+}
+
 /**
  * Wrapper: Label + Hilfetext + Inline-Fehler in konsistenter Optik.
  *
- * A11y (Phase 2, Code-Session 79): Wenn das Children genau ein
- * React-Element ist (typischer Fall: ein FormInput/FormTextarea/
- * FormSelect), klonen wir es und injizieren `aria-invalid` und
- * `aria-describedby` automatisch. Bestehende Props vom Caller
- * gewinnen — wer manuell setzt, bleibt unangetastet.
+ * Wenn das Children ein einzelnes Form-Control-Element ist
+ * (`<input>` / `<select>` / `<textarea>` oder eine der hier
+ * exportierten Form*-Komponenten), klonen wir es und injizieren
+ * `aria-invalid` + `aria-describedby` automatisch. Bestehende
+ * Caller-Props gewinnen.
+ *
+ * Bei Display-Wrappern (z. B. `<div>` mit Read-only-Anzeige)
+ * passiert nichts — der Caller bekommt einfach Label + Hint
+ * gerendert.
  */
 export function FormField({
   label,
@@ -33,28 +49,19 @@ export function FormField({
   const hintId = `${htmlFor}-hint`;
   const describedBy = error ? errorId : hint ? hintId : undefined;
 
-  // Single-Element-Children bekommen aria-Wiring automatisch.
-  // Mehrteilige Children (selten) bleiben unverändert — Caller
-  // muss dann selbst `aria-invalid`/`aria-describedby` setzen.
-  const wired =
-    React.isValidElement(children) && React.Children.count(children) === 1
-      ? React.cloneElement(
-          children as React.ReactElement<{
-            "aria-invalid"?: boolean | "true" | "false";
-            "aria-describedby"?: string;
-          }>,
-          {
-            "aria-invalid":
-              (children.props as { "aria-invalid"?: boolean | "true" | "false" })[
-                "aria-invalid"
-              ] ?? (error ? true : undefined),
-            "aria-describedby":
-              (children.props as { "aria-describedby"?: string })[
-                "aria-describedby"
-              ] ?? describedBy,
-          },
-        )
-      : children;
+  let wired: React.ReactNode = children;
+  if (
+    React.isValidElement(children) &&
+    React.Children.count(children) === 1 &&
+    isFormControlChild(children)
+  ) {
+    const childProps = children.props;
+    wired = React.cloneElement(children, {
+      "aria-invalid":
+        childProps["aria-invalid"] ?? (error ? true : undefined),
+      "aria-describedby": childProps["aria-describedby"] ?? describedBy,
+    });
+  }
 
   return (
     <div className={cn("space-y-1.5", className)}>
