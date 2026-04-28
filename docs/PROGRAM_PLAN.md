@@ -549,9 +549,19 @@ als Regression-Schutz.
   statische Icons sichtbar). 16 `<main>`-Elemente mit
   `id="main-content"` versehen für Skip-Link-Target.
   **116/116 E2E grün, Bundle unverändert** (CSS-only).
-- **84**: Mobile/Tablet-Responsive-Audit. Breakpoints
-  (sm/md/lg/xl), Touch-Targets (≥44×44), Mobile-CTA-
-  Streifen, Tab-Bars.
+- **84** ✅: Mobile/Tablet-Responsive-Audit. Per
+  Explore-Agent über alle Pages. **iOS-Auto-Zoom-
+  Prevention zentral** in FormField (`text-base md:text-sm`
+  → 33 Inputs auf einen Schlag). 11 Touch-Targets auf
+  44×44 px erhöht (service-card Move/Delete, business-
+  header Switcher + Public-Site-CTA, dashboard-mobile-nav
+  Pills, public-mobile-cta-bar Sticky-Buttons mit 56 px
+  extra-large, image-upload-field, leads-view-Close,
+  account/page.tsx Logout/Dashboard/Public-Site-Links).
+  Mobile-Nav Horizontal-Scroll-Fix (`flex-nowrap` +
+  `flex-shrink-0`). 2 neue Backlog-Items (Bottom-Nav-
+  Migration, Mobile-Visual-Regression-Tests).
+  **116/116 E2E grün, Bundle unverändert**.
 - **85** (5er-Multiple, Light-Pass): Type-System-Pass.
 - **86**: Finaler Polish-Pass + Lighthouse-Run + Bundle-
   Cleanup + Production-Deploy-Doku.

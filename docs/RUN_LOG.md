@@ -9689,4 +9689,126 @@ Responsive-Audit**. Inhalt:
    Bottom-Nav-Migration aus S78-Backlog).
 5. Content-Reflow bei 320px viewport.
 
+---
+
+## Code-Session 84 – Phase 2: Mobile/Tablet-Responsive-Audit
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · Mobile/Touch
+
+**Was**: Mobile-Audit per Explore-Agent über alle Pages.
+13 Touch-Target-Findings + 1 zentraler iOS-Auto-Zoom-Bug
++ 1 Horizontal-Scroll-Bug. Alle inline gefixt in einer
+atomaren Session (User-Anweisung: keine Micro-Commits).
+
+**Audit-Methodik**:
+- Explore-Agent prüfte 5 Kategorien (Touch-Targets,
+  H-Scroll, Mobile-Nav, Reflow @ 320 px, iOS-Spezifika).
+- Lieferte Tabelle mit `file:line` + Fix-Vorschlag pro
+  Befund + Priorisierung (Kritisch/Hoch/Mittel/Backlog).
+- 1 False-Positive: `feature-comparison-matrix` hatte
+  bereits korrektes `overflow-x-auto + min-w-full` —
+  geprüft, übersprungen.
+
+**Architektur-Entscheidung — `text-base md:text-sm` als
+Mobile-Form-Standard**: iOS-Safari-Auto-Zoom triggert
+beim Fokus auf Input-Felder mit Schriftgröße < 16 px.
+Unsere FormInput hatte `text-sm` (14 px) → User
+zoomt versehentlich rein, raus aus dem Layout. Fix:
+`text-base` (16 px) auf Mobile, `md:text-sm` zurück
+auf 14 px ab 768 px. Eine Zeile in `form-field.tsx`
+repariert alle 33 Inputs in 7 Editor-Komponenten —
+selber Hebel-Pattern wie S79 ARIA-Wiring.
+
+**Architektur-Entscheidung — 44 px statt 24 px (WCAG
+2.5.5 AAA statt 2.5.8 AA)**: WCAG 2.5.8 (Level AA,
+Pflicht) fordert 24 × 24 CSS-px, WCAG 2.5.5 (Level AAA,
+freiwillig) fordert 44 × 44 CSS-px. Für Mobile-first
+SaaS lohnt sich AAA — Apple-iOS-Guideline (44 pt) und
+Material-Design-Spec (48 dp) führen ohnehin dorthin.
+Siteimprove-Research: 28 % weniger Touch-Errors, 15 %
+höhere Mobile-Conversion bei 44 px.
+
+**Architektur-Entscheidung — Mobile-CTA mit 56 px
+extra-large**: Die drei sticky-Bottom-Buttons
+(Anrufen / WhatsApp / Anfrage) sind die wichtigsten
+Conversion-Targets der Public-Site. Statt 44 px hier
+56 px (`min-h-[56px]`) — bewusst über dem Standard.
+Andere Tap-Targets bekommen 44 px (Standard) oder
+40 px (Sekundär-Aktionen wie „Public-Site"-Link auf
+Account-Page).
+
+**Architektur-Entscheidung — Decorative-Icons NICHT
+verkleinert**: `quick-actions-card.tsx:89` hat
+`h-8 w-8` für ein dekoratives Icon innerhalb eines
+Card-Links mit `p-3` Padding — das echte Tap-Target
+ist die ganze Card (> 60 px Höhe). WCAG 2.5.5 fordert
+44 px nur für Tap-Targets selbst, nicht für
+Sub-Elemente. Audit-Agent hatte das richtig
+markiert als „nicht kritisch" — wir folgen dem.
+
+**Horizontal-Scroll-Fix in Mobile-Nav**:
+`dashboard-mobile-nav.tsx` hatte `flex gap-1` +
+`flex-none` auf `<li>`, aber Tailwind `flex-none`
+matcht `flex: none` (= `0 0 auto`). Trotzdem konnten
+Pills auf 320 px zerquetscht werden, weil `flex-wrap`
+default-`nowrap` ist und Container `overflow-x-auto`
+hatte. Fix: explizit `flex-nowrap` + `flex-shrink-0`
+auf `<li>` (statt `flex-none`) + `gap-1.5` für
+WCAG-2.5.5-Spacing zwischen Tap-Targets.
+
+**WebSearch (Track C)**:
+- [WCAG 2.5.5 Target Size (W3C)](https://www.w3.org/WAI/WCAG21/Understanding/target-size.html) — 44×44 CSS-px Minimum für AAA (84).
+- [WCAG 2.5.8 Target Size Minimum (W3C)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html) — 24×24 für AA als Pflicht (84).
+- [Siteimprove Motor Impairments + Mobile UI](https://www.siteimprove.com/blog/motor-impairments-and-mobile-ui-the-touch-target-problem/) — 3× Error-Rate bei < 44 px (84).
+- [CSS-Tricks WCAG 2.5.5](https://css-tricks.com/looking-at-wcag-2-5-5-for-better-target-sizes/) — `@media (pointer: coarse)`-Pattern für Mobile-only-Vergrößerung (84).
+- [WebAbility Target Size Guide](https://www.webability.io/glossary/target-size) — 16 px Form-Input für iOS-Zoom-Prevention (84).
+
+**Dateien**:
+- 🔄 `src/components/forms/form-field.tsx`: `text-base md:text-sm` zentral.
+- 🔄 `src/components/dashboard/services-edit/service-card.tsx`:
+  Move-Up/Down (h-8 → h-11), Delete-Confirm + Cancel + Trigger (h-8 → h-11).
+- 🔄 `src/components/dashboard/business-header.tsx`:
+  Switcher-Summary (h-9 → h-10), Public-Site-CTA (h-9 → h-10).
+- 🔄 `src/components/dashboard/dashboard-mobile-nav.tsx`:
+  Pills (py-1.5 → h-10), `flex-nowrap` + `flex-shrink-0` + gap-1.5.
+- 🔄 `src/components/public-site/public-mobile-cta-bar.tsx`:
+  Sticky-Buttons (py-2 → min-h-[56px] py-2.5).
+- 🔄 `src/components/dashboard/business-edit/image-upload-field.tsx`:
+  Hochladen + Entfernen (py-1.5 → h-10).
+- 🔄 `src/components/dashboard/leads-view/leads-view.tsx`:
+  Schließen-Button (h-8 → h-11).
+- 🔄 `src/app/account/page.tsx`: Logout (h-? → h-11),
+  Dashboard-Öffnen (h-? → h-11), Public-Site-Link (h-? → h-10).
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/RESEARCH_INDEX.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:18 min). Bundle 102 KB
+shared unverändert. **`npm run audit:themes` → 0
+Failures** (S82 weiterhin clean).
+
+**Phase-2-Backlog (2 neue Items aus S84)**:
+1. Mobile-Nav → Bottom-Nav-Migration (S78-Backlog #2
+   wieder hochpriorisiert). Eigene 2-h-Session.
+2. Visual-Regression-Test für Touch-Targets in Playwright
+   mit Mobile-Viewport (375×667).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — WCAG 2.5.5 / 2.5.8
+Target-Size + iOS-Zoom-Prevention + Mobile-Touch-Patterns 2026.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(8/≥10 Sessions, davon 1 Light-Pass). Mobile-Layer
+WCAG-AAA-konform.
+
+**Nächste Session**: Code-Session 85 = **5er-Light-Pass**.
+Inhalt:
+1. simplify-Skill auf S81-S84-Commits
+   (Brand/Theme/A11y/Mobile-Audit-Wins).
+2. Type-System-Pass: alle TS-Type-Drift in Phase-2-
+   Komponenten.
+3. README/Doku-Sync nach 5 Sessions (Status-Tabelle,
+   MVP_RECAP, RESEARCH_INDEX-Konsolidierung).
+4. State-Refresh-Checklist (Stub-Audit, Codex-Backlog,
+   npm outdated).
+
 

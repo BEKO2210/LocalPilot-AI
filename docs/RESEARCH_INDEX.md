@@ -178,6 +178,13 @@
 - [Tailwind UI Marketing Page Examples](https://tailwindcss.com/plus/ui-blocks/marketing/page-examples/landing-pages) — Spacing/Hierarchy-Patterns für Landing-Pages 2026 (77).
 - [WCAG 2.2 – Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) — `:focus-visible` ist 2026-Pflicht für Tastatur-Nav, theme-aware Outline ist Best-Practice (77).
 
+### Phase-2 Mobile/Tablet-Responsive-Audit (Code-Session 84)
+- [WCAG 2.5.5 Target Size (W3C)](https://www.w3.org/WAI/WCAG21/Understanding/target-size.html) — 44×44 CSS-px Minimum für Level AAA (84).
+- [WCAG 2.5.8 Target Size Minimum (W3C)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html) — 24×24 als Pflicht für Level AA (84).
+- [Siteimprove Motor Impairments + Mobile UI](https://www.siteimprove.com/blog/motor-impairments-and-mobile-ui-the-touch-target-problem/) — 3× höhere Error-Rate bei Tap-Targets unter 44 px (84).
+- [CSS-Tricks WCAG 2.5.5](https://css-tricks.com/looking-at-wcag-2-5-5-for-better-target-sizes/) — `@media (pointer: coarse)`-Pattern für Mobile-only-Vergrößerung (84).
+- [WebAbility Target Size Guide](https://www.webability.io/glossary/target-size) — 16 px Form-Inputs verhindern iOS-Auto-Zoom (84).
+
 ### Phase-2 A11y-Audit (globaler Sweep) (Code-Session 83)
 - [WCAG SCR40 prefers-reduced-motion JS (W3C)](https://www.w3.org/WAI/WCAG21/Techniques/client-side-script/SCR40) — globaler-CSS-Wildcard ist 2026-Standard (83).
 - [MDN prefers-reduced-motion](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion) — `0.01ms` (nicht `0`) verhindert Browser-Spec-Inconsistencies (83).

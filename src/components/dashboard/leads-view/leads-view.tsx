@@ -379,9 +379,9 @@ function LeadDetail({
           type="button"
           onClick={onClose}
           aria-label="Detail schließen"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-500 hover:bg-ink-100"
+          className="lp-focus-ring inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-500 hover:bg-ink-100"
         >
-          <X className="h-4 w-4" aria-hidden />
+          <X className="h-5 w-5" aria-hidden />
         </button>
       </header>
 

@@ -128,7 +128,7 @@ export function ImageUploadField({
               type="button"
               onClick={pickFile}
               disabled={busy || disabled}
-              className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="lp-focus-ring inline-flex h-10 items-center gap-1.5 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {busy ? (
                 <>
@@ -147,7 +147,7 @@ export function ImageUploadField({
                 type="button"
                 onClick={handleClear}
                 disabled={busy || disabled}
-                className="lp-focus-ring inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-50"
+                className="lp-focus-ring inline-flex h-10 items-center gap-1.5 rounded-lg border border-ink-200 px-4 text-sm font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-50"
               >
                 <X className="h-3.5 w-3.5" aria-hidden />
                 Entfernen

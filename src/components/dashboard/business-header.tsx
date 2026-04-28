@@ -53,9 +53,9 @@ export function BusinessHeader({ business }: BusinessHeaderProps) {
 
         {/* Switcher (CSS-only, via <details>) */}
         <details className="relative">
-          <summary className="lp-focus-ring inline-flex h-9 cursor-pointer list-none items-center gap-1 rounded-lg border border-ink-200 bg-white px-3 text-xs font-medium text-ink-700 hover:bg-ink-50 [&::-webkit-details-marker]:hidden">
+          <summary className="lp-focus-ring inline-flex h-10 cursor-pointer list-none items-center gap-1 rounded-lg border border-ink-200 bg-white px-3 text-sm font-medium text-ink-700 hover:bg-ink-50 [&::-webkit-details-marker]:hidden">
             Demo wechseln
-            <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+            <ChevronDown className="h-4 w-4" aria-hidden />
           </summary>
           <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-xl border border-ink-200 bg-white p-1 shadow-soft">
             <ul className="max-h-72 overflow-y-auto">
@@ -87,7 +87,7 @@ export function BusinessHeader({ business }: BusinessHeaderProps) {
 
         <Link
           href={`/site/${business.slug}`}
-          className="lp-focus-ring inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-xs font-medium text-white transition-opacity hover:opacity-90"
+          className="lp-focus-ring inline-flex h-10 items-center gap-1.5 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white transition-opacity hover:opacity-90"
         >
           Public Site
           <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />

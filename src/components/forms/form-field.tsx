@@ -90,8 +90,10 @@ export function FormField({
   );
 }
 
+// `text-base` (16px) auf Mobile verhindert iOS-Auto-Zoom beim
+// Fokus auf Input. Auf md+ via `md:text-sm` zurück auf 14px.
 const baseInputClass =
-  "block w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200 disabled:opacity-60";
+  "block w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-base text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200 disabled:opacity-60 md:text-sm";
 
 export const FormInput = React.forwardRef<
   HTMLInputElement,

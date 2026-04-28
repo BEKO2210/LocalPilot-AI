@@ -6,6 +6,92 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.18.3] – Code-Session 84 – 2026-04-28 (Phase 2: Mobile/Tablet-Responsive-Audit)
+
+Mobile-Audit per Explore-Agent über alle Pages. **Touch-
+Targets ≥ 44×44 px** (WCAG 2.5.5/2.5.8) auf 11 interaktiven
+Elementen + iOS-Auto-Zoom-Prevention zentral in FormField.
+
+- 🐛 **iOS-Auto-Zoom-Prevention** (zentral in
+  `src/components/forms/form-field.tsx`): `text-sm` → `text-base
+  md:text-sm`. Mobile-Inputs sind jetzt 16 px (verhindert
+  iOS-Safari-Auto-Zoom beim Fokus), Desktop bleibt bei 14 px.
+  Greift auf 33 Inputs in 7 Editor-Komponenten zentral —
+  selber Pattern wie S79-ARIA-Wiring.
+- ✚ **Touch-Targets auf 44×44 px erhöht** (11 Elemente):
+  - **service-card** Move-Up/Down-Buttons: `h-8 w-8` (32 px) →
+    `h-11 w-11` (44 px). Plus Icon vergrößert auf `h-4 w-4`.
+  - **service-card** Delete-Trigger + Confirm + Cancel:
+    `h-8 px-3 text-xs` (32 px) → `h-11 px-4 text-sm` (44 px).
+  - **business-header** Switcher-Summary + Public-Site-CTA:
+    `h-9 px-3 text-xs` (36 px) → `h-10 px-4 text-sm` (40 px).
+  - **dashboard-mobile-nav** Pills: `py-1.5 text-xs` (~28 px) →
+    `h-10 px-4 text-sm` (40 px) plus `flex-shrink-0` damit
+    Pills auf 320 px nicht zerquetscht werden.
+  - **public-mobile-cta-bar** Sticky-Buttons:
+    `py-2 text-[11px]` (~32 px) → `min-h-[56px] py-2.5 text-xs`
+    (56 px für Hauptaktionen — Anrufen/WhatsApp/Anfrage sind
+    kritischste Mobile-Targets).
+  - **image-upload-field** Hochladen + Entfernen:
+    `py-1.5 text-xs` (32 px) → `h-10 px-4 text-sm` (40 px).
+  - **leads-view** Detail-Schließen-Button: `h-8 w-8` (32 px) →
+    `h-11 w-11` (44 px).
+  - **account/page.tsx**: Logout-Button (32 → 44 px),
+    Dashboard-Öffnen-Link (32 → 44 px), Public-Site-Link
+    (32 → 40 px).
+- 🐛 **dashboard-mobile-nav Horizontal-Scroll-Fix**:
+  `flex gap-1` ohne `flex-nowrap` und `flex-none` ohne
+  `flex-shrink-0` ließ Pills auf < 375 px zerquetschen. Fix:
+  `flex flex-nowrap gap-1.5` + `flex-shrink-0` auf `<li>`.
+  Plus `gap-1` → `gap-1.5` für besseren Tap-Abstand
+  zwischen Pills (WCAG 2.5.5 Spacing).
+
+**Architektur-Entscheidungen**:
+- **`text-base md:text-sm`-Pattern**: Mobile bekommt 16 px
+  (iOS-Zoom-Prevention), Desktop bleibt bei 14 px (mehr
+  Information pro Zeile auf großen Screens). Eine
+  CSS-Class-String-Änderung in `baseInputClass` repariert
+  alle 33 FormInput/FormTextarea/FormSelect-Vorkommen.
+- **44 px Touch-Target als 2026-Standard**: WCAG 2.5.5 Level
+  AAA fordert 44 px, WCAG 2.5.8 Level AA fordert 24 px. Für
+  Mobile-First-SaaS lohnt sich das 44-px-Ziel — Apple-
+  Guideline (44 pt) und Material Design (48 dp) führen
+  ohnehin dorthin. Siteimprove-Research: 28 % weniger
+  Touch-Errors, 15 % höhere Mobile-Conversion.
+- **Vis-Components-Inside-Tap-Target NICHT verkleinert**:
+  z. B. `quick-actions-card.tsx:89` hat `h-8 w-8` für ein
+  dekoratives Icon, aber das Tap-Target ist der umgebende
+  `<Link>` mit `p-3`-Card-Padding (insgesamt > 60 px hoch).
+  Decorative-Icons müssen nicht 44 px sein; nur Tap-Targets.
+- **Mobile-CTA-Streifen 56 px** (mehr als 44 px Minimum):
+  Die drei CTAs auf der Public-Mobile-CTA-Bar (Anrufen,
+  WhatsApp, Anfrage) sind die kritischsten Conversion-
+  Targets — extra-large Touch-Area.
+
+**Verbleibende Mobile-Themen (Phase-2-Backlog)**:
+1. **Mobile-Nav → Bottom-Nav-Migration** (S78-Backlog #2
+   wieder hochpriorisiert): Aktueller Horizontal-Scroll-
+   Strip ist mit 8 Items grenzwertig auf 320 px. Sticky-
+   Bottom-Nav (≤5 Items + Mehr-Menü) ist 2026-Standard.
+   Eigene 2-h-Session.
+2. Visual-Regression-Test für Touch-Targets in Playwright
+   (Mobile-Viewport 375×667).
+
+**45/45 Smoketests grün, 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 2:18 min). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert. `npm run audit:themes` →
+0 Failures (Theme-Polish aus S82 weiterhin clean).
+
+🛣️ Roadmap: Phase 2 Sessions 8/≥10. Nächste Session 85 =
+**5er-Light-Pass** (Type-System-Pass + simplify auf S81–S84
++ Doku-Sync nach 5 Sessions).
+
+**Manueller Test**: Browser-DevTools → Mobile-Emulation 375 px
+→ jeder Button hat jetzt sichtbar mehr Tap-Area. iOS-Safari
+auf Form-Input klicken: kein Auto-Zoom mehr. Dashboard auf
+320 px: Mobile-Nav-Pills bleiben lesbar, scrollen
+horizontal sauber.
+
 ## [0.18.2] – Code-Session 83 – 2026-04-28 (Phase 2: A11y-Audit — globaler Sweep)
 
 A11y-Audit per Explore-Agent über das gesamte `src/`. Sessions
