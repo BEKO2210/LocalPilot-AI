@@ -6,6 +6,95 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.19.1] – Code-Session 86 – 2026-04-28 (Phase 3: Marketing-Copy + Hero-Refokus)
+
+Marketing-Copy auf konkrete USP umgestellt: „In 7 Tagen
+Website mit Anfrageformular, Bewertungs-Booster und KI-Texten —
+ohne Technikstress." 3-Hero-Branchen-Sprache (Friseur, Werkstatt,
+Reinigung) durchgängig. Demo-Trennung klar markiert. Tone-of-
+Voice von SaaS-Buzzword zu Handwerker-Sprache.
+
+- 🔄 **Hero (`marketing/hero.tsx`)**:
+  - Eyebrow: „Universell für lokale Betriebe" → „Für Friseur,
+    Werkstatt und Reinigung"
+  - H1: konkrete USP statt abstrakter „Moderne Websites"
+  - Sub: erklärt das WAS in einer Woche bekommt der Kunde
+  - Primary-CTA: „Live-Demos ansehen" → **„Pilot-Slot reservieren"**
+    (führt zu /#kontakt)
+  - Pilotwelle-Hinweis: „3 Monate kostenlos, Setup-Fee 50 % reduziert"
+- 🔄 **Problem-Solution (`problem-solution.tsx`)**:
+  - PROBLEMS: konkretere, alltagsnähere Sätze („Anfragen verteilen
+    sich auf WhatsApp, Anrufe und Zettel im Tresen")
+  - SOLUTIONS: „digitales Betriebssystem" → **„Eigene Seite in
+    7 Tagen"** + 3 weitere konkrete Werkzeuge
+  - Eyebrow: „Das Problem" → „Kennen Sie das?" (Nähe statt Distanz)
+  - „Die Lösung" → „So lösen wir das"
+- 🔄 **Onboarding-Promise (`onboarding-promise.tsx`)**:
+  Komplett synchron mit `SALES_PLAYBOOK.md` 7-Tage-Onboarding.
+  - 4 Schritte: Tag 0 (30-Min-Briefing), Tag 1–4 (wir bauen),
+    Tag 5 (Owner-Training), Tag 6–7 (Domain + Live + Übergabe)
+  - Primary-CTA: „Jetzt anmelden" → **„Pilot-Slot reservieren"**
+  - Headline: „In 4 Schritten startklar" → „Tag 0 bis Tag 7 —
+    feste Schritte, klare Übergabe"
+- 🔄 **CTA-Contact (`cta-contact.tsx`)**:
+  - Eyebrow: „Nächster Schritt" → **„Pilotwelle 2026"**
+  - H2: „Sehen Sie es live oder schreiben Sie uns direkt." →
+    **„Reservieren Sie einen 7-Tage-Pilot-Slot."**
+  - Body: konkrete Pilotkonditionen + „3–5 Betriebe pro Welle"
+  - Sub-Hint: „Erstgespräch 15–30 Min" mit Calendar-Icon
+- 🔄 **FAQ (`faq.tsx`)**:
+  Komplett neue 8-Fragen-Liste, alle Phase-3-relevant:
+  - „Für welche Branchen?" → 3 Hero + ehrliche Roadmap
+  - „Was ist in der Pilotwelle drin?" → 3 Monate kostenlos +
+    Case-Study-Erlaubnis
+  - „Wie läuft das Onboarding ab?" → 7-Tage-Schritte
+  - „Selbst Inhalte ändern?" / „Tech-Kenntnisse?" / „Kosten nach
+    Pilot?" / „Daten bei Kündigung?" / „KI verpflichtend?"
+  - Plus: `lp-focus-ring` auf `<summary>`-Toggle (A11y-Polish).
+- 🔄 **Benefits (`benefits.tsx`)**:
+  - Titles: kürzer, konkreter („7 Tage bis live", „Anfragen
+    statt verlorener Anrufe", „DSGVO-konform & wartbar")
+  - Body: weniger Marketing-Sprech, mehr „was bringt mir das"
+  - H2: „Warum LocalPilot AI?" → „Was Sie davon haben"
+
+**Architektur-Entscheidungen**:
+- **Eine Sprache, eine Seite, eine Wahrheit**: Marketing-Copy
+  und `SALES_PLAYBOOK.md` 7-Tage-Onboarding sind jetzt deckungs-
+  gleich. Wenn ein Pilotkunde liest „Tag 5: Owner-Training" auf
+  der Marketing-Page und es gibt im Playbook „Tag 5: Owner-
+  Training" — selbe Worte. Verhindert Drift.
+- **Demo-Hinweise erhalten**: Echte Pilotkunden-Konditionen
+  (3 Monate kostenlos, 50 % Setup-Rabatt) sind transparent
+  kommuniziert. Ehrlichkeit > Marketing-Trick.
+- **Primary-CTA überall „Pilot-Slot reservieren"**: Ein klarer
+  Conversion-Pfad statt 3 verschiedener CTAs. Hero, Onboarding-
+  Promise, CTA-Contact zeigen alle dieselbe Action — User
+  kommen aus 3 verschiedenen Stellen am selben Slot an.
+
+**Was NICHT geändert wurde** (bleibt aus Phase 1/2 stabil):
+- `IndustriesGrid` (zeigt alle 13 Branchen) — wird in S91
+  auf 3 Hero-Branchen umgebaut.
+- `DemoShowcase` — bleibt mit allen 6 Demo-Sites; in S90 kommt
+  Demo-Daten-Sweep mit klareren „Demo"-Markern auf den Demo-
+  Sites selbst.
+- `Testimonials` — bleibt fiktiv-personas-basiert; echte
+  Customer-Testimonials kommen mit S93 (Case-Study-Template)
+  und S98 (Sales-Material final).
+- `ValueRoi`, `PricingTeaser` — bleiben unverändert.
+
+**45/45 Smoketests grün, 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 2:18 min). typecheck ✅, lint ✅, beide Builds ✅
+(1 escape-fix in JSX-Template-Literal). Bundle 102 KB shared
+unverändert.
+
+🛣️ Roadmap: Phase 3 Sessions 2/16. **Nächste Session 87** =
+Domain + Email-Setup-Doku.
+
+**Manueller Test**: `npm run dev` → `/` → Hero zeigt jetzt
+„In 7 Tagen…" + „Pilot-Slot reservieren". Scrollen zu Problem-
+Solution: „Kennen Sie das?" mit konkreten Alltagspunkten.
+Onboarding-Promise zeigt Tag 0 bis Tag 7.
+
 ## [0.19.0] – Code-Session 85 – 2026-04-28 (Phase 3 startet: Strategischer Pivot)
 
 User-Direktive: „Bei Session 100 muss alles 10/10 sein, übergabefähig

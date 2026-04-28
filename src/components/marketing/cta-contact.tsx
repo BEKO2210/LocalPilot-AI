@@ -1,13 +1,13 @@
-import { Mail, Phone } from "lucide-react";
+import { Calendar, Mail, Phone } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { LinkButton } from "@/components/ui/button";
 
 /**
- * Schluss-CTA der Marketing-Seite. Klar darauf ausgerichtet, dass die
- * nächste Aktion entweder Demo öffnen, Pakete vergleichen oder direkt
- * schreiben ist – kein abstrakter "Beratungstermin", sondern konkrete
- * nächste Schritte.
+ * Schluss-CTA der Marketing-Seite. Konkretes „Pilot-Slot
+ * reservieren" statt abstrakter Beratung. Demo-Kontaktdaten
+ * klar als Demo gekennzeichnet (Phase 3, S85). Echter
+ * Kontakt-Kanal kommt mit S87 (Domain + Email-Setup).
  */
 export function CtaContact() {
   return (
@@ -15,19 +15,21 @@ export function CtaContact() {
       <Container className="grid items-center gap-10 lg:grid-cols-2">
         <div>
           <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white/80">
-            Nächster Schritt
+            Pilotwelle 2026
           </span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Sehen Sie es live oder schreiben Sie uns direkt.
+            Reservieren Sie einen 7-Tage-Pilot-Slot.
           </h2>
           <p className="mt-4 max-w-xl text-white/80">
-            Sechs Demo-Sites und eine vollständige Funktions-Vergleichsliste
-            stehen bereit. Wenn Sie konkret werden möchten, antworten wir
-            innerhalb eines Werktags – ehrlich und unverbindlich.
+            3 Monate kostenlos, Setup-Fee 50 % reduziert, gegen
+            schriftliche Case-Study-Erlaubnis nach 30 Tagen Live-
+            Betrieb. Plätze sind begrenzt — wir machen pro Welle
+            3–5 Betriebe gleichzeitig, damit jeder die Aufmerksamkeit
+            bekommt, die er braucht.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <LinkButton href="/demo" size="lg" variant="secondary">
-              Demo-Sites ansehen
+              Erst Demo-Sites ansehen
             </LinkButton>
             <LinkButton
               href="/pricing"
@@ -38,6 +40,11 @@ export function CtaContact() {
               Pakete vergleichen
             </LinkButton>
           </div>
+          <p className="mt-5 inline-flex items-center gap-2 text-sm text-white/70">
+            <Calendar className="h-4 w-4" aria-hidden />
+            Erstgespräch: 15–30 Min. Wir empfehlen ehrlich, auch wenn
+            das kleinere Paket reicht.
+          </p>
         </div>
 
         <div className="rounded-2xl border border-white/15 bg-white/5 p-6 backdrop-blur">

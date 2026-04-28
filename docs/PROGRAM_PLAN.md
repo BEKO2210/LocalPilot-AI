@@ -507,12 +507,17 @@ nicht in S85–100.
   (Pakete + Vertragsstruktur + 7-Tage-Onboarding skizziert),
   `Claude.md`-Hard-Constraint „kein Feature ohne Verkaufs-
   Bezug" verankert, veraltete Doku-Files identifiziert.
-- **86**: **Marketing-Copy + Hero-Refokus**. Hero-Section,
-  Problem-Solution, CTA-Contact umschreiben auf konkrete
-  USP („In 7 Tagen Website mit Anfrageformular,
-  Bewertungs-Booster und KI-Texten — ohne Technikstress").
-  Demo-Telefonnummer/`hello@`-Mail klar als Demo markieren
-  oder durch echten Kontakt ersetzen.
+- **86** ✅: **Marketing-Copy + Hero-Refokus**. 6 Marketing-
+  Komponenten (Hero, Problem-Solution, Onboarding-Promise,
+  CTA-Contact, FAQ, Benefits) komplett umgeschrieben auf
+  USP („In 7 Tagen Website mit Anfrageformular, Bewertungs-
+  Booster und KI-Texten — ohne Technikstress"), 3-Hero-
+  Branchen-Sprache, 7-Tage-Onboarding deckungsgleich mit
+  `SALES_PLAYBOOK.md`. Single-CTA „Pilot-Slot reservieren"
+  überall. Pilotkonditionen (3 Monate kostenlos, 50 %
+  Setup-Rabatt) explizit kommuniziert. FAQ neu mit 8
+  konkreten Pilotkunden-Fragen. **116/116 E2E grün, Bundle
+  unverändert** — Phase-1.5-Tests waren strukturell genug.
 - **87**: **Domain + Email-Setup-Doku**. Echte Brand-Domain
   registrieren-Anleitung (oder bestehende Domain
   dokumentieren), Vercel-Custom-Domain-Setup,

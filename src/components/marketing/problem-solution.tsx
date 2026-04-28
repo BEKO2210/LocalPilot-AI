@@ -10,33 +10,33 @@ import {
 } from "lucide-react";
 
 const PROBLEMS = [
-  "Veraltete Websites, die auf dem Handy schwer lesbar sind.",
-  "Zu wenige Google-Bewertungen, weil niemand systematisch fragt.",
-  "Kundenanfragen verteilt auf WhatsApp, Anrufe und Zettel.",
-  "Keine Zeit für regelmäßige Social-Media-Posts und gute Texte.",
-  "Unsicheres Auftreten gegenüber größeren Anbietern.",
+  "Die Website ist veraltet — auf dem Handy kaum lesbar.",
+  "Anfragen verteilen sich auf WhatsApp, Anrufe und Zettel im Tresen.",
+  "Bewertungen sammelt niemand systematisch — also bleibt es bei den drei alten von 2022.",
+  "Texte für Instagram oder Facebook? Keine Zeit, keine Idee.",
+  "Größere Wettbewerber wirken professioneller — weil sie online besser auftreten.",
 ];
 
 const SOLUTIONS = [
   {
     icon: Users,
-    title: "Eine Website, die zu Ihrem Betrieb passt",
-    text: "Branchengerechte Inhalte, mobil stark und in unter einer Stunde startklar.",
+    title: "Eigene Seite in 7 Tagen",
+    text: "Friseur, Werkstatt oder Reinigung — Ihre Branche, Ihre Texte, Ihr Logo. Nicht aus dem Baukasten.",
   },
   {
     icon: PhoneCall,
-    title: "Anfragen geordnet sammeln",
-    text: "Dynamisches Kontaktformular pro Branche – Leads landen sortiert im Dashboard.",
+    title: "Anfragen sortiert in der Inbox",
+    text: "Ein Formular, das zur Branche passt. Anfragen landen direkt bei Ihnen, mit DSGVO-Consent.",
   },
   {
     icon: Star,
-    title: "Mehr und bessere Bewertungen",
-    text: "Vorlagen für WhatsApp, SMS und E-Mail – KI passt den Text an Ihre Branche an.",
+    title: "Bewertungs-Booster mit 1 Klick",
+    text: "Vorlagen für Google, WhatsApp und SMS. Sie schicken nur die Anfrage — den Text macht das System.",
   },
   {
     icon: Megaphone,
-    title: "Regelmäßig sichtbar bleiben",
-    text: "Social-Media-Posts auf Knopfdruck – mit passenden Hashtags und Bildideen.",
+    title: "Social-Media-Texte aus der Maschine",
+    text: "Instagram, Facebook, WhatsApp-Status. KI schreibt branchengerecht — Sie posten oder kopieren.",
   },
 ];
 
@@ -48,14 +48,15 @@ export function ProblemSolution() {
           <div className="mx-auto max-w-2xl text-center">
             <span className="lp-eyebrow">
               <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
-              Das Problem
+              Kennen Sie das?
             </span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Lokale Betriebe haben oft keine Zeit für Marketing.
+              Sie machen gute Arbeit. Online sieht man davon zu wenig.
             </h2>
             <p className="mt-4 text-ink-600">
-              Sie machen großartige Arbeit. Aber online sieht man davon wenig.
-              LocalPilot AI nimmt den digitalen Aufwand ab – damit Sie sich auf Ihre Kunden konzentrieren können.
+              Wir hören das jeden Tag von Friseuren, Werkstätten und
+              Reinigungsfirmen. Hier sind die fünf Punkte, die fast
+              immer zuerst kommen:
             </p>
           </div>
           <ul className="mx-auto mt-10 grid max-w-3xl gap-3 sm:grid-cols-2">
@@ -79,13 +80,15 @@ export function ProblemSolution() {
           <div className="mx-auto max-w-2xl text-center">
             <span className="lp-eyebrow">
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-              Die Lösung
+              So lösen wir das
             </span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Ein digitales Betriebssystem für lokale Unternehmen.
+              Vier konkrete Werkzeuge — alle in einem System.
             </h2>
             <p className="mt-4 text-ink-600">
-              Website, Anfragen, Bewertungen und Social Media – an einer Stelle, an Ihre Branche angepasst und bedienbar ohne IT-Kenntnisse.
+              Keine 12 Tools, kein Lock-in, keine versteckten Kosten.
+              Eine Seite, ein Dashboard — passt zur Branche, fertig
+              eingerichtet in 7 Tagen.
             </p>
           </div>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

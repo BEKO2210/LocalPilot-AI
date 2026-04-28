@@ -9935,4 +9935,118 @@ Hero-Refokus**. Inhalt:
 5. Tone-of-Voice: weniger SaaS-Buzzword, mehr
    Handwerker-/Friseur-/Reinigungsfirma-Sprache.
 
+---
+
+## Code-Session 86 – Phase 3: Marketing-Copy + Hero-Refokus
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 3 · Marketing
+
+**Was**: Marketing-Copy auf konkrete USP umgestellt: „In 7
+Tagen Website mit Anfrageformular, Bewertungs-Booster und
+KI-Texten — ohne Technikstress." 6 Marketing-Komponenten
+umgeschrieben, alle auf 3-Hero-Branchen-Sprache (Friseur,
+Werkstatt, Reinigung) und 7-Tage-Onboarding-Synchron mit
+`SALES_PLAYBOOK.md`. Tone-of-Voice: weg von SaaS-Buzzword,
+hin zu Handwerker-Sprache.
+
+**Architektur-Entscheidung — Eine Sprache, eine Seite, eine
+Wahrheit**: Marketing-Page und `SALES_PLAYBOOK.md` 7-Tage-
+Onboarding sind jetzt **wörtlich deckungsgleich**.
+Marketing-Onboarding-Promise zeigt:
+- Tag 0: 30-Min-Briefing
+- Tag 1–4: wir bauen
+- Tag 5: Owner-Training
+- Tag 6–7: Domain + Live + Übergabe
+
+`SALES_PLAYBOOK.md` zeigt dieselben 7 Tage in operativer
+Tiefe. Verhindert Marketing↔Operations-Drift in S87+.
+
+**Architektur-Entscheidung — „Pilot-Slot reservieren" als
+Single-CTA**: Vorher: Hero hatte „Live-Demos ansehen",
+Onboarding-Promise hatte „Jetzt anmelden", CTA-Contact
+hatte „Demo-Sites + Pakete". Jetzt: Primary-CTA überall
+**„Pilot-Slot reservieren"** (führt zu /#kontakt). User
+landet aus 3 Marketing-Stellen am selben Conversion-Punkt.
+Sekundär-CTA bleibt „Demo ansehen" / „Pakete vergleichen"
+für Discovery-Phase.
+
+**Architektur-Entscheidung — Pilotkonditionen explizit
+kommuniziert**: „3 Monate kostenlos, Setup-Fee 50 %
+reduziert, gegen Case-Study-Erlaubnis nach 30 Tagen Live-
+Betrieb" steht in Hero-Sub, CTA-Contact-Body und FAQ.
+Ehrlichkeit > Marketing-Trick. Pilotkunden wissen, was sie
+geben (Case-Study) und bekommen (kostenfreie Pilotzeit).
+
+**Architektur-Entscheidung — FAQ komplett neu geschrieben
+statt patches**: Alte FAQ war 6 abstrakte Fragen
+(„Funktioniert das für meine Branche?" — vage Antwort
+„branchenneutral, 20 Branchen"). Neue FAQ: 8 konkrete
+Phase-3-Fragen die Pilotkunden tatsächlich stellen werden:
+„Für welche Branchen?" → 3 Hero + ehrliche Roadmap. „Pilot-
+welle drin?" → 3 Monate kostenlos. „Onboarding-Ablauf?" →
+7 Tage. „Kosten nach Pilot?" → konkrete Preise. „Daten bei
+Kündigung?" → DSGVO Art. 20. Plus: `lp-focus-ring` auf
+`<summary>`-Toggle (A11y-Polish, war seit S77 Backlog).
+
+**WebSearch (Track C)**: keine — Marketing-Copy-Refokus
+folgt expliziter User-Direktive aus S85-Pivot. Externe
+Best-Practices wären redundant.
+
+**Dateien (6 Marketing-Komponenten)**:
+- 🔄 `src/components/marketing/hero.tsx`: USP-H1,
+  Pilot-Slot-CTA, 3-Branchen-Eyebrow.
+- 🔄 `src/components/marketing/problem-solution.tsx`:
+  Konkretere Probleme + 4 Werkzeuge mit „in 7 Tagen"-
+  Versprechen.
+- 🔄 `src/components/marketing/onboarding-promise.tsx`:
+  Tag 0 → Tag 7 deckungsgleich mit SALES_PLAYBOOK.
+- 🔄 `src/components/marketing/cta-contact.tsx`:
+  „Pilotwelle 2026" + ehrliche Pilotkonditionen.
+- 🔄 `src/components/marketing/faq.tsx`: 8 neue Fragen
+  + `lp-focus-ring` auf `<summary>`.
+- 🔄 `src/components/marketing/benefits.tsx`: kürzere,
+  konkretere Titles + Bodies.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅
+(1 escape-fix für JSX-Template-Literal mit „..."). **45/45
+Smoketests** grün. **116/116 E2E** grün (Chromium 58 +
+Firefox 58, 2:18 min). Bundle 102 KB shared unverändert.
+**`npm run audit:themes` → 0 Failures**.
+
+**E2E-Resilience-Beweis**: Phase-1.5-E2E-Tests sind
+strukturell, nicht text-spezifisch (außer Hero-H1-Existenz,
+nicht Hero-H1-Inhalt). Marketing-Copy-Refresh hat keinen
+Test gebrochen — gutes Zeichen für die richtige Test-
+Granularität.
+
+**Was NICHT geändert wurde** (bleibt aus Phase 1/2):
+- `IndustriesGrid` zeigt weiter alle 13 Branchen — Reduktion
+  auf 3 Hero kommt in S91 (eigene Session, weil Industry-
+  Preset-Code geändert werden muss).
+- `DemoShowcase` mit allen 6 Demo-Sites — bleibt sichtbar,
+  S90 kommt mit klareren Demo-Markern auf den Sites selbst.
+- `Testimonials` mit fiktiven Personas — echte Customer-
+  Testimonials in S93 / S98.
+
+**Phase-2-Backlog-Reduzierung**:
+- A11y-FAQ-`<summary>`-Focus-Ring (S77-Backlog) ✅ erledigt.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 ✅,
+Phase 3 läuft (2/16 Sessions, S85–100 → Verkaufsreife).
+
+**Quellen**: keine — User-Direktive (S85-Pivot) als
+einzige Source.
+
+**Nächste Session**: Code-Session 87 = **Domain + Email-
+Setup-Doku**. Inhalt:
+1. `docs/DOMAIN_SETUP.md`: Anleitung zum Verbinden einer
+   echten Brand-Domain mit Vercel.
+2. MX-Records für `kontakt@`-Postfach (Email-Provider
+   wählen + dokumentieren).
+3. Live-Smoketest des Magic-Link-Flows auf Production-Domain.
+4. CTA-Contact: Demo-Telefonnummer durch echte ersetzen,
+   sobald Hotline aktiv.
+5. README + SALES_PLAYBOOK + PRODUCT_STATUS aktualisieren.
+
 
