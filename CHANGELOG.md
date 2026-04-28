@@ -6,13 +6,78 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1.5 → End-to-End-Tests (Sessions 73–~76)
-- **73**: Business-Editor-E2E.
+### Phase 1.5 → End-to-End-Tests (Sessions 74–~76)
 - **74**: Service-Liste-E2E.
 - **75** (5er-Light-Pass): Settings + Danger-Zone E2E +
   Test-Helper-Refactor + storageState-Auth-Mock.
 - **76**: Public-Site + Lead-Retry-Queue E2E.
-- Erfolgskriterium: ≥25 grüne E2E-Tests.
+- **Erfolgskriterium ✅ erreicht** (Session 73): 30 grüne
+  E2E-Tests, Ziel war ≥25.
+
+## [0.16.47] – Code-Session 73 – 2026-04-27
+
+Business-Editor + Dashboard-Shell E2E. 12 neue Tests in 2
+Files. **30 E2E-Tests insgesamt grün**, Phase-1.5-Ziel von
+≥25 erreicht. Annahmen-Audit deckte 1 echtes UX-Polish-
+Item auf (Verwerfen-Button bleibt enabled nach Discard).
+
+- ✚ `e2e/business-editor.spec.ts` (8 Tests):
+  - Page lädt mit Heading + Status-Bar.
+  - Alle 6 Form-Sektionen rendern (Basisdaten / Branche+
+    Paket / Adresse / Kontakt / Öffnungszeiten / Branding).
+  - Basisdaten-Felder + Name vorausgefüllt (tagline/
+    description nicht garantiert pre-filled bei Demo-
+    Daten).
+  - Adresse-Felder (street/postalCode/city/country) +
+    Kontakt-Felder (phone/email) sichtbar via Dot-Notation
+    ID-Selector (`#address\\.street` etc.).
+  - Speichern-Button initial disabled (nicht dirty).
+  - Speichern-Button aktiviert sich nach Feld-Änderung
+    (RHF isDirty greift).
+  - Verwerfen-Button setzt Werte zurück auf Demo-Defaults.
+  - Theme-Picker rendert im Branding-Block.
+- ✚ `e2e/dashboard-shell.spec.ts` (4 Tests):
+  - Übersichts-Page lädt mit allen 8 Sidebar-Tabs
+    (Übersicht/Betriebsdaten/Leistungen/Anfragen/KI-Assistent/
+    Bewertungen/Social Media/Einstellungen).
+  - Tab-Navigation: Übersicht → Betriebsdaten via
+    `:visible`-Selector (Mobile-Nav rendert hidden auf
+    Desktop-Viewport).
+  - Tab-Navigation: Betriebsdaten → Leistungen.
+  - Public-Site-Link öffnet `/site/<slug>`.
+
+**Test-Findings dieser Session**:
+- **Strict-Mode-Violation bei Text-Match**: „Betriebsdaten
+  bearbeiten" matched sowohl `<p>` (Status-Bar) als auch
+  `<title>` (page-meta). Fix: Selektor auf
+  `main p, body > div p` einschränken. **Lesson**:
+  Plain-Text-Selektoren haben strikt-Modus mit `<title>`-
+  Tag-Konflikten — bessere Anker via Role oder Container.
+- **Mobile-Nav rendert hidden bei Desktop-Viewport**:
+  `.first()` traf den hidden Mobile-Link, Click-Timeout.
+  Fix: `:visible`-CSS-Selector. **Lesson**: bei mehrfach
+  rendernden Komponenten (Sidebar+Mobile-Nav) immer
+  visibility-filtern.
+- **🟡 UX-Polish-Item für Phase 2**: Verwerfen-Button
+  bleibt nach Discard enabled. RHF `methods.reset(stored)`
+  setzt isDirty nicht zuverlässig zurück, wenn ein
+  localStorage-Override vorhanden ist. Test toleriert das
+  Verhalten (prüft nur den restored Wert), Issue im
+  PROGRAM_PLAN-Phase-2-Backlog notiert.
+
+45/45 Smoketests grün (unverändert). **30/30 E2E-Tests
+grün** (~60 s). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: Phase-1.5-Ziel ≥25 E2E-Tests **erreicht** mit
+30. Wir machen weiter Sessions 74–76 zur vollständigen
+User-Flow-Coverage; danach beginnt Phase 2 (UI/UX-Polish)
+mit den dokumentierten Phase-2-Items als Backlog.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 läuft mit
+Mehrwert-Findings. 30 E2E-Tests, 45 Smoketests, 102 KB
+Bundle, alles clean. Phase-2-Backlog wächst um konkrete
+UX-Polish-Items aus den Test-Annahmen-Audits.
 
 ## [0.16.46] – Code-Session 72 – 2026-04-27
 

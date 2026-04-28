@@ -411,10 +411,14 @@ CI-Umgebung).
   Branche-Auswahl koppelt nicht automatisch ans Theme
   (Auto-Empfehlung wäre UX-Win). Auth-gemockter Submit
   wandert in Session 75 (storageState-Setup).
-- **73**: Business-Editor-E2E. Alle Sektionen
-  (Basisdaten / Branche / Adresse / Kontakt /
-  Öffnungszeiten / Branding), Logo+Cover-Upload-UI
-  (Mock-Mode), Speichern, Verwerfen, Demo-Defaults laden.
+- **73** ✅: Business-Editor + Dashboard-Shell E2E.
+  12 Tests in 2 Files. **30 grüne E2E-Tests insgesamt** —
+  Phase-1.5-Ziel ≥25 erreicht. Alle 6 Sektionen, Save-/
+  Discard-Disabled-Logic, Tab-Navigation mit `:visible`-
+  Filter (Mobile-Nav rendert hidden auf Desktop). 2
+  Phase-2-Items dokumentiert (Verwerfen-Button bleibt
+  nach Discard enabled — RHF-isDirty-Reset; Status-Bar-
+  Heading als `<p>` statt `<h2>` — A11y).
 - **74**: Service-Liste-E2E. Neuer Service, Edit, Delete
   mit Confirm, Reorder via Pfeile, Limit-Verhalten, Service-
   Bild-Upload mit UUID-Gating-Hint.
