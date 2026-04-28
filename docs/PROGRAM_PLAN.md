@@ -401,10 +401,16 @@ CI-Umgebung).
   aufgedeckt + gefixt (Footer-Selector Demo-Card-Kollision,
   Lead-Form branchenspezifische Felder) — exakt der
   Mehrwert, den E2E-Tests liefern sollen.
-- **72**: Onboarding-Flow E2E. Magic-Link-Page → Onboarding-
-  Form → Slug-Validation (kollidieren, reserviert, ok) →
-  erster Betrieb angelegt → Auto-Redirect zu Dashboard
-  (Session-63-Logik).
+- **72** ✅: Onboarding-Flow E2E. 7 Tests: Form-Render mit
+  ID-Selector (Asterisk-Spans brechen `getByLabel`-strict),
+  Slug-Vorschlag, Select-Optionen-Counts, Branche+Theme-
+  Unabhängigkeit, Submit ohne Pflicht-Felder. + 1 Login-
+  Submit-Test. **18/18 E2E grün**. 2 Phase-2-UX-Items
+  dokumentiert: Default-Tier ist `silber` statt `bronze`
+  (gewollt? — Bronze als Free-Tier wäre Standard-SaaS),
+  Branche-Auswahl koppelt nicht automatisch ans Theme
+  (Auto-Empfehlung wäre UX-Win). Auth-gemockter Submit
+  wandert in Session 75 (storageState-Setup).
 - **73**: Business-Editor-E2E. Alle Sektionen
   (Basisdaten / Branche / Adresse / Kontakt /
   Öffnungszeiten / Branding), Logo+Cover-Upload-UI

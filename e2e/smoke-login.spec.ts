@@ -44,4 +44,22 @@ test.describe("Login-Page", () => {
     await page.getByRole("link", { name: /zur demo/i }).click();
     await expect(page).toHaveURL(/\/demo$/);
   });
+
+  test("Submit ohne Backend wirft die UI nicht ab", async ({ page }) => {
+    await page.goto("/login");
+
+    const emailInput = page.getByLabel(/e-mail-adresse/i);
+    const submitButton = page.getByRole("button", { name: /login-link senden/i });
+
+    await emailInput.fill("test@example.com");
+    await expect(submitButton).toBeEnabled();
+    await submitButton.click();
+
+    // Form-Submit darf nicht zu einer Page-Navigation oder
+    // Crash führen. Wir bleiben auf /login, das Heading ist
+    // weiter sichtbar — egal welcher StatusBlock erscheint.
+    await page.waitForTimeout(500);
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByRole("heading", { name: /anmelden/i })).toBeVisible();
+  });
 });

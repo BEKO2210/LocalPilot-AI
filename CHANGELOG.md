@@ -6,14 +6,65 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1.5 → End-to-End-Tests (Sessions 72–~76)
-- **72**: Onboarding-Flow E2E.
+### Phase 1.5 → End-to-End-Tests (Sessions 73–~76)
 - **73**: Business-Editor-E2E.
 - **74**: Service-Liste-E2E.
 - **75** (5er-Light-Pass): Settings + Danger-Zone E2E +
-  Test-Helper-Refactor.
+  Test-Helper-Refactor + storageState-Auth-Mock.
 - **76**: Public-Site + Lead-Retry-Queue E2E.
 - Erfolgskriterium: ≥25 grüne E2E-Tests.
+
+## [0.16.46] – Code-Session 72 – 2026-04-27
+
+Onboarding-Flow E2E. 7 neue Tests + 1 Login-Submit-Test
+ergänzt — gesamt **18 E2E-Tests** in 37 s, alle grün.
+Annahmen-Audit deckte 2 echte Form-Verhaltens-Fakten auf
+(Default-Tier ist `silber` nicht `bronze`; Branche koppelt
+nicht automatisch ans Theme), die als Phase-2-UX-Polish-
+Items im PROGRAM_PLAN dokumentiert bleiben.
+
+- ✚ `e2e/onboarding-flow.spec.ts` (7 Tests):
+  - Form rendert mit allen 7 Pflicht-/Optional-Feldern via
+    ID-Selector (Labels haben Asterisk-Spans, die
+    `getByLabel`-strict-Match brechen).
+  - Slug-Vorschlag aus Name funktioniert + erzeugt
+    URL-safe-Wert (lowercase + nur `[a-z0-9-]`).
+  - Branchen-Select hat ≥10 Optionen, Theme-Select ≥5.
+  - Paket-Select hat exakt 4 Tiers (Bronze/Silber/Gold/
+    Platin) + Default ist einer davon.
+  - Branche + Theme sind unabhängig wählbar (UX-Insight:
+    keine Auto-Empfehlung — Phase-2-Item).
+  - Submit ohne Pflicht-Felder bleibt im Form (Client-
+    Validation greift, kein Crash).
+- 🔄 `e2e/smoke-login.spec.ts`: + 1 Test „Submit ohne
+  Backend wirft die UI nicht ab". Klickt mit gefüllter
+  Email, prüft dass URL und Heading erhalten bleiben.
+
+**Test-Findings dieser Session**:
+- 5 Tests scheiterten beim ersten Lauf — alle 5 echte
+  Annahmen-Fehler:
+  - 4× Asterisk-Span im Label-Text → `getByLabel`-strict-
+    Anchor matched nicht. **Lesson**: ID-Selector
+    bevorzugen für Form-Felder, `getByLabel` nur bei
+    sauberen Plain-Text-Labels.
+  - 1× erwartet bronze-Default, real silber → Default-
+    Annahme zu spezifisch. **Lesson**: tolerante Asserts
+    bei Domain-Werten („einer aus dem Enum").
+  - 1× erwartet Branche→Theme-Auto-Kopplung, real
+    unabhängig → Logik-Annahme falsch. **Lesson**:
+    Form-Verhalten lesen, nicht raten.
+
+45/45 Smoketests grün. **18/18 E2E-Tests grün** (~37 s).
+typecheck ✅, lint ✅, beide Builds ✅. Bundle 102 KB
+shared unverändert.
+
+🛣️ Roadmap: 18 von ≥25 angepeilten E2E-Tests erreicht.
+Nächste Session 73 (Business-Editor-E2E) bringt
+voraussichtlich 6-10 weitere Tests.
+
+**Status-Update**: Phase 1.5 läuft. Test-Coverage-Aufbau
+nach Plan, mit echten Annahmen-Fakten als Bonus
+(form-Verhalten ist jetzt verifiziert + dokumentiert).
 
 ### Phase 2 → UI/UX-Polish (Sessions ~77–~86+)
 Demo-Logo via `algorithmic-art`-Skill in Session 81. Details

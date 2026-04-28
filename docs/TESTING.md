@@ -100,16 +100,17 @@ Pfade brauchen einen gemockten Auth-State. Strategie:
 `test.use({ storageState: ... })` mit einer vorberechneten
 Cookie-Session. Implementation in Session 72.
 
-### Test-Inventur (Stand Session 71)
+### Test-Inventur (Stand Session 72)
 
-| File | Asserts | Coverage |
+| File | Tests | Coverage |
 | --- | --- | --- |
 | `e2e/smoke-landing.spec.ts` | 3 | Hero, Header-Nav, Site-Footer |
-| `e2e/smoke-login.spec.ts` | 3 | Form-Render, Submit-Aktivierung, Demo-Link |
+| `e2e/smoke-login.spec.ts` | 4 | Form-Render, Submit-Aktivierung, Demo-Link, Submit-Robustheit |
 | `e2e/smoke-public-site.spec.ts` | 3 | Hero+Services, Lead-Form, anderer Demo-Slug |
 | `e2e/smoke-account.spec.ts` | 1 | Heading + Demo/Guest-Card |
+| `e2e/onboarding-flow.spec.ts` | 7 | Form-Felder, Slug-Suggest, Selects, Branche+Theme, Submit-Validation |
 
-**10 Tests, ~22 s, alle grün** auf einer ersten Lauf-Iteration.
+**18 Tests, ~37 s, alle grün**. Ziel Phase 1.5: ≥25 Tests.
 
 ### Pattern + Best-Practices
 
