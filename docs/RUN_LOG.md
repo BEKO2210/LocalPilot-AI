@@ -9344,4 +9344,112 @@ was hermachen"). Skills:
    Page + Dashboard-Header.
 4. Brand-Guidelines-Doku in `docs/BRAND.md`.
 
+---
+
+## Code-Session 81 – Phase 2: Demo-Logo + Brand-Identity
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 2 · Brand
+
+**Was**: User-Direktive seit Code-Session 65 erfüllt
+(„Demo-Logo muss richtig was hermachen"). Neuer Brand-
+Mark + Wordmark + Lockup als inline-SVG-Komponenten,
+theme-adaptiv via `currentColor`. Brand-Identity-Doku in
+`docs/BRAND.md`. Marketing-Header und -Footer migriert.
+
+**Architektur-Entscheidung — Inline-SVG statt p5.js**:
+Aufruf war „algorithmic-art-Skill" — die Skill-Doku selbst
+warnt: „Niemals Echtzeit-p5 in der Public Site bundeln —
+das ist 1 MB+ an Library-Code, killt unser 102-KB-Bundle".
+Folge: Logo direkt als statisches SVG designed (4 Striche,
+deterministisch reproduzierbar), p5.js-Skill bleibt für
+Hero-Backgrounds reserviert (eigene Session ≥85).
+
+**Architektur-Entscheidung — Drei-Schichten-Mark statt
+Single-Symbol**: 2026-Trends bevorzugen System-based
+Brand-Design (Shopify-/UX-Studio-Research). Drei
+semantische Layer:
+- Rounded-Square-Frame (`rect rx=14`) — „Local"-
+  Container, „verankert".
+- Chevron + Crossbar (`path` + `line`) — Kompass-Needle,
+  „Pilot/Direction".
+- Akzent-Dot top-right (`circle r=3.5`) — „AI/Beacon",
+  bricht die Symmetrie und gibt der Marke ein
+  Wiedererkennungs-Detail.
+
+Vier Pfad-Elemente sind das Maximum für ein 16-px-
+Favicon — mehr verschwimmt. Stroke-Width 4 auf 64×64-
+Viewbox mit `round`-Linecap/Linejoin gibt clean Kanten
+auf jeder Skalierungsstufe.
+
+**Architektur-Entscheidung — `currentColor` statt
+Theme-Var-Direkt**: Public-Site-Komponenten (S77) haben
+inline-`style={{ color: "rgb(var(--theme-X))" }}`. Brand-
+Mark soll auch außerhalb von Public-Sites funktionieren
+(Marketing-Header, OG-Image, Email-Templates). Lösung:
+SVG nutzt `currentColor` für stroke + fill → folgt dem
+text-color des Wrapper-Elements. Caller wählt:
+- Marketing-Header: `text-brand-700`.
+- Footer-Akzent: `text-brand-700`.
+- (Künftiges OG-Image): `text-white` auf dunklem BG.
+- Auf Public-Site (falls je gebraucht): `text-[rgb(var(--theme-accent))]`.
+
+Keine zweite Branding-Token-Ebene — ein dünner Layer
+über Tailwind-Default + Theme-CSS-Vars.
+
+**Architektur-Entscheidung — `LocalPilotLockup` als
+Default-Wrapper**: Header-Use-Case ist 80% der Vorkommen
+(clickable Logo → Home). Lockup setzt `<Link href="/">`,
+`aria-label`, `lp-focus-ring`. Opt-out via `href={null}`
+für Static-OG-Images, wo Navigation nicht passieren darf.
+Drei Größen `sm/md/lg` decken Marketing-Header (sm),
+Hero-Section (lg) und OG-Image (lg) ab.
+
+**WebSearch (Track C)**:
+- [Logo Design Trends 2026 (ImagineArt)](https://www.imagine.art/blogs/logo-design-trends-2025) — Geometric Bold-Minimal als 2026-Standard, weg von purem Minimalismus (81).
+- [SaaS Logos Best Practices (eBaqDesign)](https://www.ebaqdesign.com/blog/saas-logos) — Tech-SaaS bevorzugt Mark + Wordmark-Lockup, nicht reine Wordmarks (81).
+- [Logo Trends 2026 (Shopify)](https://www.shopify.com/blog/logo-trends) — System-based Design: simple Mark + reichhaltiges Brand-System darum (81).
+- [Tech Startup Logos (LogoCrafter)](https://www.logocrafter.app/blog/best-tech-startup-logos) — Compass/Navigation-Motive sind etabliert für „direction"-Brands (81).
+
+**Dateien**:
+- ✚ `src/components/brand/logo.tsx`
+  (`LocalPilotMark`, `LocalPilotWordmark`, `LocalPilotLockup`).
+- ✚ `src/components/brand/index.ts`.
+- ✚ `docs/BRAND.md`.
+- 🔄 `src/components/layout/site-header.tsx`: Lockup statt
+  „L"-Initial.
+- 🔄 `src/components/layout/site-footer.tsx`: Mark-Akzent +
+  `lp-focus-ring` auf 3 Footer-Links.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/RESEARCH_INDEX.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:12 min). Bundle 102 KB
+shared unverändert (inline-SVG = 0 KB Bundle-Impact).
+
+**Phase-2-Backlog (3 neue Items aus S81)**:
+1. OG-Image (1200×630) via Vercel-OG mit `LocalPilotLockup`
+   + Slug-spezifische Variante (`/site/<slug>` zeigt
+   Customer-Brand, nicht LocalPilot-Brand).
+2. Favicon-Generation aus dem Mark — PNG-Set 16/32/180/512
+   plus `apple-touch-icon`. Ggf. via `next/image` Loader
+   oder Manual-Asset-Pipeline.
+3. Email-Signatur-Templates (Phase 4 — wenn echte
+   Customer-Onboarding-Mails laufen).
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Logo-Trends 2026
++ SaaS-Brand-Identity + System-based Brand-Design.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 läuft
+(5/≥10 Sessions, davon 1 Light-Pass). Demo-Logo-Direktive ✅.
+
+**Nächste Session**: Code-Session 82 = **Theme-Polish** via
+`theme-factory`-Skill über alle 10 Themes. Inhalt:
+1. Konsistenz-Audit der Farben pro Theme.
+2. Schrift-Hierarchie pro Theme (Heading-Weights,
+   Body-Sizes).
+3. Button-Surface-Konsistenz (`rounded-theme-button` greift
+   korrekt überall).
+4. Form-Surfaces auf Public-Site-Lead-Form.
+5. Theme-Switcher unter `/themes` als Demo-Tool prüfen.
+
 

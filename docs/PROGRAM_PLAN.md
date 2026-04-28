@@ -518,11 +518,17 @@ als Regression-Schutz.
   clean, npm outdated zeigt 18 Major-Bumps für
   künftige Innovation-Loop-Session).
   **116/116 E2E grün, Bundle unverändert**.
-- **81**: **Demo-Logo + Brand-Identity**. Aktuelles Logo
-  ist text-only (LocalPilot AI). Mit `algorithmic-art`-Skill
-  ein generatives p5.js-Mark + statische SVG-Variante
-  produzieren. Brand-Tokens (`brand-guidelines`-Skill)
-  definieren: Farben, Schriften, Spacing, Iconography.
+- **81** ✅: **Demo-Logo + Brand-Identity**. User-Direktive
+  seit S65 erfüllt. Statisches inline-SVG-Mark (Rounded-
+  Square-Frame + Kompass-Chevron + AI-Akzent-Dot, alle in
+  `currentColor`), `LocalPilotMark`/`LocalPilotWordmark`/
+  `LocalPilotLockup`-Komponenten in
+  `src/components/brand/`, Marketing-Header und Footer
+  migriert, `docs/BRAND.md` mit Brand-Token-Mapping +
+  API-Doku. p5.js explizit NICHT bundled (Skill-Doku rät
+  davon ab — 1 MB+ Library-Bloat). 0 KB Bundle-Impact.
+  3 neue Phase-2-Backlog-Items (OG-Image, Favicon, Email-
+  Templates). **116/116 E2E grün**.
 - **82**: Theme-Polish. `theme-factory`-Skill anwenden auf
   alle 10 Themes — Konsistenz-Audit der Farben, Schrift-
   Hierarchie, Buttons, Form-Surfaces. Public-Site-Theme-

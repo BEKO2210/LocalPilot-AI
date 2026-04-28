@@ -6,6 +6,82 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.18.0] – Code-Session 81 – 2026-04-28 (Phase 2: Demo-Logo + Brand-Identity)
+
+User-Direktive seit S65 erfüllt: „Demo-Logo muss richtig was
+hermachen". Neuer Brand-Mark + Wordmark + Lockup als
+inline-SVG-Komponenten, theme-adaptiv via `currentColor`,
+ohne JS-Runtime. Brand-Identity in `docs/BRAND.md` doku-
+mentiert.
+
+- ✚ **`LocalPilotMark`** (`src/components/brand/logo.tsx`):
+  64×64-Viewbox-SVG mit drei Bedeutungs-Schichten:
+  - Rounded-Square-Frame (`rect rx=14`) — „Local"-Container
+  - Chevron + Crossbar (`path` + `line`) — „Pilot"-Kompass
+  - Akzent-Dot top-right (`circle r=3.5`) — „AI"-Beacon
+  Pure stroke-only design, alle Striche `currentColor`,
+  `stroke-width=4` mit `round`-Linecap/Linejoin. Skaliert
+  16 px (Favicon) bis 512 px (OG-Image). Inline-SVG, kein
+  JS-Bundle-Impact.
+- ✚ **`LocalPilotWordmark`**: typografischer Wordmark mit
+  „**Pilot**" `font-bold` als Kernverb der Marke. „AI" mit
+  `text-[0.7em] uppercase tracking-widest opacity-70` als
+  diskreter Suffix — folgt dem 2026-Pattern „typo
+  intervention via stroke-weight".
+- ✚ **`LocalPilotLockup`**: Mark + Wordmark als horizontales
+  Composite. Default als clickable `<Link href="/">` mit
+  `lp-focus-ring`-Tastatur-Fokus, optional via `href={null}`
+  als reines Span (für Static-OG-Images). Drei Größen
+  (`sm/md/lg`).
+- 🔄 **Marketing-Header** (`SiteHeader`): „L"-Initial-Square
+  + Text-„LocalPilot AI" durch `LocalPilotLockup` ersetzt.
+  Tab-Fokus zeigt jetzt theme-aware Accent-Outline.
+- 🔄 **Marketing-Footer** (`SiteFooter`): Mark-Glyph vor
+  Copyright-Text + `lp-focus-ring` auf alle Footer-Links
+  (Impressum/Datenschutz/Kontakt) — selber A11y-Sweep
+  wie auf der Public-Site (S77).
+- ✚ **`docs/BRAND.md`**: Brand-Mark-Rationale, Wordmark-
+  Typografie, Brand-Tokens (Tailwind-basiert, kein eigener
+  Token-Layer), API-Doku, „Wo das Mark erscheint"-Liste
+  (S81 Marketing-Header+Footer ✅, ≥S83 OG-Image ⏳, ≥S84
+  Favicon ⏳). 4 Quellen aus 2026-Logo-Trend-Research.
+
+**Architektur-Entscheidungen**:
+- **Inline-SVG statt p5.js-Runtime**: `algorithmic-art`-
+  Skill-Doku rät explizit „niemals Echtzeit-p5 in der
+  Public Site bundeln" (1 MB+ Library-Code). Statisches
+  SVG-Mark erfüllt User-Direktive ohne Bundle-Bloat.
+- **`currentColor`-everywhere**: Mark folgt dem
+  `text-color`-Kontext (z. B. `text-brand-700` im Header,
+  später `text-white` auf dunklem OG-Image). Kein
+  zweiter Color-Pfad.
+- **Adaptive-Branching vs Konstanz**: Per-Theme-Mark
+  wäre overkill — die LocalPilot-AI-Marke ist branchen-
+  neutral und erscheint NUR auf unseren Surfaces (Marketing/
+  Account/OG). Customer-Public-Sites zeigen das Kunden-
+  Logo, nicht unseres.
+
+**Geplante Folge-Tasks (Phase 2 Backlog)**:
+- OG-Image (1200×630) via Vercel-OG mit `LocalPilotLockup`
+  — eigene Session ≥83.
+- Favicon-Generation (16/32/180/512 PNG-Set) aus dem Mark.
+- Email-Signatur-Templates (Phase 4).
+
+**45/45 Smoketests grün, 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 2:12 min). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert (inline-SVG = 0 KB Bundle-
+Impact).
+
+🛣️ Roadmap: Phase 2 Sessions 5/≥10. Nächste Session 82 =
+Theme-Polish via `theme-factory`-Skill über alle 10 Themes
+(Konsistenz-Audit der Farben/Schrift-Hierarchie/Buttons/
+Form-Surfaces).
+
+**Manueller Test**: `npm run dev` → `/` → neuer Lockup im
+Header sichtbar (Mark + „**Local**Pilot AI"). Tab-Fokus auf
+Logo zeigt Accent-Outline. Footer hat Mark-Glyph vor
+Copyright.
+
 ## [0.17.3] – Code-Session 80 – 2026-04-28 (5er-Light-Pass nach S77–S79)
 
 5er-Light-Pass via `simplify`-Skill nach den drei Phase-2-

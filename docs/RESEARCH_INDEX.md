@@ -178,6 +178,13 @@
 - [Tailwind UI Marketing Page Examples](https://tailwindcss.com/plus/ui-blocks/marketing/page-examples/landing-pages) — Spacing/Hierarchy-Patterns für Landing-Pages 2026 (77).
 - [WCAG 2.2 – Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) — `:focus-visible` ist 2026-Pflicht für Tastatur-Nav, theme-aware Outline ist Best-Practice (77).
 
+### Phase-2 Demo-Logo + Brand-Identity (Code-Session 81)
+- [Logo Design Trends 2026 (ImagineArt)](https://www.imagine.art/blogs/logo-design-trends-2025) — Geometric Bold-Minimal als 2026-Standard, weg von purem Minimalismus (81).
+- [SaaS Logos Best Practices (eBaqDesign)](https://www.ebaqdesign.com/blog/saas-logos) — Tech-SaaS bevorzugt Mark + Wordmark-Lockup, nicht reine Wordmarks (81).
+- [Logo Trends 2026 (Shopify)](https://www.shopify.com/blog/logo-trends) — System-based Brand-Design: simple Mark + reichhaltiges Brand-System (81).
+- [Tech Startup Logos (LogoCrafter)](https://www.logocrafter.app/blog/best-tech-startup-logos) — Compass/Navigation-Motive für „direction"-Brands (81).
+- [SaaS Brand Identity (Arounda)](https://arounda.agency/blog/branding-examples) — Adaptive Logos via context-color (kontext-spezifische Farben) (81).
+
 ### Phase-2 5-Editoren-Audit + zentrales ARIA-Wiring (Code-Session 79)
 - [React Hook Form formState (Docs)](https://react-hook-form.com/docs/useform/formstate) — `isDirty` recomputes nach `reset()`; `keepDirtyValues: true` als UX-Pattern (79).
 - [React Hook Form Discussion #3948 — manuelles isDirty](https://github.com/orgs/react-hook-form/discussions/3948) — `reset()` mit aktuellen Values setzt `defaultValues` + clear-isDirty (79).
