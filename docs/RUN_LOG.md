@@ -9811,4 +9811,128 @@ Inhalt:
 4. State-Refresh-Checklist (Stub-Audit, Codex-Backlog,
    npm outdated).
 
+---
+
+## Code-Session 85 – Phase 3 startet: Strategischer Pivot
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 3 · Plan-Reset
+
+**Was**: User-Direktive nach Phase-2-Abschluss: „Bei Session
+100 muss alles 10/10 sein, übergabefähig an Kunden ohne
+Code-Änderung." Das alte Phase-2-Restende (S85 Light-Pass,
+S86 Final-Polish) wird durch eine neue **Phase 3 →
+Verkaufsreife** ersetzt — 16 Sessions (S85–100) mit jeweils
+einem konkreten Verkaufs-Outcome. Dies ist die Pivot-
+Session: PROGRAM_PLAN umgeschrieben, README refokussiert,
+SALES_PLAYBOOK angelegt, Claude.md Hard-Constraint
+verankert, Demo-Kontakte klar markiert.
+
+**User-Diagnose** (verbatim): „7/10 als technisches Projekt,
+5,5–6/10 Verkaufsreife, Potenzial 8/10 wenn jetzt nicht
+Features sondern Pilotkunden + Polish + DSGVO + echte
+Domains + Onboarding sauber gemacht werden". Vier
+Schwachpunkte:
+1. Internal-Tagebuch-Look (README zu sehr Sessions/Codex)
+2. Keine echten Kundenbeweise
+3. Mock vs. Production-Trennung unklar
+4. Kein klares Go-to-Market-Paket
+
+Die Phase-3-Plan adressiert alle 4 systematisch.
+
+**Architektur-Entscheidung — Phase-3-Hard-Constraint in
+Claude.md verankern**: Ohne harte Regel besteht das Risiko,
+dass künftige Sessions wieder Feature-Gravitate folgen
+(„noch ein UI-Polish", „noch ein Audit"). Hard-Constraint:
+„Kein neues Feature ohne direkten Verkaufs-Bezug." Wenn ein
+Vorschlag nicht mit „weil mein nächster Pilotkunde es
+braucht" begründbar ist → Innovation-Loop nach S100.
+
+**Architektur-Entscheidung — README.md zweischichtig statt
+zwei separater Files**: Alternative wäre `README.md`
+(Kunden) + `README-DEV.md` (Entwickler). Nachteil: GitHub
+zeigt nur die erste, Doku-Drift-Risiko. Lösung: ein
+README mit Kunden-Teil oben sichtbar, Entwickler-Doku in
+`<details>`-Block eingeklappt. GitHub rendert
+`<details>` korrekt, Kunden lesen nur Teil 1, Entwickler
+klappen auf.
+
+**Architektur-Entscheidung — `MVP_RECAP.md` →
+`PRODUCT_STATUS.md` umbenannt**: „MVP" suggeriert
+„unfertig". Phase 3 ist nicht mehr MVP-Phase, sondern
+Verkaufsreife. „PRODUCT_STATUS" ist Stand-unabhängig
+und passt für die ganze Lebensdauer des Programms.
+
+**Architektur-Entscheidung — `SALES_PLAYBOOK.md` als
+neue zentrale Verkaufs-Doku**: Statt Verkaufs-Themen in
+README/PROGRAM_PLAN zu vermischen, eigenes Playbook mit:
+- 3 Hero-Branchen-Liste
+- Pakete + Pilotkonditionen (50 % Setup-Rabatt + 3 Monate
+  kostenlos für Pilotwelle)
+- Outbound-E-Mail-Template
+- 30-Min-Erstgespräch-Skript
+- 7-Tage-Onboarding-Playbook (Tag-für-Tag operativ)
+- Vertragsstruktur (S96-Plan)
+- Customer-Support-Workflow (S97-Plan)
+- 12 Verkaufs-Checkpunkte für S100 (Erfolgskriterium)
+
+**Architektur-Entscheidung — Demo-Kontakt-Daten als
+„Demo" markieren statt löschen**: `mailto:hello@localpilot.ai`
+und `tel:+493090009999` waren in `cta-contact.tsx` und
+`pricing/page.tsx` als klick-bare Links — User-Klicks
+gingen ins Leere. Lösung: Links durch nicht-klickbare
+Anzeige ersetzt + „Demo-Kontakt"-Badge + Hinweis „echter
+Kanal kommt bis Session 100". Ehrlicher als Fake-Links.
+
+**Architektur-Entscheidung — alte Phase-2-Detail-Bullets
+in PROGRAM_PLAN als HTML-Kommentar einkapseln statt
+löschen**: Historische Roadmap-Inhalte sind im RUN_LOG
+detailliert. Doppelte Doku ist Wartungsaufwand. Aber
+hartes Löschen verliert Kontext für künftige Code-Reviews.
+Lösung: `<!-- HIST: -->`-Block — gerendert unsichtbar,
+git-blame-bar.
+
+**Dateien (große Pivot-Session, ein Commit, kein Code-Drift)**:
+- 🔄 `docs/PROGRAM_PLAN.md`: Phase 2 → ✅ kompakte Notiz,
+  neue Phase 3 mit S85–100, Skill-Mapping aktualisiert.
+- 🔄 `README.md`: komplett umgeschrieben (Verkäufer-Fokus +
+  Entwickler-Details in `<details>`-Block).
+- ✚ `docs/SALES_PLAYBOOK.md` (~250 Zeilen).
+- ⤴ `docs/MVP_RECAP.md` → `docs/PRODUCT_STATUS.md`
+  umbenannt + Header aktualisiert.
+- 🔄 `Claude.md`: Punkt 10 Hard-Constraint S85–100.
+- 🔄 `docs/CODEX_BACKLOG.md`: Phase-3-Hinweis (Pause für
+  größere Junior-Themen).
+- 🔄 `src/components/marketing/cta-contact.tsx`:
+  Demo-Kontakt-Badge + Links als Anzeigen.
+- 🔄 `src/app/pricing/page.tsx`: `mailto:`-Link → `/#kontakt`-
+  Anchor.
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E** grün
+(Chromium 58 + Firefox 58, 2:24 min). Bundle 102 KB
+shared unverändert. **`npm run audit:themes` → 0
+Failures**.
+
+**Status-Update**: Phase 1 ✅, Phase 1.5 ✅, Phase 2 ✅,
+**Phase 3 läuft (1/16 Sessions, S85–100 → Verkaufsreife)**.
+
+**Erfolgskriterium S100**: 12 Verkaufs-Checkpunkte 12/12 grün
+(siehe `docs/SALES_PLAYBOOK.md` §10).
+
+**Quellen**: keine WebSearch — Pivot-Session basiert auf
+expliziter User-Diagnose statt externe Recherche.
+
+**Nächste Session**: Code-Session 86 = **Marketing-Copy +
+Hero-Refokus**. Inhalt:
+1. Hero-Section umschreiben auf konkrete USP („In 7 Tagen
+   Website mit Anfrageformular, Bewertungs-Booster und
+   KI-Texten — ohne Technikstress").
+2. Problem-Solution-Section auf 3 Hero-Branchen fokussieren.
+3. CTA-Contact-Sektion: nicht mehr „abstrakte Beratung",
+   sondern konkretes „Pilot-Slot reservieren".
+4. Demo-Trennung im Marketing klarer (was ist Demo, was
+   nach 7-Tage-Setup echt).
+5. Tone-of-Voice: weniger SaaS-Buzzword, mehr
+   Handwerker-/Friseur-/Reinigungsfirma-Sprache.
+
 

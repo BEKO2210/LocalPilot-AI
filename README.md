@@ -2,89 +2,100 @@
 
 # LocalPilot AI
 
-**Universelles KI-Website-, Lead- und Automationssystem für lokale Betriebe.**
+**In 7 Tagen bekommt dein Betrieb eine moderne Website mit
+Anfrageformular, Bewertungs-Booster und KI-Texten — ohne
+Technikstress.**
 
-White-Label-fähiges Micro-SaaS — ein Core-System, viele Branchen-Presets,
-mehrere Themes, drei Paketstufen. Vom Friseur über die Autowerkstatt bis
-zur Reinigungsfirma. Sprache: Deutsch zuerst.
+Für Friseure, Auto-Werkstätten und Reinigungsfirmen. Lokale
+Domain, eigene Inhalte, fertig zur Übergabe. Klare monatliche
+Pakete, kein Lock-in.
 
-[![Status](https://img.shields.io/badge/Status-In%20Active%20Development-2da44e?style=flat-square)](./docs/PROGRAM_PLAN.md)
-[![Methodology](https://img.shields.io/badge/Methodology-Rolling%20Milestones-1f6feb?style=flat-square)](./docs/SESSION_PROTOCOL.md)
-[![No Endpoint](https://img.shields.io/badge/Endpoint-None%20%E2%99%BE%EF%B8%8F-7d57c1?style=flat-square)](./docs/PROGRAM_PLAN.md)
-[![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=flat-square&logo=next.js)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript)](./tsconfig.json)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?style=flat-square&logo=tailwindcss)](./tailwind.config.ts)
-[![Zod](https://img.shields.io/badge/Validation-Zod-2c3e50?style=flat-square)](./src/core/validation)
-[![License](https://img.shields.io/badge/License-Proprietary-lightgrey?style=flat-square)](#lizenz)
-[![Made for](https://img.shields.io/badge/Built%20for-Local%20Businesses-ff8a65?style=flat-square)](#was-kann-das-system-zielbild)
+[Demo ansehen](#demo) · [Pakete](#pakete) · [So läuft's ab](#so-läufts-ab) · [Kontakt](#kontakt)
 
 </div>
 
 ---
 
-## ♾️ Programm-Konzept (warum es kein „fertig" gibt)
+## Was du bekommst
 
-LocalPilot AI ist **kein Projekt mit Endpunkt**, sondern ein **dauerhaftes
-Programm** mit rollenden Meilensteinen. Statt einer fixen „22 Sessions, dann
-fertig"-Sicht läuft die Entwicklung in atomaren Code-Sessions, die jede für
-sich klein, deploybar und nach 30–60 min verprobt sind.
+- **Eigene Website** mit deinem Logo, deinen Texten, deinem
+  Theme — kein Baukasten-Look.
+- **Anfrageformular** mit DSGVO-Consent, das direkt bei dir
+  in der Inbox landet.
+- **Bewertungs-Booster** — vorbereitete Vorlagen für Google,
+  WhatsApp, SMS. 1 Klick zum Verschicken.
+- **KI-Texte für Social Media** — Instagram-, Facebook- und
+  WhatsApp-Posts, branchengerecht formuliert.
+- **Mobile-fertig** auf jedem Gerät, WCAG-2.2-AA-konform,
+  schnell genug für Google.
 
-> 📜 **Verbindliche Methodik**: jede Session beinhaltet einen Recherche-Step
-> (WebSearch nach 2026-Patterns), Verifikation (typecheck/lint/build/smoketest)
-> und eine Selbst-Erweiterung der Roadmap.
->
-> Details: [`docs/SESSION_PROTOCOL.md`](./docs/SESSION_PROTOCOL.md) ·
-> [`docs/PROGRAM_PLAN.md`](./docs/PROGRAM_PLAN.md) ·
-> [`Claude.md`](./Claude.md)
+## So läuft's ab
 
-### Diese README pflegt sich (fast) selbst
+| Tag    | Was passiert                                           |
+| ------ | ------------------------------------------------------ |
+| **0**  | 30-Min-Briefing — wir hören zu, du sammelst Texte/Fotos |
+| **1**  | Setup deiner Site, Branche + Theme + Kontaktdaten       |
+| **2**  | Inhalte: Hero-Text, 3–10 Leistungen, FAQ, Bewertungen   |
+| **3**  | Logo + Bilder hochladen, Theme finalisieren             |
+| **4**  | Anfrage- + Bewertungs-Workflow live testen              |
+| **5**  | Du übst alle Editoren, wir nehmen Feedback auf          |
+| **6**  | Domain, SSL, DSGVO-Texte, Impressum, Datenschutz        |
+| **7**  | Live-Schaltung + Übergabe-Termin (45 Min Walkthrough)   |
 
-Die README-Inhalte sind **stand-unabhängig** — sie nennen keine konkrete
-Session-Nummer, sondern Meilensteine, Tracks und Prinzipien. Konkret heißt
-das:
+Details: [`docs/SALES_PLAYBOOK.md`](./docs/SALES_PLAYBOOK.md).
 
-- **Rolling Counter**: alle 20 Code-Sessions wird die Top-Zusammenfassung
-  unten neu zusammengesetzt (20 → 40 → 60 …) — sie zeigt nur die jeweils
-  aktiven Meilensteine + die nächsten 3 Backlog-Highlights.
-- **Tagesaktuelle Details**: gehören in [`CHANGELOG.md`](./CHANGELOG.md) und
-  [`docs/RUN_LOG.md`](./docs/RUN_LOG.md). Die README verweist nur darauf.
-- **Backlog**: [`docs/PROGRAM_PLAN.md`](./docs/PROGRAM_PLAN.md) wächst
-  automatisch mit jeder Session — die README muss dafür nicht angepasst
-  werden.
+## Pakete
+
+| Paket   | Setup     | Monatlich | Was du bekommst                                      |
+| ------- | --------- | --------- | ---------------------------------------------------- |
+| Bronze  | 499 €     | 49 €      | Website + Anfrageformular + Theme + Hosting          |
+| Silber  | 999 €     | 99 €      | Bronze + KI-Texte + Dashboard + Bewertungs-Booster   |
+| Gold    | 1.999 €   | 199 €     | Silber + Social-Media-Generator + Domain + Premium-Themes |
+
+Klare Bedingungen, kein Lock-in: monatliche Kündigung, Daten-
+Export auf Knopfdruck (DSGVO Art. 20).
+
+[Pakete im Detail](https://localpilot.ai/pricing) ·
+[Funktionsvergleich](./docs/PRICING.md)
+
+## Demo
+
+Sechs voll funktionsfähige Demo-Sites zum Anklicken:
+
+- Studio Haarlinie (Friseur)
+- Autoservice Müller (Werkstatt)
+- Glanzwerk Reinigung
+- Beauty Atelier
+- Meisterbau Schneider (Handwerk)
+- Fahrschule Stadtmitte
+
+Alle Demos laufen ohne Login mit Beispieldaten. Daten und
+Kontakte sind fiktiv.
+
+[Demo-Galerie öffnen](https://localpilot.ai/demo)
+
+## Kontakt
+
+> **Hinweis (Phase 3 in Arbeit):** Aktuell laufen die ersten
+> Pilotkunden-Onboardings. Bis Session 100 ist eine echte
+> Kontakt-Inbox aktiv. Aktuell bitte über GitHub-Issue oder
+> direkt an den Auftraggeber.
 
 ---
 
-## 🧭 Aktueller Status (rollend)
+<details>
+<summary><strong>📚 Für Entwickler / interne Doku</strong></summary>
 
-| Meilenstein                       | Status         | Erfolgskriterium (kurz)                                     |
-| --------------------------------- | -------------- | ----------------------------------------------------------- |
-| **1 — Foundation**                | ✅ stabil      | Demo-fähiges Produkt, statisch deploybar, 6 Demo-Betriebe   |
-| **2 — KI-Schicht**                | ✅ scharf      | 7 AI-Methoden mit Mock + 3 Live-Providern (OpenAI, Anthropic, Gemini) |
-| **3 — Engagement & Wachstum**     | ⏳ vorbereitet | Bewertungs-/Social-/Kampagnen-Tools ohne externes Tool      |
-| **4 — Backend & Daten**           | ✅ live        | DB · Multi-Tenant · Auth · Storage · Slug-Migration · Recursive-Delete |
-| **Phase 1.5 — E2E-Tests**         | ✅ abgeschlossen | 58 Playwright-Tests × 2 Browser = 116 grün (132 % über ≥25-Ziel) |
-| **Phase 2 — UI/UX-Polish**        | 🔄 startet     | ≥10 Sessions Audit · Demo-Logo (algorithmic-art) · Theme-/A11y-Polish |
-| **5 — Production-Readiness**      | ⏳ teilweise   | Vercel-Deploy ✅, DSGVO-Lead-Consent ✅, CSRF ✅, Sentry-Adapter ✅, Lighthouse offen |
-| **6 — Vertikalisierung & Sales**  | ⏳ geplant     | „Onboarding < 60 min" mehrfach erprobt                      |
-| **7 — Innovation Loop ♾️**        | ♾️ permanent   | Quartals-Schleifen: neue Modelle, Plattform-Features        |
+### Tech-Stack
 
-**Aktive Phase**: Phase 2 (UI/UX-Polish) startet ab Session 77.
-MVP funktional komplett (Phase 1: Sessions 1–70), E2E-Coverage
-steht (Phase 1.5: Sessions 71–76, 9 Spec-Files + Helper-Modul,
-~2:18 min Full-Run, Demo-Mode-Tests laufen ohne Backend). Phase 2
-geht alle UI-Bereiche systematisch durch (Public-Site, Dashboard,
-Editoren, Form-System, Demo-Logo, Theme, A11y, Mobile,
-Lighthouse) — Regression-Schutz durch Phase-1.5-Tests.
+- **Next.js 15** (App Router) · **React 19** · **TypeScript strict**
+- **Tailwind CSS 3** mit Theme-Tokens via CSS-Variablen
+- **Zod 3** als Single Source of Truth (Typen via `z.infer`)
+- **Supabase** (Auth + Postgres + Storage) mit RLS auf jeder Tabelle
+- **AI-Provider** Mock (Default) + OpenAI / Anthropic / Gemini
+- **Playwright** für E2E (58 Tests × 2 Browser = 116 grün)
 
-> Live-Stand: [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) ·
-> Versionshistorie: [`CHANGELOG.md`](./CHANGELOG.md) ·
-> MVP-Recap: [`docs/MVP_RECAP.md`](./docs/MVP_RECAP.md) ·
-> E2E-Tests: [`docs/TESTING.md`](./docs/TESTING.md) ·
-> Schema-Doku: [`docs/SUPABASE_SCHEMA.md`](./docs/SUPABASE_SCHEMA.md)
-
----
-
-## 🚀 Quickstart
+### Quickstart
 
 ```bash
 git clone https://github.com/BEKO2210/LocalPilot-AI.git
@@ -96,212 +107,79 @@ npm run dev
 
 → [http://localhost:3000](http://localhost:3000)
 
-**Ohne API-Key**: Die App läuft im Mock-Modus. Alle 7 AI-Methoden liefern
-deterministische Beispieltexte — kein externes Konto, kein Cent Verbrauch.
-Provider werden über `AI_PROVIDER` in `.env.local` umgeschaltet (siehe
-[`.env.example`](./.env.example)).
+Ohne API-Key läuft die App im Mock-Modus. Alle 7 AI-Methoden
+liefern deterministische Beispieltexte.
 
 ### Skripte
 
-| Befehl                | Zweck                                                      |
-| --------------------- | ---------------------------------------------------------- |
-| `npm run dev`         | Lokaler Dev-Server mit Hot Reload                          |
-| `npm run build`       | Production-Build (SSR, für Vercel)                         |
-| `npm run build:static`| Static-Export nach `out/` (für GitHub Pages)               |
-| `npm run start`       | Production-Build starten                                   |
-| `npm run lint`        | ESLint (Next.js + TypeScript Regeln)                       |
-| `npm run typecheck`   | `tsc --noEmit`                                             |
-| `npx tsx src/tests/<file>.test.ts` | Smoketest direkt ausführen                    |
+| Befehl                  | Zweck                                       |
+| ----------------------- | ------------------------------------------- |
+| `npm run dev`           | Lokaler Dev-Server                          |
+| `npm run build`         | Production-Build (SSR, Vercel)              |
+| `npm run build:static`  | Static-Export `out/` (GitHub Pages)         |
+| `npm run lint`          | ESLint                                      |
+| `npm run typecheck`     | `tsc --noEmit`                              |
+| `npm run audit:themes`  | WCAG-Contrast-Audit aller 10 Themes         |
+| `npm run test:e2e`      | Playwright-E2E (alle 116 Tests)             |
+| `npx tsx src/tests/<file>.test.ts` | Smoketest direkt ausführen       |
 
----
+### Architektur
 
-## 🛠️ Tech-Stack
+- `src/app/` — Next.js App Router (Pages, Routes, API-Handler)
+- `src/components/` — UI-Primitive, Layout, Public-Site, Dashboard, Editoren, Brand
+- `src/core/` — Validation (Zod), Pricing, Industries (13 Presets), Themes (10), AI-Provider
+- `src/data/` — Mock-Datasets (6 Demo-Betriebe)
+- `src/lib/` — Helpers (CSRF, Sanitize, Storage-Cleanup, Lead-Retry-Queue)
+- `e2e/` — Playwright-Test-Suite
 
-- **Next.js 15** mit App Router · React 19
-- **TypeScript** strict (`noUncheckedIndexedAccess`,
-  `noImplicitOverride`, `noFallthroughCasesInSwitch`)
-- **Tailwind CSS 3** mit Theme-Tokens via CSS-Variablen
-- **Zod 3** als Single Source of Truth für Datenmodelle
-  (Typen via `z.infer`, kein Drift möglich)
-- **React Hook Form** + `zodResolver` für Formulare
-- **Lucide Icons** für UI-Glyphen
-- **AI-Provider live**: `openai@^5`, `@anthropic-ai/sdk@^0.62`,
-  `@google/genai@^1` — alle 7 Methoden via Adapter-Pattern (Mock
-  als Fallback). HMAC-Cookie-Auth via `node:crypto` (kein externes
-  Lib). DOMPurify-äquivalenter Sanitizer ohne externe Lib.
-- **Backend**: `@supabase/supabase-js@^2` für REST/Auth/Storage,
-  `@supabase/ssr@^0.10` für Cookie-Sessions in Next.js 15 SSR.
-  Postgres-Schema als versionierte SQL-Migrationen, RLS auf
-  jeder Tabelle.
-- **Mock-first-Garantie**: jede Capability (KI, Auth, DB-Read,
-  Storage) hat einen Mock-/localStorage-Fallback. Die App läuft
-  vollständig ohne API-Key, ohne Backend und ohne Tracking — der
-  GitHub-Pages-Demo-Build ist dafür der Beweis.
-- Deployment-Ziele: **GitHub Pages** (Static Export) +
-  **Vercel** (SSR + alle `/api/*`-Routen)
+Vollständige Architektur: [`docs/TECHNICAL_NOTES.md`](./docs/TECHNICAL_NOTES.md).
 
----
+### Programm-Methodik
 
-## 🌍 Branchenneutralität (Grundprinzip)
+Entwicklung läuft in atomaren Code-Sessions (30–60 Min, 30–80 KB
+Diff, 4–10 Files) mit fester Methodik. Aktueller Stand:
+**Phase 3 (Sessions 85–100) → Verkaufsreife** — bei Session 100
+ist alles übergabefähig.
 
-LocalPilot AI darf **nie** auf eine Branche hartcodiert sein:
-
-- **Inhalte** (CTAs, Tonalität, Bilder, Felder) kommen aus
-  `IndustryPreset`-Konfigurationen — aktuell 13 Presets,
-  Roadmap-Ziel: 20+.
-- **Designs** kommen aus dem Theme-System (10 Themes,
-  CSS-Variablen-basiert).
-- **Pakete** (Bronze · Silber · Gold) steuern verfügbare Funktionen
-  via Code-Locks (`<FeatureLock>`, `requiredTierFor`).
-- Eine neue Branche muss in **unter 30 Minuten** ergänzbar sein.
-
----
-
-## 📦 Projektstruktur (Auszug)
-
-```
-src/
-  app/                  Next.js App Router (Layouts, Routen, API-Handler)
-  components/           UI-Primitive, Layout, Marketing, Public Site,
-                        Dashboard, Pricing, Theme, …
-  core/
-    validation/         Zod-Schemas (Single Source of Truth)
-    pricing/            PricingTier-Konfig + Feature-Locks
-    industries/         13 Branchen-Presets + Registry + Fallback
-    themes/             10 Themes + Resolver
-    ai/                 Provider-Adapter (Mock + 3 Live-Stubs)
-                          providers/mock/  → 7 Methoden, deterministisch
-  data/                 Mock-Datasets (6 Demo-Betriebe)
-  lib/                  cn(), Mock-Store, Helpers
-  types/                TS-Typen (alle aus Zod via z.infer)
-  tests/                Smoketests (tsx-runnable)
-docs/                   PROGRAM_PLAN, SESSION_PROTOCOL, RUN_LOG, …
-Claude.md               Master-Briefing (verbindlich, Programm-Philosophie)
-codex.md                Verhaltenskodex für Codex-Junior-Tasks
-```
-
-Volldetails: [`docs/TECHNICAL_NOTES.md`](./docs/TECHNICAL_NOTES.md)
-
----
-
-## 💶 Pakete (Bronze · Silber · Gold)
-
-Pakete sind **Produktlogik**, nicht nur Marketing-Text. Sie steuern
-verfügbare Funktionen über Code-Locks.
-
-| Paket    | Setup     | Monatlich | Zielgruppe                                     |
-| -------- | --------- | --------- | ---------------------------------------------- |
-| Bronze   | 499 €     | 49 €      | Kleinbetrieb, schnelle digitale Präsenz        |
-| Silber   | 999 €     | 99 €      | KI-Texte, Dashboard, Lead- & Bewertungssystem  |
-| Gold     | 1.999 €   | 199 €     | Vollständiges lokales Marketing-System         |
-
-```ts
-import { hasFeature, isFeatureLocked, getTierLimits } from "@/core/pricing";
-
-hasFeature(business.packageTier, "ai_website_text");          // boolean
-isFeatureLocked(business.packageTier, "ai_campaign_generator");// boolean
-getTierLimits(business.packageTier).maxServices;              // number
-```
-
-Im UI: `<PricingGrid>`, `<FeatureLock>`, `<UpgradeHint>`.
-Details: [`docs/PRICING.md`](./docs/PRICING.md).
-
----
-
-## 🤝 Mitwirkende & Verantwortlichkeiten
-
-| Rolle               | Werkzeug              | Was wird beigesteuert                                          |
-| ------------------- | --------------------- | -------------------------------------------------------------- |
-| **Claude Code**     | Diese Konversation    | Feature-Sessions, Methodik, KI-Schicht, Architektur            |
-| **Codex (Junior)**  | OpenAI Codex / ChatGPT| Niedrig-Risiko-Polish unter strikten Boundaries — siehe [`codex.md`](./codex.md) |
-| **Auftraggeber**    | Manuell               | Richtungsentscheidungen, Domain-Wissen, GTM                    |
-
-Die Boundaries für Codex sind hart definiert: kein Anfassen von Schemas,
-Provider-Code, Dependencies oder Methodik-Dokumenten. Erlaubte Tasks
-stehen in [`docs/CODEX_BACKLOG.md`](./docs/CODEX_BACKLOG.md), das Log in
-[`docs/CODEX_LOG.md`](./docs/CODEX_LOG.md).
-
----
-
-## 🌐 Live-Preview / Deployment
-
-LocalPilot AI deployt auf **zwei Pipelines parallel**:
-
-| Pipeline | Was                                                | URL-Pattern                                  |
-| -------- | -------------------------------------------------- | -------------------------------------------- |
-| **GitHub Pages** | Statische Routen (Marketing, Public-Site, Dashboard-UI im Mock-Modus) | `https://beko2210.github.io/LocalPilot-AI/` |
-| **Vercel**       | SSR + alle `/api/*`-Routen (Auth, AI-Generate, Health) | (eingerichtet via `vercel link`)            |
-
-Pages liefert den schnellen, kostenlosen Showcase. Vercel kommt für
-alles, was einen Server braucht: Login-Cookies, KI-Live-Calls,
-Cost-Tracking, Rate-Limits.
-
-Beide Pipelines bauen aus **demselben** Code — die einzige Weiche ist
-die ENV `STATIC_EXPORT=true` (im Pages-Workflow gesetzt, auf Vercel
-nicht). Alle API-Routen werden im Static-Export über
-`pageExtensions`-Filter ausgeschlossen.
-
-Vollständige Anleitung (Setup-Befehle, ENV-Variablen, Smoke-Tests,
-Roll-back): [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
-Pflicht-ENV-Vorlage: [`.env.production.example`](./.env.production.example).
-
----
-
-## 📚 Dokumentation
-
-**Methodik & Programm**
-
-- [`Claude.md`](./Claude.md) — Master-Briefing, Programm-Philosophie
-- [`docs/PROGRAM_PLAN.md`](./docs/PROGRAM_PLAN.md) — Rolling Milestones,
-  selbst-erweiternder Backlog
-- [`docs/SESSION_PROTOCOL.md`](./docs/SESSION_PROTOCOL.md) — verbindlicher
-  Ablauf jeder Code-Session
-- [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) — chronologisches Tagebuch jeder
-  Session inkl. Recherche-Quellen
+- [`docs/PROGRAM_PLAN.md`](./docs/PROGRAM_PLAN.md) — Roadmap
+- [`docs/SESSION_PROTOCOL.md`](./docs/SESSION_PROTOCOL.md) — Session-Ablauf
+- [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) — chronologisches Log
 - [`CHANGELOG.md`](./CHANGELOG.md) — Versionshistorie
-- [`codex.md`](./codex.md) — Verhaltenskodex für Codex-Junior-Tasks
-- [`docs/CODEX_BACKLOG.md`](./docs/CODEX_BACKLOG.md) — vorab freigegebene
-  Codex-Aufgaben
-- [`docs/CODEX_LOG.md`](./docs/CODEX_LOG.md) — was Codex zwischendurch
-  erledigt hat
+- [`Claude.md`](./Claude.md) — Master-Briefing
+- [`codex.md`](./codex.md) · [`docs/CODEX_BACKLOG.md`](./docs/CODEX_BACKLOG.md) — Codex-Junior-Tasks
 
-**Produkt & Architektur**
+### Produkt-Doku
 
-- [`docs/PRODUCT_STRATEGY.md`](./docs/PRODUCT_STRATEGY.md) — Vision, Zielgruppen, Pakete, Akzeptanz
-- [`docs/TECHNICAL_NOTES.md`](./docs/TECHNICAL_NOTES.md) — Architektur, Konventionen, Stack
-- [`docs/MVP_RECAP.md`](./docs/MVP_RECAP.md) — MVP-Capability-Liste + Code-Inventur (Stand S70)
-- [`docs/PRICING.md`](./docs/PRICING.md) — Pricing-System, Helper-API
-- [`docs/INDUSTRY_PRESETS.md`](./docs/INDUSTRY_PRESETS.md) — Presets, Registry, Compliance
-- [`docs/THEMES.md`](./docs/THEMES.md) — Theme-System, CSS-Variablen
-- [`docs/MOCK_DATA.md`](./docs/MOCK_DATA.md) — Demo-Betriebe, Daten-Hygiene
-- [`docs/PUBLIC_SITE.md`](./docs/PUBLIC_SITE.md) — Public Site Generator
-- [`docs/MARKETING.md`](./docs/MARKETING.md) — Marketing-Funnel
-- [`docs/DASHBOARD.md`](./docs/DASHBOARD.md) — Dashboard, Sub-Routen
-- [`docs/BUSINESS_EDITOR.md`](./docs/BUSINESS_EDITOR.md) — Business-Editor
-- [`docs/SERVICES_EDITOR.md`](./docs/SERVICES_EDITOR.md) — Services-Editor
-- [`docs/LEAD_SYSTEM.md`](./docs/LEAD_SYSTEM.md) — Lead-System + Retry-Queue
-- [`docs/AI.md`](./docs/AI.md) — AI-Schicht (7 Methoden, 4 Provider, Cost-Cap)
-- [`docs/STORAGE.md`](./docs/STORAGE.md) — Bucket-Layout + Cleanup-/Migrations-Pfade
-- [`docs/SUPABASE_SCHEMA.md`](./docs/SUPABASE_SCHEMA.md) — DB-Schema + RLS-Policies
-- [`docs/TESTING.md`](./docs/TESTING.md) — Smoketests + Playwright-E2E (Phase 1.5)
-- [`docs/STATE_REFRESH_CHECKLIST.md`](./docs/STATE_REFRESH_CHECKLIST.md) — 5er-Light-/20er-Deep-Pass-Recipe
-- [`docs/RESEARCH_INDEX.md`](./docs/RESEARCH_INDEX.md) — zentraler Quellen-Speicher
-- [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) — GitHub Pages und Vercel
+- [`docs/SALES_PLAYBOOK.md`](./docs/SALES_PLAYBOOK.md) — Verkaufs- und Onboarding-Playbook (Phase 3)
+- [`docs/PRODUCT_STATUS.md`](./docs/PRODUCT_STATUS.md) — was das Produkt JETZT kann
+- [`docs/PRICING.md`](./docs/PRICING.md) — Pricing-System + Helper-API
+- [`docs/INDUSTRY_PRESETS.md`](./docs/INDUSTRY_PRESETS.md) — Branchen-Presets
+- [`docs/THEMES.md`](./docs/THEMES.md) — Theme-System
+- [`docs/BRAND.md`](./docs/BRAND.md) — Brand-Mark + Wordmark
+- [`docs/PUBLIC_SITE.md`](./docs/PUBLIC_SITE.md) — Public-Site-Generator
+- [`docs/DASHBOARD.md`](./docs/DASHBOARD.md) — Dashboard
+- [`docs/BUSINESS_EDITOR.md`](./docs/BUSINESS_EDITOR.md) · [`docs/SERVICES_EDITOR.md`](./docs/SERVICES_EDITOR.md)
+- [`docs/LEAD_SYSTEM.md`](./docs/LEAD_SYSTEM.md)
+- [`docs/AI.md`](./docs/AI.md) · [`docs/STORAGE.md`](./docs/STORAGE.md)
+- [`docs/SUPABASE_SCHEMA.md`](./docs/SUPABASE_SCHEMA.md)
+- [`docs/TESTING.md`](./docs/TESTING.md) — Smoketests + E2E
+- [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) — Vercel + GitHub Pages
+- [`docs/RESEARCH_INDEX.md`](./docs/RESEARCH_INDEX.md) — Quellen-Bibliothek
 
----
+### Deployment
 
-## 🪪 Lizenz
+Zwei Pipelines parallel:
 
-Proprietär — alle Rechte vorbehalten. LocalPilot AI ist als verkaufsfähiges
-Micro-SaaS konzipiert; eine Open-Source-Lizenz ist aktuell nicht vorgesehen.
-Anfragen für White-Label-/Reseller-Modelle bitte direkt an den
-Auftraggeber.
+- **GitHub Pages** — Static-Showcase (`STATIC_EXPORT=true`).
+  Demo-Sites laufen ohne Backend.
+- **Vercel** — SSR + alle `/api/*`-Routen (Auth, AI-Generate, Health).
+  Production-Domain.
 
----
+Anleitung: [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
 
-<div align="center">
+### Lizenz
 
-<sub>♾️ Dieses Programm endet nicht. Jede Session erweitert die Roadmap.
-Was hier nicht steht, steht in <a href="./docs/PROGRAM_PLAN.md">PROGRAM_PLAN.md</a>.</sub>
+Proprietär — alle Rechte vorbehalten. White-Label-/Reseller-
+Anfragen direkt an den Auftraggeber.
 
-</div>
+</details>

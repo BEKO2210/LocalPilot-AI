@@ -6,6 +6,87 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.19.0] – Code-Session 85 – 2026-04-28 (Phase 3 startet: Strategischer Pivot)
+
+User-Direktive: „Bei Session 100 muss alles 10/10 sein, übergabefähig
+an Kunden ohne Code-Änderung." Phase 2 (UI/UX-Polish, S77–84) ist
+abgeschlossen. **Phase 3 → Verkaufsreife** ersetzt jetzt das alte
+Phase-2-Restende (S85, S86) und alle Innovation-Loop-Wünsche.
+Strategischer Plan-Reset, MD-Sweep, Demo-Kontaktdaten klar markiert.
+
+- ✚ **Phase 3 in `docs/PROGRAM_PLAN.md`** komplett detailliert:
+  16 Sessions (S85–100) mit jeweils einem konkreten Verkaufs-
+  Outcome. Hard-Constraint: kein Feature ohne direkten Verkaufs-
+  Bezug. Erfolgskriterium S100 = 12 Verkaufs-Checkpunkte 12/12.
+- 🔄 **`README.md` neu**: Verkäufer-Fokus statt Entwickler-
+  Tagebuch. Hauptteil zeigt Was-bekommt-der-Kunde / 7-Tage-
+  Onboarding / Pakete / Demo / Kontakt. Tech-Stack +
+  Programm-Methodik in `<details>`-Block für Entwickler eingeklappt.
+- ✚ **`docs/SALES_PLAYBOOK.md`**: Konkrete Verkaufs-/Onboarding-
+  Playbook. 3 Hero-Branchen (Friseur, Werkstatt, Reinigung —
+  Fokus ab S91), Pakete + Pilotkonditionen, Outbound-E-Mail-
+  Template, 30-Min-Erstgespräch-Skript, **7-Tage-Onboarding-
+  Playbook Tag-für-Tag**, Vertragsstruktur (S96), Customer-
+  Support-Workflow (S97), Übergabe-Checklist, 12 Verkaufs-
+  Checkpunkte für S100.
+- ✚ **`docs/PRODUCT_STATUS.md`** (umbenannt von
+  `docs/MVP_RECAP.md`): Was das Produkt JETZT kann, Single-
+  Source-of-Truth für „können wir das, ja oder nein?". Wird
+  pro Phase-3-Session aktualisiert.
+- 🔄 **`Claude.md`**: Neuer Punkt 10 in Programm-Philosophie:
+  Phase-3-Hard-Constraint („kein Feature ohne Verkaufs-Bezug"),
+  Pflichtlektüre vor jeder S85–100 Session.
+- 🔄 **`docs/CODEX_BACKLOG.md`**: Phase-3-Hinweis ergänzt —
+  größere Junior-Polish-Themen (#1, #2, #4, #5, #7, #8, #14)
+  bis nach Session 100 pausiert (nicht verkaufsrelevant).
+- 🔄 **Demo-Kontaktdaten klar markiert**:
+  - `cta-contact.tsx`: „Demo-Kontakt"-Badge + expliziter Hinweis
+    „echter Kanal kommt bis Session 100", `mailto:`/`tel:`-
+    Links entfernt (waren irreführend für Klicker).
+  - `pricing/page.tsx`: „Beratung per E-Mail" → „Beratung anfragen"
+    via `/#kontakt`-Anchor (statt fake-Mail-Link).
+
+**Phase-3-Plan-Übersicht (Sessions 85–100)**:
+
+| Session | Outcome |
+| ------- | ------- |
+| 85 ✅   | Strategischer Pivot + MD-Sweep |
+| 86      | Marketing-Copy + Hero-Refokus (USP klar) |
+| 87      | Domain + Email-Setup-Doku |
+| 88      | Pilotkunden-Acquisition-Pack (Pitch-PDF, Vertrag-Template) |
+| 89      | 7-Tage-Onboarding-Playbook (operativ) |
+| 90      | Demo-Daten-Sweep + Light-Pass |
+| 91      | 3-Branchen-Fokus (von 13 auf 3 Hero) |
+| 92      | Onboarding-UX < 60 Min (Stoppuhr-Test) |
+| 93      | Case-Study-Template + erste Story |
+| 94      | Production-Deploy-Pipeline final |
+| 95      | Doku-Konsolidierung (intern/extern getrennt) |
+| 96      | Vertrag + Legal final |
+| 97      | Customer-Support-Workflow |
+| 98      | Sales-Material final (Screenshots, Video, PDF) |
+| 99      | End-to-End-Verkauf-Probelauf |
+| 100     | Launch-Readiness-Audit (12 Punkte 12/12) |
+
+**Was NICHT in Phase 3 gehört** (Innovation-Loop nach S100):
+neue Branchen über die 3 Hero hinaus, neue Themes über die 10
+hinaus, Major-Dependency-Bumps (Next 16, Tailwind 4, Zod 4),
+Bottom-Nav-Migration, Visual-Regression-Mobile-Tests, OG-Image,
+Favicon (kommt in S94 als Sales-Material), Discard-isDirty-
+Reset (nur fixen wenn Pilotkunde es echt beißt).
+
+**45/45 Smoketests grün, 116/116 E2E grün** (Chromium 58 +
+Firefox 58, 2:24 min). typecheck ✅, lint ✅, beide Builds ✅.
+Bundle 102 KB shared unverändert (Doku-only-Changes + 1 Marketing-
+Komponenten-Refresh).
+
+🛣️ Roadmap: Phase 3 Sessions 1/16. **Nächste Session 86** =
+Marketing-Copy + Hero-Refokus.
+
+**Manueller Test**: README.md im Browser/GitHub anschauen — der
+erste Eindruck ist jetzt Verkäufer-orientiert, nicht
+Entwickler-Tagebuch. Demo-Kontakt-Sektion zeigt klar „noch
+nicht aktiv".
+
 ## [0.18.3] – Code-Session 84 – 2026-04-28 (Phase 2: Mobile/Tablet-Responsive-Audit)
 
 Mobile-Audit per Explore-Agent über alle Pages. **Touch-

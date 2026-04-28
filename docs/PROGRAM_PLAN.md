@@ -457,14 +457,155 @@ kritischen User-Flows abgedeckt, `TESTING.md`-Doku mit
 Anleitung „lokal testen" + „CI-Setup". **Erreicht mit 58
 Tests, 9 Files, 2 Browser, ~2:18 min Full-Run-Zeit ✅**.
 
-### Phase 2 → UI/UX-Polish (Sessions ~77–~86+)
+### Phase 2 → UI/UX-Polish (Sessions 77–84) ✅ abgeschlossen
 
-Nach Phase-1.5 (E2E-Coverage steht) folgt die mindestens
-10-Sessions-tiefe Polish-Phase. Pro Session ein klar
-abgegrenzter Audit-Bereich mit (a) Snapshot des Ist-Stands,
-(b) Issue-Liste, (c) Fixes, (d) E2E-Tests aus Phase 1.5
-als Regression-Schutz.
+8 Sessions Audit + Polish (Public-Site, Dashboard-Shell, 5
+Editoren, Light-Pass, Brand-Identity, Theme-WCAG-AA, A11y,
+Mobile-Touch). Ergebnisse: 1 echter Bug + 1 latenter Bug + 1
+toter Link gefixt, ~50 interaktive Elemente mit theme-aware
+Tastatur-Fokus, FormField zentral mit ARIA-Wiring (33 Inputs),
+Brand-Mark als inline-SVG, alle 10 Themes WCAG-2.2-AA-konform,
+Skip-Link + reduced-motion + 11 Touch-Targets ≥ 44 px,
+iOS-Auto-Zoom-Prevention. Bundle: 102 KB unverändert über
+alle 8 Sessions, 116/116 E2E grün durchgehend.
 
+Detail-Log siehe `docs/RUN_LOG.md` Sessions 77–84.
+
+---
+
+### Phase 3 → Verkaufsreife (Sessions 85–100)
+
+**Ziel:** Bei Session 100 ist LocalPilot AI ein **fertig
+verkaufbares SaaS / Agentur-System**. „Ich kann morgen einen
+Kunden onboarden ohne Code-Änderung." — keine internen
+Unklarheiten, keine Demo-only-Workarounds, keine offenen
+Verträge, keine fehlenden Domains. **10/10 bei S100.**
+
+**Hard-Constraint** (verbindlich ab Session 85): Jede Session
+muss einen konkreten Verkaufs-Schritt liefern. **Kein neues
+Feature ohne direkten Verkaufs-Bezug.** Wenn ein Feature
+nicht mit „weil mein nächster Kunde es braucht" begründbar
+ist, gehört es ins Innovation-Loop-Backlog (Meilenstein 7),
+nicht in S85–100.
+
+**Status (Anfang Session 85):**
+- ✅ Code/Architektur (Phase 1, 1.5, 2 abgeschlossen)
+- ✅ Tests (45 Smoketests + 116 E2E grün)
+- ✅ A11y/Mobile/Brand (Phase 2 abgeschlossen)
+- ❌ Echte Pilotkunden / Vorher-Nachher-Stories
+- ❌ Klare Verkaufsspur (7-Tage-Onboarding-Playbook)
+- ❌ Echte Domain + Email + Vertragsstruktur
+- ❌ Marketing-Sprache vom Entwickler-Tagebuch entkoppelt
+- ❌ 3-Branchen-Fokus statt 13-Branchen-Versprechen
+- ❌ Kunden-Sales-Material (Pitch-PDF, Video-Walkthrough)
+
+**Plan (Sessions 85–100):**
+
+- **85**: **Strategischer Pivot + MD-Sweep**. PROGRAM_PLAN.md
+  umgeschrieben (Phase 3 detailliert), README.md auf
+  Verkäufer-Fokus refokussiert, neue `SALES_PLAYBOOK.md`
+  (Pakete + Vertragsstruktur + 7-Tage-Onboarding skizziert),
+  `Claude.md`-Hard-Constraint „kein Feature ohne Verkaufs-
+  Bezug" verankert, veraltete Doku-Files identifiziert.
+- **86**: **Marketing-Copy + Hero-Refokus**. Hero-Section,
+  Problem-Solution, CTA-Contact umschreiben auf konkrete
+  USP („In 7 Tagen Website mit Anfrageformular,
+  Bewertungs-Booster und KI-Texten — ohne Technikstress").
+  Demo-Telefonnummer/`hello@`-Mail klar als Demo markieren
+  oder durch echten Kontakt ersetzen.
+- **87**: **Domain + Email-Setup-Doku**. Echte Brand-Domain
+  registrieren-Anleitung (oder bestehende Domain
+  dokumentieren), Vercel-Custom-Domain-Setup,
+  MX-Records für `kontakt@`-Mail. Live-Smoketest des
+  Auth-Magic-Link-Flow auf Production-Domain.
+- **88**: **Pilotkunden-Acquisition-Pack**. Outbound-E-Mail-
+  Template, 1-Seiten-Pitch-PDF (Tech-Stack invisible,
+  Outcome dominant), Erstgespräch-Kalender-Link, Pilot-
+  Vertrag-Template (DSGVO-konform, deutsche Vertragsstruktur).
+- **89**: **7-Tage-Onboarding-Playbook**. Schritt-für-Schritt
+  von Tag 0 (Briefing) bis Tag 7 (Live + Übergabe). Pro
+  Tag: was passiert, wer macht was, welcher Output.
+  Inkl. Foto-/Logo-Anforderungs-Checklist für den Kunden.
+- **90** (5er-Light-Pass): **Demo-Daten-Sweep**. Alle 6
+  Mock-Betriebe als Demo unmissverständlich gekennzeichnet
+  (Banner „Demo-Site, fiktive Daten" prominent). Fake-
+  Telefonnummern entfernt oder als „Demo-Nummer"-Tag.
+  Public-Site rendert klar erkennbar das „Demo"-Attribut.
+  State-Refresh-Checklist.
+- **91**: **3-Branchen-Fokus**. Von 13 Industry-Presets auf
+  3 Hero-Branchen fokussieren (Friseur/Barber, Auto-
+  Werkstatt, Reinigung). Andere 10 Presets bleiben im
+  Code aber als „Coming Soon" markiert. Marketing-Page
+  zeigt nur die 3 Hero-Branchen prominent.
+- **92**: **Onboarding-UX < 60 Min**. Owner-Onboarding-Flow
+  optimieren: bessere Defaults aus Branchen-Preset, Pre-
+  fill von typischen Services, Logo-Upload-Smoothing,
+  Slug-Vorschlag aus Name. Stoppuhr-Test: kann ein neuer
+  Owner in 60 Min einen kompletten Betrieb live bringen?
+- **93**: **Case-Study-Template**. `docs/CASE_STUDIES/`-
+  Ordner mit Vorher/Nachher-Pattern, Customer-Logo-Ablage,
+  Feedback-Loop-Doku. Ziel: pro Pilotkunde eine
+  Case-Study-Page schreiben (publishable Auf-`/cases`).
+- **94**: **Production-Deploy-Pipeline final**. Vercel.json,
+  ENV-Doku komplett (was muss wo gesetzt sein),
+  GitHub-Actions-CI für Smoketests + Builds + E2E,
+  Domain-Deployment-Anleitung, Health-Check-Endpoint
+  kalt-getestet auf Production.
+- **95** (5er-Light-Pass): **Doku-Konsolidierung**. Interne
+  Sessions/Codex-/Roadmap-Dokus in `docs/_internal/`
+  verschoben (für mich). Externe Doku
+  (`README.md`/`SALES_PLAYBOOK.md`/`docs/PRODUCT.md`) klar
+  vom Entwickler-Tagebuch getrennt. State-Refresh-Checklist.
+- **96**: **Vertrag + Legal final**. DSGVO-konformer
+  Vertrag-Template, AGB, Widerrufsbelehrung, Auftrags-
+  verarbeitungs-Vereinbarung — alle in `docs/LEGAL/`.
+  Pricing-Page mit klar bezahlbaren Setup-Fees + monatliche
+  Beträge. Rechnung-Template (Stripe oder PDF-Generator).
+- **97**: **Customer-Support-Workflow**. Email-Templates für
+  Standard-Anfragen, SLA-Antwortzeit, Kunden-Übergabe-
+  Doku-Template, Kündigungs- + Datenexport-Pfad
+  (DSGVO Art. 20). Helpdesk-Inbox eingerichtet.
+- **98**: **Sales-Material final**. Echte Screenshots (von
+  echtem Pilotkunde wenn möglich, sonst hochwertige
+  Demo-Renderings), 90-Sekunden-Video-Walkthrough
+  (Loom-fähig), 1-Seiten-Pitch-PDF, Pricing-Page final.
+  Customer-Logos-Footer für Marketing-Page (sobald 1+
+  Pilot live).
+- **99** (5er-Light-Pass): **End-to-End-Verkauf-Probelauf**.
+  Kompletter Verkaufs-Flow gespielt: Erstkontakt →
+  Pitch-Call → Vertrag → Onboarding → Live → Übergabe →
+  laufender Support. Friction-Punkte dokumentiert + gefixt.
+  State-Refresh-Checklist.
+- **100**: **Launch-Readiness-Audit + Übergabe-Probe**. 12
+  Verkaufs-Checkpunkte (Domain ✅ aktiv, 1 Pilotkunde
+  live ✅, Lighthouse ≥95 ✅, Sentry-Inbox leer ✅,
+  Verträge ready ✅, README extern + intern getrennt ✅,
+  3-Branchen-Fokus ✅, Pitch-Material live ✅, Onboarding
+  ≤60 Min real getestet ✅, Vertrag DSGVO-konform ✅,
+  Backup/Datenexport-Pfad ✅, Custom-Support-Inbox aktiv ✅).
+  **Erfolgskriterium: 12/12 grün.**
+
+**Erfolgskriterium Phase 3 (S100):** *Ein neuer Pilotkunde
+kann morgen vollständig onboarded werden — Vertrag, Setup,
+Live-Site, Übergabe, Support — ohne dass eine Zeile Code
+angefasst werden muss. Alle Schritte folgen dokumentierten
+Playbooks.*
+
+**Was NICHT in Phase 3 gehört** (wandert in Innovation-Loop /
+Meilenstein 7):
+- Neue Branchen-Presets über die 3 Hero-Branchen hinaus
+- Neue Themes über die 10 vorhandenen hinaus
+- Major-Dependency-Bumps (Next 16, Tailwind 4, Zod 4 — eigene
+  Innovation-Loop-Session post-S100)
+- Bottom-Nav-Migration (S78-Backlog #2)
+- Visual-Regression-Tests für Mobile (S84-Backlog)
+- OG-Image / Favicon (S81-Backlog) — KOMMT in S94 als
+  Sales-Material-Teil
+- Discard-isDirty-Reset (S73+S79+S80-Backlog) — nur fixen
+  wenn Pilotkunde es echt beißt; sonst Backlog
+
+<!-- HIST: alte Phase-2-Detail-Bullets nach RUN_LOG verschoben -->
+<!--
 - **77** ✅: Public-Site-Audit. 1 Bug behoben (Footer-Links
   Impressum/Datenschutz zeigten auf nicht-existierende
   Anchors statt auf echte Routes), 1 A11y-Hole gefixt
@@ -565,22 +706,22 @@ als Regression-Schutz.
 - **85** (5er-Multiple, Light-Pass): Type-System-Pass.
 - **86**: Finaler Polish-Pass + Lighthouse-Run + Bundle-
   Cleanup + Production-Deploy-Doku.
+-->
 
-### Skill-Mapping (Phase 2)
+### Skill-Mapping (Phase 3)
 
-Verfügbare Claude-Code-Skills, die in der UI/UX-Phase zentral
-werden:
+Verfügbare Skills für die Verkaufs-Phase:
 
-| Skill                  | Einsatz in Phase 1.5/2                              |
-| ---------------------- | ----------------------------------------------- |
-| `webapp-testing`       | **Phase 1.5 (Sessions 71–76)** — Playwright-Tests pro User-Flow. Regression-Schutz für Phase 2. |
-| `simplify`             | Light-Pass-Sessions (65 ✅, 70 ✅, 75, 80, 85) — Code-Diff-Review für Reuse + Quality + Efficiency. |
-| `algorithmic-art`      | Session 81 — Demo-Logo als generatives p5.js-Artwork mit Seed (reproduzierbar). |
-| `theme-factory`        | Sessions 81+82 — Brand-Tokens auf alle Artefakte (HTML/CSS/Slides/PDF) anwenden. |
-| `brand-guidelines`     | Session 81 — Brand-Definition (Farben, Schriften, Voice, Iconography) als Single-Source-of-Truth. |
-| `systematic-debugging` | Bei Bug-Hunting in Audit-Phasen — Senior-Dev-Pipeline statt Rumprobieren. |
-| `security-review`      | Session 70 (Pre-MVP) ✅ + vor Production-Deploy — Branch-weiter Security-Scan. |
-| `review`               | PR-Reviews vor `main`-Merge. |
+| Skill                  | Einsatz in Phase 3                                  |
+| ---------------------- | --------------------------------------------------- |
+| `simplify`             | Light-Pass-Sessions (90, 95, 99) — Code-Diff-Review. |
+| `webapp-testing`       | Regression-Schutz pro Session, plus Onboarding-UX-Stoppuhr-Test (S92). |
+| `document-suite`       | Sales-Material (S88, S98) — Pitch-PDF, Vertrag-Templates, Onboarding-Playbook als echte Word/PDF. |
+| `security-review`      | Pre-Production-Deploy (S94, S100). |
+
+`algorithmic-art` / `brand-guidelines` / `theme-factory`
+sind in Phase 2 ausgereizt — bleiben als Backup für Innovation-
+Loop nach S100.
 
 ### Meilenstein 5 — Production-Readiness
 **Status:** ⏳ geplant

@@ -41,47 +41,41 @@ export function CtaContact() {
         </div>
 
         <div className="rounded-2xl border border-white/15 bg-white/5 p-6 backdrop-blur">
-          <p className="text-sm font-medium uppercase tracking-wide text-white/70">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-100/10 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-amber-200">
+            Demo-Kontakt
+          </span>
+          <p className="mt-3 text-sm font-medium uppercase tracking-wide text-white/70">
             Direkt sprechen
           </p>
+          <p className="mt-2 text-xs text-white/70">
+            Aktuell laufen die ersten Pilotkunden-Onboardings.
+            Echter Kontakt-Kanal kommt mit Phase 3 (bis Session 100).
+            Bis dahin: GitHub-Issue oder direkter Auftraggeber-Kontakt.
+          </p>
           <ul className="mt-4 space-y-3 text-sm text-white/90">
-            <li>
-              <a
-                href="mailto:hello@localpilot.ai"
-                className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/5 p-3 transition-colors hover:bg-white/10"
-              >
-                <span className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-ink-900">
-                  <Mail className="h-4 w-4" aria-hidden />
+            <li className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/5 p-3">
+              <span className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-ink-900">
+                <Mail className="h-4 w-4" aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-medium">E-Mail (Demo)</span>
+                <span className="block truncate text-xs text-white/70">
+                  hello@localpilot.ai · noch nicht aktiv
                 </span>
-                <span className="min-w-0">
-                  <span className="block font-medium">E-Mail</span>
-                  <span className="block truncate text-xs text-white/70">
-                    hello@localpilot.ai
-                  </span>
-                </span>
-              </a>
+              </span>
             </li>
-            <li>
-              <a
-                href="tel:+493090009999"
-                className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/5 p-3 transition-colors hover:bg-white/10"
-              >
-                <span className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-ink-900">
-                  <Phone className="h-4 w-4" aria-hidden />
+            <li className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/5 p-3">
+              <span className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-ink-900">
+                <Phone className="h-4 w-4" aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-medium">Telefon (Demo)</span>
+                <span className="block truncate text-xs text-white/70">
+                  Echte Hotline ab Session 87 (Domain-Setup)
                 </span>
-                <span className="min-w-0">
-                  <span className="block font-medium">Telefon</span>
-                  <span className="block truncate text-xs text-white/70">
-                    +49 30 9000 9999 (Demo-Nummer)
-                  </span>
-                </span>
-              </a>
+              </span>
             </li>
           </ul>
-          <p className="mt-5 text-xs text-white/60">
-            Erstgespräch unverbindlich. Wir empfehlen ehrlich, auch wenn das
-            kleinere Paket reicht.
-          </p>
         </div>
       </Container>
     </Section>
