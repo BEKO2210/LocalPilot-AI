@@ -6,9 +6,89 @@ Versionierung an [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Phase 1.5 → End-to-End-Tests (Session 76)
-- **76**: Public-Site E2E + Lead-Retry-Queue (online/
-  offline). Letzte Phase-1.5-Session.
+### Phase 2 → UI/UX-Polish startet (Session 77+)
+Phase 1.5 ist abgeschlossen. Phase 2 startet mit Session 77
+(Public-Site-Audit). Demo-Logo via `algorithmic-art`-Skill
+in Session 81. Details in `docs/PROGRAM_PLAN.md`.
+
+## [0.16.50] – Code-Session 76 – 2026-04-27 (Phase-1.5-Abschluss)
+
+Letzte Phase-1.5-Session. Public-Site E2E (alle 6 Demo-
+Slugs), Lead-Form-Submit-Verhalten, Retry-Queue-UI,
+Mobile-CTA-Streifen-Visibility. Gesamt **58 E2E-Tests × 2
+Browser = 116 grün** in 2:18 min — Phase-1.5-Ziel ≥25 mit
+**132 % Excess** erreicht.
+
+- ✚ `e2e/public-site.spec.ts` (13 Tests):
+  - **6 parametrisierte Tests** (einer pro Demo-Slug):
+    Hero + Services + Footer rendern.
+  - **Lead-Form-Validation**:
+    - Form rendert mit Pflicht-Feldern + Consent-Checkbox.
+    - Submit-Button ohne Consent disabled (DSGVO-UX-Win).
+    - Submit-Button aktiviert sich nach Consent (kein
+      echtes Submit — Field-Validation ist branchen-
+      spezifisch und verschiedene Demo-Slugs haben
+      unterschiedliche Pflicht-Felder).
+  - **Retry-Queue-UI**:
+    - Pre-populated localStorage zeigt amber Badge:
+      `addInitScript` setzt vor dem ersten Page-Load
+      einen fake-Lead in der Queue, Form-Mount liest
+      die Queue-Stats und zeigt das Badge.
+    - Online-Event (`context.setOffline(false)`)
+      triggert Queue-Flush ohne Page-Crash.
+  - **Mobile-CTA-Streifen** (per `test.use({viewport:
+    390x844})`):
+    - Auf Mobile-Viewport ist sticky-bottom-CTA sichtbar.
+    - Auf Desktop-Viewport (1280×800) ist `md:hidden`
+      aktiv, CTA versteckt.
+
+**Test-Findings dieser Session**:
+- 🟢 **DSGVO-UX-Win bestätigt**: Submit-Button bleibt
+  disabled, bis Consent-Checkbox aktiviert ist. Form-
+  Submit ist erst nach explizitem Consent möglich.
+- 🟢 **`addInitScript` für localStorage-Pre-Population**:
+  läuft vor jedem Document-Load, Form-`useEffect` sieht
+  den Wert beim Mount. Lesson für zukünftige Tests, die
+  Demo-Mode-Persistenz prüfen wollen.
+- 🟡 **Singular vs. Plural in Banner-Text**: Mein Regex
+  matched initial nur „warten" (Plural), nicht „wartet"
+  (Singular). Bei N=1 Item zeigt das Banner Singular —
+  Test wäre nie grün geworden ohne Real-Run-Debug. Lesson:
+  bei pluralen UI-Texten den Regex IMMER beidseitig
+  matchen (`(wartet|warten)`).
+
+**Phase-1.5-Final-Bilanz (Sessions 71–76)**:
+- 6 Sessions, 9 Test-Files, 1 Helper-Modul, 58 E2E-Tests.
+- 2 Browser-Projects (Chromium + Firefox) → 116 Test-Runs.
+- 6 Phase-2-Backlog-Items aus Test-Findings.
+- ~2:18 min full-suite-Lauf, ~22 s pro File, ≥25-Ziel mit
+  132 % Excess.
+- Demo-Mode-Coverage komplett für alle Owner-Pages
+  (Onboarding, Editor, Services, Settings, Dashboard-
+  Shell) und Public-Site-Pages.
+- Bundle/Smoketest-Counts unverändert während aller 6
+  Sessions.
+
+**45/45 Smoketests grün. 116/116 E2E-Tests grün
+(Chromium 58 + Firefox 58)**. typecheck ✅, lint ✅, beide
+Builds ✅. Bundle 102 KB shared unverändert.
+
+🛣️ Roadmap: **Phase 1.5 abgeschlossen ✅**. Phase 2 startet
+mit Session 77 (Public-Site-Audit). Phase-2-Backlog-Items
+aus Sessions 71–76:
+
+1. Default-Tier `silber` → `bronze`? (S72)
+2. Branche → Theme-Auto-Empfehlung? (S72)
+3. Verwerfen-isDirty-Reset (S73)
+4. Status-Bar-Heading `<p>` → `<h2>` (A11y, S73)
+5. Sticky-Status-Bar überdeckt Card-Summary-Click — Touch/
+   Mobile-UX (S74)
+6. `beforeEach`-Migration für E2E-`goto()`-Wiederholung
+   (S80-Light-Pass-Item)
+
+**Manueller Test**: `npm run test:e2e` → 116 Tests grün in
+~2:18 min. `npm run test:e2e:ui` → interaktiver Mode mit
+Trace-Viewer für Debug.
 
 ## [0.16.49] – Code-Session 75 – 2026-04-27 (5er-Light-Pass)
 

@@ -439,14 +439,23 @@ CI-Umgebung).
   (`Promise.all([waitForURL, click])`). **45 Tests × 2
   Browser = 90 grün** in 1:48 min — Phase-1.5-Ziel mit
   80 % Excess.
-- **76**: Public-Site-E2E + Lead-Retry-Queue. Lead-Form
-  ausfüllen, Hero/Services/FAQ rendern, Mobile-CTA-
-  Streifen, Theme-Wechsel, Lead-Retry-Queue-Verhalten
-  bei `online`/`offline`-Events.
+- **76** ✅: Public-Site-E2E + Lead-Retry-Queue. 13 Tests
+  in `e2e/public-site.spec.ts`: 6 parametrisierte Render-
+  Tests (alle Demo-Slugs Hero+Services+Footer), Lead-Form
+  Consent-Gating (Submit-disabled-without-Consent als
+  DSGVO-UX-Win bestätigt), Retry-Queue-Badge per
+  `addInitScript`-Pre-Population (post-goto-evaluate
+  würde den Mount-`useEffect` verpassen), Mobile-CTA-
+  Streifen mit `test.use({viewport: 390×844})` +
+  Desktop-Negativ-Test. Singular/Plural-Regex-Fix:
+  `(wartet|warten)` für N=1-Banner. **58 Tests × 2 Browser
+  = 116 grün** in 2:18 min — **Phase-1.5-Ziel mit 132 %
+  Excess erreicht ✅**.
 
 Erfolgskriterium Phase 1.5: ≥25 grüne E2E-Tests, alle
 kritischen User-Flows abgedeckt, `TESTING.md`-Doku mit
-Anleitung „lokal testen" + „CI-Setup".
+Anleitung „lokal testen" + „CI-Setup". **Erreicht mit 58
+Tests, 9 Files, 2 Browser, ~2:18 min Full-Run-Zeit ✅**.
 
 ### Phase 2 → UI/UX-Polish (Sessions ~77–~86+)
 

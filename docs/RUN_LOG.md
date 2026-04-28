@@ -8698,3 +8698,145 @@ Parallel-Execution + Fixture-Patterns 2026.
 4. Theme-Switch (falls UI das im Public-Mode zulässt).
 5. Mobile-CTA-Streifen-Visibility auf Mobile-Viewport.
 
+---
+
+## Code-Session 76 – Public-Site E2E + Lead-Retry-Queue (Phase-1.5-Abschluss)
+2026-04-28 · `claude/setup-localpilot-foundation-xx0GE` · Phase 1.5 · Final
+
+**Was**: Letzte Phase-1.5-Session. 13 neue Tests in
+`e2e/public-site.spec.ts`: alle 6 Demo-Slugs rendern,
+Lead-Form-Submit-Verhalten (Consent-Gating), Retry-Queue-
+UI mit `addInitScript`-pre-population, Mobile-CTA-Streifen-
+Visibility. Ergebnis: **58 Tests × 2 Browser = 116 grün**
+in 2:18 min — Phase-1.5-Erfolgskriterium ≥25 mit
+**132 % Excess** erreicht.
+
+**Architektur-Entscheidung — Parametrisierte Tests pro
+Demo-Slug**: Statt 6 fast-identische Test-Blöcke
+schreibt eine `for`-Schleife über `DEMO_SLUGS` 6 Tests.
+Jeder Test bekommt einen eigenen Title (`studio-haarlinie
+→ Hero + Services + Footer`) und failed isoliert. Das
+Demo-Datensatz-Inventar wird damit komplett abgedeckt
+und Regressions auf einzelnen Slugs (z. B. fehlerhaftes
+Mock-Profil) brechen direkt aus.
+
+**Architektur-Entscheidung — Submit-Button-Disabled-State
+testen statt Click-Versuch**: Initial-Versuch
+`submitButton.click()` ohne Consent → Playwright timeoutet
+30 s, weil Button disabled ist. Kein Click ist möglich
+und das ist genau das gewünschte UX-Verhalten. Fix: den
+Disabled-State direkt asserten (`toBeDisabled()`),
+keinen Click-Versuch starten. **DSGVO-UX-Win bestätigt**:
+ohne Consent ist Submit nicht ausführbar — die Form
+verhindert versehentliche Lead-Submits ohne Einwilligung.
+
+**Architektur-Entscheidung — `addInitScript` für
+localStorage-Pre-Population**: Form-`useEffect` (Mount)
+liest die Retry-Queue genau einmal beim ersten Render
+und cached die Stats. Setzen wir den Key per
+`page.evaluate` NACH `goto`, ist der Mount schon
+durchgelaufen — Badge erscheint nicht. `addInitScript`
+läuft VOR jedem Document-Load → `localStorage` ist beim
+Mount schon belegt → Stats korrekt → Badge sichtbar.
+Lesson für künftige Tests, die Demo-Mode-Persistenz
+prüfen wollen: **immer `addInitScript`, nie post-goto**.
+
+**Architektur-Entscheidung — Singular vs. Plural-Regex**:
+Banner-Text ist:
+- N=1: „**Eine** ältere Anfrage **wartet** noch auf den Versand …"
+- N≥2: „N ältere Anfragen **warten** noch auf den Versand …"
+
+Initial-Regex matched nur „warten" (Plural) — Test wäre
+nie grün geworden, weil Pre-populated Queue genau **1**
+Item hat. Fix: `(wartet|warten)` und `anfrage(n)?` als
+Optional-Plural. **Lesson**: bei deutschen UI-Texten
+mit Plural-Logic IMMER beide Formen matchen, oder den
+Test mit ≥2 Items pre-populieren.
+
+**Architektur-Entscheidung — Mobile-Viewport via
+`test.use`**: Playwright erlaubt
+`test.use({ viewport: { width: 390, height: 844 } })`
+auf `describe`-Ebene → alle Tests in dieser Gruppe
+laufen mit iPhone-13-Pro-Größe. Tailwind `md:hidden`
+greift bei <768 px; CTA-Streifen ist sichtbar. Für den
+Desktop-Negativ-Test wird der Viewport per
+`page.setViewportSize({width: 1280, height: 800})`
+explizit überschrieben. `toBeHidden()` ist tolerant
+gegen `display:none`-Elemente, die im DOM existieren.
+
+**WebSearch (Track C)**: bestätigt
+- [Playwright – addInitScript](https://playwright.dev/docs/api/class-page#page-add-init-script)
+  Läuft vor jedem `goto()`, ideal für localStorage-Pre-
+  Population.
+- [Playwright – Viewport Configuration](https://playwright.dev/docs/api/class-testoptions#test-options-viewport)
+  Per-describe `test.use({viewport})` ist der saubere
+  Weg für Mobile-Tests.
+- [W3C ARIA – Live Regions](https://www.w3.org/WAI/ARIA/apg/patterns/alert/)
+  Banner mit `role="status"` für Pending-Queue-Hinweis
+  ist barrierearm; bestätigt das aktuelle Markup im
+  Public-Lead-Form.
+
+**Dateien**:
+- ✚ `e2e/public-site.spec.ts` (13 Tests, ~225 Zeilen).
+- 🔄 `CHANGELOG.md`, `docs/RUN_LOG.md`,
+  `docs/PROGRAM_PLAN.md`, `docs/TESTING.md`.
+
+**Verifikation**: typecheck ✅, lint ✅, beide Builds ✅.
+**45/45 Smoketests** grün. **116/116 E2E-Tests** grün
+(Chromium 58 + Firefox 58). Bundle 102 KB shared
+unverändert.
+
+**Phase-1.5-Final-Bilanz (Sessions 71–76)**:
+
+| Session | Spec-File                  | Tests | Schwerpunkt |
+| ------- | -------------------------- | ----- | --- |
+| 71      | smoke-landing/login/public-site/account | 10 | Setup + Smoke |
+| 72      | onboarding-flow            | 7     | Owner-Onboarding-Flow |
+| 73      | business-editor/dashboard-shell | 12 | Editor + Tab-Nav |
+| 74      | services-edit              | 9     | Service-CRUD |
+| 75      | settings-danger + Helpers + Light-Pass | 7 | Settings + Danger-Zone |
+| 76      | public-site                | 13    | Public-Render + Lead-Retry |
+| **Σ**   | **9 Files + 1 Helper**    | **58**| **2 Browser → 116 Runs** |
+
+- 6 Sessions, 9 Test-Files, 1 Helper-Modul, 58 E2E-
+  Tests, 2 Browser-Projects (Chromium + Firefox).
+- Erfolgskriterium ≥25 mit **132 % Excess** erreicht.
+- 6 Phase-2-Backlog-Items aus Test-Findings.
+- Demo-Mode-Coverage komplett für alle Owner-Pages
+  (Onboarding, Editor, Services, Settings, Dashboard-
+  Shell) und Public-Site-Pages.
+- ~2:18 min full-suite-Lauf, ~22 s pro File.
+- Bundle/Smoketest-Counts unverändert während aller 6
+  Sessions — keine Code-Regressions, keine Bundle-
+  Bloat-Risiken aus dem Test-Block.
+
+**Phase-2-Backlog (final, aus S71–S76)**:
+1. Default-Tier `silber` → `bronze`? (S72)
+2. Branche → Theme-Auto-Empfehlung? (S72)
+3. Verwerfen-isDirty-Reset (S73)
+4. Status-Bar-Heading `<p>` → `<h2>` (A11y, S73)
+5. Sticky-Status-Bar überdeckt Card-Summary-Click —
+   Touch/Mobile-UX (S74)
+6. `beforeEach`-Migration für E2E-`goto()`-Wiederholung
+   (S80-Light-Pass-Item)
+
+**Quellen**: `RESEARCH_INDEX.md` Track C — Playwright-
+addInitScript + Viewport-Configuration + ARIA-Live-Regions.
+
+**Status-Update**: **Phase 1 ✅, Phase 1.5 ✅** (58/≥25
+Tests). Phase 2 startet mit Session 77.
+
+**Nächste Session**: Code-Session 77 = **Phase-2-Auftakt:
+Public-Site-UI/UX-Audit**. Inhalt:
+1. webapp-testing-Skill aktivieren — visuelles
+   Screenshot-Audit aller 6 Demo-Public-Sites auf
+   Desktop + Mobile.
+2. Issue-Liste pro Slug: Hero-Layout, Service-Cards-
+   Grid, Footer-Kontakt, Mobile-CTA-Streifen.
+3. Kleine Fixes inline (Spacing, Text-Hierarchie),
+   große Findings als Phase-2-Backlog-Items.
+4. E2E-Regression-Schutz aus Phase 1.5 läuft mit (kein
+   Test darf brechen).
+5. Demo-Logo-Brief-Vorbereitung für S81 (algorithmic-
+   art-Skill).
+
