@@ -1,11 +1,13 @@
 # MVP-Recap – LocalPilot AI
 
-Architektur-Übersicht zum Stand „erstes Betrieb-fertiges
-Produkt" (~99%, Sessions 1–70). Nach Session 70 startet
-**Phase 1.5: End-to-End-Tests** über mehrere Sessions, danach
-Phase 2 (UI/UX-Polish + Demo-Logo).
+Architektur-Übersicht. **Phase 1 (Sessions 1–70) ✅
+abgeschlossen** — Betrieb-fertiges Produkt. **Phase 1.5
+(Sessions 71–76) ✅ abgeschlossen** — 58 E2E-Tests × 2
+Browser = 116 grün (132 % über ≥25-Ziel), 2:18 min Full-
+Run. **Phase 2 startet ab Session 77** (UI/UX-Polish +
+Demo-Logo via `algorithmic-art`-Skill in S81).
 
-> Stand 2026-04-27 · Sessions 1–70.
+> Stand 2026-04-28 · Sessions 1–76.
 
 ---
 
@@ -68,7 +70,7 @@ Phase 2 (UI/UX-Polish + Demo-Logo).
 
 ---
 
-## Code-Inventur (Stand S70)
+## Code-Inventur (Stand S76)
 
 | Schicht | Anzahl |
 | --- | --- |
@@ -76,8 +78,9 @@ Phase 2 (UI/UX-Polish + Demo-Logo).
 | Read API-Routes | **3** (`auth/me`, `auth/callback`, `ai/health`) |
 | DB-Migrations | **8** |
 | Pure-Helper-Module | **21** |
-| Smoketest-Files | **45** |
-| Smoketest-Asserts | **~1.100+** |
+| Smoketest-Files | **45** (~1.100+ Asserts) |
+| E2E-Spec-Files | **9** + 1 Helper (Phase 1.5) |
+| E2E-Tests | **58** × 2 Browser = **116 Runs** in ~2:18 min |
 | Bundle (shared) | **102 KB** |
 | Bundle-Impact Sentry | **0 KB** (Adapter, lazy) |
 
@@ -112,46 +115,60 @@ Phase 2 (UI/UX-Polish + Demo-Logo).
 
 ---
 
-## Was nach MVP kommt
+## Phase 1.5 — End-to-End-Test-Block ✅ (Sessions 71–76)
 
-### Phase 1.5 — End-to-End-Test-Block (Sessions 71–~76)
-**Vor** der UI/UX-Polish-Phase: alles wie ein End-User
-durchspielen. Pro Session ein User-Flow als Playwright-
-Test, beginnend bei den kritischen Pfaden.
+Komplette Demo-Mode-Coverage aller Owner- und Public-
+Pages. Erfolgskriterium ≥25 mit **132 % Excess** erreicht.
 
-- 71: Setup `webapp-testing`-Skill (Playwright +
-  next-Playwright-Konfiguration). Erster E2E-Test:
-  Login → Account-Liste → Dashboard.
-- 72: Onboarding-Flow E2E: Magic-Link → Onboarding-Form →
-  Slug-Validation → erster Betrieb angelegt → Auto-Redirect
-  zu Dashboard.
-- 73: Business-Editor-E2E: alle Felder, alle Tabs,
-  Logo+Cover-Upload, Speichern, Verwerfen, Demo-Defaults
-  laden.
-- 74: Service-Liste-E2E: Add/Edit/Delete/Reorder, Limit-
-  Erreichen, Service-Bild-Upload mit UUID-Gating.
-- 75: Settings-E2E: Slug-Wechsel mit Storage-Move,
-  Publish-Toggle, Locale, Danger-Zone-Löschen mit
-  Slug-Confirmation.
-- 76: Public-Site-E2E: Lead-Form ausfüllen, Hero/Services/
-  FAQ rendern, Mobile-CTA-Streifen, Theme-Switcher.
+| Session | Spec-File | Tests | Schwerpunkt |
+| --- | --- | --- | --- |
+| 71 | smoke-landing/login/public-site/account | 10 | Setup + Smoke |
+| 72 | onboarding-flow | 7 | Onboarding-Flow (ID-Selektoren wegen Asterisk-Spans) |
+| 73 | business-editor + dashboard-shell | 12 | Editor + Tab-Nav `:visible` |
+| 74 | services-edit | 9 | Silber-CRUD + Bronze-Lock + `<details>`-DOM-API |
+| 75 | settings-danger + `_helpers.ts` | 7 | Light-Pass + Firefox + Parallel |
+| 76 | public-site | 13 | Render + Consent-Gating + `addInitScript` + Mobile-Viewport |
+| **Σ** | **9 Files + 1 Helper** | **58** | **× 2 Browser = 116 Runs in 2:18 min** |
 
-Ergebnis: ~25 E2E-Tests + Anleitung in `TESTING.md`. Erst
-wenn alle End-User-Flows grün sind, startet Phase 2.
+**Architektur-Lessons aus Phase 1.5**:
+- ID-Selektoren > `getByLabel`, wenn Labels Asterisk-Spans haben.
+- `:visible`-Filter für Mobile-Nav-Twins.
+- `ul details` filtert Header-Switcher raus.
+- DOM-API (`details.open = true`) statt Click bei sticky-Top-Bar-Overlay.
+- `Promise.all([waitForURL, click])` für parallel-sichere Tab-Navigation.
+- `addInitScript` für localStorage-Pre-Population (post-goto verpasst Mount).
+- Singular/Plural-Regex bei deutschen UI-Texten (`(wartet|warten)`).
 
-### Phase 2 — UI/UX-Polish (Sessions ~77–~86+)
-- Public-Site-Audit, Dashboard-Audit, Editor-Audits, Form-
-  Konsistenz, **Demo-Logo (algorithmic-art-Skill)**, Theme-
-  Polish (theme-factory), A11y, Mobile, Lighthouse.
-- Details siehe `PROGRAM_PLAN.md` Sektion „Phase 2".
+**Phase-2-Backlog aus Test-Findings**:
+1. Default-Tier `silber` → `bronze`? (S72)
+2. Branche → Theme-Auto-Empfehlung? (S72)
+3. Verwerfen-isDirty-Reset (S73)
+4. Status-Bar-Heading `<p>` → `<h2>` (A11y, S73)
+5. Sticky-Status-Bar Touch/Mobile-UX (S74)
+6. `beforeEach`-Migration für E2E-`goto()`-Wiederholung (S80-Light-Pass)
+
+## Phase 2 — UI/UX-Polish (Sessions 77+, ≥10 Sessions)
+
+- **77**: Public-Site-Audit (Hero, Service-Cards, Lead-Form, Footer, Theme-Tokens).
+- **78**: Dashboard-Shell-Audit.
+- **79**: Editor-Audits (alle 5 Editoren).
+- **80** (Light-Pass): Form-System + Component-Reuse via `simplify`-Skill.
+- **81**: **Demo-Logo + Brand-Identity** via `algorithmic-art` + `brand-guidelines`.
+- **82**: Theme-Polish via `theme-factory` über alle 10 Themes.
+- **83**: A11y-Audit (WCAG 2.2 AA, Focus, Reduced-Motion).
+- **84**: Mobile/Tablet-Responsive-Audit.
+- **85** (Light-Pass): Type-System-Pass.
+- **86**: Lighthouse + Bundle-Cleanup + Production-Deploy-Doku.
+
+Details: [`PROGRAM_PLAN.md`](./PROGRAM_PLAN.md) Sektion „Phase 2".
 
 ---
 
 ## Verwandte Dokumente
 - [PROGRAM_PLAN.md](./PROGRAM_PLAN.md) — Roadmap
+- [TESTING.md](./TESTING.md) — Smoketests + E2E-Anleitung
 - [STORAGE.md](./STORAGE.md) — Storage-Architektur
 - [AI.md](./AI.md) — AI-Schicht
-- [SUPABASE_SCHEMA.md](./SUPABASE_SCHEMA.md) — DB-Schema +
-  RLS-Policies
+- [SUPABASE_SCHEMA.md](./SUPABASE_SCHEMA.md) — DB-Schema + RLS
 - [RUN_LOG.md](./RUN_LOG.md) — pro-Session-Log seit S1
 - [CHANGELOG.md](../CHANGELOG.md) — User-facing Releases

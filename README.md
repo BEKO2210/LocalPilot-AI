@@ -61,20 +61,25 @@ das:
 | **1 — Foundation**                | ✅ stabil      | Demo-fähiges Produkt, statisch deploybar, 6 Demo-Betriebe   |
 | **2 — KI-Schicht**                | ✅ scharf      | 7 AI-Methoden mit Mock + 3 Live-Providern (OpenAI, Anthropic, Gemini) |
 | **3 — Engagement & Wachstum**     | ⏳ vorbereitet | Bewertungs-/Social-/Kampagnen-Tools ohne externes Tool      |
-| **4 — Backend & Daten**           | 🔄 aktiv       | Echte DB, Multi-Tenant, Auth, Storage — Read-/Write-/Upload-Pfade live |
-| **5 — Production-Readiness**      | ⏳ teilweise   | Vercel-Deploy ✅, DSGVO-Lead-Consent ✅, Sentry/Lighthouse offen |
+| **4 — Backend & Daten**           | ✅ live        | DB · Multi-Tenant · Auth · Storage · Slug-Migration · Recursive-Delete |
+| **Phase 1.5 — E2E-Tests**         | ✅ abgeschlossen | 58 Playwright-Tests × 2 Browser = 116 grün (132 % über ≥25-Ziel) |
+| **Phase 2 — UI/UX-Polish**        | 🔄 startet     | ≥10 Sessions Audit · Demo-Logo (algorithmic-art) · Theme-/A11y-Polish |
+| **5 — Production-Readiness**      | ⏳ teilweise   | Vercel-Deploy ✅, DSGVO-Lead-Consent ✅, CSRF ✅, Sentry-Adapter ✅, Lighthouse offen |
 | **6 — Vertikalisierung & Sales**  | ⏳ geplant     | „Onboarding < 60 min" mehrfach erprobt                      |
 | **7 — Innovation Loop ♾️**        | ♾️ permanent   | Quartals-Schleifen: neue Modelle, Plattform-Features        |
 
-**Aktive Phase**: Backend-Sprint läuft. Postgres-Schema komplett (8
-Migrationen, RLS auf jeder Tabelle), Magic-Link-Auth via `@supabase/ssr`,
-Onboarding-Flow, Image-Storage mit Bucket-Policy, BusinessEditForm +
-Settings-Page (Slug-Wechsel + Publish-Toggle) schreiben in DB. Pages-
-Schicht ist vollständig Repository-only — Mock vs. Supabase wird über
-`LP_DATA_SOURCE`-ENV geschaltet, ohne Code-Änderung.
+**Aktive Phase**: Phase 2 (UI/UX-Polish) startet ab Session 77.
+MVP funktional komplett (Phase 1: Sessions 1–70), E2E-Coverage
+steht (Phase 1.5: Sessions 71–76, 9 Spec-Files + Helper-Modul,
+~2:18 min Full-Run, Demo-Mode-Tests laufen ohne Backend). Phase 2
+geht alle UI-Bereiche systematisch durch (Public-Site, Dashboard,
+Editoren, Form-System, Demo-Logo, Theme, A11y, Mobile,
+Lighthouse) — Regression-Schutz durch Phase-1.5-Tests.
 
 > Live-Stand: [`docs/RUN_LOG.md`](./docs/RUN_LOG.md) ·
 > Versionshistorie: [`CHANGELOG.md`](./CHANGELOG.md) ·
+> MVP-Recap: [`docs/MVP_RECAP.md`](./docs/MVP_RECAP.md) ·
+> E2E-Tests: [`docs/TESTING.md`](./docs/TESTING.md) ·
 > Schema-Doku: [`docs/SUPABASE_SCHEMA.md`](./docs/SUPABASE_SCHEMA.md)
 
 ---
@@ -262,22 +267,25 @@ Pflicht-ENV-Vorlage: [`.env.production.example`](./.env.production.example).
 
 **Produkt & Architektur**
 
-- [`docs/PRODUCT_STRATEGY.md`](./docs/PRODUCT_STRATEGY.md) — Vision,
-  Zielgruppen, Pakete, Akzeptanz
-- [`docs/TECHNICAL_NOTES.md`](./docs/TECHNICAL_NOTES.md) — Architektur,
-  Konventionen, Stack
+- [`docs/PRODUCT_STRATEGY.md`](./docs/PRODUCT_STRATEGY.md) — Vision, Zielgruppen, Pakete, Akzeptanz
+- [`docs/TECHNICAL_NOTES.md`](./docs/TECHNICAL_NOTES.md) — Architektur, Konventionen, Stack
+- [`docs/MVP_RECAP.md`](./docs/MVP_RECAP.md) — MVP-Capability-Liste + Code-Inventur (Stand S70)
 - [`docs/PRICING.md`](./docs/PRICING.md) — Pricing-System, Helper-API
-- [`docs/INDUSTRY_PRESETS.md`](./docs/INDUSTRY_PRESETS.md) — Presets,
-  Registry, Compliance
+- [`docs/INDUSTRY_PRESETS.md`](./docs/INDUSTRY_PRESETS.md) — Presets, Registry, Compliance
 - [`docs/THEMES.md`](./docs/THEMES.md) — Theme-System, CSS-Variablen
-- [`docs/MOCK_DATA.md`](./docs/MOCK_DATA.md) — Demo-Betriebe,
-  Daten-Hygiene
+- [`docs/MOCK_DATA.md`](./docs/MOCK_DATA.md) — Demo-Betriebe, Daten-Hygiene
 - [`docs/PUBLIC_SITE.md`](./docs/PUBLIC_SITE.md) — Public Site Generator
 - [`docs/MARKETING.md`](./docs/MARKETING.md) — Marketing-Funnel
 - [`docs/DASHBOARD.md`](./docs/DASHBOARD.md) — Dashboard, Sub-Routen
 - [`docs/BUSINESS_EDITOR.md`](./docs/BUSINESS_EDITOR.md) — Business-Editor
 - [`docs/SERVICES_EDITOR.md`](./docs/SERVICES_EDITOR.md) — Services-Editor
-- [`docs/LEAD_SYSTEM.md`](./docs/LEAD_SYSTEM.md) — Lead-System
+- [`docs/LEAD_SYSTEM.md`](./docs/LEAD_SYSTEM.md) — Lead-System + Retry-Queue
+- [`docs/AI.md`](./docs/AI.md) — AI-Schicht (7 Methoden, 4 Provider, Cost-Cap)
+- [`docs/STORAGE.md`](./docs/STORAGE.md) — Bucket-Layout + Cleanup-/Migrations-Pfade
+- [`docs/SUPABASE_SCHEMA.md`](./docs/SUPABASE_SCHEMA.md) — DB-Schema + RLS-Policies
+- [`docs/TESTING.md`](./docs/TESTING.md) — Smoketests + Playwright-E2E (Phase 1.5)
+- [`docs/STATE_REFRESH_CHECKLIST.md`](./docs/STATE_REFRESH_CHECKLIST.md) — 5er-Light-/20er-Deep-Pass-Recipe
+- [`docs/RESEARCH_INDEX.md`](./docs/RESEARCH_INDEX.md) — zentraler Quellen-Speicher
 - [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) — GitHub Pages und Vercel
 
 ---
